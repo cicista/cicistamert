@@ -1,0 +1,13 @@
+# Luau kaynaklari her makinede ayni satir sonuyla dursun.
+# Boylece iki bilgisayar arasinda "her satir degismis" gorunen sahte
+# fark (diff) olusmaz.
+*.luau text eol=lf
+*.lua  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+
+# Roblox dosyalari binary
+*.rbxl  binary
+*.rbxlx binary
+*.rbxm  binary
+*.rbxmx binary

@@ -1,0 +1,15 @@
+# Roblox place dosyalari -- binary, repoya girmez.
+# Harita/Workspace Team Create'te yasar; repo yalnizca KODU tutar.
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+
+# rojo build ciktilari
+/build/
+*.rbxm
+*.rbxmx
+
+# Gecici dosyalar
+/tmp/
+*.log
