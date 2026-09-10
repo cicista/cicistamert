@@ -1,0 +1,87 @@
+--[[
+	Ayarlar  (Script)
+	Yeri: ServerScriptService > Ayarlar
+
+	Oyuncunun kisisel ayarlarini saklar ve geri verir. Su an tek ayar var:
+
+	  uiScale  -- arayuz olcegi yuzdesi (%50..%150, varsayilan %100)
+
+	NEDEN SUNUCUDA
+	Roblox'ta istemcinin kalici deposu yok; ayarin oturumlar arasinda
+	kalmasi icin oyuncu verisiyle (PlayerData) birlikte DataStore'a
+	yazilmasi gerekiyor.
+
+	AKIS
+	  1. Oyuncu girer  -> server AyarDurum ile kayitli ayari yollar
+	  2. Client gec yuklendiyse AyarKaydet'i degersiz cagirir (nil),
+	     server yine mevcut ayari yollar. Boylece "istemci hazir olmadan
+	     gonderdim" sorunu olmaz.
+	  3. Oyuncu paneli oynatir -> client AyarKaydet ile yeni degeri yollar
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Net = require(Shared:WaitForChild("Net"))
+
+local Modules = script.Parent:WaitForChild("Modules")
+local PlayerData = require(Modules:WaitForChild("PlayerData"))
+
+local AyarDurum = Net.event("AyarDurum")
+local AyarKaydet = Net.event("AyarKaydet")
+
+-- Panelin sinirlariyla ayni; istemciye guvenilmez, deger burada da kirpilir
+local OLCEK_MIN = 50
+local OLCEK_MAX = 150
+
+local function ayarlariYolla(player: Player)
+	local data = PlayerData.get(player) or PlayerData.load(player)
+	AyarDurum:FireClient(player, {
+		uiScale = data.uiScale or 100,
+	})
+end
+
+--[[
+	Client'tan gelen ayar. Deger sayi degilse ya da sinirlarin disindaysa
+	yalnizca mevcut ayar geri yollanir -- istemci ne gonderirse gondersin
+	veri bozulmaz.
+]]
+AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	if type(payload) == "table" then
+		local yuzde = tonumber(payload.uiScale)
+		if yuzde then
+			data.uiScale = math.clamp(math.round(yuzde), OLCEK_MIN, OLCEK_MAX)
+		end
+	end
+
+	ayarlariYolla(player)
+end)
+
+--[[
+	Giriste ayari yollar. Client scripti henuz baglanmamis olabilir; bu
+	yuzden birkac kere tekrarlanir. Client kendi hazir oldugunda zaten
+	AyarKaydet ile durum istiyor, iki yol da ayni sonuca cikiyor.
+]]
+local function playerAdded(player: Player)
+	task.spawn(function()
+		for _ = 1, 5 do
+			if not player.Parent then
+				return
+			end
+			ayarlariYolla(player)
+			task.wait(1)
+		end
+	end)
+end
+
+Players.PlayerAdded:Connect(playerAdded)
+
+for _, player in Players:GetPlayers() do
+	playerAdded(player)
+end
