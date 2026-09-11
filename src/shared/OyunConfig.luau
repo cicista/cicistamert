@@ -247,11 +247,30 @@ Config.GPS = {
 		Kumda suzmenin dibine kadar gitmen gerekir; DENIZDE oyle degil --
 		olta UZAKTAN atilir. Onceden ikisi de 10 studdu ve girdabin tam
 		icinde durmadan E'ye basilamiyordu, misina atacak pay kalmiyordu.
-
-		Girdaplar en az minSpawnDistance (18) studda dogdugu icin bu sayi
+		Girdaplar seaMinSpawnDistance kadar uzakta dogdugu icin bu sayi ondan
+		KUCUK kalmali: girdap hep uzakta belirir, oyuncu ona dogru gider ve
+t	bu paya girince oltayi atar.
 		ondan rahatca buyuk olmali.
 	]]
 	seaDigDistance = 32,
+
+	--[[
+		GIRDAPLAR DENIZE DAGILIR
+
+		Deniz kumdan cok daha genis, bu yuzden girdaplarin kendi mesafeleri
+		var. Onceden kumun sayilari (18-55 stud, 28 stud ayrik) kullaniliyordu
+		ve girdaplar birbirinin dibinde doguyordu.
+
+		seaSeparation, ayni oyuncunun iki girdabi arasindaki EN AZ mesafe.
+		Dogum yaricapi bunun yaninda genis kalmali, yoksa yeni girdaba yer
+		bulunamaz ve hic dogmaz.
+
+		Dogum mesafesi seaDigDistance'tan buyuk: girdap hicbir zaman ayaginin
+		dibinde belirmez, ona dogru GITMEN gerekir.
+	]]
+	seaMinSpawnDistance = 55,
+	seaMaxSpawnDistance = 190,
+	seaSeparation = 85,
 }
 
 ------------------------------------------------------------------

@@ -273,23 +273,13 @@ task.spawn(function()
 			nearest = { id = best.id, distance = best.distance }
 
 			--[[
-				EPIC VE USTUNDE IPUCU YOK
+				IPUCU HER KADEMEDE CIKAR
 
-				Degerli suzmede ekranin altinda "press E to dig" yazmasi
-				heyecani soduruyordu. Kazma tusu aynen calisir, yalnizca
-				yazi cikmaz.
-
-				Kademe DOGRUDAN tablodan okunuyor: Rarity.get bilinmeyen
-				kimlikte assert atiyor ve Lucky Block suzmesinin kademesi
-				yok -- yukaridaki kindColor notunda anlatilan olu arayuz
-				hatasi tam olarak boyle olusuyordu.
+				Bir ara Epic ve ustunde gizleniyordu; ama ekranin altindaki
+				bu yazi ayni zamanda "menzile girdin" demek oluyor. Gizli
+				oldugunda oyuncu -- ozellikle denizde, girdap 30 stud oteden
+				atildigi icin -- ne zaman E'ye basabilecegini kestiremiyordu.
 			]]
-			local info = Rarity.Info[best.kind]
-			if info and info.order >= Rarity.Info.Epic.order then
-				hint.Visible = false
-				continue
-			end
-
 			local color = kindColor(best.kind)
 			hintStroke.Color = color
 			hintLabel.TextColor3 = color
