@@ -49,10 +49,19 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Enabled = false
 screen.Parent = playerGui
 
+--[[
+	PENCERE SAGDA DURUR
+
+	Ortada durdugunda karakteri ve savurma animasyonunu kapatiyordu.
+	Sagda: sol yari serbest kalir, oyuncu hem kendini hem girdabi gorur.
+
+	AnchorPoint sag kenara sabitlendigi icin panel her ekran genisliginde
+	kenardan ayni uzaklikta durur.
+]]
 local root = Instance.new("Frame")
 root.Name = "Root"
-root.AnchorPoint = Vector2.new(0.5, 0.5)
-root.Position = UDim2.fromScale(0.5, 0.5)
+root.AnchorPoint = Vector2.new(1, 0.5)
+root.Position = UDim2.new(1, -48, 0.5, 0)
 root.Size = UDim2.fromOffset(300, 580)
 root.BackgroundColor3 = UI.Colors.panel
 root.BackgroundTransparency = 0.08
@@ -272,8 +281,10 @@ local perfectLabel = UI.text({
 	font = UI.Fonts.bold,
 	color = Color3.fromRGB(255, 226, 90),
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, 0, 0, 48),
-	position = UDim2.new(0, 0, 0.5, -24),
+	-- Panel sagda oldugu icin rozet de onun uzerinde durur, ekran ortasinda degil
+	frameSize = UDim2.fromOffset(300, 48),
+	anchor = Vector2.new(1, 0.5),
+	position = UDim2.new(1, -48, 0.5, 0),
 	parent = screen,
 	name = "Perfect",
 	outline = true,
