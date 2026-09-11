@@ -168,16 +168,17 @@ Rods.LineName = "OltaMisinasi"
 	SAVURMA ZAMANLAMASI
 
 	Girdapta E'ye basinca minigame ANINDA acilmaz: once olta savrulur.
-	Uc sayi var, hepsi ayni 3 saniyenin icinde gecer:
+	Uc sayi var, hepsi ayni 2.25 saniyenin icinde gecer:
 
-	  0.0  E'ye basildi, savurma animasyonu basladi -- misina gorunmez
-	  2.5  CastRelease  -- animasyon bitti, MISINA BIRAKILDI
-	  3.0  CastRelease + CastFlight  -- samandira girdabin ortasina dustu
-	  3.0  CastTime     -- minigame penceresi acilir
+	  0.00  E'ye basildi, savurma animasyonu basladi -- misina gorunmez
+	  1.75  CastRelease  -- animasyon bitti, MISINA BIRAKILDI
+	  2.25  CastFlight bitti -- samandira girdabin ortasina dustu
+	  2.25  CastTime -- minigame penceresi acilir
 
-	CastTime = CastRelease + CastFlight olmali: pencere, misina suya
-	dustugu anda acilsin. Animasyonun suresini degistirirsen CastRelease'i
-	ona esitle ve CastTime'i yeniden topla.
+	CastTime elle yazilmaz, CastRelease + CastFlight olarak hesaplanir:
+	pencere her zaman misinanin suya dustugu anda acilir. Savurma
+	animasyonunun suresini degistirirsen YALNIZCA CastRelease'i guncelle,
+	gerisi kendiliginden uyar.
 
 	Kum kazisindan farkli: orada bekleme suresini kurek belirliyor
 	(Config.Dig.prepareTime * digSpeed), denizde ise animasyon belirliyor,
@@ -185,7 +186,7 @@ Rods.LineName = "OltaMisinasi"
 ]]
 
 -- Savurma animasyonunun suresi; misina tam bitiminde birakilir
-Rods.CastRelease = 2.5
+Rods.CastRelease = 1.75
 
 -- Misinanin havada gecirdigi sure: oltanin ucundan girdabin ortasina
 Rods.CastFlight = 0.5
