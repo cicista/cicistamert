@@ -260,12 +260,16 @@ Config.GPS = {
 		var. Onceden kumun sayilari (18-55 stud, 28 stud ayrik) kullaniliyordu
 		ve girdaplar birbirinin dibinde doguyordu.
 
-		seaSeparation, ayni oyuncunun iki girdabi arasindaki EN AZ mesafe.
-		Dogum yaricapi bunun yaninda genis kalmali, yoksa yeni girdaba yer
-		bulunamaz ve hic dogmaz.
-
-		Dogum mesafesi seaDigDistance'tan buyuk: girdap hicbir zaman ayaginin
-		dibinde belirmez, ona dogru GITMEN gerekir.
+		seaMinSpawnDistance  en yakin dogum noktasi. seaDigDistance'tan buyuk:
+		                     girdap asla ayaginin dibinde belirmez, ona dogru
+		                     GITMEN gerekir.
+		seaSeparation        ayni oyuncunun iki girdabi arasindaki EN AZ mesafe.
+		                     Dogum yaricapi bunun yaninda genis kalmali, yoksa
+		                     yeni girdaba yer bulunamaz ve hic dogmaz.
+		seaMaxSpawnDistance  YEDEK ust sinir. Normalde ust siniri OLTA verir
+		                     (Rods > scanRadius): istemciye yalnizca o yaricap
+		                     icindeki girdaplar gonderildigi icin disarida
+		                     dogan girdap gorunmez ve tiklanamaz olurdu.
 	]]
 	seaMinSpawnDistance = 55,
 	seaMaxSpawnDistance = 190,

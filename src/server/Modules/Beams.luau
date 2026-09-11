@@ -599,7 +599,7 @@ end
 	yeri olur. Terrain su da isim verilmis deniz parcalari da kabul edilir
 	(bkz. Shared > Flyboard > SeaNames).
 ]]
-local function findSeaSpot(player: Player): Vector3?
+local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") then
@@ -615,24 +615,41 @@ local function findSeaSpot(player: Player): Vector3?
 	--[[
 		GIRDAPLAR BIRBIRINE YAPISMAZ
 
-		Ayni oyuncunun girdaplari en az AYRIK_MESAFE kadar uzakta durur.
-		Onceden bu kural yoktu ve birkac tanesi ust uste dogup tek bir yigin
-		gibi gorunuyordu.
+		Ayni oyuncunun iki girdabi arasinda en az seaSeparation stud olur.
+		Deniz genis; kumun dar sayilari burada girdaplari birbirinin dibine
+		yigiyordu.
 	]]
-	local AYRIK_MESAFE = 28
-
 	local function uygun(nokta: Vector3): boolean
 		for _, beam in active do
-			if beam.owner == player and (beam.position - nokta).Magnitude < AYRIK_MESAFE then
+			if beam.owner == player and (beam.position - nokta).Magnitude < G.seaSeparation then
 				return false
 			end
 		end
 		return true
 	end
 
-	for _ = 1, 16 do
+	--[[
+		DOGUM YARICAPI OLTADAN GELIR
+
+		Cok onemli: istemciye yalnizca oltanin scanRadius'u icindeki
+		girdaplar gonderiliyor (bkz. snapshotFor). Yaricapin disinda dogan
+		girdap oyuncuya hic ulasmaz -- gorunmez olur ve tiklanamaz. Bu yuzden
+		ust sinir sabit bir sayi DEGIL, dogrudan oltanin menzili.
+
+		Kenarda dogan girdap oyuncu azicik kipirdayinca menzilden cikip
+		titremesin diye biraz icerden kesiliyor.
+	]]
+	local enUzak = math.max((maxDistance or G.seaMaxSpawnDistance) * 0.9, G.seaMinSpawnDistance + 10)
+	local yaricap = enUzak - G.seaMinSpawnDistance
+
+	--[[
+		Ayrik durma sarti sikiysa cogu deneme bosa gider; deniz taramasinda
+		kumdan FAZLA deneme yapiliyor. Yine de yer bulunamazsa girdap bu tur
+		dogmaz -- oyuncu gezdikce yer acilir, zaten istenen de bu.
+	]]
+	for _ = 1, 30 do
 		local angle = math.random() * math.pi * 2
-		local distance = math.random() * (G.maxSpawnDistance - G.minSpawnDistance) + G.minSpawnDistance
+		local distance = math.random() * yaricap + G.seaMinSpawnDistance
 		local candidate = origin + Vector3.new(math.cos(angle) * distance, 12, math.sin(angle) * distance)
 
 		local hit = Workspace:Raycast(candidate, Vector3.new(0, -80, 0), params)
@@ -653,12 +670,12 @@ end
 	Denizde girdap dogurmayi dener. Kumdaki trySpawn ile ayni kurallar;
 	fark yalnizca noktanin suda aranmasi ve gorunumun huni olmasi.
 ]]
-function Beams.trySpawnSea(player: Player, luck: number, rng: Random, maxWhirls: number?): Beam?
+function Beams.trySpawnSea(player: Player, luck: number, rng: Random, maxWhirls: number?, scanRadius: number?): Beam?
 	if Beams.countFor(player, true) >= (maxWhirls or G.maxBeamsPerPlayer) then
 		return nil
 	end
 
-	local spot = findSeaSpot(player)
+	local spot = findSeaSpot(player, scanRadius)
 	if not spot then
 		return nil
 	end
