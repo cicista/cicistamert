@@ -317,7 +317,7 @@ local function startDig(player: Player, beamId: string)
 		zorlugunu yine kurek belirliyor ama elindeki olta kaliyor.
 	]]
 	if beam.sea then
-		-- Misina girdabin tam ortasina atilir; minigame bitince toplanir
+		-- Olta savrulur: misina animasyonun ortasinda birakilip girdaba duser
 		if char then
 			Olta.cast(char, beam.position)
 		end
@@ -334,7 +334,17 @@ local function startDig(player: Player, beamId: string)
 	]]
 	local gearId = if beam.sea then (data.rod or Rods.Order[1]) else data.shovel
 	local gear = DigMinigame.gear(gearId)
-	local prepare = D.prepareTime * gear.digSpeed
+
+	--[[
+		PENCERE NE ZAMAN ACILIR
+
+		Kumda kurek belirler: iyi kurek daha cabuk kazmaya baslar.
+		DENIZDE savurma animasyonu belirler -- pencere, olta savrulup misina
+		suya dustukten sonra acilmali. Bu yuzden sure sabit (Rods.CastTime)
+		ve olta kademesi onu degistirmez; yoksa iyi oltada pencere
+		animasyonun ortasinda acilirdi.
+	]]
+	local prepare = if beam.sea then Rods.CastTime else D.prepareTime * gear.digSpeed
 
 	digging[player] = {
 		beamId = beamId,

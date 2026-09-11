@@ -13,11 +13,12 @@
 	  Olta.attach(character, model) -- ele kaynaklar
 	  Olta.has(player)              -- elinde olta var mi
 	  Olta.remove(character)        -- oltayi ve misinayi kaldirir
-	  Olta.cast(character, hedef)   -- misinayi girdabin ortasina atar
+	  Olta.cast(character, hedef)   -- misinayi girdaba savurur (animasyonlu)
 	  Olta.reel(character)          -- misinayi toplar
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rods = require(Shared:WaitForChild("Rods"))
@@ -128,11 +129,22 @@ function Olta.remove(character: Model?)
 end
 
 --[[
-	MISINAYI GIRDABA ATAR
+	MISINAYI GIRDABA SAVURUR
 
-	Oltanin ucundan hedefe ince bir cizgi gerilir, ucunda samandira suya
-	duser. Cizgi bir Beam oldugu icin oyuncu hareket ettikce kendiliginden
-	gerilir; minigame bitince Olta.reel ile toplanir.
+	Misina girdabin ortasinda ANINDA belirmez -- oltanin ucundan cikar,
+	havada kavis cizer ve suya duser:
+
+	  CastRelease kadar bekle   (savurma animasyonunun geri cekme kismi;
+	                             misina henuz gorunmez)
+	  CastFlight boyunca ucur   (oltanin ucundan girdabin ortasina, kavisli)
+	  hedefte sabitlen          (ip hafif sarkar, minigame boyunca durur)
+
+	Zamanlama Shared > Rods icinde; savurma animasyonunu degistirirsen
+	orayi guncelle.
+
+	Cagiran tarafi BEKLETMEZ: ucus kendi thread'inde doner, fonksiyon
+	hemen doner. Minigame'in ne zaman acilacagini KaziSistemi ayri
+	bekliyor (Rods.CastTime).
 ]]
 function Olta.cast(character: Model, target: Vector3): BasePart?
 	Olta.reel(character)
@@ -143,21 +155,27 @@ function Olta.cast(character: Model, target: Vector3): BasePart?
 		return nil
 	end
 
-	-- Hedefteki sabit uc: girdabin tam ortasi
-	local kanca = Instance.new("Part")
-	kanca.Name = Rods.LineName
-	kanca.Size = Vector3.one
-	kanca.Transparency = 1
-	kanca.Anchored = true
-	kanca.CanCollide = false
-	kanca.CanQuery = false
-	kanca.CanTouch = false
-	kanca.CFrame = CFrame.new(target)
-	kanca.Parent = character
+	--[[
+		Samandira hem misinanin ucu hem de suya dusen sasi. Once oltanin
+		ucunda, gorunmez halde durur; birakilinca gorunur ve ucar.
+	]]
+	local samandira = Instance.new("Part")
+	samandira.Name = Rods.LineName
+	samandira.Shape = Enum.PartType.Ball
+	samandira.Size = Vector3.new(0.6, 0.6, 0.6)
+	samandira.Color = Color3.fromRGB(255, 80, 80)
+	samandira.Material = Enum.Material.SmoothPlastic
+	samandira.Transparency = 1
+	samandira.Anchored = true
+	samandira.CanCollide = false
+	samandira.CanQuery = false
+	samandira.CanTouch = false
+	samandira.CFrame = CFrame.new(tip.WorldPosition)
+	samandira.Parent = character
 
 	local hedefNokta = Instance.new("Attachment")
 	hedefNokta.Name = "Hedef"
-	hedefNokta.Parent = kanca
+	hedefNokta.Parent = samandira
 
 	local misina = Instance.new("Beam")
 	misina.Name = "Misina"
@@ -169,25 +187,59 @@ function Olta.cast(character: Model, target: Vector3): BasePart?
 	misina.LightInfluence = 0
 	misina.Color = ColorSequence.new(Color3.fromRGB(240, 245, 250))
 	misina.Transparency = NumberSequence.new(0.15)
-	-- Eksi egrilik ipe hafif bir sarkma verir
-	misina.CurveSize0 = -6
-	misina.CurveSize1 = -2
-	misina.Parent = kanca
+	-- Ucarken ip gergin; sarkma suya dustukten sonra geliyor
+	misina.CurveSize0 = 0
+	misina.CurveSize1 = 0
+	misina.Enabled = false
+	misina.Parent = samandira
 
-	local samandira = Instance.new("Part")
-	samandira.Name = "Samandira"
-	samandira.Shape = Enum.PartType.Ball
-	samandira.Size = Vector3.new(0.6, 0.6, 0.6)
-	samandira.Color = Color3.fromRGB(255, 80, 80)
-	samandira.Material = Enum.Material.SmoothPlastic
-	samandira.Anchored = true
-	samandira.CanCollide = false
-	samandira.CanQuery = false
-	samandira.CanTouch = false
-	samandira.CFrame = CFrame.new(target)
-	samandira.Parent = kanca
+	task.spawn(function()
+		-- Savurma animasyonunun geri cekme kismi: ip henuz cikmadi
+		task.wait(Rods.CastRelease)
+		if samandira.Parent == nil then
+			return
+		end
 
-	return kanca
+		--[[
+			Baslangic noktasi BURADA okunuyor, fonksiyonun basinda degil:
+			oyuncu bekleme boyunca kipirdadiysa ip yine de oltanin
+			ucundan cikmali.
+		]]
+		local basla = tip.WorldPosition
+		local mesafe = (target - basla).Magnitude
+
+		-- Kavis yuksekligi mesafeyle buyur ama asiri firlamasin
+		local kavis = math.clamp(mesafe * 0.14, 3, 14)
+
+		samandira.Transparency = 0
+		misina.Enabled = true
+
+		local baslangicZamani = os.clock()
+		while true do
+			local oran = (os.clock() - baslangicZamani) / Rods.CastFlight
+			if oran >= 1 then
+				break
+			end
+
+			-- Duz gidis + sin egrisiyle yukari kavis
+			local nokta = basla:Lerp(target, oran)
+				+ Vector3.new(0, math.sin(oran * math.pi) * kavis, 0)
+			samandira.CFrame = CFrame.new(nokta)
+
+			RunService.Heartbeat:Wait()
+			if samandira.Parent == nil then
+				-- Minigame bitti ya da oyuncu tahtadan indi: ipi topla
+				return
+			end
+		end
+
+		samandira.CFrame = CFrame.new(target)
+		-- Suya dustu: ip artik hafif sarksin
+		misina.CurveSize0 = -6
+		misina.CurveSize1 = -2
+	end)
+
+	return samandira
 end
 
 return Olta
