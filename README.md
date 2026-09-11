@@ -36,3 +36,24 @@ Once "ben basliyorum" deyip oyle baglan.
 
 `src/` altindaki butun `.luau` dosyalarini derleyip hata arar (calistirmaz).
 Rojo ve Lune `%LOCALAPPDATA%\Rojo\bin` altindadir; PATH'te degilse tam yol gerekir.
+
+## Backdoor taramasi
+
+    lune run tools/scan.luau harita.rbxl
+
+Toolbox modelleriyle gelen arka kapilari arar. Haritayi once Studio'dan
+`File > Save As` ile bir `.rbxl` olarak kaydet, sonra o dosyayi tara.
+
+**Yeni bir toolbox modeli ekledikten sonra HER SEFERINDE calistir.**
+
+Cikti uc kademeli. Bakman gereken tek sayi **YUKSEK RISK**:
+
+- `YUKSEK RISK: 0` yoksa harita temiz demektir.
+- ORTA ve DUSUK RISK'te kendi kodumuz da cikar (AdminPanel'in `allowInStudio`
+  kontrolu, PlayerData'nin DataStore korumasi, ses/animasyon asset id'leri).
+  Bunlar normaldir.
+
+Tarayici hem kaynak koduna hem de scriptin ADINA ve DURDUGU YERE bakar --
+12 Eylul 2026'da bulunan 72 arka kapinin ucu de kodu tertemiz gorunuyordu,
+ele veren sey nerede durduklariydi. Ayrintilar `tools/scan.luau` basindaki
+aciklamada.
