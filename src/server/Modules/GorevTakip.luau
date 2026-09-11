@@ -165,7 +165,7 @@ function GorevTakip.ilerlet(player: Player, kind: string, amount: number?, rarit
 			]]
 			Bildirim:FireClient(
 				player,
-				`Quest Ready: {def.text}  --  collect it in the Quests panel`,
+				`Quest Ready: {def.text}`,
 				BITTI_RENGI
 			)
 		else

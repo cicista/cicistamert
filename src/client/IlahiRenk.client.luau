@@ -2,16 +2,22 @@
 	IlahiRenk  (LocalScript)
 	Yeri: StarterPlayer > StarterPlayerScripts > IlahiRenk
 
-	Divine (eski adiyla Secret) kademesinin sari <-> beyaz parildamasini cizer.
+	CANLI RENKLERI CIZER.
 
-	Sunucu ya da arayuz kodu bir nesneyi Shared > Divine ile ETIKETLER;
-	burasi her karede etiketli nesneleri bulup rengini gunceller. Boylece
-	renk degisimi replikasyona takilmaz, her oyuncunun ekraninda akici olur.
+	Uc yerde kullaniliyor:
+	  Divine kademesi  -> sari <-> beyaz   (Shared > Divine)
+	  Galaxy mutasyonu -> mor <-> pembe    (Shared > Mutations > Flash)
+	  Hacker mutasyonu -> yesil <-> beyaz  (ayni yer)
+
+	Sunucu ya da arayuz kodu bir nesneyi ETIKETLER; burasi her karede
+	etiketli nesneleri bulup rengini gunceller. Renk degisimi boylece
+	replikasyona takilmaz, her oyuncunun ekraninda akici olur -- sunucudan
+	saniyede 20 kez renk gondermek titrek ve kesik gorunurdu.
 
 	Etiketli nesnenin sinifina gore dogru ozellik boyanir; ayni etiket hem
 	dunyadaki isik suzmesinde hem arayuzdeki yazida calisir.
 
-	Hiz ve renkler Shared > Divine icinde ayarlanir.
+	Hizlar ve renkler Shared > Divine ve Shared > Mutations icinde ayarlanir.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -20,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Divine = require(Shared:WaitForChild("Divine"))
+local Mutations = require(Shared:WaitForChild("Mutations"))
 
 --[[
 	Bir nesneye o anki rengi uygular.
@@ -50,38 +57,67 @@ local function paint(instance: Instance, color: Color3)
 end
 
 --[[
+	Her palet bir CollectionService etiketi ve iki uc renktir.
+
 	Etiketli nesneler her karede yeniden sorulmaz; CollectionService'in
 	sinyalleriyle yerel bir liste tutulur. GetTagged her karede cagrilsaydi
 	her seferinde yeni bir tablo ayrilirdi.
 ]]
-local tracked: { [Instance]: boolean } = {}
+type Palet = {
+	colorA: Color3,
+	colorB: Color3,
+	interval: number,
+	tracked: { [Instance]: boolean },
+}
 
-for _, instance in CollectionService:GetTagged(Divine.Tag) do
-	tracked[instance] = true
+local paletler: { Palet } = {}
+
+local function paletEkle(tag: string, colorA: Color3, colorB: Color3, interval: number)
+	local palet: Palet = {
+		colorA = colorA,
+		colorB = colorB,
+		interval = interval,
+		tracked = {},
+	}
+
+	for _, instance in CollectionService:GetTagged(tag) do
+		palet.tracked[instance] = true
+	end
+
+	CollectionService:GetInstanceAddedSignal(tag):Connect(function(instance)
+		palet.tracked[instance] = true
+	end)
+
+	CollectionService:GetInstanceRemovedSignal(tag):Connect(function(instance)
+		palet.tracked[instance] = nil
+	end)
+
+	table.insert(paletler, palet)
 end
 
-CollectionService:GetInstanceAddedSignal(Divine.Tag):Connect(function(instance)
-	tracked[instance] = true
-end)
+paletEkle(Divine.Tag, Divine.colorA, Divine.colorB, Divine.interval)
 
-CollectionService:GetInstanceRemovedSignal(Divine.Tag):Connect(function(instance)
-	tracked[instance] = nil
-end)
+for _, flash in Mutations.Flash do
+	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval)
+end
 
 local elapsed = 0
 
 RunService.RenderStepped:Connect(function(dt)
 	elapsed += dt
 
-	local color = Divine.colorAt(elapsed)
+	for _, palet in paletler do
+		local step = math.floor(elapsed / math.max(palet.interval, 1 / 240))
+		local color = if step % 2 == 0 then palet.colorA else palet.colorB
 
-	for instance in tracked do
-		-- Silinen nesneler listeden kendiliginden dusmez; burada temizlenir
-		if not instance.Parent then
-			tracked[instance] = nil
-			continue
+		for instance in palet.tracked do
+			-- Silinen nesneler listeden kendiliginden dusmez; burada temizlenir
+			if not instance.Parent then
+				palet.tracked[instance] = nil
+				continue
+			end
+
+			paint(instance, color)
 		end
-
-		paint(instance, color)
 	end
 end)

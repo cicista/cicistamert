@@ -24,6 +24,7 @@ local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Tools = require(script.Parent:WaitForChild("Tools"))
+local Olta = require(script.Parent:WaitForChild("Olta"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 
@@ -207,6 +208,42 @@ function Envanter.equipGPS(player: Player)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.GPSName)
 	Tools.buildGPS(data.detector, data.equipped.GPS).Parent = character
+end
+
+--[[
+	OLTAYI ELE VERIR  (flyboardla denize girince)
+
+	Olta bir Tool DEGIL: hotbarda yer kaplamasin ve elden birakilamasin
+	diye dogrudan sag ele kaynaklanir (bkz. Modules > Olta). Kurek ve GPS
+	yine de elden birakilir ki denizde tek sey dursun.
+
+	Oltasi olmayan oyuncuda hicbir sey olmaz.
+]]
+function Envanter.equipRod(player: Player)
+	local data = PlayerData.get(player)
+	local character = player.Character
+	if not data or not character or not data.rod then
+		return
+	end
+
+	if Olta.has(player) then
+		return
+	end
+
+	clearHands(player)
+	Tools.remove(player, Tools.ShovelName)
+	Tools.remove(player, Tools.GPSName)
+
+	local model = Olta.build(data.rod)
+	if not Olta.attach(character, model) then
+		-- Karakter hazir degilse (el parcasi yok) sessizce vazgec
+		model:Destroy()
+	end
+end
+
+-- Oltayi ve atilmis misinayi tamamen kaldirir (flyboarddan inince)
+function Envanter.removeRod(player: Player)
+	Olta.remove(player.Character)
 end
 
 --[[

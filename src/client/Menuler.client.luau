@@ -727,7 +727,7 @@ SlotMakinesiSonuc.OnClientEvent:Connect(function(result)
 		onRarity = function(rarityId: string)
 			reelName.Text = string.upper(Rarity.displayName(rarityId))
 			UI.rarityStyle(reelName, rarityId)
-			reelDetail.Text = "Tier locked in -- now which skin?"
+			reelDetail.Text = "Tier locked in, now which skin?"
 			reelDetail.TextColor3 = UI.Colors.textDim
 		end,
 
@@ -742,8 +742,8 @@ SlotMakinesiSonuc.OnClientEvent:Connect(function(result)
 			local rarityLabel = Rarity.displayName(result.rarity)
 			local toolLabel = if result.tool == "Shovel" then "Shovel" else "GPS"
 			reelDetail.Text = if result.duplicate
-				then `{toolLabel}  -  {rarityLabel}  -  already owned, +{result.refund} coins`
-				else `{toolLabel}  -  {rarityLabel}  -  NEW!`
+				then `{toolLabel} {rarityLabel} (already owned)`
+				else `{toolLabel} {rarityLabel} (NEW!)`
 			reelDetail.TextColor3 = if result.duplicate then UI.Colors.textDim else UI.Colors.good
 
 			if not result.duplicate then
@@ -809,9 +809,15 @@ local function shopRow(entry: any, detail: string, order: number, onBuy: () -> (
 	row.LayoutOrder = order
 	row.Parent = magazaListe
 	UI.corner(row, 10)
-	UI.stroke(row, if entry.buyable then color else UI.Colors.panelLight, 1)
+	-- Kusanili olan kademe kendi renginde kalin cerceve alir
+	UI.stroke(
+		row,
+		if entry.equipped or entry.buyable then color else UI.Colors.panelLight,
+		if entry.equipped then 2 else 1
+	)
 
-	if entry.owned then
+	-- Sahip olunan ama kusanili OLMAYAN kademe soluk durur
+	if entry.owned and not entry.equipped then
 		row.BackgroundTransparency = 0.4
 	end
 
@@ -834,10 +840,19 @@ local function shopRow(entry: any, detail: string, order: number, onBuy: () -> (
 		parent = row,
 	})
 
+	--[[
+		DURUM YAZISI
+
+		Sahip olunan kademeler kalici: kusanili olmayanina tiklayinca
+		ucretsiz kusanilir, o yuzden "USE" yazar.
+	]]
 	local statusText, statusColor
-	if entry.owned then
-		statusText = "OWNED"
+	if entry.equipped then
+		statusText = "EQUIPPED"
 		statusColor = UI.Colors.good
+	elseif entry.owned then
+		statusText = "USE"
+		statusColor = UI.Colors.accent
 	elseif entry.buyable then
 		statusText = `{Format.short(entry.price)} Rot`
 		statusColor = UI.Colors.gold
@@ -857,7 +872,8 @@ local function shopRow(entry: any, detail: string, order: number, onBuy: () -> (
 		parent = row,
 	})
 
-	if entry.buyable then
+	-- Satin alinabilir ya da kusanilabilir satirlar tiklanabilir
+	if entry.buyable or (entry.owned and not entry.equipped) then
 		row.MouseButton1Click:Connect(onBuy)
 		UI.hover(row)
 	end
@@ -1018,7 +1034,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		onRarity = function(rarityId: string)
 			luckyResult.Text = string.upper(Rarity.displayName(rarityId))
 			UI.rarityStyle(luckyResult, rarityId)
-			luckyDetail.Text = "Tier locked in -- now which brainrot?"
+			luckyDetail.Text = "Tier locked in, now which brainrot?"
 			luckyDetail.TextColor3 = UI.Colors.textDim
 		end,
 
@@ -1040,7 +1056,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			UI.rarityStyle(luckyResult, winner.rarity)
 
 			local tag = if special then `  {mutationInfo.displayName} ({mutationInfo.multiplier}x)` else ""
-			luckyDetail.Text = `{Rarity.displayName(winner.rarity)}  -  {conditionInfo.shortName}{tag}  -  {Format.perSecond(winner.income or 0)}`
+			luckyDetail.Text = `{Rarity.displayName(winner.rarity)} {conditionInfo.shortName}{tag} ({Format.perSecond(winner.income or 0)})`
 			-- Boyut satiri her zaman boyut renginde; mutasyon rengini ele gecirmez
 			luckyDetail.TextColor3 = conditionInfo.color
 		end,

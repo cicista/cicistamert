@@ -20,6 +20,8 @@
 	                    (arg: rarity ya da { rarity = ..., mutation = ... })
 	  setShovel      -- kurek seviyesi ayarlar (arg: shovelId)
 	  setDetector    -- dedektor seviyesi ayarlar (arg: detectorId)
+	  setFlyboard    -- flyboard kademesi verir (arg: flyboardId)
+	  setRod         -- olta kademesi verir (arg: rodId)
 	  clearInventory -- envanteri bosaltir (slottakiler dahil)
 	  spawnBeam      -- istenen kademede isik suzmesi dogurur (arg: rarity)
 	  haritaRaporu   -- adalarin, base lerin ve NPC lerin konumlarini Output a yazar
@@ -34,6 +36,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
+local Flyboard = require(Shared:WaitForChild("Flyboard"))
+local Rods = require(Shared:WaitForChild("Rods"))
 local Skins = require(Shared:WaitForChild("Skins"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
@@ -92,7 +96,9 @@ function commands.giveAllTools(player, data)
 	local topDetector = Detectors.Order[#Detectors.Order]
 
 	data.shovel = topShovel
+	data.shovelMax = topShovel
 	data.detector = topDetector
+	data.detectorMax = topDetector
 
 	Envanter.giveShovel(player)
 	Envanter.giveGPS(player)
@@ -706,8 +712,43 @@ function commands.setShovel(player, data, arg)
 	end
 
 	data.shovel = arg
+	-- Admin verdigi kademeyi kalici da yapar (satici listesinde gorunsun)
+	if Shovels.get(arg :: any).level > Shovels.get(data.shovelMax :: any).level then
+		data.shovelMax = arg
+	end
 	Envanter.giveShovel(player)
 	return `Kurek: {Shovels.get(arg).displayName}`
+end
+
+function commands.setRod(player, data, arg)
+	if type(arg) ~= "string" or not Rods.exists(arg) then
+		return nil
+	end
+
+	data.rod = arg
+	if Rods.level(arg) > Rods.level(data.rodMax) then
+		data.rodMax = arg
+	end
+
+	-- Denizdeyse elindeki olta hemen yenilensin
+	Envanter.removeRod(player)
+	Envanter.equipRod(player)
+
+	local info = Rods.get(arg)
+	return `Olta: {if info then info.displayName else arg}`
+end
+
+function commands.setFlyboard(player, data, arg)
+	if type(arg) ~= "string" or not Flyboard.exists(arg) then
+		return nil
+	end
+
+	data.flyboard = arg
+	if Flyboard.level(arg) > Flyboard.level(data.flyboardMax) then
+		data.flyboardMax = arg
+	end
+	local info = Flyboard.get(arg)
+	return `Flyboard: {if info then info.displayName else arg}`
 end
 
 function commands.setDetector(player, data, arg)
@@ -716,6 +757,9 @@ function commands.setDetector(player, data, arg)
 	end
 
 	data.detector = arg
+	if Detectors.get(arg :: any).level > Detectors.get(data.detectorMax :: any).level then
+		data.detectorMax = arg
+	end
 	Envanter.giveGPS(player)
 	return `Dedektor: {Detectors.get(arg).displayName}`
 end
@@ -791,6 +835,8 @@ local function announce(player: Player)
 		coinGrant = A.coinGrant,
 		shovels = Shovels.Order,
 		detectors = Detectors.Order,
+		flyboards = Flyboard.Order,
+		rods = Rods.Order,
 		rarities = Rarity.Order,
 	})
 end

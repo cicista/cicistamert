@@ -22,6 +22,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
+local Flyboard = require(Shared:WaitForChild("Flyboard"))
+local Rods = require(Shared:WaitForChild("Rods"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
@@ -248,6 +250,32 @@ local function buildPanel(info: any)
 		})
 	end
 	chipRow(detectorChips)
+
+	section("FLYBOARD KADEMESI")
+	local flyboardChips = {}
+	for _, id in Flyboard.Order do
+		local board = Flyboard.Info[id]
+		table.insert(flyboardChips, {
+			label = `Lv{board.level}`,
+			command = "setFlyboard",
+			arg = id,
+			color = board.color,
+		})
+	end
+	chipRow(flyboardChips)
+
+	section("OLTA KADEMESI")
+	local rodChips = {}
+	for _, id in Rods.Order do
+		local rod = Rods.Info[id]
+		table.insert(rodChips, {
+			label = `Lv{rod.level}`,
+			command = "setRod",
+			arg = id,
+			color = rod.color,
+		})
+	end
+	chipRow(rodChips)
 
 	--[[
 		MUTASYON butonlari iki is birden yapar:

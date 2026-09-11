@@ -31,6 +31,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
+local Flyboard = require(Shared:WaitForChild("Flyboard"))
+local Rods = require(Shared:WaitForChild("Rods"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 
 export type InventoryItem = {
@@ -78,8 +80,24 @@ export type Data = {
 	rotCoins: number,
 	luckyBlocks: { [string]: number },
 	coins: { CoinItem },
+	--[[
+		KADEMELI ESYALAR
+
+		Iki alan var: KUSANILAN kademe ve SAHIP OLUNAN EN YUKSEK kademe.
+		Oyuncu satin aldigi butun kademeleri kalici olarak tasir; saticidan
+		istedigi zaman alt kademeye geri donebilir (orn. daha kucuk barli
+		kurek isteyen oyuncu). Satin alma hep en yuksek kademeye bakar.
+	]]
 	shovel: string,
+	shovelMax: string,
 	detector: string,
+	detectorMax: string,
+	-- Olta: kusanilan ve sahip olunan en yuksek (hic yoksa nil)
+	rod: string?,
+	rodMax: string?,
+	-- Flyboard: kusanilan ve en yuksek (hic yoksa nil)
+	flyboard: string?,
+	flyboardMax: string?,
 	skins: { [string]: boolean },
 	equipped: { [string]: string? },
 	inventory: { InventoryItem },
@@ -114,7 +132,13 @@ local function defaultData(): Data
 		luckyBlocks = {},
 		coins = {},
 		shovel = Shovels.Default,
+		shovelMax = Shovels.Default,
 		detector = Detectors.Default,
+		detectorMax = Detectors.Default,
+		rod = nil,
+		rodMax = nil,
+		flyboard = nil,
+		flyboardMax = nil,
 		skins = {},
 		equipped = {},
 		inventory = {},
@@ -221,6 +245,48 @@ local function migrate(raw: any): Data
 
 	if type(raw.detector) == "string" and Detectors.Info[raw.detector] then
 		data.detector = raw.detector
+	end
+
+	-- Flyboard oncesi kayitlarda bu alan yok; tahtasiz baslanir
+	if type(raw.flyboard) == "string" and Flyboard.exists(raw.flyboard) then
+		data.flyboard = raw.flyboard
+	end
+
+	--[[
+		EN YUKSEK KADEMELER
+
+		"Alt kademeye geri don" ozelliginden ONCEKI kayitlarda bu alanlar yok:
+		o kayitlarda kusanilan kademe ayni zamanda en yuksegidir, cunku satin
+		alma eskiyi siliyordu. Bu yuzden yoklarsa kusanilandan dolduruluyor --
+		hic kimse parasini verdigi kademeyi kaybetmiyor.
+	]]
+	if type(raw.shovelMax) == "string" and Shovels.Info[raw.shovelMax] then
+		data.shovelMax = raw.shovelMax
+	else
+		data.shovelMax = data.shovel
+	end
+
+	if type(raw.detectorMax) == "string" and Detectors.Info[raw.detectorMax] then
+		data.detectorMax = raw.detectorMax
+	else
+		data.detectorMax = data.detector
+	end
+
+	if type(raw.flyboardMax) == "string" and Flyboard.exists(raw.flyboardMax) then
+		data.flyboardMax = raw.flyboardMax
+	else
+		data.flyboardMax = data.flyboard
+	end
+
+	-- Olta oncesi kayitlarda bu alanlar yok; oltasiz baslanir
+	if type(raw.rod) == "string" and Rods.exists(raw.rod) then
+		data.rod = raw.rod
+	end
+
+	if type(raw.rodMax) == "string" and Rods.exists(raw.rodMax) then
+		data.rodMax = raw.rodMax
+	else
+		data.rodMax = data.rod
 	end
 
 	if type(raw.skins) == "table" then

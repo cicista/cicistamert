@@ -21,6 +21,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Divine = require(Shared:WaitForChild("Divine"))
 
 local Sand = require(script.Parent:WaitForChild("Sand"))
@@ -38,6 +39,8 @@ export type Beam = {
 	model: Model,
 	bornAt: number,
 	claimed: boolean,    -- kazi basladiysa tekrar kazilamaz
+	-- Denizde dogan GIRDAP mi (olta sistemi), yoksa kumdaki suzme mi
+	sea: boolean?,
 }
 
 local active: { [string]: Beam } = {}
@@ -367,6 +370,122 @@ end
 	kaliyordu. Artik hata yakalanir, sebep Output icine bir kez yazilir ve
 	basit isik sutununa dusulur -- suzme her zaman dogar.
 ]]
+--[[
+	GIRDAP  --  denizdeki suzmenin karsiligi
+
+	Kumdaki isik sutununun yerine su yuzeyinde donen bir HUNI durur:
+	  - alttaki dar uc ile ustteki genis agiz arasinda konik bir govde
+	  - kademenin renginde donen bir halka
+	  - yukari savrulan su parcaciklari
+
+	Kademe rengi disinda karadaki suzmeyle ayni kurallara tabi: ayni
+	kimlikle kaydedilir, ayni sekilde kazilir, ayni sekilde temizlenir.
+]]
+local function buildWhirlModel(kind: string, position: Vector3): Model
+	-- Ozel turlerin iki renkli gecisi var; kademe girdaplari tek renk
+	local special = if kind == "RotCoin"
+		then Rarity.RotCoin
+		elseif kind == "LuckyBlock" then Rarity.LuckyBlock
+		else nil
+
+	local colorA = if special then special.colorA else Rarity.color(kind)
+	local colorB = if special then special.colorB else colorA
+
+	local model = Instance.new("Model")
+	model.Name = `Girdap_{kind}`
+
+	--[[
+		HUNI
+
+		Roblox'ta koni parcasi yok; iki ucu farkli genislikte bir Beam
+		kullaniliyor (Flyboard isik konisiyle ayni yol). FaceCamera ile her
+		acidan huni gibi gorunur.
+	]]
+	local core = Instance.new("Part")
+	core.Name = "Govde"
+	core.Size = Vector3.new(1, 6, 1)
+	core.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
+	core.Transparency = 1
+	core.Anchored = true
+	core.CanCollide = false
+	core.CanQuery = false
+	core.CanTouch = false
+	core.Parent = model
+
+	local dip = Instance.new("Attachment")
+	dip.Name = "Dip"
+	dip.Position = Vector3.new(0, -3, 0)
+	dip.Parent = core
+
+	local agiz = Instance.new("Attachment")
+	agiz.Name = "Agiz"
+	agiz.Position = Vector3.new(0, 3, 0)
+	agiz.Parent = core
+
+	local huni = Instance.new("Beam")
+	huni.Name = "Huni"
+	huni.Attachment0 = dip
+	huni.Attachment1 = agiz
+	huni.Width0 = 0.5
+	huni.Width1 = 5
+	huni.FaceCamera = true
+	huni.LightEmission = 0.3
+	huni.LightInfluence = 0
+	huni.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, colorB),
+		ColorSequenceKeypoint.new(1, colorA),
+	})
+	huni.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 0.55),
+	})
+	huni.Parent = core
+
+	-- Su yuzeyinde donen halka
+	local halka = Instance.new("Part")
+	halka.Name = "Halka"
+	halka.Shape = Enum.PartType.Cylinder
+	halka.Size = Vector3.new(0.2, 5, 5)
+	halka.CFrame = CFrame.new(position + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	halka.Anchored = true
+	halka.CanCollide = false
+	halka.CanQuery = false
+	halka.CanTouch = false
+	halka.CastShadow = false
+	halka.Material = Enum.Material.Neon
+	halka.Color = colorA
+	halka.Transparency = 0.35
+	halka.Parent = model
+
+	-- Yukari savrulan su
+	local serpinti = Instance.new("ParticleEmitter")
+	serpinti.Name = "Serpinti"
+	serpinti.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, colorA),
+		ColorSequenceKeypoint.new(1, colorB),
+	})
+	serpinti.Lifetime = NumberRange.new(0.6, 1.1)
+	serpinti.Rate = 26
+	serpinti.Speed = NumberRange.new(5, 9)
+	serpinti.SpreadAngle = Vector2.new(14, 14)
+	serpinti.Size = NumberSequence.new(0.7)
+	serpinti.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	serpinti.LightEmission = 0.4
+	serpinti.Parent = dip
+
+	local isik = Instance.new("PointLight")
+	isik.Color = colorA
+	isik.Range = 18
+	isik.Brightness = 2
+	isik.Parent = core
+
+	model.PrimaryPart = core
+	return model
+end
+
 local function buildBeamModel(kind: string, position: Vector3): Model
 	local ok, result = pcall(buildVFXModel, kind, position)
 
@@ -412,22 +531,38 @@ local function findSandSpot(player: Player): Vector3?
 	return nil
 end
 
-function Beams.countFor(player: Player): number
+--[[
+	Oyuncunun acik suzme sayisi.
+
+	sea verilirse yalnizca O TUR sayilir: kumdaki suzmeler ile denizdeki
+	girdaplarin limitleri AYRI. Onceden ikisi tek havuzdan sayiliyordu ve
+	kumda birkac suzme birakan oyuncu denizde hic girdap goremiyordu.
+]]
+function Beams.countFor(player: Player, sea: boolean?): number
 	local count = 0
 	for _, beam in active do
-		if beam.owner == player then
-			count += 1
+		--[[
+			KAZILMAYA BASLANMIS OLANLAR SAYILMAZ.
+
+			claimed bir suzme artik kazilamaz, yalnizca temizlenmeyi bekler.
+			Limite dahil edilince bir hata yuzunden yarida kalan iki kazi bile
+			limiti sonsuza dek dolduruyor ve yeni suzme/girdap hic dogmuyordu.
+		]]
+		if beam.owner == player and not beam.claimed then
+			if sea == nil or (beam.sea == true) == sea then
+				count += 1
+			end
 		end
 	end
 	return count
 end
 
 -- Suzmeyi fiilen kuran ortak adim; kimin, ne turde ve nerede oldugu belli.
-local function createBeam(player: Player, kind: string, spot: Vector3): Beam
+local function createBeam(player: Player, kind: string, spot: Vector3, sea: boolean?): Beam
 	beamCounter += 1
 	local id = `beam_{beamCounter}`
 
-	local model = buildBeamModel(kind, spot)
+	local model = if sea then buildWhirlModel(kind, spot) else buildBeamModel(kind, spot)
 	model:SetAttribute("BeamId", id)
 	model:SetAttribute("Owner", player.UserId)
 	model.Parent = folder
@@ -440,6 +575,7 @@ local function createBeam(player: Player, kind: string, spot: Vector3): Beam
 		model = model,
 		bornAt = os.clock(),
 		claimed = false,
+		sea = sea,
 	}
 	active[id] = beam
 
@@ -455,8 +591,83 @@ end
 	luck: bulundugu adanin sans carpani
 	Donen: olusan Beam ya da nil
 ]]
+--[[
+	DENIZDE GIRDAP NOKTASI
+
+	Kumdaki findSandSpot'un deniz karsiligi: oyuncunun etrafinda rastgele
+	bir noktaya asagi isin gonderilir, su yuzeyine carparsa orasi girdabin
+	yeri olur. Terrain su da isim verilmis deniz parcalari da kabul edilir
+	(bkz. Shared > Flyboard > SeaNames).
+]]
+local function findSeaSpot(player: Player): Vector3?
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return nil
+	end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char, folder }
+
+	local origin = root.Position
+
+	--[[
+		GIRDAPLAR BIRBIRINE YAPISMAZ
+
+		Ayni oyuncunun girdaplari en az AYRIK_MESAFE kadar uzakta durur.
+		Onceden bu kural yoktu ve birkac tanesi ust uste dogup tek bir yigin
+		gibi gorunuyordu.
+	]]
+	local AYRIK_MESAFE = 28
+
+	local function uygun(nokta: Vector3): boolean
+		for _, beam in active do
+			if beam.owner == player and (beam.position - nokta).Magnitude < AYRIK_MESAFE then
+				return false
+			end
+		end
+		return true
+	end
+
+	for _ = 1, 16 do
+		local angle = math.random() * math.pi * 2
+		local distance = math.random() * (G.maxSpawnDistance - G.minSpawnDistance) + G.minSpawnDistance
+		local candidate = origin + Vector3.new(math.cos(angle) * distance, 12, math.sin(angle) * distance)
+
+		local hit = Workspace:Raycast(candidate, Vector3.new(0, -80, 0), params)
+		if hit then
+			-- Terrain su ya da adi (veya ust modelinin adi) deniz olan bir parca
+			local suMu = hit.Material == Enum.Material.Water or Flyboard.isSeaInstance(hit.Instance)
+
+			if suMu and uygun(hit.Position) then
+				return hit.Position
+			end
+		end
+	end
+
+	return nil
+end
+
+--[[
+	Denizde girdap dogurmayi dener. Kumdaki trySpawn ile ayni kurallar;
+	fark yalnizca noktanin suda aranmasi ve gorunumun huni olmasi.
+]]
+function Beams.trySpawnSea(player: Player, luck: number, rng: Random, maxWhirls: number?): Beam?
+	if Beams.countFor(player, true) >= (maxWhirls or G.maxBeamsPerPlayer) then
+		return nil
+	end
+
+	local spot = findSeaSpot(player)
+	if not spot then
+		return nil
+	end
+
+	return createBeam(player, Rarity.rollBeam(rng, luck), spot, true)
+end
+
 function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: number?): Beam?
-	if Beams.countFor(player) >= (maxBeams or G.maxBeamsPerPlayer) then
+	if Beams.countFor(player, false) >= (maxBeams or G.maxBeamsPerPlayer) then
 		return nil
 	end
 
@@ -563,6 +774,7 @@ function Beams.snapshotFor(player: Player, scanRadius: number?): { { id: string,
 					id = id,
 					kind = beam.kind,
 					position = beam.position,
+					sea = beam.sea == true,
 				})
 			end
 		end

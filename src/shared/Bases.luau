@@ -152,6 +152,16 @@ Bases.HologramHeight = 15
 -- Para (Rot) miktarlarinin her yerde kullandigi renk
 Bases.RotColor = Color3.fromRGB(255, 214, 41)
 
+--[[
+	SLOT SESI
+
+	Brainrot slota konulunca, slottan alininca ve iki brainrot takas edilince
+	calar. Studio'ya elle konulmus Sound nesnesinin adi; Workspace ya da
+	ReplicatedStorage > Assets > Sounds icinde aranir. Bulunamazsa sessizce
+	atlanir, yerlestirme normal calisir.
+]]
+Bases.SlotSound = { "PutBrainrot" }
+
 Bases.CollectPad = {
 	-- Butonun boyutu (genislik, kalinlik, derinlik)
 	size = Vector3.new(9, 0.6, 9),
@@ -159,8 +169,25 @@ Bases.CollectPad = {
 	-- Buyudukce base'den uzaklasir, kucudukce yaklasir; eksi deger butonu
 	-- base platformunun uzerine tasir.
 	forward = 2,
-	-- Ayni oyuncu iki toplama arasinda kac saniye beklesin
+	-- Ayni oyuncu iki toplama arasinda kac saniye beklesin (kol ve bacak
+	-- ayni anda degmesin diye; asil bekleme asagidaki collectCooldown)
 	cooldown = 0.5,
+	--[[
+		TOPLAMA SONRASI BEKLEME
+
+		Rot toplandiktan sonra bu kadar saniye ayni base tekrar toplanamaz.
+		Bekleme suresince buton TURUNCU yanar ve ustunde kalan sure yazar.
+	]]
+	collectCooldown = 7,
+	cooldownColor = Color3.fromRGB(255, 150, 40),
+	--[[
+		TOPLAMA SESI
+
+		Studio'ya elle konulmus Sound nesnesinin adi. Workspace ya da
+		ReplicatedStorage > Assets > Sounds icinde aranir; ilk bulunan calar.
+		Bulunamazsa sessizce atlanir.
+	]]
+	collectSound = { "GoldCollect" },
 	-- Icinde toplanacak rot varken
 	color = Color3.fromRGB(70, 210, 120),
 	-- Bosken

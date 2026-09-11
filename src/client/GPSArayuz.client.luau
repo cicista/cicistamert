@@ -247,7 +247,7 @@ task.spawn(function()
 			continue
 		end
 
-		local best: { id: string, distance: number, kind: string }? = nil
+		local best: { id: string, distance: number, kind: string, sea: boolean }? = nil
 
 		for _, beam in beams do
 			local distance = (beam.position - root.Position).Magnitude
@@ -262,7 +262,7 @@ task.spawn(function()
 			end
 
 			if not best or distance < best.distance then
-				best = { id = beam.id, distance = distance, kind = beam.kind }
+				best = { id = beam.id, distance = distance, kind = beam.kind, sea = beam.sea == true }
 			end
 		end
 
@@ -290,9 +290,12 @@ task.spawn(function()
 			local color = kindColor(best.kind)
 			hintStroke.Color = color
 			hintLabel.TextColor3 = color
+
+			-- Denizdeki girdapta "dig" degil "fish" yazar
+			local eylem = if best.sea then "fish" else "dig"
 			hintLabel.Text = if UserInputService.TouchEnabled
-				then `{kindName(best.kind)} - tap to dig`
-				else `{kindName(best.kind)} - press E to dig`
+				then `{kindName(best.kind)} - tap to {eylem}`
+				else `{kindName(best.kind)} - press E to {eylem}`
 			hint.Visible = true
 		else
 			nearest = nil

@@ -80,6 +80,15 @@ Net.Events = {
 	"CoinBozdur",       -- client -> server: bu coini bozdur
 	"CoinSonuc",        -- server -> client: cark verisi + kazanan brainrot
 
+	-- Flyboard
+	"FlyboardAc",       -- server -> client: satici paneli (kademeler + fiyatlar)
+	"FlyboardAl",       -- client -> server: bu kademeyi satin al
+	"FlyboardYukseklik",-- client -> server: Space / Shift ile yukseklik degisimi
+
+	-- Olta (RodSeller)
+	"RodAc",            -- server -> client: olta saticisi paneli
+	"RodAl",            -- client -> server: bu kademeyi al ya da kusan
+
 	-- Gorevler (Quests paneli)
 	"GorevDurum",       -- server -> client: pano + ilerleme + kalan sure
 	"GorevAc",          -- client -> server: panoyu istiyorum

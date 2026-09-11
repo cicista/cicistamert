@@ -390,7 +390,7 @@ local function runEvent()
 	end
 
 	Bildirim:FireAllClients(
-		`LUCKY BLOCK RAIN! {spawned} blocks dropped on the sand -- first come, first served`,
+		`LUCKY BLOCK RAIN! {spawned} blocks dropped on the sand`,
 		Rarity.LuckyBlock.colorA
 	)
 
@@ -595,7 +595,7 @@ local function openBlock(player: Player, tierId: string)
 		local special = Mutations.isSpecial(mutation)
 		Bildirim:FireClient(
 			player,
-			`You got {info.name}! ({Condition.get(condition).shortName}) -- {Format.perSecond(income)}`,
+			`You got {info.name} {Condition.get(condition).shortName} ({Format.perSecond(income)})`,
 			if special then Mutations.color(mutation) else Rarity.color(rarityId)
 		)
 	end)

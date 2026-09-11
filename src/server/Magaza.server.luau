@@ -35,7 +35,9 @@ local kurekYenile = kaziSistemi:WaitForChild("KurekYenile") :: BindableEvent
 
 local function shovelList(player: Player)
 	local data = PlayerData.get(player)
-	local currentLevel = if data then Shovels.get(data.shovel :: any).level else 1
+	-- Satin alma EN YUKSEK kademeye bakar, kusanma ayri tutulur
+	local maxLevel = if data then Shovels.get(data.shovelMax :: any).level else 1
+	local equipped = if data then data.shovel else nil
 
 	local out = {}
 	for _, id in Shovels.Order do
@@ -48,9 +50,10 @@ local function shovelList(player: Player)
 			price = info.price,
 			digSpeed = info.digSpeed,
 			barSize = info.barSize,
-			owned = info.level <= currentLevel,
+			owned = info.level <= maxLevel,
+			equipped = info.id == equipped,
 			-- Sadece bir sonraki kurek satin alinabilir
-			buyable = info.level == currentLevel + 1,
+			buyable = info.level == maxLevel + 1,
 		})
 	end
 	return out
@@ -58,7 +61,8 @@ end
 
 local function detectorList(player: Player)
 	local data = PlayerData.get(player)
-	local currentLevel = if data then Detectors.get(data.detector :: any).level else 1
+	local maxLevel = if data then Detectors.get(data.detectorMax :: any).level else 1
+	local equipped = if data then data.detector else nil
 
 	local out = {}
 	for _, id in Detectors.Order do
@@ -71,8 +75,9 @@ local function detectorList(player: Player)
 			price = info.price,
 			luck = info.luck,
 			scanRadius = info.scanRadius,
-			owned = info.level <= currentLevel,
-			buyable = info.level == currentLevel + 1,
+			owned = info.level <= maxLevel,
+			equipped = info.id == equipped,
+			buyable = info.level == maxLevel + 1,
 		})
 	end
 	return out
@@ -103,14 +108,31 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 		return
 	end
 
-	local current = Shovels.get(data.shovel :: any)
+	local enYuksek = Shovels.get(data.shovelMax :: any)
 
-	if info.level <= current.level then
-		Bildirim:FireClient(player, "You already own this shovel.", Color3.fromRGB(255, 200, 90))
+	--[[
+		SAHIP OLUNAN KADEME: SATIN ALMA DEGIL, KUSANMA
+
+		Alt kademeler kalici olarak oyuncunun: tiklayinca ucretsiz kusanilir.
+		Boylece dar barli kuregi ozleyen oyuncu geri donebilir.
+	]]
+	if info.level <= enYuksek.level then
+		if data.shovel == info.id then
+			Bildirim:FireClient(player, `{info.displayName} is already equipped.`, Color3.fromRGB(180, 200, 220))
+			return
+		end
+
+		data.shovel = info.id
+		kurekYenile:Fire(player)
+
+		Envanter.push(player)
+		MagazaAc:FireClient(player, shopPayload(player))
+
+		Bildirim:FireClient(player, `{info.displayName} equipped.`, Rarity.color(info.rarity))
 		return
 	end
 
-	if info.level ~= current.level + 1 then
+	if info.level ~= enYuksek.level + 1 then
 		Bildirim:FireClient(player, "Buy the previous shovel first.", Color3.fromRGB(255, 200, 90))
 		return
 	end
@@ -126,8 +148,9 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 
 	PlayerData.addRot(player, -info.price)
 
-	-- Eski kurek silinir, yenisi gecer
+	-- Yeni kademe hem kusanilir hem kalici olarak kaydedilir
 	data.shovel = info.id
+	data.shovelMax = info.id
 	kurekYenile:Fire(player)
 
 	Envanter.push(player)
@@ -135,7 +158,7 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 
 	Bildirim:FireClient(
 		player,
-		`{info.displayName} purchased! Your old shovel is gone.`,
+		`{info.displayName} purchased! Older shovels stay in the shop.`,
 		Rarity.color(info.rarity)
 	)
 end)
@@ -160,14 +183,26 @@ GPSAl.OnServerEvent:Connect(function(player, detectorId)
 		return
 	end
 
-	local current = Detectors.get(data.detector :: any)
+	local enYuksek = Detectors.get(data.detectorMax :: any)
 
-	if info.level <= current.level then
-		Bildirim:FireClient(player, "You already own this detector.", Color3.fromRGB(255, 200, 90))
+	-- Sahip olunan kademe ucretsiz kusanilir (bkz. kurek)
+	if info.level <= enYuksek.level then
+		if data.detector == info.id then
+			Bildirim:FireClient(player, `{info.displayName} is already equipped.`, Color3.fromRGB(180, 200, 220))
+			return
+		end
+
+		data.detector = info.id
+		Envanter.giveGPS(player)
+
+		Envanter.push(player)
+		MagazaAc:FireClient(player, shopPayload(player))
+
+		Bildirim:FireClient(player, `{info.displayName} equipped.`, Rarity.color(info.rarity))
 		return
 	end
 
-	if info.level ~= current.level + 1 then
+	if info.level ~= enYuksek.level + 1 then
 		Bildirim:FireClient(player, "Buy the previous detector first.", Color3.fromRGB(255, 200, 90))
 		return
 	end
@@ -184,6 +219,7 @@ GPSAl.OnServerEvent:Connect(function(player, detectorId)
 	PlayerData.addRot(player, -info.price)
 
 	data.detector = info.id
+	data.detectorMax = info.id
 	Envanter.giveGPS(player)
 
 	Envanter.push(player)

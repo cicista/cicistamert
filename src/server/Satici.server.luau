@@ -178,7 +178,7 @@ local function sellItem(player: Player, uid: string): boolean
 	end
 
 	if item.slot then
-		Bildirim:FireClient(player, "A brainrot on your base cannot be sold -- take it off the slot first.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "A brainrot on your base cannot be sold.", Color3.fromRGB(255, 200, 90))
 		return false
 	end
 
@@ -194,7 +194,7 @@ local function sellItem(player: Player, uid: string): boolean
 	local label = if item.revealed and item.name
 		then item.name
 		else `Unidentified {Rarity.displayName(item.rarity)}`
-	Bildirim:FireClient(player, `Sold {label} -- +{Format.short(value)} Rot`, Rarity.color(item.rarity))
+	Bildirim:FireClient(player, `Sold {label} (+{Format.short(value)} Rot)`, Rarity.color(item.rarity))
 	return true
 end
 
@@ -269,7 +269,7 @@ TumunuSat.OnServerEvent:Connect(function(player)
 
 	Bildirim:FireClient(
 		player,
-		`Sold {count} brainrots -- +{Format.short(total)} Rot`,
+		`Sold {count} brainrots (+{Format.short(total)} Rot)`,
 		Bases.RotColor
 	)
 end)

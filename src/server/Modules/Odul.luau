@@ -125,7 +125,7 @@ local function grant(player: Player, prizeId: string)
 		local income = Brainrots.income(info.name, condition, mutation :: any)
 		Bildirim:FireClient(
 			player,
-			`You got a {Mutations.fullName(mutation, info.name)} -- {Format.perSecond(income)}`,
+			`You got {Mutations.fullName(mutation, info.name)} ({Format.perSecond(income)})`,
 			if Mutations.isSpecial(mutation) then Mutations.color(mutation) else Rarity.color(rarityId)
 		)
 		return
@@ -199,7 +199,7 @@ local function spin(player: Player)
 	if left > 0 then
 		Bildirim:FireClient(
 			player,
-			`Daily reward is not ready -- {Rewards.formatRemaining(left)} left`,
+			`Daily reward is not ready ({Rewards.formatRemaining(left)} left)`,
 			Color3.fromRGB(255, 200, 90)
 		)
 		Odul.push(player)

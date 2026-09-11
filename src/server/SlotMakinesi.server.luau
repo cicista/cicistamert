@@ -169,8 +169,13 @@ SlotMakinesiCevir.OnServerEvent:Connect(function(player)
 	Envanter.push(player)
 
 	local skin = Skins.roll(rng)
+	--[[
+		AYNI SKIN CIKARSA IADE YOK.
+
+		Onceden cevirme ucreti geri veriliyordu; carkin riski kalmiyordu.
+		Artik sanssizlik sanssizlik olarak kaliyor: coin gitti, skin yeni degil.
+	]]
 	local duplicate = data.skins[skin.id] == true
-	local refund = if duplicate then Skins.SpinCost else 0
 
 	--[[
 		AKIS (Lucky Block carkiyla ayni)
@@ -188,7 +193,6 @@ SlotMakinesiCevir.OnServerEvent:Connect(function(player)
 		rarity = skin.rarity,
 		color = skin.color,
 		duplicate = duplicate,
-		refund = refund,
 	})
 
 	task.delay(Skins.totalSpinTime(), function()
@@ -202,9 +206,8 @@ SlotMakinesiCevir.OnServerEvent:Connect(function(player)
 			return
 		end
 
-		if duplicate then
-			PlayerData.addRotCoins(player, refund)
-		else
+		-- Yeni skinse kaydedilir; ayni skinse hicbir sey olmaz (iade yok)
+		if not duplicate then
 			current.skins[skin.id] = true
 		end
 
@@ -214,7 +217,7 @@ SlotMakinesiCevir.OnServerEvent:Connect(function(player)
 		if duplicate then
 			Bildirim:FireClient(
 				player,
-				`You already own {skin.displayName} ({toolLabel}) -- +{refund} Rot Coin refunded`,
+				`You already own {skin.displayName}`,
 				Rarity.color(skin.rarity)
 			)
 		else

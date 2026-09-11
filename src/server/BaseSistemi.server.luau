@@ -60,6 +60,9 @@ local pending: { [number]: number } = {}
 local collectPads: { [number]: BasePart } = {}
 -- [baseIndex] = gelisim tabelasi
 local upgradeSigns: { [number]: BasePart } = {}
+-- [baseIndex] = toplama beklemesinin bitecegi an (os.clock)
+local collectUntil: { [number]: number } = {}
+
 -- [player] = son toplama zamani (kol ve bacak ayni anda saymasin diye)
 local lastTouch: { [Player]: number } = {}
 
@@ -404,7 +407,7 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 		if slotIndex > unlockedSlots(data) then
 			Bildirim:FireClient(
 				player,
-				`Slot {slotIndex} is locked -- unlock it at the sign`,
+				`Slot {slotIndex} is locked`,
 				Color3.fromRGB(255, 200, 90)
 			)
 			return
@@ -1355,6 +1358,19 @@ local function slotSurfaceY(pad: BasePart): number
 	return top
 end
 
+--[[
+	SLOT SESI
+
+	Koyma, alma ve takasta calar. Kaynak slotun kendi parcasi; o yoksa
+	toplama padi kullanilir, boylece ses yine base'in yaninda duyulur.
+]]
+local function playSlotSound(baseIndex: number, slotIndex: number?)
+	local part = (if slotIndex then getSlotPart(baseIndex, slotIndex) else nil) or collectPads[baseIndex]
+	if part then
+		Assets.playSoundAt(Bases.SlotSound, part)
+	end
+end
+
 local function showInSlot(baseIndex: number, slotIndex: number, item: any)
 	clearSlotModel(baseIndex, slotIndex)
 
@@ -1535,20 +1551,35 @@ local function updateCollectButton(baseIndex: number)
 
 	local cfg = Bases.CollectPad
 	local waiting = pending[baseIndex] or 0
-	local ready = owners[baseIndex] ~= nil and waiting >= 1
 
-	pad.Color = if ready then cfg.color else cfg.idleColor
+	-- Toplama sonrasi bekleme: buton bu sure boyunca TURUNCU ve kapali
+	local bekleme = math.max(0, (collectUntil[baseIndex] or 0) - os.clock())
+	local ready = owners[baseIndex] ~= nil and waiting >= 1 and bekleme <= 0
+
+	local renk = if bekleme > 0
+		then cfg.cooldownColor
+		elseif ready then cfg.color
+		else cfg.idleColor
+
+	pad.Color = renk
 
 	local glow = pad:FindFirstChild("Parilti")
 	if glow and glow:IsA("PointLight") then
-		glow.Enabled = ready
+		glow.Color = renk
+		glow.Enabled = ready or bekleme > 0
 	end
 
 	local sign = pad:FindFirstChild("Yazi")
 	local amount = sign and sign:FindFirstChild("Miktar")
 	if amount and amount:IsA("TextLabel") then
-		amount.Text = if owners[baseIndex] then `{Format.short(math.floor(waiting))} Rot` else "EMPTY"
-		amount.TextColor3 = if ready then Bases.RotColor else cfg.idleColor
+		amount.Text = if bekleme > 0
+			then `WAIT {math.ceil(bekleme)}s`
+			elseif owners[baseIndex] then `{Format.short(math.floor(waiting))} Rot`
+			else "EMPTY"
+		amount.TextColor3 = if bekleme > 0
+			then cfg.cooldownColor
+			elseif ready then Bases.RotColor
+			else cfg.idleColor
 	end
 end
 
@@ -1563,6 +1594,11 @@ function collectRot(player: Player, baseIndex: number)
 		return
 	end
 
+	-- Bekleme surerken toplanmaz (buton turuncu yanarken)
+	if os.clock() < (collectUntil[baseIndex] or 0) then
+		return
+	end
+
 	local waiting = pending[baseIndex] or 0
 	local payout = math.floor(waiting)
 	if payout < 1 then
@@ -1572,7 +1608,28 @@ function collectRot(player: Player, baseIndex: number)
 	-- Kusurat birikmeye devam etsin
 	pending[baseIndex] = waiting - payout
 	PlayerData.addRot(player, payout)
+
+	--[[
+		BEKLEME BASLAR
+
+		Buton collectCooldown saniye boyunca turuncu yanar ve toplama kabul
+		etmez. Sure dolunca buton kendiliginden yesile doner; bekleme bitisi
+		ayrica tazelenir, yoksa gelir dongusunun bir sonraki adimina kadar
+		turuncu kalirdi.
+	]]
+	local cfg = Bases.CollectPad
+	collectUntil[baseIndex] = os.clock() + cfg.collectCooldown
+
+	local pad = collectPads[baseIndex]
+	if pad then
+		Assets.playSoundAt(cfg.collectSound, pad)
+	end
+
 	updateCollectButton(baseIndex)
+
+	task.delay(cfg.collectCooldown, function()
+		updateCollectButton(baseIndex)
+	end)
 
 	-- Ekrandaki Rot gostergesi bayat kalmasin
 	Envanter.push(player)
@@ -1628,8 +1685,9 @@ local function assignBase(player: Player): number?
 		if owners[index] == nil then
 			owners[index] = player
 			data.base = index
-			-- Base yeni sahibine bos devredilir
+			-- Base yeni sahibine bos ve beklemesiz devredilir
 			pending[index] = 0
+			collectUntil[index] = 0
 			setSignText(index, player.DisplayName, 0)
 			updateCollectButton(index)
 
@@ -1748,6 +1806,9 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 	item.slot = slotIndex
 	showInSlot(data.base, slotIndex, item)
 
+	-- Koyma ve takas ayni sesi calar
+	playSlotSound(data.base, slotIndex)
+
 	-- Elden cikar, takas edilen cantaya doner: iki degisiklik tek esitlemede
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
@@ -1757,20 +1818,26 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 	GorevTakip.ilerlet(player, "place", 1)
 
 	local income = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
-	local color = if Mutations.isSpecial(item.mutation)
-		then Mutations.color(item.mutation)
-		else Rarity.color(item.rarity)
+	--[[
+		BILDIRIM RENGI KADEMEDEN GELIR.
+
+		Onceden mutasyonlu brainrotta mutasyonun rengi kullaniliyordu:
+		Legendary bir brainrot Galaxy olunca bildirim sari yerine mor
+		cikiyordu. Kademe oyuncunun ilk bakista aradigi bilgi, o yuzden
+		renk her zaman kademenin.
+	]]
+	local color = Rarity.color(item.rarity)
 
 	if swapped then
 		Bildirim:FireClient(
 			player,
-			`{item.name} placed -- {swapped.name or "Brainrot"} went back to your backpack`,
+			`{item.name} placed ({swapped.name or "Brainrot"} returned)`,
 			color
 		)
 	else
 		Bildirim:FireClient(
 			player,
-			`{item.name} placed -- {Format.perSecond(income)} (step on the pad to collect)`,
+			`{item.name} placed ({Format.perSecond(income)})`,
 			color
 		)
 	end
@@ -1787,8 +1854,11 @@ function removeFromSlot(player: Player, uid: string)
 		return
 	end
 
+	local eskiSlot = item.slot
 	clearSlotModel(data.base, item.slot)
 	item.slot = nil
+
+	playSlotSound(data.base, eskiSlot)
 
 	-- Brainrot Tool olarak cantaya doner
 	Envanter.syncBrainrots(player)
@@ -1916,7 +1986,7 @@ local function setupPlayer(player: Player)
 		pushBase(player)
 		Bildirim:FireClient(
 			player,
-			`Base {index} is yours -- press E to place brainrots, step on the pad to collect`,
+			`Base {index} is yours`,
 			Color3.fromRGB(140, 230, 160)
 		)
 	end

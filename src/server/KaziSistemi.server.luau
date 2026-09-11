@@ -26,12 +26,14 @@ local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
+local Rods = require(Shared:WaitForChild("Rods"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Sand = require(Modules:WaitForChild("Sand"))
 local Tools = require(Modules:WaitForChild("Tools"))
+local Olta = require(Modules:WaitForChild("Olta"))
 local Beams = require(Modules:WaitForChild("Beams"))
 local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
@@ -53,6 +55,18 @@ local rng = Random.new()
 -- Suren kazilar: [player] = { beamId, startedAt, shovelId, rarityId, startPos }
 local digging: { [Player]: any } = {}
 local lastDig: { [Player]: number } = {}
+
+--[[
+	GIRDAP HIZI
+
+	Iki girdap dogumu arasinda en az bu kadar saniye gecer: hepsi bir anda
+	dolmasin, oyuncu gezdikce yenisi cikmis gibi olsun.
+]]
+local GIRDAP_ARASI = 4
+local lastWhirl: { [Player]: number } = {}
+
+-- Teshis yazisi bir kez cikar (ilk basarili girdaptan sonra susar)
+local girdapBildirildi = false
 
 --[[
 	Toplam sans carpani = ZEMIN bonusu * dedektor seviyesi.
@@ -80,6 +94,12 @@ local function detectorFor(player: Player): Detectors.DetectorInfo
 	local data = PlayerData.get(player)
 	local id = if data then data.detector else Detectors.Default
 	return Detectors.get(id :: any)
+end
+
+-- Oyuncunun kusandigi olta; yoksa nil (denizde girdap dogmaz)
+local function rodFor(player: Player): Rods.RodInfo?
+	local data = PlayerData.get(player)
+	return if data then Rods.get(data.rod) else nil
 end
 
 ------------------------------------------------------------------
@@ -115,9 +135,22 @@ local function otoEkipman(player: Player)
 		return
 	end
 
-	-- Kazi suruyorsa kurek elde kalir, baska hicbir sey karismaz
-	if digging[player] then
-		Envanter.equipShovel(player)
+	--[[
+		Kazi suruyorsa kurek elde kalir, baska hicbir sey karismaz.
+
+		DENIZ ISTISNASI: girdap kaziliyorsa oyuncu flyboardda ve elinde OLTA
+		var; kurege gecmek tahtadaki gorunumu bozardi, olta elde kalir.
+	]]
+	local oturum = digging[player]
+	if oturum then
+		if not oturum.sea then
+			Envanter.equipShovel(player)
+		end
+		return
+	end
+
+	-- Tahtadayken elde olta durur; kum kurallari denize karismaz
+	if Olta.has(player) then
 		return
 	end
 
@@ -166,6 +199,12 @@ local function finishDig(player: Player, won: boolean)
 	digging[player] = nil
 	lastDig[player] = os.clock()
 
+	-- Atilan misina toplanir (girdap kazisiysa zaten vardir)
+	local karakter = player.Character
+	if karakter then
+		Olta.reel(karakter)
+	end
+
 	local beam = Beams.get(session.beamId)
 	KaziBitti:FireClient(player)
 
@@ -205,7 +244,7 @@ local function finishDig(player: Player, won: boolean)
 
 		Bildirim:FireClient(
 			player,
-			`{string.upper(tier.displayName)} found! (x{PlayerData.luckyBlockCount(player, tierId)}) -- take it from your backpack and click`,
+			`{string.upper(tier.displayName)} found! (x{PlayerData.luckyBlockCount(player, tierId)})`,
 			tier.color
 		)
 		return
@@ -266,8 +305,18 @@ local function startDig(player: Player, beamId: string)
 		Kurek oyuncunun elinde DEGILDIR -- cantada da durmuyor. Suzmeye
 		tiklamak zaten "kazmak istiyorum" demek oldugu icin kuregi burada
 		eline veriyoruz; GPS onun yerini birakir, kazi bitince geri gelir.
+
+		GIRDAPTA DEGISMEZ: oyuncu tahtada ve elinde olta var, minigame
+		zorlugunu yine kurek belirliyor ama elindeki olta kaliyor.
 	]]
-	Envanter.equipShovel(player)
+	if beam.sea then
+		-- Misina girdabin tam ortasina atilir; minigame bitince toplanir
+		if char then
+			Olta.cast(char, beam.position)
+		end
+	else
+		Envanter.equipShovel(player)
+	end
 
 	local shovel = Shovels.get(data.shovel)
 	local prepare = D.prepareTime * shovel.digSpeed
@@ -275,6 +324,8 @@ local function startDig(player: Player, beamId: string)
 	digging[player] = {
 		beamId = beamId,
 		startedAt = now,
+		-- Deniz girdabi mi: ekipman kurallari buna gore degisiyor
+		sea = beam.sea == true,
 		shovelId = data.shovel,
 		rarityId = beam.kind,
 		startPos = root.Position,
@@ -376,6 +427,9 @@ task.spawn(function()
 
 		for _, player in Players:GetPlayers() do
 			local gpsInHand = Tools.equipped(player, Tools.GPSName) ~= nil
+			-- Denizde tahtadaysa balikcilik acik (bkz. Flyboard.server)
+			local rodInHand = player:GetAttribute("Flyboarding") == true
+			local rod = rodFor(player)
 
 			if gpsInHand and not digging[player] and Sand.isOnSand(player) then
 				local detector = detectorFor(player)
@@ -386,9 +440,54 @@ task.spawn(function()
 				end
 			end
 
-			-- Mevcut suzmeler her durumda gonderilir; kurek eldeyken de
-			-- kazilabilmeleri icin client listesinin dolu kalmasi sart.
-			GPSGuncelle:FireClient(player, Beams.snapshotFor(player, detectorFor(player).scanRadius))
+			--[[
+				DENIZ: GIRDAPLAR
+
+				Kumdaki kurallarin aynisi, iki fark var: olta elde olacak
+				(flyboardla denizdeyken kendiliginden veriliyor) ve sans ile
+				limit DEDEKTORDEN degil OLTADAN geliyor.
+			]]
+			if rodInHand and rod and not digging[player] then
+				--[[
+					GIRDAPLAR TEKER TEKER GELIR
+
+					Iki dogum arasinda en az GIRDAP_ARASI saniye var: kumdaki
+					suzmeler gibi hepsi bir anda dolmasin, oyuncu gezdikce
+					yenisi cikmis gibi olsun.
+				]]
+				local simdi = os.clock()
+				local sonGirdap = lastWhirl[player] or 0
+
+				if simdi - sonGirdap >= GIRDAP_ARASI and rng:NextNumber() * 100 <= rod.spawnChance then
+					if Beams.trySpawnSea(player, rod.luck, rng, rod.maxWhirls) then
+						lastWhirl[player] = simdi
+						girdapBildirildi = true
+					elseif not girdapBildirildi then
+						--[[
+							TESHIS
+
+							Olta elde ve sira geldi ama girdap dogmadi: cevrede su
+							bulunamadi demektir. Bir kez yazilir; ilk basarili
+							dogumdan sonra bir daha cikmaz.
+						]]
+						girdapBildirildi = true
+						warn(
+							"[Girdap] Su bulunamadi: deniz parcalarinin adinda "
+								.. "deniz/sea/ocean/water/su geciyor mu, isin onlara carpiyor mu?"
+						)
+					end
+				end
+			end
+
+			--[[
+				Mevcut suzmeler her durumda gonderilir; kurek eldeyken de
+				kazilabilmeleri icin client listesinin dolu kalmasi sart.
+
+				Tarama yaricapi elde ne varsa ondan gelir: olta varsa oltanin,
+				yoksa dedektorun.
+			]]
+			local yaricap = if rodInHand and rod then rod.scanRadius else detectorFor(player).scanRadius
+			GPSGuncelle:FireClient(player, Beams.snapshotFor(player, yaricap))
 		end
 	end
 end)

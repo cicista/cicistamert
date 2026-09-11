@@ -220,7 +220,7 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, uid)
 		local special = Mutations.isSpecial(current.mutation)
 		Bildirim:FireClient(
 			player,
-			`{picked.name} ({conditionInfo.shortName}) -- {Format.perSecond(income)}`,
+			`{picked.name} {conditionInfo.shortName} ({Format.perSecond(income)})`,
 			if special then Mutations.color(current.mutation) else rarityInfo.color
 		)
 	end)

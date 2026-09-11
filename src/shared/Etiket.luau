@@ -113,6 +113,15 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 		oldugu icin donen modelde yazi da donerdi.
 	]]
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, lift or 0, 0)
+	--[[
+		ISIKTAN ETKILENMESIN
+
+		Mutasyonlu modellerin kendi renkli isiklari var (Galaxy mor, Gold sari).
+		Isik etkisi acikken yazi o rengi aliyordu: Legendary bir brainrot Galaxy
+		olunca adi sari yerine MOR gorunuyordu. Sifirlaninca yazi her isikta
+		kendi renginde kalir.
+	]]
+	billboard.LightInfluence = 0
 	billboard.Parent = adornee
 
 	------------------------------------------------------------------
@@ -129,11 +138,66 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	------------------------------------------------------------------
 	-- BOYUT (+ mutasyon)
 	------------------------------------------------------------------
-	local stat = if special
-		then `{conditionInfo.shortName} ({conditionInfo.multiplier}x)  {mutationInfo.displayName} ({mutationInfo.multiplier}x)`
-		else `{conditionInfo.shortName} ({conditionInfo.multiplier}x)`
+	--[[
+		BOYUT VE MUTASYON AYRI YAZI, AYRI RENK
 
-	line(billboard, "Stat", stat, conditionInfo.color, L.statSize, L.statY)
+		Tek satirda tek renk oldugunda "Galaxy (8x)" de boyutun renginde
+		yaziliyordu. Simdi iki ayri TextLabel yan yana duruyor ve her biri
+		kendi rengini tasiyor.
+
+		Ayri olmalarinin ikinci sebebi: Galaxy ve Hacker mutasyonlarinin
+		rengi SABIT DEGIL, iki renk arasinda gidip geliyor. Canlandirmayi
+		yapan istemci scripti bir NESNEYI boyuyor, yazinin bir parcasini
+		degil -- RichText ile bu mumkun olmazdi.
+	]]
+	local statRow = Instance.new("Frame")
+	statRow.Name = "Stat"
+	statRow.BackgroundTransparency = 1
+	statRow.Size = UDim2.new(1, 0, 0, L.statSize + 2)
+	statRow.Position = UDim2.fromOffset(0, L.statY)
+	statRow.Parent = billboard
+
+	local statLayout = Instance.new("UIListLayout")
+	statLayout.FillDirection = Enum.FillDirection.Horizontal
+	statLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	statLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	statLayout.Padding = UDim.new(0, 8)
+	statLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	statLayout.Parent = statRow
+
+	local function statParca(name: string, text: string, color: Color3, order: number): TextLabel
+		local label = Instance.new("TextLabel")
+		label.Name = name
+		label.AutomaticSize = Enum.AutomaticSize.X
+		label.Size = UDim2.new(0, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = color
+		label.TextSize = L.statSize
+		label.TextScaled = false
+		label.LayoutOrder = order
+		Fonts.apply(label)
+		label.Parent = statRow
+		return label
+	end
+
+	statParca(
+		"Boyut",
+		`{conditionInfo.shortName} ({conditionInfo.multiplier}x)`,
+		conditionInfo.color,
+		1
+	)
+
+	if special then
+		local mutasyon = statParca(
+			"Mutasyon",
+			`{mutationInfo.displayName} ({mutationInfo.multiplier}x)`,
+			mutationInfo.color,
+			2
+		)
+		-- Galaxy ve Hacker: rengi istemci her karede degistirir
+		Mutations.tagIf(mutasyon, item.mutation)
+	end
 
 	------------------------------------------------------------------
 	-- GELIR

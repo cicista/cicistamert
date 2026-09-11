@@ -798,9 +798,14 @@ local function playMerge(data: any)
 	]]
 	local mutationInfo = Mutations.get(data.mutation)
 
+	-- Onceki gosterinin canli renk etiketi kalmasin
+	Mutations.untag(mergeSub)
+
 	if Mutations.isSpecial(data.mutation) then
-		mergeSub.Text = `{mutationInfo.displayName} ({mutationInfo.multiplier}x)  --  added to your inventory`
+		mergeSub.Text = `{mutationInfo.displayName} ({mutationInfo.multiplier}x) added to your inventory`
 		mergeSub.TextColor3 = mutationInfo.color
+		-- Galaxy ve Hacker: renk sabit degil, istemci her karede degistirir
+		Mutations.tagIf(mergeSub, data.mutation)
 	else
 		mergeSub.Text = "added to your inventory"
 		mergeSub.TextColor3 = Condition.get(data.condition).color

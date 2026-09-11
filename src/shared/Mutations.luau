@@ -41,6 +41,8 @@ export type MutationInfo = {
 	color: Color3,
 }
 
+local CollectionService = game:GetService("CollectionService")
+
 local Mutations = {}
 
 Mutations.Order = { "Normal", "Gold", "Lava", "Diamond", "Galaxy", "Rainbow", "Hacker" } :: { MutationId }
@@ -132,6 +134,44 @@ Mutations.Info = {
 	},
 } :: { [MutationId]: MutationInfo }
 
+--[[
+	CANLI RENKLER  (Divine'daki gibi)
+
+	Bu iki mutasyon tek renk degil: iki renk arasinda hizla gidip gelir.
+	Yol Divine ile ayni -- sunucu ya da arayuz nesneyi ETIKETLER, rengi her
+	oyuncunun makinesi her karede hesaplar. Renk degisimi replikasyona
+	takilmaz, herkesin ekraninda akici olur.
+	(bkz. StarterPlayerScripts > IlahiRenk)
+
+	  Galaxy -> mor <-> cirtlak pembe
+	  Hacker -> yesil <-> beyaz
+
+	interval: kac saniyede bir renk degisir.
+]]
+export type Flash = {
+	tag: string,
+	colorA: Color3,
+	colorB: Color3,
+	interval: number,
+}
+
+local Flash: { [string]: Flash } = {
+	Galaxy = {
+		tag = "GalaksiRenk",
+		colorA = Color3.fromRGB(170, 110, 255),
+		colorB = Color3.fromRGB(255, 70, 210),
+		interval = 0.06,
+	},
+	Hacker = {
+		tag = "HackerRenk",
+		colorA = Color3.fromRGB(60, 255, 110),
+		colorB = Color3.fromRGB(255, 255, 255),
+		interval = 0.06,
+	},
+}
+
+Mutations.Flash = Flash
+
 Mutations.Default = "Normal" :: MutationId
 
 function Mutations.get(id: string?): MutationInfo
@@ -193,6 +233,42 @@ function Mutations.roll(rng: Random): MutationId
 	end
 
 	return Mutations.Default
+end
+
+--[[
+	Mutasyonun canli renk tanimi; sabit renkli mutasyonlarda nil doner.
+]]
+function Mutations.flash(id: string?): Flash?
+	return if id then Flash[id] else nil
+end
+
+-- Verilen ana gore iki uc renkten hangisi gosterilecek
+function Mutations.flashColorAt(flash: Flash, clock: number): Color3
+	local step = math.floor(clock / math.max(flash.interval, 1 / 240))
+	return if step % 2 == 0 then flash.colorA else flash.colorB
+end
+
+--[[
+	Mutasyonun canli rengi varsa nesneyi etiketler, yoksa dokunmaz.
+	Cagiran taraflarin her yerde ayni "if" i yazmamasi icin.
+]]
+function Mutations.tagIf(instance: Instance, id: string?)
+	local flash = Mutations.flash(id)
+	if flash and not CollectionService:HasTag(instance, flash.tag) then
+		CollectionService:AddTag(instance, flash.tag)
+	end
+end
+
+--[[
+	Bir nesnenin butun canli renk etiketlerini kaldirir.
+
+	Tekrar kullanilan yazilarda gerekli: onceki mutasyonun etiketi kalirsa
+	yeni mutasyon sabit renkli olsa bile yanip sonmeye devam ederdi.
+]]
+function Mutations.untag(instance: Instance)
+	for _, flash in Flash do
+		CollectionService:RemoveTag(instance, flash.tag)
+	end
 end
 
 return Mutations

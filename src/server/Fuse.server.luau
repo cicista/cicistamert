@@ -568,7 +568,7 @@ local function insertItem(player: Player, uid: string)
 	if not Fuse.nextRarity(record.rarity) then
 		Bildirim:FireClient(
 			player,
-			`{Rarity.displayName(record.rarity)} is the top tier -- it cannot be fused.`,
+			`{Rarity.displayName(record.rarity)} cannot be fused, it is the top tier.`,
 			Color3.fromRGB(255, 120, 120)
 		)
 		return
@@ -579,7 +579,7 @@ local function insertItem(player: Player, uid: string)
 	if slot and slot.rarity ~= record.rarity then
 		Bildirim:FireClient(
 			player,
-			`The machine holds {Rarity.displayName(slot.rarity)} -- add the same tier.`,
+			`The machine holds {Rarity.displayName(slot.rarity)}, add the same tier.`,
 			Color3.fromRGB(255, 120, 120)
 		)
 		return
@@ -717,7 +717,7 @@ local function openCoin(player: Player, uid: string)
 
 		Bildirim:FireClient(
 			player,
-			`{info.name} ({Condition.get(condition).shortName}) -- {Format.perSecond(income)}`,
+			`{info.name} {Condition.get(condition).shortName} ({Format.perSecond(income)})`,
 			Rarity.color(coin.rarity)
 		)
 	end)
