@@ -13,7 +13,7 @@
 
 	Kurek leveli barin boyunu ve tepkiselligini artirir, gerilemeyi yavaslatir;
 	yani yuksek level kurek yuksek rarity brainrotlari tutulabilir kilar.
-	Butun bu dengeler Shared > Shovels ve Shared > Rarity icinde ayarlanir.
+	Butun bu dengeler Shared > Shovels, Shared > Rods ve Shared > Rarity icinde ayarlanir.
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -28,7 +28,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
-local Shovels = require(Shared:WaitForChild("Shovels"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -358,20 +357,21 @@ local function render(state: DigMinigame.State)
 	progressFill.BackgroundColor3 = if inside then UI.Colors.good else UI.Colors.warn
 end
 
-MinigameBasla.OnClientEvent:Connect(function(shovelId, rarityId, seed)
+MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed)
 	if active then
 		return
 	end
 
 	local rarityInfo = Rarity.get(rarityId)
-	local shovelInfo = Shovels.get(shovelId)
+	-- Kumda kurek, denizde olta: hangisi geldiyse ayni yuzden okunur
+	local gearInfo = DigMinigame.gear(gearId)
 
 	header.Text = `{rarityInfo.displayName} BRAINROT`
 	-- Epic+ parlak, Divine parildar; cerceve kademe renginde kalir
 	UI.rarityStyle(header, rarityId)
 	rootStroke.Color = rarityInfo.color
 
-	subHeader.Text = `{shovelInfo.displayName}  |  Lv.{shovelInfo.level}`
+	subHeader.Text = `{gearInfo.displayName}  |  Lv.{gearInfo.level}`
 	hint.Text = if UserInputService.TouchEnabled
 		then "Touch and hold the screen"
 		else "Hold SPACE or left click"
@@ -381,7 +381,7 @@ MinigameBasla.OnClientEvent:Connect(function(shovelId, rarityId, seed)
 
 	everLeft = false
 	perfectLabel.Visible = false
-	active = DigMinigame.new(shovelId, rarityId, seed)
+	active = DigMinigame.new(gearId, rarityId, seed)
 	screen.Enabled = true
 	bindInput()
 	startDigAnimation()

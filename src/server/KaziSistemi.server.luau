@@ -24,9 +24,9 @@ local Config = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
-local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
 local Rods = require(Shared:WaitForChild("Rods"))
+local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local Modules = script.Parent:WaitForChild("Modules")
@@ -52,7 +52,7 @@ local G = Config.GPS
 
 local rng = Random.new()
 
--- Suren kazilar: [player] = { beamId, startedAt, shovelId, rarityId, startPos }
+-- Suren kazilar: [player] = { beamId, startedAt, gearId, rarityId, startPos, sea }
 local digging: { [Player]: any } = {}
 local lastDig: { [Player]: number } = {}
 
@@ -289,8 +289,15 @@ local function startDig(player: Player, beamId: string)
 		return
 	end
 
-	if (beam.position - root.Position).Magnitude > G.digDistance then
-		Bildirim:FireClient(player, "Get closer to the beam!", Color3.fromRGB(255, 160, 60))
+	--[[
+		Girdaba olta UZAKTAN atilir, suzmeye ise sokulmak gerekir.
+		Ikisinin payi ayri (bkz. OyunConfig > GPS).
+	]]
+	local erisim = if beam.sea then G.seaDigDistance else G.digDistance
+
+	if (beam.position - root.Position).Magnitude > erisim then
+		local uyari = if beam.sea then "Get closer to the whirlpool!" else "Get closer to the beam!"
+		Bildirim:FireClient(player, uyari, Color3.fromRGB(255, 160, 60))
 		return
 	end
 
@@ -318,15 +325,23 @@ local function startDig(player: Player, beamId: string)
 		Envanter.equipShovel(player)
 	end
 
-	local shovel = Shovels.get(data.shovel)
-	local prepare = D.prepareTime * shovel.digSpeed
+	--[[
+		MINIGAME'I ELDEKI EKIPMAN BELIRLER
+
+		Kumda KUREK, denizde OLTA. Denizde kuregin seviyesi hic isin icine
+		girmez: girdabi yakalama kolayligi tamamen olta kademesinden gelir
+		(bkz. Shared > DigMinigame > gear).
+	]]
+	local gearId = if beam.sea then (data.rod or Rods.Order[1]) else data.shovel
+	local gear = DigMinigame.gear(gearId)
+	local prepare = D.prepareTime * gear.digSpeed
 
 	digging[player] = {
 		beamId = beamId,
 		startedAt = now,
 		-- Deniz girdabi mi: ekipman kurallari buna gore degisiyor
 		sea = beam.sea == true,
-		shovelId = data.shovel,
+		gearId = gearId,
 		rarityId = beam.kind,
 		startPos = root.Position,
 	}
@@ -346,7 +361,7 @@ local function startDig(player: Player, beamId: string)
 
 	local seed = rng:NextInteger(1, 2 ^ 30)
 	session.seed = seed
-	MinigameBasla:FireClient(player, data.shovel, beam.kind, seed)
+	MinigameBasla:FireClient(player, gearId, beam.kind, seed)
 
 	-- Client sonuc gondermezse (cokme, kacis, kapatma) oturum takili kalmasin;
 	-- yoksa oyuncu bir daha hic kazamaz.
@@ -382,7 +397,8 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root or (root.Position - session.startPos).Magnitude > D.maxMoveDistance then
+	local pay = if session.sea then D.seaMoveDistance else D.maxMoveDistance
+	if not root or (root.Position - session.startPos).Magnitude > pay then
 		finishDig(player, false)
 		return
 	end

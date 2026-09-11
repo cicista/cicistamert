@@ -8,14 +8,19 @@
 	  - target barin icindeyken progress artar, disindayken azalir
 	  - progress 1'e ulasirsa kazi basarili, 0'a duserse basarisiz
 
-	Kurek leveli barSize / barAcceleration / progressRate / drainRate uzerinden
-	oyunu kolaylastirir; brainrot rarity'si escapeDifficulty uzerinden zorlastirir.
+	EKIPMAN kim ise oyunu o kolaylastirir: KUMDA kurek, DENIZDE olta.
+	Ikisi de ayni alanlari tasidigi icin (level / barSize / barAcceleration /
+	progressRate / drainRate) burasi hangisi oldugunu bilmek zorunda degil --
+	gelen kimlik once kurek tablosunda, bulunamazsa olta tablosunda aranir.
+
+	Brainrot rarity'si escapeDifficulty uzerinden oyunu zorlastirir.
 
 	Bu modul deterministik ve UI'dan bagimsizdir -- ayni step() cagrilari
 	client'ta gorsel, server'da dogrulama icin kullanilabilir.
 ]]
 
 local Rarity = require(script.Parent.Rarity)
+local Rods = require(script.Parent.Rods)
 local Shovels = require(script.Parent.Shovels)
 
 local DigMinigame = {}
@@ -25,6 +30,22 @@ DigMinigame.__index = DigMinigame
 local GRAVITY = 1.6
 local LIFT = 3.2
 local MAX_BAR_SPEED = 1.4
+
+--[[
+	Kurek ve oltanin ORTAK yuzu. Minigame yalnizca bu alanlara bakar;
+	esyanin kumda mi denizde mi kullanildigi onu ilgilendirmez.
+]]
+export type GearInfo = {
+	displayName: string,
+	level: number,
+	-- Minigame oncesi hazirlik suresi carpani (dusuk = hizli)
+	digSpeed: number,
+	barSize: number,
+	barAcceleration: number,
+	progressRate: number,
+	drainRate: number,
+	color: Color3,
+}
 
 export type State = {
 	barPosition: number,
@@ -38,7 +59,7 @@ export type State = {
 }
 
 export type Minigame = typeof(setmetatable({} :: {
-	shovel: Shovels.ShovelInfo,
+	gear: GearInfo,
 	difficulty: number,
 	rng: Random,
 	state: State,
@@ -48,31 +69,51 @@ export type Minigame = typeof(setmetatable({} :: {
 }, DigMinigame))
 
 --[[
-	shovelId: oyuncunun elindeki kurek
-	rarityId: kazilan isik suzmesinin rarity'si
-]]
---[[
-	KUREK SEVIYESI TAVANI
+	ELDEKI EKIPMANI BULUR
 
-	Zorluk yalnizca brainrot'un rarity'sinden gelmez; KUREGIN o rarity'ye
+	Kimlikler cakismiyor (Wooden..Celestial / Bamboo..Leviathan), bu yuzden
+	tek bir ada bakmak yetiyor. Hicbiri tutmazsa tahta kurege duser: boylece
+	bozuk bir kayit minigame'i cokertmek yerine en zor kademeden oynatir.
+]]
+function DigMinigame.gear(gearId: string): GearInfo
+	local shovel = Shovels.Info[gearId :: Shovels.ShovelId]
+	if shovel then
+		return shovel :: any
+	end
+
+	local rod = Rods.Info[gearId :: Rods.RodId]
+	if rod then
+		return rod :: any
+	end
+
+	return Shovels.Info[Shovels.Default] :: any
+end
+
+--[[
+	EKIPMAN SEVIYESI TAVANI
+
+	Zorluk yalnizca brainrot'un rarity'sinden gelmez; EKIPMANIN o rarity'ye
 	yetip yetmedigi belirleyicidir. Aradaki fark:
 
-	    gap = rarity.order - shovel.level
+	    gap = rarity.order - gear.level
 
-	    gap <= 0   kurek rarity'ye yetiyor        -> kolay
+	    gap <= 0   ekipman rarity'ye yetiyor      -> kolay
 	    gap == 1   bir kademe yukarisi            -> zorlanir ama alinabilir
 	    gap == 2   iki kademe yukarisi            -> cok zor
-	    gap >= 3   kuregin cok otesi              -> pratikte alinamaz
+	    gap >= 3   ekipmanin cok otesi            -> pratikte alinamaz
 
 	Boylece yeni baslayan oyuncu Common ve Rare'i rahat alir, Epic'te
-	zorlanir, Legendary'yi tahta kurekle pratikte hic alamaz. Kurek
-	yukseldikce ust kademeler sirayla acilir:
+	zorlanir, Legendary'yi tahta kurekle pratikte hic alamaz. Kademe
+	yukseldikce ust rarityler sirayla acilir:
 
 	    Lv1  Common/Rare kolay   Epic cok zor      Legendary+ alinamaz
 	    Lv2  Rare cok kolay      Epic zorlanir     Legendary cok zor
 	    Lv3  Epic kolay          Legendary zorlanir Mythic cok zor
 	    Lv4  Legendary kolay     Mythic zorlanir   Secret cok zor
 	    Lv5  Mythic kolay        Secret zorlanir
+
+	DENIZDE ayni tablo OLTA icin isler: Bamboo Lv1'dir, Leviathan Lv5.
+	Oyuncunun kuregi denizde hicbir sey ifade etmez.
 ]]
 local GAP_MULTIPLIER = {
 	[0] = 0.6,
@@ -82,46 +123,49 @@ local GAP_MULTIPLIER = {
 
 local function gapMultiplier(gap: number): number
 	if gap < 0 then
-		-- Kurek rarity'nin uzerinde: fazladan her kademe biraz daha kolaylastirir
+		-- Ekipman rarity'nin uzerinde: her fazla kademe biraz daha kolaylastirir
 		return math.max(0.4, 0.6 + gap * 0.08)
 	end
 	return GAP_MULTIPLIER[gap] or 4
 end
 
 --[[
-	Etkin zorluk = rarity'nin kendi kacis zorlugu * kurek farki carpani.
+	Etkin zorluk = rarity'nin kendi kacis zorlugu * ekipman farki carpani.
 	Cagiran taraf (magaza ekrani, ipuclari) da bunu kullanabilir.
 ]]
-function DigMinigame.difficultyFor(shovelId: Shovels.ShovelId, rarityId: Rarity.RarityId): number
-	local shovel = Shovels.get(shovelId)
+function DigMinigame.difficultyFor(gearId: string, rarityId: Rarity.RarityId): number
+	local gear = DigMinigame.gear(gearId)
 	local rarity = Rarity.get(rarityId)
 
-	return rarity.escapeDifficulty * gapMultiplier(rarity.order - shovel.level)
+	return rarity.escapeDifficulty * gapMultiplier(rarity.order - gear.level)
 end
 
 --[[
-	Bir rarity bu kurekle pratikte alinabilir mi?
-	Arayuz "bu kurekle alamazsin" uyarisi icin kullanir.
+	Bir rarity bu ekipmanla pratikte alinabilir mi?
+	Arayuz "bununla alamazsin" uyarisi icin kullanir.
 ]]
-function DigMinigame.isReachable(shovelId: Shovels.ShovelId, rarityId: Rarity.RarityId): boolean
-	local shovel = Shovels.get(shovelId)
+function DigMinigame.isReachable(gearId: string, rarityId: Rarity.RarityId): boolean
+	local gear = DigMinigame.gear(gearId)
 	local rarity = Rarity.get(rarityId)
 
-	return rarity.order - shovel.level <= 2
+	return rarity.order - gear.level <= 2
 end
 
-function DigMinigame.new(shovelId: Shovels.ShovelId, rarityId: Rarity.RarityId, seed: number?): Minigame
-	local shovel = Shovels.get(shovelId)
-	local rarity = Rarity.get(rarityId)
+--[[
+	gearId:   oyuncunun elindeki kurek (kumda) ya da olta (denizde)
+	rarityId: kazilan suzmenin / girdabin rarity'si
+]]
+function DigMinigame.new(gearId: string, rarityId: Rarity.RarityId, seed: number?): Minigame
+	local gear = DigMinigame.gear(gearId)
 
 	local self = setmetatable({
-		shovel = shovel,
-		difficulty = DigMinigame.difficultyFor(shovelId, rarityId),
+		gear = gear,
+		difficulty = DigMinigame.difficultyFor(gearId, rarityId),
 		rng = Random.new(seed or os.clock() * 1e6),
 		state = {
 			barPosition = 0.5,
 			barVelocity = 0,
-			barSize = shovel.barSize,
+			barSize = gear.barSize,
 			targetPosition = 0.5,
 			targetVelocity = 0,
 			progress = 0.42,
@@ -215,7 +259,7 @@ function DigMinigame.step(self: Minigame, dt: number, holding: boolean): State
 	end
 
 	-- Oyuncunun kontrol ettigi bar
-	local accel = if holding then LIFT * self.shovel.barAcceleration else -GRAVITY
+	local accel = if holding then LIFT * self.gear.barAcceleration else -GRAVITY
 	s.barVelocity = math.clamp(s.barVelocity + accel * dt, -MAX_BAR_SPEED, MAX_BAR_SPEED)
 	s.barPosition += s.barVelocity * dt
 
@@ -238,9 +282,9 @@ function DigMinigame.step(self: Minigame, dt: number, holding: boolean): State
 	-- Ilerleme
 	local inside = math.abs(s.targetPosition - s.barPosition) <= half
 	if inside then
-		s.progress += self.shovel.progressRate * dt
+		s.progress += self.gear.progressRate * dt
 	else
-		s.progress -= self.shovel.drainRate * dt
+		s.progress -= self.gear.drainRate * dt
 	end
 
 	if s.progress >= 1 then

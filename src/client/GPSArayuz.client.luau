@@ -266,7 +266,10 @@ task.spawn(function()
 			end
 		end
 
-		if best and best.distance <= G.digDistance then
+		-- Girdaba olta uzaktan atilir; suzmeye ise sokulmak gerekir
+		local erisim = if best and best.sea then G.seaDigDistance else G.digDistance
+
+		if best and best.distance <= erisim then
 			nearest = { id = best.id, distance = best.distance }
 
 			--[[

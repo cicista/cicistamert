@@ -2,17 +2,23 @@
 --[[
 	OLTA (Fishing Rod) seviyeleri.
 
-	DENIZIN GPS'I.
+	DENIZIN KUREGI VE GPS'I BIR ARADA.
 
-	Karada dedektor ne yapiyorsa denizde olta onu yapar: oyuncu flyboardla
-	dolasirken etrafinda GIRDAPLAR dogar, olta kademesi ne cikacagini
-	belirler. Kazma minigame'i degismez -- zorlugu hala KUREK belirler,
-	tipki karadaki suzmelerde oldugu gibi.
+	Karada iki ayri esya var: GPS suzmeyi bulur, kurek minigame'i belirler.
+	Denizde ikisini de OLTA yapar:
 
-	  luck        -> yuksek rarity girdap cikma sansini carpar
-	  scanRadius  -> etrafta girdap aranan yaricap
-	  spawnChance -> her taramada girdap cikma yuzdesi
-	  maxWhirls   -> ayni anda kac girdap durabilir
+	  luck        -> yuksek rarity girdap cikma sansini carpar   (GPS isi)
+	  scanRadius  -> etrafta girdap aranan yaricap               (GPS isi)
+	  spawnChance -> her taramada girdap cikma yuzdesi           (GPS isi)
+	  maxWhirls   -> ayni anda kac girdap durabilir              (GPS isi)
+
+	  digSpeed / barSize / barAcceleration / progressRate / drainRate
+	              -> yakalama minigame'inin kolayligi            (KUREK isi)
+
+	Minigame degerleri kuregin kademe egrisiyle BIRE BIR ayni: Lv1 olta Lv1
+	kurek kadar zorlanir, Lv5 olta Lv5 kurek kadar rahat yakalar. Boylece
+	denizde kuregin seviyesi hic isin icine girmez -- Bamboo ile Mythic
+	girdap, tahta kurekle Mythic brainrot kadar zordur.
 
 	Kurek ve dedektorde oldugu gibi tek olta tasinir, sirayla yukseltilir;
 	alinan kademeler kalici, saticidan istenilen zaman geri kusanilir.
@@ -33,6 +39,16 @@ export type RodInfo = {
 	scanRadius: number,
 	spawnChance: number,
 	maxWhirls: number,
+	-- Minigame oncesi hazirlik suresi carpani (dusuk = hizli)
+	digSpeed: number,
+	-- Minigame: oyuncunun kontrol ettigi yesil barin yuksekligi
+	barSize: number,
+	-- Minigame: bar ivmesi; yuksek olan kontrolu kolaylastirir
+	barAcceleration: number,
+	-- Minigame: hedef bar icindeyken ilerleme hizi
+	progressRate: number,
+	-- Minigame: hedef bar disindayken gerileme hizi
+	drainRate: number,
 	color: Color3,
 }
 
@@ -49,6 +65,11 @@ Rods.Info = {
 		scanRadius = 60,
 		spawnChance = 35,
 		maxWhirls = 4,
+		digSpeed = 1,
+		barSize = 0.22,
+		barAcceleration = 1.15,
+		progressRate = 0.42,
+		drainRate = 0.16,
 		color = Color3.fromRGB(190, 160, 95),
 	},
 
@@ -62,6 +83,11 @@ Rods.Info = {
 		scanRadius = 72,
 		spawnChance = 42,
 		maxWhirls = 5,
+		digSpeed = 0.85,
+		barSize = 0.26,
+		barAcceleration = 1.25,
+		progressRate = 0.48,
+		drainRate = 0.14,
 		color = Color3.fromRGB(150, 170, 195),
 	},
 
@@ -75,6 +101,11 @@ Rods.Info = {
 		scanRadius = 85,
 		spawnChance = 50,
 		maxWhirls = 6,
+		digSpeed = 0.7,
+		barSize = 0.30,
+		barAcceleration = 1.40,
+		progressRate = 0.55,
+		drainRate = 0.12,
 		color = Color3.fromRGB(120, 90, 220),
 	},
 
@@ -88,6 +119,11 @@ Rods.Info = {
 		scanRadius = 95,
 		spawnChance = 58,
 		maxWhirls = 7,
+		digSpeed = 0.55,
+		barSize = 0.34,
+		barAcceleration = 1.55,
+		progressRate = 0.62,
+		drainRate = 0.10,
 		color = Color3.fromRGB(255, 225, 130),
 	},
 
@@ -101,6 +137,11 @@ Rods.Info = {
 		scanRadius = 110,
 		spawnChance = 66,
 		maxWhirls = 8,
+		digSpeed = 0.4,
+		barSize = 0.40,
+		barAcceleration = 1.75,
+		progressRate = 0.72,
+		drainRate = 0.08,
 		color = Color3.fromRGB(255, 70, 90),
 	},
 } :: { [RodId]: RodInfo }

@@ -240,6 +240,18 @@ Config.GPS = {
 	maxSpawnDistance = 55,
 	-- Kazmak icin suzmeye kac stud yaklasmak gerekir
 	digDistance = 10,
+
+	--[[
+		GIRDABA OLTA ATMA MESAFESI
+
+		Kumda suzmenin dibine kadar gitmen gerekir; DENIZDE oyle degil --
+		olta UZAKTAN atilir. Onceden ikisi de 10 studdu ve girdabin tam
+		icinde durmadan E'ye basilamiyordu, misina atacak pay kalmiyordu.
+
+		Girdaplar en az minSpawnDistance (18) studda dogdugu icin bu sayi
+		ondan rahatca buyuk olmali.
+	]]
+	seaDigDistance = 32,
 }
 
 ------------------------------------------------------------------
@@ -252,6 +264,12 @@ Config.Dig = {
 	cooldown = 0.6,
 	-- Minigame sirasinda bu kadar uzaklasirsan kazi iptal
 	maxMoveDistance = 14,
+	--[[
+		DENIZDE daha genis: oyuncu tahtanin uzerinde, misinayi 30 stud
+		oteye atmis durumda. Kumdaki dar pay burada haksiz yere iptal
+		ettiriyordu.
+	]]
+	seaMoveDistance = 30,
 	-- Minigame icin sunucunun taniyacagi en uzun sure (guvenlik siniri)
 	minigameTimeout = 60,
 

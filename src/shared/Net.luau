@@ -22,7 +22,7 @@ Net.Events = {
 	-- GPS + kazi
 	"GPSGuncelle",      -- server -> client: yakindaki suzmelerin listesi
 	"SuzmeKaz",         -- client -> server: su suzmeyi kazmak istiyorum
-	"MinigameBasla",    -- server -> client: shovelId, rarityId, seed
+	"MinigameBasla",    -- server -> client: gearId (kurek ya da olta), rarityId, seed
 	"MinigameSonuc",    -- client -> server: kazandim / kaybettim
 	"KaziBitti",        -- server -> client: minigame kapat
 
