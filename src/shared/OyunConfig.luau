@@ -240,17 +240,16 @@ Config.GPS = {
 	maxSpawnDistance = 55,
 	-- Kazmak icin suzmeye kac stud yaklasmak gerekir
 	digDistance = 10,
-
 	--[[
 		GIRDABA OLTA ATMA MESAFESI
 
 		Kumda suzmenin dibine kadar gitmen gerekir; DENIZDE oyle degil --
 		olta UZAKTAN atilir. Onceden ikisi de 10 studdu ve girdabin tam
 		icinde durmadan E'ye basilamiyordu, misina atacak pay kalmiyordu.
-		Girdaplar seaMinSpawnDistance kadar uzakta dogdugu icin bu sayi ondan
-		KUCUK kalmali: girdap hep uzakta belirir, oyuncu ona dogru gider ve
-t	bu paya girince oltayi atar.
-		ondan rahatca buyuk olmali.
+
+		Girdaplar hep seaMinSpawnDistance otesinde dogar, yani bu sayi ondan
+		KUCUK kalmali: girdap asla ayaginin dibinde belirmez, ona dogru
+		gidersin ve bu paya girince oltayi atarsin.
 	]]
 	seaDigDistance = 32,
 
