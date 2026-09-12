@@ -604,36 +604,43 @@ Config.WhirlVFX = {
 		--[[
 			CEKIRDEK  --  parcacigin dogdugu andaki en parlak ton
 
-			Parlamayi tamamen kismak efekti duz ve cansiz birakiyordu.
-			Burasi rengin cok acik tonu: parlak ama hala kademenin rengi,
-			beyaz degil beyaza YAKIN.
+			Paketin kendi hali tam beyazdi ve goz aliyordu; tamamen kismak
+			da efekti duz ve cansiz biraktti. Burasi ikisinin arasi: neredeyse
+			beyaz, ama icinde hala kademenin rengi var.
 
-			1 yaparsan tam beyaza doner (eski goz alan hali).
+			1 = tam beyaz (paketin kendi hali)
+			0 = hic beyaz yok, duz kademe rengi
 		]]
-		coreMix = 0.7,
+		coreMix = 0.88,
 
 		-- Gecisin orta-acik ucu
-		lightMix = 0.35,
+		lightMix = 0.5,
 
 		-- Koyu uc ne kadar siyaha yaklassin
-		darkMix = 0.35,
+		darkMix = 0.3,
 
 		--[[
 			PARLAMA TAVANI  --  goz almanin asil ayari
 
-			LightEmission yuksekken parcacik EKLEMELI cizilir ve rengi ne
-			olursa olsun merkez beyaza patlar. 0.15 tamamen sondurmustu,
-			0.35 parlakligi geri veriyor ama patlatmiyor.
+			LightEmission yuksekken parcacik EKLEMELI cizilir: rengi ne
+			olursa olsun arkasindaki goruntunun uzerine parlaklik biner.
+			Paket 1 ile geliyordu (goz alan hal); burasi TAVAN, yani paketin
+			degeri bundan dusukse kendi degeri kalir.
 
-			Hala fazla gelirse KUCULT, sonuk gelirse buyut.
+			Gecmis denemeler:
+			  0.15  tamamen sondu, efekt cansiz kaldi
+			  0.35  hala az
+			  0.8   paketin kendi hali, bir tik kisik  <-- su anki
+
+			Fazla gelirse KUCULT, sonuk gelirse 1'e kadar buyut.
 		]]
-		lightEmission = 0.35,
+		lightEmission = 0.8,
 
 		-- Isiklarin parlaklik tavani
-		lightBrightness = 1.5,
+		lightBrightness = 2,
 
 		-- Parcaciklara eklenen saydamlik (yogunsa buyut)
-		extraTransparency = 0.05,
+		extraTransparency = 0.03,
 	},
 
 	--[[
