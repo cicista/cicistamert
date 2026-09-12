@@ -167,10 +167,10 @@ Rods.LineName = "OltaMisinasi"
 --[[
 	SAVURMA ZAMANLAMASI
 
-	Girdapta E'ye basinca minigame ANINDA acilmaz: once olta savrulur.
+	Girdaba tiklayinca minigame ANINDA acilmaz: once olta savrulur.
 	Uc sayi var, hepsi ayni 2.25 saniyenin icinde gecer:
 
-	  0.00  E'ye basildi, savurma animasyonu basladi -- misina gorunmez
+	  0.00  tiklandi, savurma animasyonu basladi -- misina gorunmez
 	  1.75  CastRelease  -- animasyon bitti, MISINA BIRAKILDI
 	  2.25  CastFlight bitti -- samandira girdabin ortasina dustu
 	  2.25  CastTime -- minigame penceresi acilir
@@ -191,7 +191,7 @@ Rods.CastRelease = 1.75
 -- Misinanin havada gecirdigi sure: oltanin ucundan girdabin ortasina
 Rods.CastFlight = 0.5
 
--- E'ye basmakla minigame penceresinin acilmasi arasindaki toplam sure
+-- Tiklamayla minigame penceresinin acilmasi arasindaki toplam sure
 Rods.CastTime = Rods.CastRelease + Rods.CastFlight
 
 function Rods.get(id: string?): RodInfo?

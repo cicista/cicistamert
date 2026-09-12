@@ -186,14 +186,19 @@ local function digNearest()
 end
 
 --[[
-	SOL TIK ile kazilir; E ve gamepad X yedek olarak duruyor.
+	SOL TIK ile kazilir. Gamepad'de X yedek olarak duruyor.
+
+	E TUSU KALDIRILDI: kazi hem kumda hem denizde yalnizca tiklamayla
+	baslar. Kum minioyunu zaten tiklama tabanli oldugu icin ayni tus hem
+	kaziyi baslatiyor hem ilk vurusu vuruyor -- arada tus degistirmek
+	akisi boluyordu.
 
 	Kurek oyuncunun elinde DEGILDIR -- kumda GPS tasiniyor. Suzmenin
 	menziline girip sol tiklamak "kazmak istiyorum" demek: sunucu kuregi
 	eline verir, kazi biter bitmez GPS geri gelir.
 
 	Menzilde suzme yoksa digNearest hicbir sey yapmaz, yani bos tiklamalar
-	zararsizdir. Eylem Pass donduruyor: tikllama yutulmuyor, tool ve arayuz
+	zararsizdir. Eylem Pass donduruyor: tiklama yutulmuyor, tool ve arayuz
 	kendi islerini gormeye devam ediyor.
 ]]
 ContextActionService:BindAction(DIG_ACTION, function(_, state)
@@ -201,7 +206,7 @@ ContextActionService:BindAction(DIG_ACTION, function(_, state)
 		digNearest()
 	end
 	return Enum.ContextActionResult.Pass
-end, false, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch, Enum.KeyCode.E, Enum.KeyCode.ButtonX)
+end, false, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch, Enum.KeyCode.ButtonX)
 
 hint.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -278,7 +283,7 @@ task.spawn(function()
 				Bir ara Epic ve ustunde gizleniyordu; ama ekranin altindaki
 				bu yazi ayni zamanda "menzile girdin" demek oluyor. Gizli
 				oldugunda oyuncu -- ozellikle denizde, girdap 30 stud oteden
-				atildigi icin -- ne zaman E'ye basabilecegini kestiremiyordu.
+				atildigi icin -- ne zaman tiklayabilecegini kestiremiyordu.
 			]]
 			local color = kindColor(best.kind)
 			hintStroke.Color = color
@@ -288,7 +293,7 @@ task.spawn(function()
 			local eylem = if best.sea then "fish" else "dig"
 			hintLabel.Text = if UserInputService.TouchEnabled
 				then `{kindName(best.kind)} - tap to {eylem}`
-				else `{kindName(best.kind)} - press E to {eylem}`
+				else `{kindName(best.kind)} - click to {eylem}`
 			hint.Visible = true
 		else
 			nearest = nil

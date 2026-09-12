@@ -245,7 +245,7 @@ Config.GPS = {
 
 		Kumda suzmenin dibine kadar gitmen gerekir; DENIZDE oyle degil --
 		olta UZAKTAN atilir. Onceden ikisi de 10 studdu ve girdabin tam
-		icinde durmadan E'ye basilamiyordu, misina atacak pay kalmiyordu.
+		icinde durmadan tiklanamiyordu, misina atacak pay kalmiyordu.
 
 		Girdaplar hep seaMinSpawnDistance otesinde dogar, yani bu sayi ondan
 		KUCUK kalmali: girdap asla ayaginin dibinde belirmez, ona dogru
