@@ -150,11 +150,11 @@ Divine.Flashes = {
 		band = 0.085,
 	},
 
-	-- Infernal: kan kirmizisi <-> beyaz
+	-- Infernal: volkan turuncusu <-> beyaz
 	Infernal = {
 		tag = "InfernalRenk",
-		colorA = Color3.fromRGB(140, 6, 14),
-		colorB = Color3.fromRGB(14, 14, 16),
+		colorA = Color3.fromRGB(255, 92, 12),
+		colorB = Color3.fromRGB(255, 255, 255),
 		interval = 0.26,
 		sweep = 0.58,
 		band = 0.065,

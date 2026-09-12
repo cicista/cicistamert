@@ -202,12 +202,12 @@ Rarity.Info = {
 		revealTime = 35,
 	},
 
-	-- ALEVKUM: kan kirmizisi <-> beyaz
+	-- ALEVKUM: volkan turuncusu <-> beyaz
 	Infernal = {
 		id = "Infernal",
 		displayName = "Infernal",
 		order = 9,
-		color = Color3.fromRGB(150, 10, 20),
+		color = Color3.fromRGB(255, 102, 20),
 		beamChance = 0.02,
 		incomeMin = 4_500_000_000,
 		incomeMax = 21_000_000_000,
