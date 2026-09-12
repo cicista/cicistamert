@@ -22,23 +22,23 @@
 	Zorlugun olcusu TIKLAMA HIZI: imleci yerinde tutmak (ne ilerlemek ne
 	gerilemek) icin saniyede kac tiklama gerektigi.
 
-	    fark  gereken hiz   his          tavan hiza (12) gore
-	    -2       1.8 cps    cok cok kolay      %15
-	    -1       2.7 cps    cok kolay          %22
-	     0       4.0 cps    kolay              %33
-	     1       6.0 cps    normal             %50
-	     2       9.0 cps    zor                %75
-	     3      13.5 cps    IMKANSIZ           tavanin USTUNDE
+	    fark  gereken hiz   his               tavan hiza (12) gore
+	    -2       1.5 cps    cok cok kolay           %13
+	    -1       2.0 cps    cok kolay               %17
+	     0       3.0 cps    kolay                   %25
+	     1       5.5 cps    ZOR (en ust kademe)     %46
+	     2        --        IMKANSIZ
 
-	Fark 3 olunca gereken hiz insan elinin ustundedir: imlec matematiksel
-	olarak dolamaz. Oyuncu makro hiziyla tiklasa bile o brainrotu alamaz.
+	Fark 2'den itibaren kademe hic alinamaz: gereken geri tepme tavanin
+	kat kat ustune cikarilir, imlec bir saniye icinde dibe iner. Oyuncu
+	minioyunu gorur ama alamayacagi hemen belli olur.
 
 	KUREGE GORE TABLO
-	    Lv1   Common kolay   Rare normal      Epic zor        Legendary+ YOK
-	    Lv2   Common c.kolay Rare kolay       Epic normal     Legendary zor    Mythic+ YOK
-	    Lv3   Rare c.kolay   Epic kolay       Legendary normal Mythic zor      Divine YOK
-	    Lv4   Epic c.kolay   Legendary kolay  Mythic normal   Divine zor
-	    Lv5   Legendary c.kolay Mythic kolay  Divine normal
+	    Lv1   Common kolay      Rare ZOR        Epic+ YOK
+	    Lv2   Common c.kolay    Rare kolay      Epic ZOR        Legendary+ YOK
+	    Lv3   Rare c.kolay      Epic kolay      Legendary ZOR   Mythic+ YOK
+	    Lv4   Epic c.kolay      Legendary kolay Mythic ZOR      Divine YOK
+	    Lv5   Legendary c.kolay Mythic kolay    Divine ZOR
 	--------------------------------------------------------------
 
 	MACRO KORUMASI
@@ -104,29 +104,30 @@ KaziMinigame.GAIN = 0.03
 	Formul degil ELLE YAZILMIS tablo: kademeler arasi fark istenildigi gibi
 	ayarlanabilsin diye.
 
+	    -2  cok cok kolay
 	    -1  cok kolay
 	     0  kolay
-	     1  normal
-	     2  zor
-	     3  IMKANSIZ  (tabloda yok, bkz. IMKANSIZ_FARK)
+	     1  ZOR  -- ulasilabilen en ust kademe
+	     2  IMKANSIZ  (tabloda yok, bkz. IMKANSIZ_FARK)
 ]]
 local GEREKEN_CPS: { [number]: number } = {
 	[-2] = 1.5,
 	[-1] = 2,
 	[0] = 3,
-	[1] = 4,
-	[2] = 5.5,
+	[1] = 5.5,
 }
 
 --[[
 	Bu farktan itibaren kademe ERISILEMEZ.
 
-	Tablodaki en zor deger (5 cps) tavanin (12) epey altinda oldugu icin
-	imkansizlik artik sayidan degil BU KURALDAN geliyor. Onceden esik
-	formulden cikiyordu (13.5 > 12); tablo elle yazilinca acikca
-	belirtilmesi gerekti.
+	2'ye cekildi: kurek kademeye IKI basamak geride kalirsa artik hic
+	alinamiyor. Oncesinde 3'tu ve Lv2 kurekle Legendary, Lv3 ile Mythic,
+	Lv4 ile Divine zor ama mumkundu.
+
+	Tablodaki en zor deger tavanin (12 cps) epey altinda oldugu icin
+	imkansizlik sayidan degil BU KURALDAN geliyor.
 ]]
-KaziMinigame.IMKANSIZ_FARK = 3
+KaziMinigame.IMKANSIZ_FARK = 2
 
 --[[
 	ERISILEMEZ KADEMENIN GERI TEPMESI  (tavanin kati)
