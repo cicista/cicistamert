@@ -535,6 +535,30 @@ Config.WhirlVFX = {
 	vividness = 0.9,
 
 	--[[
+		DOKULU PARCALARI DA BOYA
+
+		VortexVFX efekti parcaciklarla degil DONEN DOKULU PARCALARLA
+		kurulu. Renk parcanin kendisinde durdugu icin normal renklendirme
+		ona dokunmuyordu ve girdap kademe ne olursa olsun hep ayni mavi
+		kaliyordu. Acikken parcalar, decal'lar ve dokular da boyanir.
+
+		Kumdaki DigLightVFX'te kapali: orasi zaten parcacik tabanli ve
+		acilirsa taslarin (Rocks) disindaki govde parcalari da boyanir.
+	]]
+	tintParts = true,
+
+	--[[
+		TABAN BUYUKLUK
+
+		Paketin kendi boyu oyuna gore cok kucuktu -- carpani 1 olan
+		Common/Rare girdaplar ekranda tek bir parcacik gibi duruyordu.
+		Bu sayi kademe carpaniyla CARPILIR: 3 taban * 1.3 Legendary = 3.9.
+
+		Girdap kucuk/buyuk gelirse once burayi oynat.
+	]]
+	baseScale = 3,
+
+	--[[
 		Kademeye gore buyukluk. Kumdakiyle ayni egri: Legendary'den
 		itibaren buyur, Divine belirgin genis parlar.
 	]]

@@ -1016,6 +1016,53 @@ function Assets.tintEffects(root: Instance, color: Color3, preserveShading: bool
 end
 
 --[[
+	YUZEYLERI YENIDEN RENKLENDIRIR
+
+	tintEffects yalnizca PARCACIK, Beam, Trail ve isiklara dokunur. Bazi
+	paketler ise efekti dokulu PARCALARLA kuruyor: donen bir disk, uzerine
+	yapistirilmis bir Decal, neon bir mesh... Onlarin rengi Color / Color3
+	ozelliginde durur ve tintEffects oralara hic bakmaz.
+
+	Girdap (VortexVFX) tam boyle bir paket: kademe rengine boyanmis
+	olmasina ragmen ekranda hep ayni mavi duruyordu, cunku renk parcacikta
+	degil parcanin kendisindeydi.
+
+	Ayni tint() kurallari gecerli: preserveShading acikken parcanin kendi
+	parlaklik/doygunluk yapisi korunur, yalnizca renk TONU kademeninkine
+	doner -- yani koyu bir kenar koyu, parlak bir cekirdek parlak kalir.
+
+	keep: adi gecen dallar ve icerikleri disarida kalir (tintEffects ile ayni).
+]]
+function Assets.tintSurfaces(root: Instance, color: Color3, preserveShading: boolean?, keep: { string }?, vividness: number?)
+	local keepShading = preserveShading ~= false
+	local vivid = math.clamp(vividness or 0.85, 0, 1)
+
+	local nodes = root:GetDescendants()
+	table.insert(nodes, root)
+
+	for _, node in nodes do
+		if isProtected(node, root, keep) then
+			continue
+		end
+
+		--[[
+			Tamamen saydam parcalara dokunulmuyor: onlar genelde efektin
+			tasiyicisi (parcaciklarin bagli oldugu gorunmez govde) ve
+			renklendirilirse gorunur hale gelmezler ama isi da yok.
+		]]
+		if node:IsA("BasePart") then
+			if node.Transparency < 1 then
+				node.Color = tint(node.Color, color, keepShading, vivid)
+			end
+		elseif node:IsA("Decal") or node:IsA("Texture") then
+			node.Color3 = tint(node.Color3, color, keepShading, vivid)
+		elseif node:IsA("ImageLabel") then
+			node.ImageColor3 = tint(node.ImageColor3, color, keepShading, vivid)
+		end
+	end
+end
+
+--[[
 	SIYAH EFEKTLERI KALDIRIR
 
 	Hazir paketlerde efektin icinde bir de KOYU duman/golge katmani oluyor.

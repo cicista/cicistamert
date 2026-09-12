@@ -237,6 +237,23 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		Assets.tintEffects(template, color, cfg.preserveShading, cfg.keepColor, cfg.vividness)
 	end)
 
+	--[[
+		YUZEY RENKLENDIRME
+
+		Bazi paketler efekti parcaciklarla degil DOKULU PARCALARLA kuruyor
+		(donen bir disk, uzerine yapistirilmis bir Decal...). Onlarin rengi
+		parcanin kendisinde durur ve tintEffects oraya bakmaz. tintParts
+		acikken parcalar, decal'lar ve dokular da kademeye boyanir.
+
+		Girdap icin acik: VortexVFX dokulu parcalardan kurulu ve kapaliyken
+		kademe ne olursa olsun hep ayni mavi kaliyordu.
+	]]
+	if cfg.tintParts then
+		step("yuzey renklendirme", function()
+			Assets.tintSurfaces(template, color, cfg.preserveShading, cfg.keepColor, cfg.vividness)
+		end)
+	end
+
 	if cfg.softenWhite then
 		step("beyaz yumusatma", function()
 			Assets.softenWhites(template, color, {
@@ -253,10 +270,17 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	end
 
 	--[[
-		BUYUKLUK: parcacik boyu/hizi ve isik menzili ile efektin kendi
-		geometrisi birlikte olceklenir, yoksa cap degil yalnizca hiz artar.
+		BUYUKLUK
+
+		Parcacik boyu/hizi, isik menzili ve efektin kendi geometrisi birlikte
+		olceklenir; yoksa cap degil yalnizca hiz artar.
+
+		Kademe carpani paketin KENDI taban olcegiyle carpilir. baseScale
+		sonradan eklendi: girdap paketinin boyu oyuna gore cok kucuktu ve
+		carpani 1 olan Common/Rare girdaplar ekranda tek bir parcacik gibi
+		duruyordu. Kumda taban 1 -- o paket zaten dogru boyda kurulmus.
 	]]
-	local scale = cfg.scaleByRarity[kind] or 1
+	local scale = (cfg.baseScale or 1) * (cfg.scaleByRarity[kind] or 1)
 	if scale ~= 1 then
 		step("olcekleme", function()
 			Assets.scaleEffects(template, scale)
@@ -264,6 +288,9 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 			if template:IsA("Model") then
 				local asModel = template :: Model
 				asModel:ScaleTo(asModel:GetScale() * scale)
+			elseif template:IsA("BasePart") then
+				-- Tek parcalik paket: Model olmadigi icin ScaleTo yok
+				template.Size *= scale
 			end
 		end)
 	end
