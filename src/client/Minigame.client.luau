@@ -283,10 +283,26 @@ kaziTehlike.Parent = kaziCerceve
 --[[
 	KUREK IKONU
 
-	Dolgunun ucundaki cizgide gezer, yatayda barin TAM ORTASINDA. Cercevenin
-	DISINDA duruyor cunku cerceve ClipsDescendants: icinde olsaydi bar
-	dolarken kenarlarda kirpilirdi.
+	Dolgunun ucundaki cizgide gezer, yatayda barin TAM ORTASINDA.
+
+	NEDEN AYRI BIR KATMAN
+	Cerceve ClipsDescendants: ikon icinde olsaydi bar dolarken kenarlarda
+	kirpilirdi. Ama cercevenin DISINA koyup konumu AbsolutePosition ile
+	hesaplamak da tutmadi -- ikon cizginin bir tutam USTUNDE kaliyordu.
+
+	Cozum: cerceveyle tipatip ayni yerde duran, arka plani olmayan ve
+	KIRPMAYAN bir katman. Ikon onun icinde ORANLA konumlaniyor, yani
+	hicbir piksel hesabi yok: 1 - progress dogrudan dolgunun ucu demek.
 ]]
+local kaziKatman = Instance.new("Frame")
+kaziKatman.Name = "IkonKatmani"
+kaziKatman.AnchorPoint = kaziCerceve.AnchorPoint
+kaziKatman.Position = kaziCerceve.Position
+kaziKatman.Size = kaziCerceve.Size
+kaziKatman.BackgroundTransparency = 1
+kaziKatman.ZIndex = 8
+kaziKatman.Parent = kaziEkran
+
 local kaziIkon = Instance.new("ImageLabel")
 kaziIkon.Name = "Kurek"
 kaziIkon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -295,7 +311,7 @@ kaziIkon.BackgroundTransparency = 1
 kaziIkon.Image = KUREK_IKONU
 kaziIkon.Rotation = IKON_ACI
 kaziIkon.ZIndex = 8
-kaziIkon.Parent = kaziEkran
+kaziIkon.Parent = kaziKatman
 
 local hint = UI.text({
 	text = "",
@@ -336,6 +352,9 @@ local ZAFER_GUCU = 9
 
 local sarsintiGucu = 0
 local vurusGucu = 0
+
+-- Vurusun yonu: her tiklamada isaret degisir, kurek bir saga bir sola sallanir
+local vurusYon = 1
 local sarsintiBagli = false
 local rng = Random.new()
 
@@ -359,14 +378,14 @@ local function sarsintiyiBagla()
 		--[[
 			IKONUN VURUSU
 
-			Her tiklamada buyur ve egilir. Buyume ile donme miktari eskiden
-			cok kisikti (26 px / 14 derece) ve kurek neredeyse hic
-			kipirdamiyordu.
+			Her tiklamada buyur ve egilir. Egilme YONU her tiklamada ters
+			cevriliyor (vurusYon): tek yone sallanmak tekduze duruyordu,
+			bir saga bir sola sallanmak kazma hareketine benziyor.
 		]]
 		local v = math.min(vurusGucu, 1)
 		kaziIkon.Size = UDim2.fromOffset(IKON_BOY + v * 62, IKON_BOY + v * 62)
 		-- Vurus, durus acisinin UZERINE ekleniyor; taban aci hep korunur
-		kaziIkon.Rotation = IKON_ACI + v * 38
+		kaziIkon.Rotation = IKON_ACI + vurusYon * v * 38
 
 		if sarsintiGucu <= 0 then
 			return
@@ -515,6 +534,9 @@ local function tikla()
 	-- Sayilan her tiklama ekrani sarsar ve kuregi vurdurur
 	sarsintiGucu = math.min(TIK_TAVAN, sarsintiGucu + TIK_GUCU)
 	vurusGucu = math.min(TIK_TAVAN, vurusGucu + TIK_GUCU)
+
+	-- Sonraki vurus ters yone: kurek bir saga bir sola sallanir
+	vurusYon = -vurusYon
 end
 
 local function bindInput()
@@ -700,17 +722,12 @@ local function renderKazi(state: KaziMinigame.State)
 	kaziDolgu.Size = UDim2.fromScale(1, state.progress)
 
 	--[[
-		Kurek ikonu dolgunun UCUNDAKI cizgide, yatayda barin tam ortasinda
-		durur. Cerceve ekran boyuna gore yerlestigi icin konum her karede
-		AbsolutePosition/Size'dan okunuyor; sabit bir sayi farkli
-		cozunurluklerde kayardi.
+		Kurek ikonu dolgunun UCUNDAKI cizgide, yatayda barin tam ortasinda.
+
+		Katman cerceveyle tipatip ayni yerde oldugu icin oran YETER: dolgu
+		asagidan yukari buyuduguna gore cizginin yeri 1 - progress.
 	]]
-	local kok = kaziCerceve.AbsolutePosition
-	local boy = kaziCerceve.AbsoluteSize
-	kaziIkon.Position = UDim2.fromOffset(
-		kok.X + boy.X * 0.5,
-		kok.Y + boy.Y * (1 - state.progress)
-	)
+	kaziIkon.Position = UDim2.fromScale(0.5, 1 - state.progress)
 
 	--[[
 		Makro sinirina takilan tiklamada dolgu kisa sure sariya doner:
