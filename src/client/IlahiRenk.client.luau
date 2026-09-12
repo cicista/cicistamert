@@ -54,7 +54,8 @@ local function paint(instance: Instance, color: Color3, sweep: number?)
 		local gradient = instance:FindFirstChild("Parilti")
 
 		if gradient and gradient:IsA("UIGradient") then
-			local bright = color:Lerp(Color3.new(1, 1, 1), 0.7)
+			-- Ucu az beyaz: 0.7 iken yazi rengini kaybedip solgun gorunuyordu
+			local bright = color:Lerp(Color3.new(1, 1, 1), 0.32)
 			gradient.Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0, bright),
 				ColorSequenceKeypoint.new(0.5, color),
@@ -159,14 +160,23 @@ RunService.RenderStepped:Connect(function(dt)
 
 	for _, palet in paletler do
 		--[[
-			RENK GECISI YUMUSAK
+			RENK GECISI  --  renk esas, beyaz misafir
 
-			Eskiden iki renk arasinda ANI gecis vardi (step % 2) ve yazi
-			strobe gibi kirpisiyordu -- goz yoran, ucuz duran sey buydu.
-			Artik sinus egrisiyle suzulerek geciyor: ayni ritim, yumusak.
+			Iki sorun vardi:
+
+			1. Gecis ANIYDI (step % 2): yazi strobe gibi kirpisiyordu.
+			2. Duz sinus kullaninca sure iki renk arasinda ESIT paylasiliyor
+			   ve ikinci uc BEYAZ oldugu icin yazi zamanin yarisini solgun
+			   geciriyordu -- "renkten cok beyaz gorunuyor" sikayeti buydu.
+
+			Cozum sinusu KUVVETE almak: egri zamanin cogunu 0'a yakin, yani
+			KADEMENIN KENDI RENGINDE geciriyor, arada kisa bir beyaz parlama
+			gelip gidiyor. Ust sinir da 1 degil: tam beyaza hic varmiyor,
+			en parlak anda bile rengin izi kaliyor.
 		]]
 		local faz = elapsed / math.max(palet.interval, 1 / 240) * math.pi
-		local oran = (math.sin(faz) + 1) / 2
+		local dalga = (math.sin(faz) + 1) / 2
+		local oran = dalga ^ 4 * 0.85
 		local color = palet.colorA:Lerp(palet.colorB, oran)
 
 		for instance in palet.tracked do
