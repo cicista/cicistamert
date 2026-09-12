@@ -128,6 +128,22 @@ local GEREKEN_CPS: { [number]: number } = {
 ]]
 KaziMinigame.IMKANSIZ_FARK = 3
 
+--[[
+	ERISILEMEZ KADEMENIN GERI TEPMESI  (tavanin kati)
+
+	Bu deger ONCE math.huge idi ve imlec ilk karede sifira iniyordu:
+	minioyun acilir acilmaz "kacti" diyip kapaniyor, oyuncu ne oldugunu
+	anlamiyordu.
+
+	Artik sonlu ama acik ara yetismez bir hiz: imlec tavan hizda tiklansa
+	bile bir saniye civarinda dibe iner. Oyuncu minioyunu GORUR ve
+	kaybettigini gozuyle gorur -- ama alamayacagi da belli olur.
+
+	Kucultursen dusus yavaslar (bosuna umut verir), buyutursen yine ani
+	kapanmaya doner.
+]]
+KaziMinigame.IMKANSIZ_KATI = 2.5
+
 export type State = {
 	progress: number,
 	finished: boolean,
@@ -163,8 +179,13 @@ end
 function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
 	local fark = KaziMinigame.fark(gearId, rarityId)
 
+	--[[
+		Erisilemez kademede SONLU ama yetisilemez bir hiz doner. math.huge
+		olsaydi imlec ilk karede sifira iner, minioyun acilir acilmaz
+		kapanirdi.
+	]]
 	if fark >= KaziMinigame.IMKANSIZ_FARK then
-		return math.huge
+		return KaziMinigame.MAX_CPS * KaziMinigame.IMKANSIZ_KATI
 	end
 
 	-- Tablonun altina dusen farklar en kolay degerde kalir
@@ -183,7 +204,8 @@ end
 	tiklandiginin onemi yoktur.
 ]]
 function KaziMinigame.reachable(gearId: string, rarityId: string): boolean
-	return KaziMinigame.gerekenCps(gearId, rarityId) < KaziMinigame.MAX_CPS
+	-- Farka DOGRUDAN bakiliyor: gerekenCps artik erisilemezde de sonlu doner
+	return KaziMinigame.fark(gearId, rarityId) < KaziMinigame.IMKANSIZ_FARK
 end
 
 --[[
@@ -193,6 +215,15 @@ end
 	Sunucu bunu dogrulama esigi olarak kullanir.
 ]]
 function KaziMinigame.minDuration(gearId: string, rarityId: string): number
+	--[[
+		Erisilemez kademede math.huge: sunucu boyle bir zaferi dogrudan
+		reddeder. Kontrol reachable uzerinden yapiliyor, cunku gerekenCps
+		artik erisilemezde de SONLU bir sayi donuyor.
+	]]
+	if not KaziMinigame.reachable(gearId, rarityId) then
+		return math.huge
+	end
+
 	local net = KaziMinigame.MAX_CPS * KaziMinigame.GAIN - KaziMinigame.drain(gearId, rarityId)
 	if net <= 0 then
 		return math.huge
