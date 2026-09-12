@@ -4,32 +4,41 @@
 
 	Dig & Clean mantigi. Tek bir imlec var:
 
-	  - her tiklama imleci ILERI iter (kurek ne kadar iyiyse o kadar cok)
-	  - imlec kendiliginden GERI TEPER (rarity ne kadar yuksekse o kadar hizli)
+	  - her tiklama imleci ILERI iter
+	  - imlec kendiliginden GERI TEPER
 	  - imlec dolarsa brainrot cikar, SIFIRA duserse kacar
 
 	SURE YOK. Oyuncu imlec sifirlanana kadar minioyunda kalir; ne kadar
 	dayanabildigi tamamen tiklama hizina bagli.
 
 	--------------------------------------------------------------
-	KUREK KADEMEYI ACAR  --  matematiksel olarak
+	ZORLUK YALNIZCA FARKA BAGLI
 
-	Saniyede kazanilabilecek EN FAZLA ilerleme:  MAX_CPS * kazanc
-	Saniyede kaybedilen ilerleme:                geriTepme
+	    fark = rarity.order - kurek.level
 
-	    geriTepme >= MAX_CPS * kazanc   ->   imlec ASLA dolmaz
+	Yani "Lv2 kurekle Epic" ile "Lv3 kurekle Legendary" tamamen ayni
+	zorluktadir. Kurek yukseldikce ayni merdiven bir kademe yukari kayar.
 
-	Yani kurek yetmiyorsa oyuncu makro hiziyla tiklasa bile o brainrotu
-	alamaz -- zorlanmaz, IMKANSIZDIR. Tablolar bu esik gozetilerek
-	ayarlandi; her kurek kademesi tam bir rarity kademesi aciyor:
+	Zorlugun olcusu TIKLAMA HIZI: imleci yerinde tutmak (ne ilerlemek ne
+	gerilemek) icin saniyede kac tiklama gerektigi.
 
-	    Lv1  Common rahat   Rare zor      Epic+ IMKANSIZ
-	    Lv2  Rare rahat     Epic zor      Legendary+ IMKANSIZ
-	    Lv3  Epic rahat     Legendary zor Mythic+ IMKANSIZ
-	    Lv4  Legendary rahat Mythic zor   Divine IMKANSIZ
-	    Lv5  Mythic rahat   Divine zor
+	    fark  gereken hiz   his          tavan hiza (12) gore
+	    -2       1.8 cps    cok cok kolay      %15
+	    -1       2.7 cps    cok kolay          %22
+	     0       4.0 cps    kolay              %33
+	     1       6.0 cps    normal             %50
+	     2       9.0 cps    zor                %75
+	     3      13.5 cps    IMKANSIZ           tavanin USTUNDE
 
-	"Zor" = tiklama hizini neredeyse tavanda tutman gerekir.
+	Fark 3 olunca gereken hiz insan elinin ustundedir: imlec matematiksel
+	olarak dolamaz. Oyuncu makro hiziyla tiklasa bile o brainrotu alamaz.
+
+	KUREGE GORE TABLO
+	    Lv1   Common kolay   Rare normal      Epic zor        Legendary+ YOK
+	    Lv2   Common c.kolay Rare kolay       Epic normal     Legendary zor    Mythic+ YOK
+	    Lv3   Rare c.kolay   Epic kolay       Legendary normal Mythic zor      Divine YOK
+	    Lv4   Epic c.kolay   Legendary kolay  Mythic normal   Divine zor
+	    Lv5   Legendary c.kolay Mythic kolay  Divine normal
 	--------------------------------------------------------------
 
 	MACRO KORUMASI
@@ -51,6 +60,7 @@
 ]]
 
 local DigMinigame = require(script.Parent.DigMinigame)
+local Rarity = require(script.Parent.Rarity)
 
 local KaziMinigame = {}
 KaziMinigame.__index = KaziMinigame
@@ -59,9 +69,10 @@ KaziMinigame.__index = KaziMinigame
 	Insan elinin ustu. Olcum degil, oynanabilirlik karari: 12 cps hizli bir
 	oyuncunun kisa sureli tepe degeri.
 
-	DIKKAT: bu sayi ayni zamanda DENGE esigi. Buyutursen alt kurekler ust
-	kademeleri alabilir hale gelir, kucultursen ust kademeler kimse
-	tarafindan alinamaz. Degistirirsen asagidaki iki tabloyu da gozden gecir.
+	DIKKAT: bu sayi ayni zamanda DENGE esigi. "Fark 3 = imkansiz" kurali
+	13.5 > 12 oldugu icin isliyor. Buyutursen alt kurekler ust kademeleri
+	alabilir hale gelir; degistirirsen asagidaki ADIM/TABAN ile birlikte
+	dusun.
 ]]
 KaziMinigame.MAX_CPS = 12
 
@@ -72,39 +83,19 @@ KaziMinigame.BURST = 4
 KaziMinigame.START = 0.25
 
 --[[
-	KUREGE GORE TIKLAMA KAZANCI  (imlecin orani, tiklama basina)
+	Tiklama basina ilerleme. HER KUREKTE AYNI.
 
-	Kademe basina tavan hiz (MAX_CPS * kazanc):
-	    Lv1 0.240   Lv2 0.336   Lv3 0.456   Lv4 0.600   Lv5 0.780
+	Kurek gucu bu sayida degil, gereken tiklama hizinda kendini gosteriyor
+	(bkz. gerekenCps). Boylece ayni FARK her kurekte ayni sureyi ve ayni
+	tempoyu veriyor -- Lv5 ile Divine, Lv1 ile Rare kadar surer.
 ]]
-local KAZANC: { [number]: number } = {
-	[1] = 0.020,
-	[2] = 0.028,
-	[3] = 0.038,
-	[4] = 0.050,
-	[5] = 0.065,
-}
+KaziMinigame.GAIN = 0.03
 
---[[
-	KADEMEYE GORE GERI TEPME  (imlecin orani, saniye basina)
+-- Fark 0 iken (kurek tam yetiyor) imleci yerinde tutmak icin gereken hiz
+KaziMinigame.TABAN_CPS = 4
 
-	Her deger, bir alt kuregin tavan hizinin biraz USTUNDE secildi:
-	    Epic 0.25      > Lv1 tavani 0.240   -> Lv1 ile IMKANSIZ
-	    Legendary 0.35 > Lv2 tavani 0.336   -> Lv2 ile IMKANSIZ
-	    Mythic 0.48    > Lv3 tavani 0.456   -> Lv3 ile IMKANSIZ
-	    Secret 0.64    > Lv4 tavani 0.600   -> Lv4 ile IMKANSIZ
-
-	Divine'in kimligi hala "Secret" -- gorunen adi degisti, veri uyumu icin
-	kimlik korundu (bkz. Shared > Rarity).
-]]
-local GERI_TEPME: { [string]: number } = {
-	Common = 0.06,
-	Rare = 0.13,
-	Epic = 0.25,
-	Legendary = 0.35,
-	Mythic = 0.48,
-	Secret = 0.64,
-}
+-- Her fark kademesi gereken hizi bu kadar carpar
+KaziMinigame.ADIM = 1.5
 
 export type State = {
 	progress: number,
@@ -116,7 +107,6 @@ export type State = {
 
 export type Game = typeof(setmetatable(
 	{} :: {
-		gain: number,
 		drain: number,
 		state: State,
 		_tokens: number,
@@ -124,25 +114,36 @@ export type Game = typeof(setmetatable(
 	KaziMinigame
 ))
 
--- Bu kurekle tiklama basina kazanilan ilerleme
-function KaziMinigame.gain(gearId: string): number
+-- Kurek ile kademe arasindaki fark; buyudukce zorlasir
+function KaziMinigame.fark(gearId: string, rarityId: string): number
 	local gear = DigMinigame.gear(gearId)
-	return KAZANC[gear.level] or KAZANC[1]
+	local info = Rarity.Info[rarityId]
+	local order = if info then info.order else 1
+
+	return order - gear.level
 end
 
--- Bu kademenin saniye basina geri tepmesi
-function KaziMinigame.drain(rarityId: string): number
-	return GERI_TEPME[rarityId] or GERI_TEPME.Common
+--[[
+	Imleci YERINDE tutmak icin gereken tiklama hizi.
+	Zorlugun tek olcusu bu; her sey bundan turetiliyor.
+]]
+function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
+	return KaziMinigame.TABAN_CPS * KaziMinigame.ADIM ^ KaziMinigame.fark(gearId, rarityId)
+end
+
+-- Saniye basina geri tepme
+function KaziMinigame.drain(gearId: string, rarityId: string): number
+	return KaziMinigame.GAIN * KaziMinigame.gerekenCps(gearId, rarityId)
 end
 
 --[[
 	Bu kurekle bu kademe ALINABILIR MI?
 
-	Tavan hiz geri tepmeyi gecmiyorsa imlec asla dolmaz; ne kadar hizli
+	Gereken hiz tavanin ustundeyse imlec asla dolmaz; ne kadar hizli
 	tiklandiginin onemi yoktur.
 ]]
 function KaziMinigame.reachable(gearId: string, rarityId: string): boolean
-	return KaziMinigame.MAX_CPS * KaziMinigame.gain(gearId) > KaziMinigame.drain(rarityId)
+	return KaziMinigame.gerekenCps(gearId, rarityId) < KaziMinigame.MAX_CPS
 end
 
 --[[
@@ -152,7 +153,7 @@ end
 	Sunucu bunu dogrulama esigi olarak kullanir.
 ]]
 function KaziMinigame.minDuration(gearId: string, rarityId: string): number
-	local net = KaziMinigame.MAX_CPS * KaziMinigame.gain(gearId) - KaziMinigame.drain(rarityId)
+	local net = KaziMinigame.MAX_CPS * KaziMinigame.GAIN - KaziMinigame.drain(gearId, rarityId)
 	if net <= 0 then
 		return math.huge
 	end
@@ -161,8 +162,7 @@ end
 
 function KaziMinigame.new(gearId: string, rarityId: string): Game
 	local self = setmetatable({
-		gain = KaziMinigame.gain(gearId),
-		drain = KaziMinigame.drain(rarityId),
+		drain = KaziMinigame.drain(gearId, rarityId),
 		_tokens = KaziMinigame.BURST,
 		state = {
 			progress = KaziMinigame.START,
@@ -194,7 +194,7 @@ function KaziMinigame.click(self: Game): boolean
 
 	self._tokens -= 1
 	s.throttled = false
-	s.progress = math.min(1, s.progress + self.gain)
+	s.progress = math.min(1, s.progress + KaziMinigame.GAIN)
 
 	if s.progress >= 1 then
 		s.finished = true
