@@ -167,6 +167,17 @@ local KUREK_IKONU = "rbxassetid://82895822894928"
 -- Ikonun dinlenme boyu; vurusta bunun uzerine cikar
 local IKON_BOY = 96
 
+--[[
+	IKONUN DURUS ACISI
+
+	Resim kendi icinde DIKEY cizilmis; oldugu gibi birakilinca kurek bara
+	dik duruyor ve ilerleme cizgisini kesiyordu. 90 derece cevrilince
+	cizgiyle ayni yone, YATAY yatiyor.
+
+	Yon ters gelirse -90 yap.
+]]
+local IKON_ACI = 90
+
 -- Barin sag kenardan uzakligi: sag alttaki ayarlar dugmesiyle cakismasin
 local SAG_BOSLUK = 150
 
@@ -282,6 +293,7 @@ kaziIkon.AnchorPoint = Vector2.new(0.5, 0.5)
 kaziIkon.Size = UDim2.fromOffset(IKON_BOY, IKON_BOY)
 kaziIkon.BackgroundTransparency = 1
 kaziIkon.Image = KUREK_IKONU
+kaziIkon.Rotation = IKON_ACI
 kaziIkon.ZIndex = 8
 kaziIkon.Parent = kaziEkran
 
@@ -353,7 +365,8 @@ local function sarsintiyiBagla()
 		]]
 		local v = math.min(vurusGucu, 1)
 		kaziIkon.Size = UDim2.fromOffset(IKON_BOY + v * 62, IKON_BOY + v * 62)
-		kaziIkon.Rotation = v * 38
+		-- Vurus, durus acisinin UZERINE ekleniyor; taban aci hep korunur
+		kaziIkon.Rotation = IKON_ACI + v * 38
 
 		if sarsintiGucu <= 0 then
 			return
@@ -381,7 +394,7 @@ local function sarsintiyiCoz()
 	sarsintiGucu = 0
 	vurusGucu = 0
 	kaziIkon.Size = UDim2.fromOffset(IKON_BOY, IKON_BOY)
-	kaziIkon.Rotation = 0
+	kaziIkon.Rotation = IKON_ACI
 end
 ------------------------------------------------------------------
 -- OYUN DONGUSU
