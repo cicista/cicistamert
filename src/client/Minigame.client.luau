@@ -156,13 +156,22 @@ progressFill.Parent = progressTrack
 UI.corner(progressFill, 10)
 
 ------------------------------------------------------------------
--- KUM MODU: YATAY BAR
+-- KUM MODU: DIKEY BAR
 --
--- Kum kazisinda PANEL YOK. Ekranin altinda tek bir yatay bar durur;
--- uzerinde kurek ikonu ilerleme noktasinda gezer. Deniz oyunundaki
--- pencere (root) o sirada tamamen gizlenir.
+-- Kum kazisinda PANEL YOK. Bar ekranin SAGINDA dikey durur; uzerinde
+-- kurek ikonu ilerleme cizgisinde gezer. Deniz penceresi (root) o sirada
+-- tamamen gizlenir.
 ------------------------------------------------------------------
 local KUREK_IKONU = "rbxassetid://82895822894928"
+
+-- Ikonun dinlenme boyu; vurusta bunun uzerine cikar
+local IKON_BOY = 96
+
+-- Barin sag kenardan uzakligi: sag alttaki ayarlar dugmesiyle cakismasin
+local SAG_BOSLUK = 150
+
+-- Alttaki kaybetme bolgesi: imlec buraya inerse brainrot kacmak uzeredir
+local TEHLIKE_ORANI = 0.16
 
 local kaziEkran = Instance.new("ScreenGui")
 kaziEkran.Name = "KaziBar"
@@ -174,10 +183,10 @@ kaziEkran.Parent = playerGui
 
 local kaziCerceve = Instance.new("Frame")
 kaziCerceve.Name = "Cerceve"
-kaziCerceve.AnchorPoint = Vector2.new(0.5, 0.5)
-kaziCerceve.Position = UDim2.fromScale(0.5, 0.78)
-kaziCerceve.Size = UDim2.new(0.46, 0, 0, 62)
-kaziCerceve.BackgroundColor3 = Color3.fromRGB(28, 22, 16)
+kaziCerceve.AnchorPoint = Vector2.new(1, 0.5)
+kaziCerceve.Position = UDim2.new(1, -SAG_BOSLUK, 0.5, 0)
+kaziCerceve.Size = UDim2.fromOffset(74, 430)
+kaziCerceve.BackgroundColor3 = Color3.fromRGB(74, 55, 36)
 kaziCerceve.BorderSizePixel = 0
 kaziCerceve.ClipsDescendants = true
 kaziCerceve.Parent = kaziEkran
@@ -185,31 +194,95 @@ UI.corner(kaziCerceve, 6)
 UI.stroke(kaziCerceve, Color3.fromRGB(0, 0, 0), 4)
 
 --[[
-	Dolan kisim: SOLDAN saga buyur ve rengi kazilan brainrotun kademe
+	KUMSU ZEMIN
+
+	Bos kisim duz kahve durmasin diye uzerine iki egik gecis biniyor:
+	biri koyu cizgiler, digeri acik parlamalar. Tek renk yerine tanecikli
+	bir kum hissi veriyor.
+]]
+local function dokuKat(parent: Instance, renk: Color3, saydam: number, aci: number, sikilik: number)
+	local kat = Instance.new("Frame")
+	kat.Name = "Doku"
+	kat.Size = UDim2.fromScale(1, 1)
+	kat.BackgroundColor3 = renk
+	kat.BackgroundTransparency = saydam
+	kat.BorderSizePixel = 0
+	kat.ZIndex = 2
+	kat.Parent = parent
+
+	--[[
+		Tanecik: gecise bol sayida ANI saydamlik duragi konuyor. Yumusak
+		bir gecis yerine kesik kesik seritler olusuyor, goz bunu doku
+		olarak okuyor.
+	]]
+	local stops = {}
+	for i = 0, sikilik do
+		local t = i / sikilik
+		local acikMi = i % 2 == 0
+		table.insert(stops, NumberSequenceKeypoint.new(t, if acikMi then 0 else 1))
+	end
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = aci
+	gecis.Transparency = NumberSequence.new(stops)
+	gecis.Parent = kat
+
+	return kat
+end
+
+dokuKat(kaziCerceve, Color3.fromRGB(38, 27, 16), 0.55, 28, 17)
+dokuKat(kaziCerceve, Color3.fromRGB(214, 184, 132), 0.82, -14, 11)
+
+--[[
+	Dolan kisim: ASAGIDAN yukari buyur ve rengi kazilan brainrotun kademe
 	rengidir, yani oyuncu ne pesinde oldugunu bara bakarak anlar.
 ]]
 local kaziDolgu = Instance.new("Frame")
 kaziDolgu.Name = "Dolgu"
-kaziDolgu.AnchorPoint = Vector2.new(0, 0.5)
-kaziDolgu.Position = UDim2.fromScale(0, 0.5)
-kaziDolgu.Size = UDim2.fromScale(0, 1)
+kaziDolgu.AnchorPoint = Vector2.new(0.5, 1)
+kaziDolgu.Position = UDim2.fromScale(0.5, 1)
+kaziDolgu.Size = UDim2.fromScale(1, 0)
 kaziDolgu.BackgroundColor3 = UI.Colors.good
 kaziDolgu.BorderSizePixel = 0
+kaziDolgu.ZIndex = 3
 kaziDolgu.Parent = kaziCerceve
+
+-- Dolgu da duz kalmasin: ayni tanecik iki kat halinde uzerine biner
+dokuKat(kaziDolgu, Color3.fromRGB(0, 0, 0), 0.7, 28, 17).ZIndex = 4
+dokuKat(kaziDolgu, Color3.fromRGB(255, 255, 255), 0.86, -14, 11).ZIndex = 4
+
+--[[
+	KAYBETME BOLGESI
+
+	Barin ALT ucundaki siyah alan. Imlec buraya inerse brainrot kacmak
+	uzeredir; oyuncunun "ne kadar yakinim" sorusunu bakar bakmaz
+	cevaplamasi icin var.
+]]
+local kaziTehlike = Instance.new("Frame")
+kaziTehlike.Name = "Tehlike"
+kaziTehlike.AnchorPoint = Vector2.new(0.5, 1)
+kaziTehlike.Position = UDim2.fromScale(0.5, 1)
+kaziTehlike.Size = UDim2.fromScale(1, TEHLIKE_ORANI)
+kaziTehlike.BackgroundColor3 = Color3.fromRGB(10, 8, 6)
+kaziTehlike.BackgroundTransparency = 0.15
+kaziTehlike.BorderSizePixel = 0
+kaziTehlike.ZIndex = 6
+kaziTehlike.Parent = kaziCerceve
 
 --[[
 	KUREK IKONU
 
-	Ilerleme noktasinda gezer. Cercevenin DISINDA duruyor cunku cerceve
-	ClipsDescendants: icinde olsaydi kenarlarda kirpilirdi.
+	Dolgunun ucundaki cizgide gezer, yatayda barin TAM ORTASINDA. Cercevenin
+	DISINDA duruyor cunku cerceve ClipsDescendants: icinde olsaydi bar
+	dolarken kenarlarda kirpilirdi.
 ]]
 local kaziIkon = Instance.new("ImageLabel")
 kaziIkon.Name = "Kurek"
 kaziIkon.AnchorPoint = Vector2.new(0.5, 0.5)
-kaziIkon.Size = UDim2.fromOffset(88, 88)
+kaziIkon.Size = UDim2.fromOffset(IKON_BOY, IKON_BOY)
 kaziIkon.BackgroundTransparency = 1
 kaziIkon.Image = KUREK_IKONU
-kaziIkon.ZIndex = 5
+kaziIkon.ZIndex = 8
 kaziIkon.Parent = kaziEkran
 
 local hint = UI.text({
@@ -237,12 +310,17 @@ local SARSINTI_ADI = "KaziSarsinti"
 -- Sarsintinin sonumleme hizi (saniyede kaybedilen guc)
 local SONUM = 7
 
--- Tiklama basina eklenen guc ve tavani
-local TIK_GUCU = 0.35
-local TIK_TAVAN = 1
+--[[
+	Tiklama basina eklenen guc ve tavani.
 
--- Brainrot cikinca eklenen guc: tiklamadan belirgin sekilde daha sert
-local ZAFER_GUCU = 4
+	Ilk deger 0.35 idi ve sarsinti neredeyse fark edilmiyordu; kazma hissi
+	asil buradan geliyor. Fazla gelirse ONCE bunu kucult.
+]]
+local TIK_GUCU = 1.1
+local TIK_TAVAN = 2.6
+
+-- Brainrot cikinca eklenen guc: tiklamadan cok daha sert
+local ZAFER_GUCU = 9
 
 local sarsintiGucu = 0
 local vurusGucu = 0
@@ -266,9 +344,16 @@ local function sarsintiyiBagla()
 		sarsintiGucu = math.max(0, sarsintiGucu - dt * SONUM)
 		vurusGucu = math.max(0, vurusGucu - dt * SONUM)
 
-		-- Ikonun vurus efekti: her tiklamada buyuyup hafifce egilir
-		kaziIkon.Size = UDim2.fromOffset(88 + vurusGucu * 26, 88 + vurusGucu * 26)
-		kaziIkon.Rotation = vurusGucu * 14
+		--[[
+			IKONUN VURUSU
+
+			Her tiklamada buyur ve egilir. Buyume ile donme miktari eskiden
+			cok kisikti (26 px / 14 derece) ve kurek neredeyse hic
+			kipirdamiyordu.
+		]]
+		local v = math.min(vurusGucu, 1)
+		kaziIkon.Size = UDim2.fromOffset(IKON_BOY + v * 62, IKON_BOY + v * 62)
+		kaziIkon.Rotation = v * 38
 
 		if sarsintiGucu <= 0 then
 			return
@@ -281,8 +366,8 @@ local function sarsintiyiBagla()
 
 		local g = sarsintiGucu
 		camera.CFrame = camera.CFrame
-			* CFrame.new(rng:NextNumber(-g, g) * 0.35, rng:NextNumber(-g, g) * 0.35, 0)
-			* CFrame.Angles(0, 0, math.rad(rng:NextNumber(-g, g) * 1.2))
+			* CFrame.new(rng:NextNumber(-g, g) * 0.5, rng:NextNumber(-g, g) * 0.5, 0)
+			* CFrame.Angles(0, 0, math.rad(rng:NextNumber(-g, g) * 2.2))
 	end)
 end
 
@@ -295,7 +380,7 @@ local function sarsintiyiCoz()
 
 	sarsintiGucu = 0
 	vurusGucu = 0
-	kaziIkon.Size = UDim2.fromOffset(88, 88)
+	kaziIkon.Size = UDim2.fromOffset(IKON_BOY, IKON_BOY)
 	kaziIkon.Rotation = 0
 end
 ------------------------------------------------------------------
@@ -598,18 +683,20 @@ end
 	kadar surer.
 ]]
 local function renderKazi(state: KaziMinigame.State)
-	kaziDolgu.Size = UDim2.fromScale(state.progress, 1)
+	-- Dolgu asagidan yukari buyur
+	kaziDolgu.Size = UDim2.fromScale(1, state.progress)
 
 	--[[
-		Kurek ikonu dolgunun UCUNDA gezer. Cerceve ekran genisligine gore
-		olceklendigi icin konum her karede AbsolutePosition/Size'dan
-		okunuyor; sabit bir sayi farkli cozunurluklerde kayardi.
+		Kurek ikonu dolgunun UCUNDAKI cizgide, yatayda barin tam ortasinda
+		durur. Cerceve ekran boyuna gore yerlestigi icin konum her karede
+		AbsolutePosition/Size'dan okunuyor; sabit bir sayi farkli
+		cozunurluklerde kayardi.
 	]]
 	local kok = kaziCerceve.AbsolutePosition
 	local boy = kaziCerceve.AbsoluteSize
 	kaziIkon.Position = UDim2.fromOffset(
-		kok.X + boy.X * state.progress,
-		kok.Y + boy.Y * 0.5
+		kok.X + boy.X * 0.5,
+		kok.Y + boy.Y * (1 - state.progress)
 	)
 
 	--[[
@@ -618,6 +705,16 @@ local function renderKazi(state: KaziMinigame.State)
 	]]
 	local kisildi = os.clock() < throttleUntil
 	kaziDolgu.BackgroundColor3 = if kisildi then UI.Colors.warn else kaziRenk
+
+	--[[
+		Imlec kaybetme bolgesine indiyse orasi belirginlesir: oyuncu
+		"kacmak uzere" uyarisini bara bakmadan da kenar goruyle alir.
+	]]
+	local tehlikede = state.progress <= TEHLIKE_ORANI
+	kaziTehlike.BackgroundTransparency = if tehlikede then 0 else 0.15
+	kaziTehlike.BackgroundColor3 = if tehlikede
+		then Color3.fromRGB(90, 12, 12)
+		else Color3.fromRGB(10, 8, 6)
 end
 
 --[[
@@ -637,7 +734,7 @@ local function modKur(yeniMod: string, rarityId: string)
 		-- Imlecin rengi kazilan brainrotun kademe rengi
 		kaziRenk = Rarity.beamColor(rarityId)
 		kaziDolgu.BackgroundColor3 = kaziRenk
-		kaziDolgu.Size = UDim2.fromScale(0, 1)
+		kaziDolgu.Size = UDim2.fromScale(1, KaziMinigame.START)
 		sarsintiyiBagla()
 	else
 		sarsintiyiCoz()
