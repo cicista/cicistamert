@@ -50,6 +50,16 @@ local MinigameSonuc = Net.event("MinigameSonuc")
 local KaziBitti = Net.event("KaziBitti")
 
 local D = Config.Dig
+
+--[[
+	KESIF NITELIGI
+
+	Oyuncu su an "kesifte" mi: kumda GPS ile ya da denizde olta ile arama
+	yapiyor mu. Sunucu karar verir, ISTEMCI de okur (bkz.
+	StarterPlayerScripts > KesifKisiti) -- boylece yasak esya bir kare bile
+	gorunmeden geri gonderilir.
+]]
+local KESIF_NITELIGI = "KesifKisiti"
 local G = Config.GPS
 
 local rng = Random.new()
@@ -145,14 +155,22 @@ local function otoEkipman(player: Player)
 	]]
 	local oturum = digging[player]
 	if oturum then
+		-- Kazi sirasinda da elde baska bir sey duramaz
+		player:SetAttribute(KESIF_NITELIGI, true)
 		if not oturum.sea then
 			Envanter.equipShovel(player)
 		end
 		return
 	end
 
-	-- Tahtadayken elde olta durur; kum kurallari denize karismaz
+	--[[
+		Tahtadayken elde olta durur; kum kurallari denize karismaz.
+
+		Kesif kisiti DENIZDE DE gecerli: olta elindeyken cantadan brainrot
+		ya da lucky block kusanilamaz.
+	]]
 	if Olta.has(player) then
+		player:SetAttribute(KESIF_NITELIGI, true)
 		return
 	end
 
@@ -166,12 +184,12 @@ local function otoEkipman(player: Player)
 		istenen davranis bu degil -- kumun uzeri arama alani, orada elde
 		baska bir sey durmuyor.
 
-		Ayni kural "tool degistirilemez" isini de goruyor: oyuncu cantadan
-		baska bir sey kusansa bile bir sonraki kontrolde GPS geri gelir,
-		yani kumun ustunde baska toola gecilemez.
+		Tool degistirmeyi asil engelleyen sey toolEngelle; burasi yalnizca
+		GPS'in elde olmasini garantiler.
 	]]
 	if Sand.isOnSand(player) then
 		lastOnSand[player] = now
+		player:SetAttribute(KESIF_NITELIGI, true)
 		Envanter.equipGPS(player)
 		return
 	end
@@ -179,7 +197,7 @@ local function otoEkipman(player: Player)
 	--[[
 		Kumdan cikti ama sure dolmadi: GPS elde kalmaya devam eder.
 		Boylece zipladiginda ya da kumun kenarindan bir adim tastiginda
-		esya elinden dusmez.
+		esya elinden dusmez. Kisit da bu sure boyunca surer.
 	]]
 	local left = lastOnSand[player]
 	if left and now - left < D.autoUnequipDelay then
@@ -187,6 +205,7 @@ local function otoEkipman(player: Player)
 	end
 
 	lastOnSand[player] = nil
+	player:SetAttribute(KESIF_NITELIGI, false)
 	Envanter.unequipTools(player)
 end
 
@@ -578,7 +597,74 @@ end)
 ------------------------------------------------------------------
 -- OYUNCU BAGLANTILARI
 ------------------------------------------------------------------
+--[[
+	KESIF SIRASINDA ELDE BASKA SEY DURMAZ
+
+	Kumda GPS, denizde olta elde kalir. Oyuncu cantadan brainrot, coin ya
+	da lucky block kusanirsa esya ELINE HIC GECMEDEN geri gonderilir ve
+	sebebi yazilir.
+
+	Eskiden bunu yalnizca tarama dongusu yapiyordu (1.5 saniyede bir):
+	esya bir sure elde kaliyor, sonra kendiliginden geri gidiyordu --
+	oyuncu neden oldugunu anlamiyordu. Ve kural DENIZDE hic yoktu.
+
+	Burasi ChildAdded ile ANINDA tepki verir. Istemci tarafinda da ayni
+	kontrol var (bkz. StarterPlayerScripts > KesifKisiti): oradaki tepki
+	ag gecikmesini beklemedigi icin esya bir kare bile gorunmez.
+
+	IZINLI ESYALAR nitelikten taniniyor: kurek ShovelId, GPS DetectorId
+	tasiyor. Ada adlari gibi isimle karsilastirmak kirilgan olurdu.
+]]
+local UYARI_ARASI = 2
+local sonUyari: { [Player]: number } = {}
+
+local function kesifAraciMi(tool: Tool): boolean
+	return tool:GetAttribute("ShovelId") ~= nil or tool:GetAttribute("DetectorId") ~= nil
+end
+
+local function toolEngelle(player: Player, tool: Tool)
+	if not player:GetAttribute(KESIF_NITELIGI) or kesifAraciMi(tool) then
+		return
+	end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid:UnequipTools()
+	end
+
+	--[[
+		Kumda GPS elden dusmus olur (Roblox yeni tool kusanilinca eskisini
+		birakir); hemen geri veriliyor ki oyuncunun eli bir an bos kalmasin.
+		Denizde olta bir Tool DEGIL, ele kaynakli bir model -- o zaten
+		dusmuyor.
+	]]
+	if Sand.isOnSand(player) then
+		Envanter.equipGPS(player)
+	end
+
+	local now = os.clock()
+	if now - (sonUyari[player] or 0) < UYARI_ARASI then
+		return
+	end
+	sonUyari[player] = now
+
+	Bildirim:FireClient(player, "You can't hold that while searching!", Color3.fromRGB(255, 160, 60))
+end
+
+------------------------------------------------------------------
+-- OYUNCU BAGLANTILARI
+------------------------------------------------------------------
 local function onCharacterAdded(player: Player)
+	local character = player.Character
+	if character then
+		character.ChildAdded:Connect(function(child)
+			if child:IsA("Tool") then
+				toolEngelle(player, child)
+			end
+		end)
+	end
+
 	task.wait(0.5)
 	Envanter.refresh(player)
 end
