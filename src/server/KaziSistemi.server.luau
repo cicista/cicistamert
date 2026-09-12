@@ -289,7 +289,8 @@ local function finishDig(player: Player, won: boolean)
 	local condition = Condition.roll(rng)
 	-- Mutasyon da burada belirlenir ama Detective acana kadar gizli kalir
 	local mutation = Mutations.roll(rng)
-	local item = PlayerData.addBrainrot(player, beam.kind, condition, mutation)
+	-- Ada esyayla birlikte tasiniyor: ismi Detective SECERKEN kullanilacak
+	local item = PlayerData.addBrainrot(player, beam.kind, condition, mutation, beam.island)
 	if not item then
 		return
 	end

@@ -45,6 +45,14 @@ export type InventoryItem = {
 	revealed: boolean,
 	-- Base'e yerlestirildiyse slot indeksi, degilse nil
 	slot: number?,
+	--[[
+		Kazildigi ada (kum, sekerkum, snowkum, gizlikum, deniz).
+
+		Detective adi SECERKEN kullaniliyor: esya hangi adadan ciktiysa o
+		adanin listesinden isim aliyor. Eski kayitlarda yok; nil gelirse
+		butun havuza dusuluyor.
+	]]
+	island: string?,
 }
 
 --[[
@@ -434,11 +442,22 @@ end
 -- ENVANTER YARDIMCILARI
 ------------------------------------------------------------------
 
+--[[
+	island: brainrotun HANGI ADADAN cikitigi.
+
+	Kazi aninda adi henuz belli degil (Detective acana kadar gizli), o
+	yuzden ada esyanin uzerinde tasiniyor ve isim SECILIRKEN kullaniliyor
+	-- boylece Snow adasindan kazilan bir Epic, Snow'un Epic listesinden
+	cikiyor.
+
+	Eski kayitlarda bu alan yok; nil gelirse butun havuza dusuluyor.
+]]
 function PlayerData.addBrainrot(
 	player: Player,
 	rarity: string,
 	condition: string,
-	mutation: string?
+	mutation: string?,
+	island: string?
 ): InventoryItem?
 	local data = cache[player]
 	if not data then
@@ -453,6 +472,7 @@ function PlayerData.addBrainrot(
 		name = nil,
 		revealed = false,
 		slot = nil,
+		island = island,
 	}
 	table.insert(data.inventory, item)
 	return item

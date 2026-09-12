@@ -43,6 +43,12 @@ export type Beam = {
 	claimed: boolean,    -- kazi basladiysa tekrar kazilamaz
 	-- Denizde dogan GIRDAP mi (olta sistemi), yoksa kumdaki suzme mi
 	sea: boolean?,
+	--[[
+		Dogdugu adanin kum parcasinin ADI (kum, sekerkum, snowkum,
+		gizlikum, deniz). Kazidan cikan brainrotun ismi bu adaya gore
+		seciliyor -- ayni kademe her adada farkli brainrotlar veriyor.
+	]]
+	island: string?,
 }
 
 local active: { [string]: Beam } = {}
@@ -607,7 +613,7 @@ end
 ------------------------------------------------------------------
 
 -- Oyuncunun etrafinda kumlu bir nokta arar.
-local function findSandSpot(player: Player): Vector3?
+local function findSandSpot(player: Player): (Vector3?, string?)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") then
@@ -623,7 +629,8 @@ local function findSandSpot(player: Player): Vector3?
 
 		local ground = Sand.probe(candidate, { char, folder })
 		if ground and ground.isSand then
-			return ground.position
+			-- Ada adi da doner: brainrot ismi buna gore secilecek
+			return ground.position, if ground.part then string.lower(ground.part.Name) else nil
 		end
 	end
 
@@ -657,7 +664,7 @@ function Beams.countFor(player: Player, sea: boolean?): number
 end
 
 -- Suzmeyi fiilen kuran ortak adim; kimin, ne turde ve nerede oldugu belli.
-local function createBeam(player: Player, kind: string, spot: Vector3, sea: boolean?): Beam
+local function createBeam(player: Player, kind: string, spot: Vector3, sea: boolean?, island: string?): Beam
 	beamCounter += 1
 	local id = `beam_{beamCounter}`
 
@@ -691,6 +698,8 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 		bornAt = os.clock(),
 		claimed = false,
 		sea = sea,
+		-- Denizde sabit; kumda kum parcasinin adi
+		island = if sea then "deniz" else island,
 	}
 	active[id] = beam
 
@@ -803,12 +812,12 @@ function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: num
 		return nil
 	end
 
-	local spot = findSandSpot(player)
+	local spot, ada = findSandSpot(player)
 	if not spot then
 		return nil
 	end
 
-	return createBeam(player, Rarity.rollBeam(rng, luck), spot)
+	return createBeam(player, Rarity.rollBeam(rng, luck), spot, false, ada)
 end
 
 --[[
@@ -825,7 +834,7 @@ function Beams.spawnKind(player: Player, kind: string): Beam?
 		return nil
 	end
 
-	local spot = findSandSpot(player)
+	local spot, ada = findSandSpot(player)
 
 	if not spot then
 		-- Kum yoksa: oyuncunun onunde, ayak hizasinda

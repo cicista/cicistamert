@@ -197,8 +197,14 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, uid)
 			return
 		end
 
-		-- Rarity sabit kalir; hangi brainrot oldugu simdi belli olur
-		local picked = Brainrots.roll(current.rarity :: any, rng)
+		--[[
+			Rarity sabit kalir; hangi brainrot oldugu simdi belli olur.
+
+			Isim KAZILDIGI ADANIN listesinden seciliyor: ayni kademe her
+			adada farkli brainrotlar veriyor. Eski kayitlarda ada yok,
+			nil gelirse butun havuza dusuluyor.
+		]]
+		local picked = Brainrots.rollIsland(current.rarity :: any, current.island, rng)
 		current.name = picked.name
 		current.revealed = true
 
