@@ -27,6 +27,7 @@ local Mutations = require(Shared:WaitForChild("Mutations"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
 local Rods = require(Shared:WaitForChild("Rods"))
 local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
+local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local Modules = script.Parent:WaitForChild("Modules")
@@ -371,7 +372,8 @@ local function startDig(player: Player, beamId: string)
 
 	local seed = rng:NextInteger(1, 2 ^ 30)
 	session.seed = seed
-	MinigameBasla:FireClient(player, gearId, beam.kind, seed)
+	-- Mod istemciye ACIKCA gonderiliyor: kumda tiklama oyunu, denizde bar oyunu
+	MinigameBasla:FireClient(player, gearId, beam.kind, seed, if beam.sea then "sea" else "sand")
 
 	-- Client sonuc gondermezse (cokme, kacis, kapatma) oturum takili kalmasin;
 	-- yoksa oyuncu bir daha hic kazamaz.
@@ -411,6 +413,33 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 	if not root or (root.Position - session.startPos).Magnitude > pay then
 		finishDig(player, false)
 		return
+	end
+
+
+	--[[
+		MACRO / EXPLOIT KONTROLU  --  yalnizca kumda
+
+		Kumdaki minioyun tiklama tabanli ve istemci "kazandim" diyor. Gereken
+		tiklama sayisi, insan elinin ustu sayilan MAX_CPS ile bile belli bir
+		sureden once tamamlanamaz; daha erken gelen bir zafer ya makro ya da
+		dogrudan sahte paket demektir.
+
+		%15 pay birakildi: ilk tiklamalar kovadaki hazir jetonlari harcadigi
+		icin gercek sure teorik alt sinirin biraz altina inebiliyor.
+
+		Denizde bu kontrol yok -- orasi basili tutma oyunu, tiklama sayisi
+		diye bir sey yok.
+	]]
+	if not session.sea and won == true then
+		local altSinir = KaziMinigame.minDuration(session.gearId, session.rarityId) * 0.85
+		if elapsed < altSinir then
+			warn(
+				`[Kazi] {player.Name} minioyunu imkansiz surede bitirdi `
+					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", altSinir)}s), reddedildi`
+			)
+			finishDig(player, false)
+			return
+		end
 	end
 
 	finishDig(player, won == true)

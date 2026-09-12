@@ -28,6 +28,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -154,6 +155,51 @@ progressFill.BorderSizePixel = 0
 progressFill.Parent = progressTrack
 UI.corner(progressFill, 10)
 
+--[[
+	KUM MODUNUN DOLAN BARI
+
+	Tiklama oyununda ayni Track kullanilir -- bar oyuncunun istedigi gibi
+	AYNI YERDE durur. Fark: hareket eden yesil bar ve kacan hedef yerine
+	asagidan yukari dolan tek bir sutun var.
+
+	Iki mod ayni anda acik olmaz; hangisi calisiyorsa digerinin parcalari
+	gizlenir.
+]]
+local kaziFill = Instance.new("Frame")
+kaziFill.Name = "KaziFill"
+kaziFill.AnchorPoint = Vector2.new(0.5, 1)
+kaziFill.Position = UDim2.fromScale(0.5, 1)
+kaziFill.Size = UDim2.new(1, -12, 0, 0)
+kaziFill.BackgroundColor3 = UI.Colors.good
+kaziFill.BorderSizePixel = 0
+kaziFill.Visible = false
+kaziFill.Parent = track
+UI.corner(kaziFill, 8)
+
+--[[
+	Kalan sure: dolan barin ustunde ince bir serit. Tiklama oyununda
+	zamanla yarisiliyor, oyuncunun ne kadar kaldigini gormesi gerek.
+]]
+local sureTrack = Instance.new("Frame")
+sureTrack.Name = "SureTrack"
+sureTrack.AnchorPoint = Vector2.new(0.5, 0)
+sureTrack.Position = UDim2.new(0.42, 0, 0, 72)
+sureTrack.Size = UDim2.fromOffset(84, 6)
+sureTrack.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
+sureTrack.BorderSizePixel = 0
+sureTrack.ClipsDescendants = true
+sureTrack.Visible = false
+sureTrack.Parent = root
+UI.corner(sureTrack, 3)
+
+local sureFill = Instance.new("Frame")
+sureFill.Name = "Fill"
+sureFill.Size = UDim2.fromScale(1, 1)
+sureFill.BackgroundColor3 = UI.Colors.warn
+sureFill.BorderSizePixel = 0
+sureFill.Parent = sureTrack
+UI.corner(sureFill, 3)
+
 local hint = UI.text({
 	text = "",
 	size = UI.Sizes.small,
@@ -168,9 +214,27 @@ local hint = UI.text({
 ------------------------------------------------------------------
 -- OYUN DONGUSU
 ------------------------------------------------------------------
+--[[
+	IKI MOD, TEK PENCERE
+
+	  "sea"   Stardew tarzi bar/hedef oyunu (DigMinigame) -- OLTA
+	  "sand"  tiklama oyunu (KaziMinigame)                -- KUREK
+
+	Hangisinin acik oldugunu sunucu soyluyor (MinigameBasla'nin son
+	parametresi). Ayni anda yalnizca biri dolu olur.
+]]
+local mod: string = "sea"
 local active: DigMinigame.Minigame? = nil
+local kazi: KaziMinigame.Game? = nil
 local holding = false
 local connection: RBXScriptConnection? = nil
+
+-- Tiklama sinirina takilinca kisa bir uyari gosterilir
+local throttleUntil = 0
+
+local function calisiyor(): boolean
+	return active ~= nil or kazi ~= nil
+end
 
 --[[
 	KAZMA ANIMASYONU
@@ -241,7 +305,40 @@ local function setHolding(value: boolean)
 	bar.BackgroundTransparency = if value then 0.1 else 0.3
 end
 
+--[[
+	BIR TIKLAMA  (yalnizca kum modu)
+
+	Sayilmayan tiklama makro sinirina takilmis demektir: oyun akisini
+	degistirmez, yalnizca kisa bir uyari yazisi cikar. Ceza yok -- insan
+	eliyle atilan hizli seriler haksiz yere cezalandirilmasin (bkz.
+	Shared > KaziMinigame).
+]]
+local function tikla()
+	local oyun = kazi
+	if not oyun then
+		return
+	end
+
+	if not oyun:click() then
+		throttleUntil = os.clock() + 0.4
+	end
+end
+
 local function bindInput()
+	if mod == "sand" then
+		-- Kumda TIKLAMA: yalnizca Begin sayilir, birakma onemsiz
+		ContextActionService:BindAction(ACTION_NAME, function(_, state)
+			if state == Enum.UserInputState.Begin then
+				tikla()
+			end
+			return Enum.ContextActionResult.Sink
+		end, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1)
+
+		ContextActionService:SetTitle(ACTION_NAME, "KAZ")
+		return
+	end
+
+	-- Denizde BASILI TUTMA
 	ContextActionService:BindAction(ACTION_NAME, function(_, state)
 		if state == Enum.UserInputState.Begin then
 			setHolding(true)
@@ -265,6 +362,7 @@ local function stop()
 		connection = nil
 	end
 	active = nil
+	kazi = nil
 	unbindInput()
 	stopDigAnimation()
 	screen.Enabled = false
@@ -318,10 +416,13 @@ local function showPerfect()
 end
 
 local function finish(won: boolean)
-	if not active then
+	if not calisiyor() then
 		return
 	end
+
+	local kumdu = mod == "sand"
 	active = nil
+	kazi = nil
 
 	if connection then
 		connection:Disconnect()
@@ -332,11 +433,14 @@ local function finish(won: boolean)
 
 	-- Sonuc gorseli kisa sure ekranda kalir
 	rootStroke.Color = if won then UI.Colors.good else UI.Colors.bad
-	header.Text = if won then "CAUGHT IT!" else "IT GOT AWAY!"
+	header.Text = if won
+		then (if kumdu then "DUG IT UP!" else "CAUGHT IT!")
+		else (if kumdu then "TOO SLOW!" else "IT GOT AWAY!")
 	-- Kademe gorunumu (parilti / parildama) kalkmali, yoksa rengi ezer
 	UI.plainStyle(header, if won then UI.Colors.good else UI.Colors.bad)
 
-	if won and not everLeft then
+	-- PERFECT yalnizca deniz oyununda anlamli: kumda "disari cikma" yok
+	if won and not kumdu and not everLeft then
 		showPerfect()
 	end
 
@@ -344,12 +448,13 @@ local function finish(won: boolean)
 
 	task.delay(0.7, function()
 		-- Bu arada yeni bir kazi baslamadiysa kapat
-		if not active then
+		if not calisiyor() then
 			screen.Enabled = false
 		end
 	end)
 end
 
+-- DENIZ: bar/hedef oyununun cizimi
 local function render(state: DigMinigame.State)
 	-- Cubuk 0..1 -> ekranda ust 0, alt 1 olacak sekilde ters cevrilir
 	local barHeight = state.barSize
@@ -368,8 +473,51 @@ local function render(state: DigMinigame.State)
 	progressFill.BackgroundColor3 = if inside then UI.Colors.good else UI.Colors.warn
 end
 
-MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed)
-	if active then
+--[[
+	KUM: tiklama oyununun cizimi
+
+	Dolan sutun Track'in icinde, yani bar deniz oyunuyla AYNI YERDE.
+	Ustteki ince serit kalan sureyi gosterir.
+]]
+local function renderKazi(state: KaziMinigame.State)
+	kaziFill.Size = UDim2.new(1, -12, state.progress, 0)
+
+	local toplam = if kazi then kazi.duration else 1
+	sureFill.Size = UDim2.fromScale(state.timeLeft / math.max(toplam, 0.001), 1)
+
+	--[[
+		Makro sinirina takilan tiklamada bar kisa sure sariya doner: oyuncu
+		"tikliyorum ama ilerlemiyor" demesin, sebebini gorsun.
+	]]
+	local kisildi = os.clock() < throttleUntil
+	kaziFill.BackgroundColor3 = if kisildi then UI.Colors.warn else UI.Colors.good
+
+	hint.Text = if kisildi
+		then "Too fast - extra clicks don't count"
+		else `{state.clicks} / {state.required} clicks`
+end
+
+--[[
+	MODA GORE PENCEREYI HAZIRLA
+
+	Iki oyunun parcalari ayni panelde duruyor; hangisi calisacaksa onunkiler
+	acilir, digerininkiler gizlenir.
+]]
+local function modKur(yeniMod: string)
+	mod = yeniMod
+	local kumdu = yeniMod == "sand"
+
+	bar.Visible = not kumdu
+	target.Visible = not kumdu
+	progressTrack.Visible = not kumdu
+
+	kaziFill.Visible = kumdu
+	sureTrack.Visible = kumdu
+	kaziFill.Size = UDim2.new(1, -12, 0, 0)
+end
+
+MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
+	if calisiyor() then
 		return
 	end
 
@@ -377,12 +525,58 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed)
 	-- Kumda kurek, denizde olta: hangisi geldiyse ayni yuzden okunur
 	local gearInfo = DigMinigame.gear(gearId)
 
+	--[[
+		Eski sunucular mod gondermiyordu; gelmezse denize dusuluyor ki
+		davranis en azindan taniddik kalsin.
+	]]
+	modKur(if gelenMod == "sand" then "sand" else "sea")
+
 	header.Text = `{rarityInfo.displayName} BRAINROT`
 	-- Epic+ parlak, Divine parildar; cerceve kademe renginde kalir
 	UI.rarityStyle(header, rarityId)
 	rootStroke.Color = rarityInfo.color
 
 	subHeader.Text = `{gearInfo.displayName}  |  Lv.{gearInfo.level}`
+
+	everLeft = false
+	perfectLabel.Visible = false
+	throttleUntil = 0
+	screen.Enabled = true
+	startDigAnimation()
+
+	if mod == "sand" then
+		------------------------------------------------------------------
+		-- KUM: TIKLAMA OYUNU
+		------------------------------------------------------------------
+		hint.Text = if UserInputService.TouchEnabled
+			then "Tap fast to dig"
+			else "Click fast to dig"
+
+		local oyun = KaziMinigame.new(gearId, rarityId)
+		kazi = oyun
+		bindInput()
+		renderKazi(oyun.state)
+
+		connection = RunService.RenderStepped:Connect(function(dt)
+			local g = kazi
+			if not g then
+				return
+			end
+
+			-- Cok buyuk dt sicramalarini kirp (kare dususu oyunu bozmasin)
+			local state = g:step(math.min(dt, 1 / 20))
+			renderKazi(state)
+
+			if state.finished then
+				finish(state.won)
+			end
+		end)
+		return
+	end
+
+	------------------------------------------------------------------
+	-- DENIZ: BAR / HEDEF OYUNU
+	------------------------------------------------------------------
 	hint.Text = if UserInputService.TouchEnabled
 		then "Touch and hold the screen"
 		else "Hold SPACE or left click"
@@ -390,24 +584,20 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed)
 	-- Hedef her rarityde ayni kirmizi-turuncu; rarity rengi baslikta ve cercevede
 	target.BackgroundColor3 = TARGET_COLOR
 
-	everLeft = false
-	perfectLabel.Visible = false
-	active = DigMinigame.new(gearId, rarityId, seed)
-	screen.Enabled = true
+	local oyun = DigMinigame.new(gearId, rarityId, seed)
+	active = oyun
 	bindInput()
-	startDigAnimation()
-
-	render((active :: any).state)
+	render(oyun.state)
 
 	connection = RunService.RenderStepped:Connect(function(dt)
-		local game_ = active
-		if not game_ then
+		local g = active
+		if not g then
 			return
 		end
 
 		-- Cok buyuk dt sicramalarini kirp (kare dususu oyunu bozmasin)
 		local step = math.min(dt, 1 / 20)
-		local state = game_:step(step, holding)
+		local state = g:step(step, holding)
 		render(state)
 
 		if state.finished then
@@ -418,7 +608,7 @@ end)
 
 -- Server kaziyi iptal ederse (uzaklasma, olum vs.)
 KaziBitti.OnClientEvent:Connect(function()
-	if active then
+	if calisiyor() then
 		stop()
 	end
 end)
@@ -427,7 +617,7 @@ end)
 player.CharacterAdded:Connect(function(character)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	humanoid.Died:Connect(function()
-		if active then
+		if calisiyor() then
 			MinigameSonuc:FireServer(false)
 			stop()
 		end
