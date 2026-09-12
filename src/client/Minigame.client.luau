@@ -348,7 +348,7 @@ local TIK_GUCU = 1.1
 local TIK_TAVAN = 2.6
 
 -- Brainrot cikinca eklenen guc: tiklamadan cok daha sert
-local ZAFER_GUCU = 9
+local ZAFER_GUCU = 7
 
 local sarsintiGucu = 0
 local vurusGucu = 0
@@ -383,9 +383,9 @@ local function sarsintiyiBagla()
 			bir saga bir sola sallanmak kazma hareketine benziyor.
 		]]
 		local v = math.min(vurusGucu, 1)
-		kaziIkon.Size = UDim2.fromOffset(IKON_BOY + v * 62, IKON_BOY + v * 62)
+		kaziIkon.Size = UDim2.fromOffset(IKON_BOY + v * 45, IKON_BOY + v * 45)
 		-- Vurus, durus acisinin UZERINE ekleniyor; taban aci hep korunur
-		kaziIkon.Rotation = IKON_ACI + vurusYon * v * 38
+		kaziIkon.Rotation = IKON_ACI + vurusYon * v * 27
 
 		if sarsintiGucu <= 0 then
 			return
