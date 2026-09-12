@@ -71,8 +71,8 @@ KaziMinigame.__index = KaziMinigame
 
 	DIKKAT: bu sayi ayni zamanda DENGE esigi. "Fark 3 = imkansiz" kurali
 	13.5 > 12 oldugu icin isliyor. Buyutursen alt kurekler ust kademeleri
-	alabilir hale gelir; degistirirsen asagidaki ADIM/TABAN ile birlikte
-	dusun.
+	alabilir hale gelir. Tablo elle yazildigi icin (bkz. GEREKEN_CPS) bu
+	sayi artik yalnizca TAVAN; imkansizlik esigi IMKANSIZ_FARK ile ayri.
 ]]
 KaziMinigame.MAX_CPS = 12
 
@@ -91,11 +91,36 @@ KaziMinigame.START = 0.25
 ]]
 KaziMinigame.GAIN = 0.03
 
--- Fark 0 iken (kurek tam yetiyor) imleci yerinde tutmak icin gereken hiz
-KaziMinigame.TABAN_CPS = 4
+--[[
+	FARKA GORE GEREKEN TIKLAMA HIZI  (imleci yerinde tutmak icin, saniyede)
 
--- Her fark kademesi gereken hizi bu kadar carpar
-KaziMinigame.ADIM = 1.5
+	Zorlugun tek olcusu bu; geri tepme dogrudan buradan turetiliyor.
+	Formul degil ELLE YAZILMIS tablo: kademeler arasi fark istenildigi gibi
+	ayarlanabilsin diye.
+
+	    -1  cok kolay
+	     0  kolay
+	     1  normal
+	     2  zor
+	     3  IMKANSIZ  (tabloda yok, bkz. IMKANSIZ_FARK)
+]]
+local GEREKEN_CPS: { [number]: number } = {
+	[-2] = 1.5,
+	[-1] = 2,
+	[0] = 3,
+	[1] = 4,
+	[2] = 5,
+}
+
+--[[
+	Bu farktan itibaren kademe ERISILEMEZ.
+
+	Tablodaki en zor deger (5 cps) tavanin (12) epey altinda oldugu icin
+	imkansizlik artik sayidan degil BU KURALDAN geliyor. Onceden esik
+	formulden cikiyordu (13.5 > 12); tablo elle yazilinca acikca
+	belirtilmesi gerekti.
+]]
+KaziMinigame.IMKANSIZ_FARK = 3
 
 export type State = {
 	progress: number,
@@ -122,13 +147,22 @@ function KaziMinigame.fark(gearId: string, rarityId: string): number
 
 	return order - gear.level
 end
-
 --[[
 	Imleci YERINDE tutmak icin gereken tiklama hizi.
 	Zorlugun tek olcusu bu; her sey bundan turetiliyor.
+
+	Erisilemez farkta math.huge doner -- boyle bir geri tepmeyi hicbir
+	tiklama hizi karsilayamaz.
 ]]
 function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
-	return KaziMinigame.TABAN_CPS * KaziMinigame.ADIM ^ KaziMinigame.fark(gearId, rarityId)
+	local fark = KaziMinigame.fark(gearId, rarityId)
+
+	if fark >= KaziMinigame.IMKANSIZ_FARK then
+		return math.huge
+	end
+
+	-- Tablonun altina dusen farklar en kolay degerde kalir
+	return GEREKEN_CPS[math.max(fark, -2)] or GEREKEN_CPS[-2]
 end
 
 -- Saniye basina geri tepme
