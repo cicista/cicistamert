@@ -130,6 +130,16 @@ local HOVER_BUYUME = 1.07
 local HOVER_BUYUME_KILITLI = 1.03
 
 -- Pariltinin bir uctan bir uca supurme suresi (saniye)
+--[[
+	Bandin BASLANGIC ve BITIS yeri (kutu genisliginin orani).
+
+	Iki uc da kutunun hemen disinda: band girip cikiyor, ortada beliriverip
+	kaybolmuyor. Eskiden -0.35..1.35 idi; bant kucultulunce bu kadar genis
+	paya gerek kalmadi.
+]]
+local PARILTI_BAS = -0.22
+local PARILTI_BIT = 1.22
+
 local PARILTI_SURE = 1.1
 
 -- Modelin salinim genligi ve hizi. Tam tur atmiyor: arkasi gorunmesin.
@@ -470,7 +480,7 @@ local function hoverBaslat(hucre: Hucre)
 	):Play()
 
 	if hucre.kesif then
-		hucre.parilti.Position = UDim2.fromScale(-0.35, 0.5)
+		hucre.parilti.Position = UDim2.fromScale(PARILTI_BAS, 0.5)
 		hucre.parilti.Visible = true
 		hucre.cizgi.Color = UI.shade(hucre.renk, 0.3)
 	else
@@ -572,19 +582,34 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	--[[
 		PARILTI BANDI
 
-		Egik, yumusak kenarli bir isik seridi. Fare ustundeyken bir
-		uctan bir uca supuruluyor (bkz. RenderStepped surucusu).
-		Rengi kademe rengiyle beyaz arasinda gidiyor, duz beyaz degil --
-		"parlitili renkli" istegi bu.
+		Egik, yumusak kenarli bir isik seridi. Bir uctan bir uca
+		supuruluyor (bkz. RenderStepped surucusu). Rengi kademe rengiyle
+		beyaz arasinda gidiyor, duz beyaz degil.
+
+		GEOMETRI ONIZLEME KUTUSUNA GORE
+		Bant eskiden kutunun IKI KATI yuksekligindeydi (Size.Y = 2) ve 18
+		derece egikti; bu kadar buyuk ve egik bir dikdortgen kutunun
+		kosesinden tasip disariya sarkiyordu -- yuva ClipsDescendants olsa
+		bile yuvarlatilmis koseler DIKDORTGENE gore kirpildigi icin koselerde
+		gorunuyordu.
+
+		Artik bant kutuyla ayni yukseklikte (1.35 pay yeter: egim yuzunden
+		biraz uzun olmali) ve egim 12 dereceye indi. Boylece band kutunun
+		ICINDEN gecip cikiyor, kenarlardan tasmiyor.
 	]]
 	local parilti = Instance.new("Frame")
 	parilti.Name = "Parilti"
 	parilti.AnchorPoint = Vector2.new(0.5, 0.5)
-	parilti.Position = UDim2.fromScale(-0.35, 0.5)
-	parilti.Size = UDim2.fromScale(0.4, 2)
-	parilti.Rotation = 18
+	parilti.Position = UDim2.fromScale(PARILTI_BAS, 0.5)
+	parilti.Size = UDim2.fromScale(0.26, 1.35)
+	parilti.Rotation = 12
 	parilti.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	parilti.BorderSizePixel = 0
+	--[[
+		ZIndex 1: onizlemenin (2) ALTINDA degil ustunde olmasi gerekiyordu
+		ama kilidin (4) altinda kalmali. 3 uygun; daha yukarisi kutunun
+		kirpmasini asmaz ama komsu hucrelerin uzerine cizilme riskini artirir.
+	]]
 	parilti.ZIndex = 3
 	parilti.Visible = false
 	parilti.Parent = yuva
@@ -945,7 +970,7 @@ RunService.RenderStepped:Connect(function(dt)
 		kutunun DISINDA.
 	]]
 	local ilerleme = (hoverT % PARILTI_SURE) / PARILTI_SURE
-	hucre.parilti.Position = UDim2.fromScale(-0.35 + ilerleme * 1.7, 0.5)
+	hucre.parilti.Position = UDim2.fromScale(PARILTI_BAS + ilerleme * (PARILTI_BIT - PARILTI_BAS), 0.5)
 
 	--[[
 		MODELIN SALINIMI
