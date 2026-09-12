@@ -601,11 +601,39 @@ Config.WhirlVFX = {
 		  extraTransparency  parcaciklara eklenen saydamlik (yoguntsa buyut)
 	]]
 	ramp = {
-		lightMix = 0.45,
+		--[[
+			CEKIRDEK  --  parcacigin dogdugu andaki en parlak ton
+
+			Parlamayi tamamen kismak efekti duz ve cansiz birakiyordu.
+			Burasi rengin cok acik tonu: parlak ama hala kademenin rengi,
+			beyaz degil beyaza YAKIN.
+
+			1 yaparsan tam beyaza doner (eski goz alan hali).
+		]]
+		coreMix = 0.7,
+
+		-- Gecisin orta-acik ucu
+		lightMix = 0.35,
+
+		-- Koyu uc ne kadar siyaha yaklassin
 		darkMix = 0.35,
-		lightEmission = 0.15,
-		lightBrightness = 1,
-		extraTransparency = 0.08,
+
+		--[[
+			PARLAMA TAVANI  --  goz almanin asil ayari
+
+			LightEmission yuksekken parcacik EKLEMELI cizilir ve rengi ne
+			olursa olsun merkez beyaza patlar. 0.15 tamamen sondurmustu,
+			0.35 parlakligi geri veriyor ama patlatmiyor.
+
+			Hala fazla gelirse KUCULT, sonuk gelirse buyut.
+		]]
+		lightEmission = 0.35,
+
+		-- Isiklarin parlaklik tavani
+		lightBrightness = 1.5,
+
+		-- Parcaciklara eklenen saydamlik (yogunsa buyut)
+		extraTransparency = 0.05,
 	},
 
 	--[[

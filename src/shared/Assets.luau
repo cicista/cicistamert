@@ -1130,12 +1130,25 @@ function Assets.rampEffects(root: Instance, color: Color3, opts: any, keep: { st
 	local brightness = opts.lightBrightness
 	local extra = opts.extraTransparency or 0
 
+	--[[
+		GECIS: cekirdek -> acik -> renk -> koyu
+
+		Parcaciklarin parlamasini TAMAMEN kismak da kotu duruyordu -- efekt
+		duz ve cansiz kaliyor. Bu yuzden en basta kisa bir CEKIRDEK durak
+		var: rengin cok acik tonu, yani parlak ama hala kademenin rengi.
+		Beyaz degil, beyaza YAKIN.
+
+		coreMix bunu ayarlar; verilmezse acik tonun kendisi kullanilir ve
+		gecis eski uc duragina doner.
+	]]
+	local cekirdek = color:Lerp(Color3.new(1, 1, 1), opts.coreMix or lightMix)
 	local acik = color:Lerp(Color3.new(1, 1, 1), lightMix)
 	local koyu = color:Lerp(Color3.new(0, 0, 0), darkMix)
 
 	local gecis = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, acik),
-		ColorSequenceKeypoint.new(0.5, color),
+		ColorSequenceKeypoint.new(0, cekirdek),
+		ColorSequenceKeypoint.new(0.18, acik),
+		ColorSequenceKeypoint.new(0.55, color),
 		ColorSequenceKeypoint.new(1, koyu),
 	})
 
