@@ -506,6 +506,81 @@ Config.BeamVFX = {
 		0 = hic parlamaz (duz renk), 1 = tam parlar.
 	]]
 	whiteGlow = 0,
+
+	-- Uretilen modelin adi ve Output uyarilarindaki etiket
+	label = "Suzme",
+}
+
+------------------------------------------------------------------
+-- GIRDAP VFX  --  denizdeki suzmenin karsiligi
+--
+-- Kumdaki DigLightVFX ne ise denizde VortexVFX odur. Ayni borudan gecer
+-- (sil > siyahi at > kademeye boya > beyazi yumusat > olcekle > yerlestir),
+-- yalnizca ayarlari ayri: deniz efekti kuma gore daha genis ve su
+-- yuzeyine oturuyor.
+--
+-- Bulunamazsa oyun kodla cizilen eski huni gorunumune duser (uyari
+-- Output'a duser), yani girdap her halukarda dogar.
+------------------------------------------------------------------
+Config.WhirlVFX = {
+	-- Studio'daki VFX'in adi
+	name = "VortexVFX",
+
+	label = "Girdap",
+
+	keepColor = {},
+	hide = {},
+
+	preserveShading = true,
+	vividness = 0.9,
+
+	--[[
+		Kademeye gore buyukluk. Kumdakiyle ayni egri: Legendary'den
+		itibaren buyur, Divine belirgin genis parlar.
+	]]
+	scaleByRarity = {
+		Legendary = 1.3,
+		Mythic = 1.7,
+		Secret = 2.4,
+	},
+
+	--[[
+		SU YUZEYINE OTURTMA
+
+		Kumda efektin ALT UCU zemine hizalaniyor (alignToGround). Girdapta
+		oyle degil: girdap suyun hem altina iner hem ustune sicrar, o yuzden
+		efekt su yuzeyine ORTALANIR -- alignToGround kapali.
+	]]
+	alignToGround = false,
+
+	--[[
+		DENIZ YUZEYININ Y'SI
+
+		Girdabin dikey yeri isinin carptigi noktadan DEGIL, buradan gelir.
+		Isin dalganin tepesine ya da cukuruna denk gelebiliyor ve girdap
+		bazen suyun biraz altinda/ustunde kaliyordu; sabit deger hepsini
+		ayni hizaya getiriyor.
+
+		Denizin yuksekligini degistirirsen BURAYI guncelle. nil yaparsan
+		eski davranisa doner ve isinin buldugu yukseklik kullanilir.
+	]]
+	fixedY = 20,
+
+	-- Ince ayar: yuzeyden kac stud yukari kaydirilsin (eksi = suya gomer)
+	height = 0,
+
+	removeDark = true,
+	darkThreshold = 0.22,
+
+	softenWhite = true,
+	whiteSaturation = 0.5,
+	whiteValue = 0.72,
+	whiteGrey = 0.22,
+	whiteSaturationRef = 0.55,
+	whiteMaxValue = 0.8,
+	whiteHighlight = 0.15,
+	whiteHighlightValue = 0.9,
+	whiteGlow = 0,
 }
 
 return Config

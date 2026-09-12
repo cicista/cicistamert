@@ -493,6 +493,19 @@ local templateCache: { [string]: Instance } = {}
 	quiet = true ise bulunamadiginda uyari yazilmaz. Aday isim listesi
 	denenirken kullanilir: yalnizca hicbiri bulunamazsa uyarmak icin.
 ]]
+--[[
+	Sablonu adiyla bulur ve KOPYASINI dondurur.
+
+	ARAMA SIRASI
+	  1. kendi kategori klasoru   Assets > VFX > <ad>
+	  2. Assets'in KOKU           Assets > <ad>      (alt klasorler dahil)
+	  3. Workspace                herhangi bir yerde
+
+	2. adim sonradan eklendi: dosya kategori klasorune degil dogrudan
+	Assets'in altina birakildiginda "bulunamadi" deyip vazgeciliyordu.
+	Nereye birakilirsa birakilsin bulunmasi, hangi klasore ait oldugunu
+	hatirlamaktan daha onemli.
+]]
 local function grabTemplate(name: string, category: string, hint: string, quiet: boolean?): Instance?
 	local key = `{category}/{name}`
 
@@ -503,6 +516,11 @@ local function grabTemplate(name: string, category: string, hint: string, quiet:
 
 	local folder = categoryFolder(category)
 	local found: Instance? = if folder then folder:FindFirstChild(name, true) else nil
+
+	if not found then
+		local root = ReplicatedStorage:FindFirstChild(Assets.FolderName)
+		found = if root then root:FindFirstChild(name, true) else nil
+	end
 
 	local inWorkspace = false
 	if not found then

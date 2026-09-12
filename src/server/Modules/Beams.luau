@@ -30,6 +30,7 @@ local Beams = {}
 
 local G = Config.GPS
 local V = Config.BeamVFX
+local W = Config.WhirlVFX
 
 export type Beam = {
 	id: string,
@@ -195,8 +196,8 @@ end
 
 	Bulunamazsa nil doner ve yedek gorunume dusulur.
 ]]
-local function buildVFXModel(kind: string, position: Vector3): Model?
-	local template = Assets.vfxTemplate(V.name)
+local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
+	local template = Assets.vfxTemplate(cfg.name)
 	if not template then
 		return nil
 	end
@@ -208,7 +209,7 @@ local function buildVFXModel(kind: string, position: Vector3): Model?
 		Config.BeamVFX.hide icinde adi gecenler efektten kaldirilir.
 	]]
 	step("hide", function()
-		for _, name in V.hide do
+		for _, name in cfg.hide do
 			local doomed = template:FindFirstChild(name, true)
 			while doomed do
 				doomed:Destroy()
@@ -226,28 +227,28 @@ local function buildVFXModel(kind: string, position: Vector3): Model?
 		  3. BEYAZI YUMUSAT      Renklendirme beyaza dokunamaz, o yuzden en
 		     sona birakildi; boyamadan sonra calisir ki ezilmesin.
 	]]
-	if V.removeDark then
+	if cfg.removeDark then
 		step("siyah katman", function()
-			Assets.removeDarkEffects(template, V.darkThreshold, V.keepColor)
+			Assets.removeDarkEffects(template, cfg.darkThreshold, cfg.keepColor)
 		end)
 	end
 
 	step("renklendirme", function()
-		Assets.tintEffects(template, color, V.preserveShading, V.keepColor, V.vividness)
+		Assets.tintEffects(template, color, cfg.preserveShading, cfg.keepColor, cfg.vividness)
 	end)
 
-	if V.softenWhite then
+	if cfg.softenWhite then
 		step("beyaz yumusatma", function()
 			Assets.softenWhites(template, color, {
-				saturation = V.whiteSaturation,
-				value = V.whiteValue,
-				grey = V.whiteGrey,
-				saturationRef = V.whiteSaturationRef,
-				maxValue = V.whiteMaxValue,
-				highlight = V.whiteHighlight,
-				highlightValue = V.whiteHighlightValue,
-				glow = V.whiteGlow,
-			}, V.keepColor)
+				saturation = cfg.whiteSaturation,
+				value = cfg.whiteValue,
+				grey = cfg.whiteGrey,
+				saturationRef = cfg.whiteSaturationRef,
+				maxValue = cfg.whiteMaxValue,
+				highlight = cfg.whiteHighlight,
+				highlightValue = cfg.whiteHighlightValue,
+				glow = cfg.whiteGlow,
+			}, cfg.keepColor)
 		end)
 	end
 
@@ -255,7 +256,7 @@ local function buildVFXModel(kind: string, position: Vector3): Model?
 		BUYUKLUK: parcacik boyu/hizi ve isik menzili ile efektin kendi
 		geometrisi birlikte olceklenir, yoksa cap degil yalnizca hiz artar.
 	]]
-	local scale = V.scaleByRarity[kind] or 1
+	local scale = cfg.scaleByRarity[kind] or 1
 	if scale ~= 1 then
 		step("olcekleme", function()
 			Assets.scaleEffects(template, scale)
@@ -268,7 +269,7 @@ local function buildVFXModel(kind: string, position: Vector3): Model?
 	end
 
 	local model = Instance.new("Model")
-	model.Name = `Suzme_{kind}`
+	model.Name = `{cfg.label}_{kind}`
 
 	--[[
 		SABLON OLDUGU GIBI ALINIR
@@ -292,8 +293,8 @@ local function buildVFXModel(kind: string, position: Vector3): Model?
 		template:Destroy()
 
 		Assets.warnOnce(
-			`suzme vfx sinifi: {V.name}`,
-			`[Suzme] "{V.name}" bir {template.ClassName}; icindekiler tasindi.`
+			`{cfg.label} vfx sinifi: {cfg.name}`,
+			`[{cfg.label}] "{cfg.name}" bir {template.ClassName}; icindekiler tasindi.`
 		)
 	end
 
@@ -328,8 +329,20 @@ local function buildVFXModel(kind: string, position: Vector3): Model?
 			return
 		end
 
-		local targetY = position.Y + V.height
-		local shiftY = if V.alignToGround
+		--[[
+			DIKEY YER
+
+			Normalde noktanin kendi Y'si kullanilir. cfg.fixedY verilmisse
+			onun yerine o sabit yukseklik gecerlidir.
+
+			Deniz icin sabit: isin dalganin tepesine ya da cukuruna denk
+			gelebiliyor ve girdap bazen suyun biraz altinda/ustunde
+			kaliyordu. Kumda fixedY yok -- zemin her yerde ayni yukseklikte
+			degil, orada isinin buldugu nokta dogru olan.
+		]]
+		local tabanY = cfg.fixedY or position.Y
+		local targetY = tabanY + cfg.height
+		local shiftY = if cfg.alignToGround
 			then targetY - min.Y
 			else targetY - (min.Y + max.Y) / 2
 
@@ -381,7 +394,7 @@ end
 	Kademe rengi disinda karadaki suzmeyle ayni kurallara tabi: ayni
 	kimlikle kaydedilir, ayni sekilde kazilir, ayni sekilde temizlenir.
 ]]
-local function buildWhirlModel(kind: string, position: Vector3): Model
+local function buildFallbackWhirl(kind: string, position: Vector3): Model
 	-- Ozel turlerin iki renkli gecisi var; kademe girdaplari tek renk
 	local special = if kind == "RotCoin"
 		then Rarity.RotCoin
@@ -486,8 +499,22 @@ local function buildWhirlModel(kind: string, position: Vector3): Model
 	return model
 end
 
-local function buildBeamModel(kind: string, position: Vector3): Model
-	local ok, result = pcall(buildVFXModel, kind, position)
+--[[
+	VFX varsa onu, yoksa kodla cizilen yedek gorunumu kurar.
+
+	VFX kurulumu HICBIR ZAMAN suzmeyi engellememeli: paket degistiginde,
+	bir ayar bozuk kaldiginda ya da renklendirme sirasinda hata ciktiginda
+	eskiden suzme hic olusmuyor ve oyuncu "kazacak bir sey yok" durumunda
+	kaliyordu. Artik hata yakalanir, sebep Output icine bir kez yazilir ve
+	yedek gorunume dusulur -- suzme her zaman dogar.
+]]
+local function buildWithVFX(
+	cfg: any,
+	kind: string,
+	position: Vector3,
+	fallback: (string, Vector3) -> Model
+): Model
+	local ok, result = pcall(buildVFXModel, cfg, kind, position)
 
 	if ok and result then
 		return result
@@ -495,12 +522,22 @@ local function buildBeamModel(kind: string, position: Vector3): Model
 
 	if not ok then
 		Assets.warnOnce(
-			"suzme vfx hatasi",
-			`[Suzme] VFX kurulamadi, basit sutuna dusuldu -- {tostring(result)}`
+			`{cfg.label} vfx hatasi`,
+			`[{cfg.label}] VFX kurulamadi, yedek gorunume dusuldu -- {tostring(result)}`
 		)
 	end
 
-	return buildFallbackModel(kind, position)
+	return fallback(kind, position)
+end
+
+-- Kumdaki isik sutunu: DigLightVFX
+local function buildBeamModel(kind: string, position: Vector3): Model
+	return buildWithVFX(V, kind, position, buildFallbackModel)
+end
+
+-- Denizdeki girdap: VortexVFX
+local function buildWhirlModel(kind: string, position: Vector3): Model
+	return buildWithVFX(W, kind, position, buildFallbackWhirl)
 end
 
 ------------------------------------------------------------------
@@ -827,3 +864,4 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return Beams
+-- MARKER_152426
