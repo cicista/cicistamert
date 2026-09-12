@@ -354,6 +354,30 @@ function Assets.luckyBlockModel(modelName: string?, order: number?): Model?
 	return clone
 end
 
+--[[
+	GOLGE KAPALI
+
+	Brainrot modelleri golge dusurmuyor. Base'te yan yana onlarca model
+	duruyor ve her biri kendi golgesini cizerse hem kare hizi duser hem
+	modellerin altina koyu bir leke birikir.
+
+	Tek yerden: bu fonksiyon hem envanter tool'unun hem base'teki modelin
+	hem Index onizlemesinin kaynagi.
+]]
+local function golgeyiKapat(model: Model?): Model?
+	if not model then
+		return nil
+	end
+
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.CastShadow = false
+		end
+	end
+
+	return model
+end
+
 function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 	if name and mutationId then
 		--[[
@@ -374,11 +398,11 @@ function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 		local prefix = Mutations.get(mutationId).prefix
 		local mutated = findModel(Assets.Categories.brainrots, prefix .. name)
 		if mutated then
-			return mutated
+			return golgeyiKapat(mutated)
 		end
 	end
 
-	return findModel(Assets.Categories.brainrots, name)
+	return golgeyiKapat(findModel(Assets.Categories.brainrots, name))
 end
 
 --[[
@@ -770,7 +794,7 @@ function Assets.hiddenBrainrotModel(): Model?
 	local cfg = Assets.HiddenBrainrot
 
 	if hiddenCache then
-		return hiddenCache:Clone()
+		return golgeyiKapat(hiddenCache:Clone())
 	end
 
 	local found = findHidden(cfg.name)
@@ -828,7 +852,8 @@ function Assets.hiddenBrainrotModel(): Model?
 
 	print(`[Assets] Gizli brainrot modeli hazir: {found:GetFullName()} ({found.ClassName}), korunan parca: {kept}`)
 
-	return model:Clone()
+	-- Gizli brainrot da golge dusurmesin: base'te acilmamis olanlar da duruyor
+	return golgeyiKapat(model:Clone())
 end
 
 ------------------------------------------------------------------

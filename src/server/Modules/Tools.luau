@@ -542,6 +542,8 @@ function Tools.buildBrainrot(item: any): Tool
 	if not handle then
 		local body = Instance.new("Part")
 		body.Name = "Handle"
+		-- Model bulunamayinca kurulan yedek kutu da golge dusurmesin
+		body.CastShadow = false
 		body.Size = Vector3.new(2, 2, 2)
 		body.TopSurface = Enum.SurfaceType.Smooth
 		body.BottomSurface = Enum.SurfaceType.Smooth
