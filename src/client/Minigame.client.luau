@@ -176,30 +176,6 @@ kaziFill.Visible = false
 kaziFill.Parent = track
 UI.corner(kaziFill, 8)
 
---[[
-	Kalan sure: dolan barin ustunde ince bir serit. Tiklama oyununda
-	zamanla yarisiliyor, oyuncunun ne kadar kaldigini gormesi gerek.
-]]
-local sureTrack = Instance.new("Frame")
-sureTrack.Name = "SureTrack"
-sureTrack.AnchorPoint = Vector2.new(0.5, 0)
-sureTrack.Position = UDim2.new(0.42, 0, 0, 72)
-sureTrack.Size = UDim2.fromOffset(84, 6)
-sureTrack.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
-sureTrack.BorderSizePixel = 0
-sureTrack.ClipsDescendants = true
-sureTrack.Visible = false
-sureTrack.Parent = root
-UI.corner(sureTrack, 3)
-
-local sureFill = Instance.new("Frame")
-sureFill.Name = "Fill"
-sureFill.Size = UDim2.fromScale(1, 1)
-sureFill.BackgroundColor3 = UI.Colors.warn
-sureFill.BorderSizePixel = 0
-sureFill.Parent = sureTrack
-UI.corner(sureFill, 3)
-
 local hint = UI.text({
 	text = "",
 	size = UI.Sizes.small,
@@ -477,13 +453,11 @@ end
 	KUM: tiklama oyununun cizimi
 
 	Dolan sutun Track'in icinde, yani bar deniz oyunuyla AYNI YERDE.
-	Ustteki ince serit kalan sureyi gosterir.
+	Sure gostergesi YOK: oyunun suresi diye bir sey yok, imlec sifirlanana
+	kadar surer.
 ]]
 local function renderKazi(state: KaziMinigame.State)
 	kaziFill.Size = UDim2.new(1, -12, state.progress, 0)
-
-	local toplam = if kazi then kazi.duration else 1
-	sureFill.Size = UDim2.fromScale(state.timeLeft / math.max(toplam, 0.001), 1)
 
 	--[[
 		Makro sinirina takilan tiklamada bar kisa sure sariya doner: oyuncu
@@ -492,9 +466,9 @@ local function renderKazi(state: KaziMinigame.State)
 	local kisildi = os.clock() < throttleUntil
 	kaziFill.BackgroundColor3 = if kisildi then UI.Colors.warn else UI.Colors.good
 
-	hint.Text = if kisildi
-		then "Too fast - extra clicks don't count"
-		else `{state.clicks} / {state.required} clicks`
+	if kisildi then
+		hint.Text = "Too fast - extra clicks don't count"
+	end
 end
 
 --[[
@@ -512,7 +486,6 @@ local function modKur(yeniMod: string)
 	progressTrack.Visible = not kumdu
 
 	kaziFill.Visible = kumdu
-	sureTrack.Visible = kumdu
 	kaziFill.Size = UDim2.new(1, -12, 0, 0)
 end
 
@@ -549,8 +522,8 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		-- KUM: TIKLAMA OYUNU
 		------------------------------------------------------------------
 		hint.Text = if UserInputService.TouchEnabled
-			then "Tap fast to dig"
-			else "Click fast to dig"
+			then "Keep tapping - the bar slides back"
+			else "Keep clicking - the bar slides back"
 
 		local oyun = KaziMinigame.new(gearId, rarityId)
 		kazi = oyun

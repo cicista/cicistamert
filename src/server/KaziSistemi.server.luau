@@ -415,23 +415,36 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 		return
 	end
 
-
 	--[[
 		MACRO / EXPLOIT KONTROLU  --  yalnizca kumda
 
-		Kumdaki minioyun tiklama tabanli ve istemci "kazandim" diyor. Gereken
-		tiklama sayisi, insan elinin ustu sayilan MAX_CPS ile bile belli bir
-		sureden once tamamlanamaz; daha erken gelen bir zafer ya makro ya da
-		dogrudan sahte paket demektir.
+		Kumdaki minioyun tiklama tabanli ve istemci "kazandim" diyor. Iki sey
+		bagimsiz olarak dogrulaniyor:
 
-		%15 pay birakildi: ilk tiklamalar kovadaki hazir jetonlari harcadigi
-		icin gercek sure teorik alt sinirin biraz altina inebiliyor.
+		  1. ERISILEBILIRLIK. Kurek kademeye yetmiyorsa imlec matematiksel
+		     olarak dolamaz (bkz. Shared > KaziMinigame). Boyle bir zaferin
+		     dogru olma ihtimali yok.
 
-		Denizde bu kontrol yok -- orasi basili tutma oyunu, tiklama sayisi
-		diye bir sey yok.
+		  2. SURE. Insan elinin ustu sayilan MAX_CPS ile bile minioyun belli
+		     bir sureden once bitirilemez. %15 pay birakildi: ilk tiklamalar
+		     kovadaki hazir jetonlari harcadigi icin gercek sure teorik alt
+		     sinirin biraz altina inebiliyor.
+
+		Denizde bu kontrol yok -- orasi basili tutma oyunu.
 	]]
 	if not session.sea and won == true then
-		local altSinir = KaziMinigame.minDuration(session.gearId, session.rarityId) * 0.85
+		local enHizli = KaziMinigame.minDuration(session.gearId, session.rarityId)
+
+		if enHizli == math.huge then
+			warn(
+				`[Kazi] {player.Name} erisilemez bir kademeyi kazandi dedi `
+					.. `({session.gearId} ile {session.rarityId}), reddedildi`
+			)
+			finishDig(player, false)
+			return
+		end
+
+		local altSinir = enHizli * 0.85
 		if elapsed < altSinir then
 			warn(
 				`[Kazi] {player.Name} minioyunu imkansiz surede bitirdi `

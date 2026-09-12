@@ -1,103 +1,113 @@
 --!strict
 --[[
-	KUMDAKI KAZI MINIOYUNU  --  tiklama tabanli
+	KUMDAKI KAZI MINIOYUNU  --  tiklama vs geri tepme
 
-	Dig & Clean mantigi: oyuncu tikladikca bar dolar, tiklamayi birakinca
-	geri kacar. Zorluk arttikca gereken tiklama sayisi artar.
+	Dig & Clean mantigi. Tek bir imlec var:
 
-	  - her tiklama ilerlemeye 1/gerekenTiklama ekler
-	  - tiklanmadigi her saniye KUREGIN drainRate'i kadar geri gider
-	  - bar dolarsa brainrot cikar, sure biterse kacar
+	  - her tiklama imleci ILERI iter (kurek ne kadar iyiyse o kadar cok)
+	  - imlec kendiliginden GERI TEPER (rarity ne kadar yuksekse o kadar hizli)
+	  - imlec dolarsa brainrot cikar, SIFIRA duserse kacar
 
-	DENIZDEKI minioyun bu DEGIL: orada Stardew tarzi bar/hedef oyunu var
-	(bkz. Shared > DigMinigame). Kumda kurek, denizde olta belirleyici.
+	SURE YOK. Oyuncu imlec sifirlanana kadar minioyunda kalir; ne kadar
+	dayanabildigi tamamen tiklama hizina bagli.
 
 	--------------------------------------------------------------
+	KUREK KADEMEYI ACAR  --  matematiksel olarak
+
+	Saniyede kazanilabilecek EN FAZLA ilerleme:  MAX_CPS * kazanc
+	Saniyede kaybedilen ilerleme:                geriTepme
+
+	    geriTepme >= MAX_CPS * kazanc   ->   imlec ASLA dolmaz
+
+	Yani kurek yetmiyorsa oyuncu makro hiziyla tiklasa bile o brainrotu
+	alamaz -- zorlanmaz, IMKANSIZDIR. Tablolar bu esik gozetilerek
+	ayarlandi; her kurek kademesi tam bir rarity kademesi aciyor:
+
+	    Lv1  Common rahat   Rare zor      Epic+ IMKANSIZ
+	    Lv2  Rare rahat     Epic zor      Legendary+ IMKANSIZ
+	    Lv3  Epic rahat     Legendary zor Mythic+ IMKANSIZ
+	    Lv4  Legendary rahat Mythic zor   Divine IMKANSIZ
+	    Lv5  Mythic rahat   Divine zor
+
+	"Zor" = tiklama hizini neredeyse tavanda tutman gerekir.
+	--------------------------------------------------------------
+
 	MACRO KORUMASI
 
-	Otomatik tiklayici saniyede yuzlerce tik gonderebilir; onlemezsen kazi
-	minioyunu bir tus makrosuyla aninda gecilir.
+	Yukaridaki esigin anlamli olmasi MAX_CPS'in gercekten tavan olmasina
+	bagli: otomatik tiklayici saniyede yuzlerce tik gonderebilseydi butun
+	kademe duzeni cokerdi.
 
-	Burada JETON KOVASI (token bucket) kullaniliyor: saniyede en fazla
-	MAX_CPS tiklama SAYILIR, kova en fazla BURST jeton biriktirir. Fazla
-	tiklamalar cezalandirilmaz, yok sayilir -- yani makro ile saniyede 100
-	tiklayan, eliyle MAX_CPS tiklayan oyuncudan daha hizli bitiremez.
+	JETON KOVASI (token bucket): saniyede en fazla MAX_CPS tiklama SAYILIR,
+	kova en fazla BURST jeton biriktirir. Fazla tiklamalar cezalandirilmaz,
+	yok sayilir -- makro ile saniyede 100 tiklayan, eliyle MAX_CPS tiklayan
+	oyuncudan daha hizli ilerleyemez. Ceza yerine yok saymanin sebebi:
+	insan elinin hizli serileri (cift tik, parmak titremesi) haksiz yere
+	cezalandirilmasin.
 
-	Ceza yerine yok saymanin sebebi: insan eliyle atilan hizli seriler
-	(double-click, parmak titremesi) haksiz yere cezalandirilmasin.
-
-	Sunucu ayrica ALT SINIR suresini dogruluyor (bkz. KaziSistemi): gereken
-	tiklama MAX_CPS ile bile bu sureden once bitirilemez, daha erken "kazandim"
-	diyen istemci reddedilir.
-	--------------------------------------------------------------
+	Sunucu ayrica bagimsiz dogruluyor (bkz. KaziSistemi): erisilemez bir
+	kademede gelen zafer ve teorik alt sinirdan hizli biten minioyun
+	reddedilir.
 ]]
 
 local DigMinigame = require(script.Parent.DigMinigame)
-local Rarity = require(script.Parent.Rarity)
 
 local KaziMinigame = {}
 KaziMinigame.__index = KaziMinigame
 
 --[[
 	Insan elinin ustu. Olcum degil, oynanabilirlik karari: 12 cps hizli bir
-	oyuncunun kisa sureli tepe degeri. Buyutursen makro avantaji artar,
-	kucultursen hizli oyuncu cezalandirilmis olur.
+	oyuncunun kisa sureli tepe degeri.
+
+	DIKKAT: bu sayi ayni zamanda DENGE esigi. Buyutursen alt kurekler ust
+	kademeleri alabilir hale gelir, kucultursen ust kademeler kimse
+	tarafindan alinamaz. Degistirirsen asagidaki iki tabloyu da gozden gecir.
 ]]
 KaziMinigame.MAX_CPS = 12
 
 -- Kova kapasitesi: kisa serilerde tiklamalar bosa gitmesin
 KaziMinigame.BURST = 4
 
---[[
-	KADEMEYE GORE TABAN TIKLAMA
+-- Imlec buradan baslar: oyuncunun toparlanmasi icin kucuk bir pay
+KaziMinigame.START = 0.25
 
-	Kurek rarity'ye tam yetiyorken gereken tiklama sayisi. Kurek geride
-	kaldikca asagidaki carpanla buyur.
+--[[
+	KUREGE GORE TIKLAMA KAZANCI  (imlecin orani, tiklama basina)
+
+	Kademe basina tavan hiz (MAX_CPS * kazanc):
+	    Lv1 0.240   Lv2 0.336   Lv3 0.456   Lv4 0.600   Lv5 0.780
+]]
+local KAZANC: { [number]: number } = {
+	[1] = 0.020,
+	[2] = 0.028,
+	[3] = 0.038,
+	[4] = 0.050,
+	[5] = 0.065,
+}
+
+--[[
+	KADEMEYE GORE GERI TEPME  (imlecin orani, saniye basina)
+
+	Her deger, bir alt kuregin tavan hizinin biraz USTUNDE secildi:
+	    Epic 0.25      > Lv1 tavani 0.240   -> Lv1 ile IMKANSIZ
+	    Legendary 0.35 > Lv2 tavani 0.336   -> Lv2 ile IMKANSIZ
+	    Mythic 0.48    > Lv3 tavani 0.456   -> Lv3 ile IMKANSIZ
+	    Secret 0.64    > Lv4 tavani 0.600   -> Lv4 ile IMKANSIZ
 
 	Divine'in kimligi hala "Secret" -- gorunen adi degisti, veri uyumu icin
 	kimlik korundu (bkz. Shared > Rarity).
 ]]
-local TABAN_TIKLAMA: { [string]: number } = {
-	Common = 8,
-	Rare = 12,
-	Epic = 18,
-	Legendary = 26,
-	Mythic = 36,
-	Secret = 50,
+local GERI_TEPME: { [string]: number } = {
+	Common = 0.06,
+	Rare = 0.13,
+	Epic = 0.25,
+	Legendary = 0.35,
+	Mythic = 0.48,
+	Secret = 0.64,
 }
-
---[[
-	KUREK FARKI
-
-	gap = rarity.order - kurek.level
-
-	  gap <= 0   kurek yetiyor          -> daha az tiklama
-	  gap == 1   bir kademe yukarisi    -> zorlanir
-	  gap == 2   iki kademe yukarisi    -> cok zor
-	  gap >= 3   kuregin cok otesi      -> pratikte bitirilemez
-
-	Bar oyunundaki (DigMinigame) kademe mantiginin aynisi; orada hedefin
-	kacis agresifligini, burada gereken tiklama sayisini belirliyor.
-]]
-local GAP_CARPANI: { [number]: number } = {
-	[0] = 0.7,
-	[1] = 1.5,
-	[2] = 2.4,
-}
-
-local function gapCarpani(gap: number): number
-	if gap < 0 then
-		-- Kurek rarity'nin uzerinde: her fazla kademe biraz daha kolaylastirir
-		return math.max(0.45, 0.7 + gap * 0.08)
-	end
-	return GAP_CARPANI[gap] or 4
-end
 
 export type State = {
 	progress: number,
-	clicks: number,
-	required: number,
-	timeLeft: number,
 	finished: boolean,
 	won: boolean,
 	-- Son tiklama makro sinirina takildi mi (arayuz uyarisi icin)
@@ -106,65 +116,56 @@ export type State = {
 
 export type Game = typeof(setmetatable(
 	{} :: {
-		required: number,
+		gain: number,
 		drain: number,
-		duration: number,
 		state: State,
 		_tokens: number,
 	},
 	KaziMinigame
 ))
 
---[[
-	Bu kurekle bu rarity icin gereken tiklama sayisi.
-	Arayuz de (magaza ipuclari) ayni sayiyi gosterebilsin diye disarida.
-]]
-function KaziMinigame.requiredClicks(gearId: string, rarityId: string): number
+-- Bu kurekle tiklama basina kazanilan ilerleme
+function KaziMinigame.gain(gearId: string): number
 	local gear = DigMinigame.gear(gearId)
-	local info = Rarity.Info[rarityId]
+	return KAZANC[gear.level] or KAZANC[1]
+end
 
-	local taban = TABAN_TIKLAMA[rarityId] or 10
-	local order = if info then info.order else 1
-
-	return math.max(4, math.ceil(taban * gapCarpani(order - gear.level)))
+-- Bu kademenin saniye basina geri tepmesi
+function KaziMinigame.drain(rarityId: string): number
+	return GERI_TEPME[rarityId] or GERI_TEPME.Common
 end
 
 --[[
-	Bu kurek ve rarity icin minioyunun EN HIZLI bitirilebilecegi sure.
+	Bu kurekle bu kademe ALINABILIR MI?
+
+	Tavan hiz geri tepmeyi gecmiyorsa imlec asla dolmaz; ne kadar hizli
+	tiklandiginin onemi yoktur.
+]]
+function KaziMinigame.reachable(gearId: string, rarityId: string): boolean
+	return KaziMinigame.MAX_CPS * KaziMinigame.gain(gearId) > KaziMinigame.drain(rarityId)
+end
+
+--[[
+	Minioyunun EN HIZLI bitirilebilecegi sure (saniye).
+	Erisilemez kademede math.huge doner.
+
 	Sunucu bunu dogrulama esigi olarak kullanir.
 ]]
 function KaziMinigame.minDuration(gearId: string, rarityId: string): number
-	return KaziMinigame.requiredClicks(gearId, rarityId) / KaziMinigame.MAX_CPS
+	local net = KaziMinigame.MAX_CPS * KaziMinigame.gain(gearId) - KaziMinigame.drain(rarityId)
+	if net <= 0 then
+		return math.huge
+	end
+	return (1 - KaziMinigame.START) / net
 end
 
 function KaziMinigame.new(gearId: string, rarityId: string): Game
-	local gear = DigMinigame.gear(gearId)
-	local required = KaziMinigame.requiredClicks(gearId, rarityId)
-
-	--[[
-		SURE
-
-		En hizli bitis suresinin katı. Insan eliyle rahat yetisilecek kadar
-		bol, ama kurek yetmiyorken (tiklama sayisi katlanmisken) yine de
-		bitirilemeyecek kadar dar.
-	]]
-	local duration = math.clamp(required / KaziMinigame.MAX_CPS * 2.4, 5, 20)
-
 	local self = setmetatable({
-		required = required,
-		--[[
-			Tiklanmadiginda saniyede ne kadar geri gider. Kuregin kendi
-			drainRate'i kullaniliyor (0.16 tahta -> 0.08 Celestial): iyi
-			kurek hem daha az tiklama ister hem daha yavas geri kacar.
-		]]
-		drain = gear.drainRate,
-		duration = duration,
+		gain = KaziMinigame.gain(gearId),
+		drain = KaziMinigame.drain(rarityId),
 		_tokens = KaziMinigame.BURST,
 		state = {
-			progress = 0,
-			clicks = 0,
-			required = required,
-			timeLeft = duration,
+			progress = KaziMinigame.START,
 			finished = false,
 			won = false,
 			throttled = false,
@@ -193,8 +194,7 @@ function KaziMinigame.click(self: Game): boolean
 
 	self._tokens -= 1
 	s.throttled = false
-	s.clicks += 1
-	s.progress = math.min(1, s.progress + 1 / self.required)
+	s.progress = math.min(1, s.progress + self.gain)
 
 	if s.progress >= 1 then
 		s.finished = true
@@ -204,6 +204,13 @@ function KaziMinigame.click(self: Game): boolean
 	return true
 end
 
+--[[
+	GERI TEPME
+
+	Sure siniri YOK: oyun yalnizca imlec dolunca (kazanma) ya da sifira
+	dusunce (kaybetme) biter. Oyuncu tiklamayi surdurdugu surece minioyunda
+	kalir.
+]]
 function KaziMinigame.step(self: Game, dt: number): State
 	local s = self.state
 	if s.finished then
@@ -213,11 +220,10 @@ function KaziMinigame.step(self: Game, dt: number): State
 	-- Kova dolar: saniyede MAX_CPS jeton, en fazla BURST
 	self._tokens = math.min(KaziMinigame.BURST, self._tokens + dt * KaziMinigame.MAX_CPS)
 
-	-- Tiklanmayan her an ilerleme geri kacar
-	s.progress = math.max(0, s.progress - self.drain * dt)
+	s.progress -= self.drain * dt
 
-	s.timeLeft = math.max(0, s.timeLeft - dt)
-	if s.timeLeft <= 0 then
+	if s.progress <= 0 then
+		s.progress = 0
 		s.finished = true
 		s.won = false
 	end
