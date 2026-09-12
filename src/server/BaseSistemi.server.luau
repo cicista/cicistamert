@@ -1218,8 +1218,16 @@ local function buildDisplay(item: any): Model
 		Onceden dogrudan ScaleTo(scale) cagriliyordu ve buyuk export edilmis
 		modeller (Bananita Dolphinita, Orcalero Orcala) haritayi kapatacak
 		kadar devlesiyordu.
+
+		KADEME OLCEGI
+		Divine sonrasi kademeler boardda IKI KAT buyuk duruyor
+		(Rarity.modelScale); Cosmic sonrasinda boyut sinifi tabani da
+		yukseliyor -- Tiny artik Regular kadar (Condition.scaleFor).
 	]]
-	Assets.fitModel(model, Assets.BrainrotSize.slotSize, Condition.scale(item.condition))
+	local boyutOlcegi = Condition.scaleFor(item.condition, rarityInfo.order)
+		* Rarity.modelScale(item.rarity)
+
+	Assets.fitModel(model, Assets.BrainrotSize.slotSize, boyutOlcegi)
 
 	--[[
 		Mutasyonsuz brainrotta gorsel efekt yok.

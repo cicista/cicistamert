@@ -112,6 +112,41 @@ function Condition.scale(id: string?): number
 	return Condition.get(id).scale
 end
 
+--[[
+	KADEMEYE GORE BOYUT SINIFI OLCEGI
+
+	Cosmic SONRASI kademelerde (Secret, Infernal, Abyssal) en kucuk sinif
+	artik kucuk degil: Tiny, Regular ile AYNI boyda duruyor ve ustu oradan
+	buyuyerek devam ediyor.
+
+	    sinif      normal   Cosmic sonrasi
+	    Tiny        0.25        1.0
+	    Small       0.60        1.2
+	    Regular     1.00        1.5
+	    Large       1.40        1.8
+	    Huge        2.00        2.2
+
+	Sebep: o kademelerdeki bir brainrotun Tiny cikmasi onu degersiz
+	gostermemeli; kademe zaten nadir, en kucugu bile heybetli dursun.
+
+	Kademe verilmezse normal olcek doner -- eski cagrilar bozulmuyor.
+]]
+local USTUN_OLCEK: { [string]: number } = {
+	Tiny = 1.0,
+	Small = 1.2,
+	Normal = 1.5,
+	Large = 1.8,
+	Huge = 2.2,
+}
+
+function Condition.scaleFor(id: string?, rarityOrder: number?): number
+	if rarityOrder and rarityOrder >= 8 then
+		return USTUN_OLCEK[Condition.get(id).id] or Condition.scale(id)
+	end
+
+	return Condition.scale(id)
+end
+
 function Condition.multiplier(id: string?): number
 	return Condition.get(id).multiplier
 end

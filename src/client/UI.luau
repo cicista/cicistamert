@@ -165,7 +165,8 @@ end
 	Divine cikan yazi sonsuza dek parildamaya devam ederdi.
 ]]
 function UI.rarityStyle(label: TextLabel, rarityId: string): TextLabel
-	local color = Rarity.color(rarityId)
+	-- textColor: cok koyu kademeler (Secret) yazida beyaza doner, okunsun
+	local color = Rarity.textColor(rarityId)
 
 	Divine.untag(label)
 

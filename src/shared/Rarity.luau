@@ -288,6 +288,39 @@ end
 ]]
 Rarity.LabelScaleMax = 1.5
 
+--[[
+	BOARD MODEL OLCEGI
+
+	Divine SONRASI kademelerin modelleri base slotunda iki kat buyuk
+	duruyor: o kademeler zaten nadir, boardda da oyle gorunsunler.
+
+	Divine ve altinda 1 -- mevcut gorunum hic degismiyor.
+]]
+function Rarity.modelScale(id: string?): number
+	local info = if id then Rarity.Info[id :: RarityId] else nil
+	return if info and info.order >= 7 then 2 else 1
+end
+
+--[[
+	YAZI RENGI
+
+	Kademe rengi bazen YAZI icin kullanilamiyor: Secret neredeyse siyah
+	(24,24,28) ve koyu zeminde okunmuyordu. Cok koyu kademelerde yazi
+	beyaza cevriliyor; parlama efekti zaten rengi tasiyor.
+
+	Parlaklik esigi 0.25: bunun altindaki her renk "okunmaz koyu" sayilir.
+]]
+function Rarity.textColor(id: string?): Color3
+	local color = Rarity.color(id or "")
+	local _, _, parlaklik = color:ToHSV()
+
+	if parlaklik < 0.25 then
+		return Color3.fromRGB(245, 245, 250)
+	end
+
+	return color
+end
+
 function Rarity.labelScale(id: string?): number
 	local info = if id then Rarity.Info[id :: RarityId] else nil
 	if not info or info.order <= 6 then

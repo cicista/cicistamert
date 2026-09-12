@@ -166,7 +166,7 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 		billboard,
 		"Kademe",
 		Rarity.labelText(item.rarity),
-		rarityInfo.color,
+		Rarity.textColor(item.rarity),
 		L.raritySize,
 		L.rarityY
 	)
@@ -176,10 +176,10 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 			Mythic ile ayni parlak gradyan, ustune parildama etiketi.
 			tagIf: Cosmic mor, Secret siyah, Infernal kirmizi, Abyssal mavi.
 		]]
-		Fonts.applyGlow(rarityLabel, rarityInfo.color)
+		Fonts.applyGlow(rarityLabel, Rarity.textColor(item.rarity))
 		Divine.tagIf(rarityLabel, item.rarity)
 	elseif Rarity.isGlowing(item.rarity) then
-		Fonts.applyGlow(rarityLabel, rarityInfo.color)
+		Fonts.applyGlow(rarityLabel, Rarity.textColor(item.rarity))
 	end
 
 	------------------------------------------------------------------
@@ -188,7 +188,7 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	-- TEK RENK: kademenin rengi. Efekt kademe satirinda oldugu icin isim
 	-- sade duruyor -- iki satir birden parlarsa hicbiri okunmuyor.
 	------------------------------------------------------------------
-	local nameLabel = line(billboard, "Isim", item.name or "???", rarityInfo.color, L.nameSize, L.nameY)
+	local nameLabel = line(billboard, "Isim", item.name or "???", Rarity.textColor(item.rarity), L.nameSize, L.nameY)
 
 	------------------------------------------------------------------
 	-- BOYUT (+ mutasyon)

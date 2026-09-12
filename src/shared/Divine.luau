@@ -136,8 +136,15 @@ Divine.Flashes = {
 	-- Secret (kimligi Gizli): siyah <-> beyaz
 	Gizli = {
 		tag = "GizliRenk",
-		colorA = Color3.fromRGB(14, 14, 16),
-		colorB = Color3.fromRGB(255, 255, 255),
+		--[[
+			UCLAR TERS: colorA BEYAZ.
+
+			Gecis zamanin cogunu colorA da geciriyor; siyah basta olunca yazi
+			koyu zeminde okunmuyordu. Boylece tema ayni (siyah-beyaz) ama
+			yazi cogunlukla beyaz, arada siyaha dusuyor.
+		]]
+		colorA = Color3.fromRGB(245, 245, 250),
+		colorB = Color3.fromRGB(14, 14, 16),
 		interval = 0.5,
 		sweep = 1.2,
 		band = 0.10,
@@ -147,7 +154,7 @@ Divine.Flashes = {
 	Infernal = {
 		tag = "InfernalRenk",
 		colorA = Color3.fromRGB(140, 6, 14),
-		colorB = Color3.fromRGB(255, 255, 255),
+		colorB = Color3.fromRGB(14, 14, 16),
 		interval = 0.4,
 		sweep = 0.95,
 		band = 0.08,
