@@ -22,11 +22,11 @@
 	Zorlugun olcusu TIKLAMA HIZI: imleci yerinde tutmak (ne ilerlemek ne
 	gerilemek) icin saniyede kac tiklama gerektigi.
 
-	    fark  gereken hiz   his               tavan hiza (12) gore
-	    -2       1.5 cps    cok cok kolay           %13
-	    -1       2.0 cps    cok kolay               %17
-	     0       3.0 cps    kolay                   %25
-	     1       5.5 cps    ZOR (en ust kademe)     %46
+	    fark  gereken hiz   his                  tavan hiza (12) gore
+	  -2 alti    1.5 cps    cok kolay                  %13
+	    -1       2.5 cps    kolay                      %21
+	     0       4.0 cps    normal                     %33
+	     1       5.5 cps    ZOR (en ust kademe)        %46
 	     2        --        IMKANSIZ
 
 	Fark 2'den itibaren kademe hic alinamaz: gereken geri tepme tavanin
@@ -34,11 +34,14 @@
 	minioyunu gorur ama alamayacagi hemen belli olur.
 
 	KUREGE GORE TABLO
-	    Lv1   Common kolay      Rare ZOR        Epic+ YOK
-	    Lv2   Common c.kolay    Rare kolay      Epic ZOR        Legendary+ YOK
-	    Lv3   Rare c.kolay      Epic kolay      Legendary ZOR   Mythic+ YOK
-	    Lv4   Epic c.kolay      Legendary kolay Mythic ZOR      Divine YOK
-	    Lv5   Legendary c.kolay Mythic kolay    Divine ZOR
+	    Lv1   Common normal   Rare normal   Epic+ YOK        <- Rare muaf
+	    Lv2   Common kolay    Rare normal   Epic ZOR         Legendary+ YOK
+	    Lv3   Rare kolay      Epic normal   Legendary ZOR    Mythic+ YOK
+	    Lv4   Epic kolay      Legendary normal  Mythic ZOR   Divine YOK
+	    Lv5   Legendary kolay Mythic normal     Divine ZOR
+
+	Lv1'in Rare'i tabloya gore ZOR olurdu; baslangic kuregi oldugu icin
+	bir basamak muaf tutuluyor (bkz. MUAF_KUREK_LEVEL).
 	--------------------------------------------------------------
 
 	MACRO KORUMASI
@@ -101,21 +104,32 @@ KaziMinigame.GAIN = 0.03
 	FARKA GORE GEREKEN TIKLAMA HIZI  (imleci yerinde tutmak icin, saniyede)
 
 	Zorlugun tek olcusu bu; geri tepme dogrudan buradan turetiliyor.
-	Formul degil ELLE YAZILMIS tablo: kademeler arasi fark istenildigi gibi
+	Formul degil ELLE YAZILMIS tablo: basamaklar istenildigi gibi
 	ayarlanabilsin diye.
 
-	    -2  cok cok kolay
-	    -1  cok kolay
-	     0  kolay
-	     1  ZOR  -- ulasilabilen en ust kademe
-	     2  IMKANSIZ  (tabloda yok, bkz. IMKANSIZ_FARK)
+	    -2 ve alti  cok kolay
+	    -1          kolay
+	     0          normal
+	     1          ZOR  -- ulasilabilen en ust kademe
+	     2          IMKANSIZ  (tabloda yok, bkz. IMKANSIZ_FARK)
 ]]
 local GEREKEN_CPS: { [number]: number } = {
 	[-2] = 1.5,
-	[-1] = 2,
-	[0] = 3,
+	[-1] = 2.5,
+	[0] = 4,
 	[1] = 5.5,
 }
+
+--[[
+	BASLANGIC KUREGINE MUAFIYET
+
+	Lv1 tahta kurek oyuncunun eline oyunun ilk dakikasinda geciyor ve tek
+	"zor" basamagi Rare oluyordu -- ikinci kazisinda duvara toslamasin diye
+	o basamak NORMALE cekiliyor.
+
+	Tek istisna budur; geri kalan her kurekte zorluk yalnizca farka bagli.
+]]
+local MUAF_KUREK_LEVEL = 1
 
 --[[
 	Bu farktan itibaren kademe ERISILEMEZ.
@@ -187,6 +201,14 @@ function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
 	]]
 	if fark >= KaziMinigame.IMKANSIZ_FARK then
 		return KaziMinigame.MAX_CPS * KaziMinigame.IMKANSIZ_KATI
+	end
+
+	--[[
+		Baslangic kuregi bir basamak kolaylasir: tek "zor" basamagi
+		(Rare) normale iner. Bkz. MUAF_KUREK_LEVEL.
+	]]
+	if fark > 0 and DigMinigame.gear(gearId).level == MUAF_KUREK_LEVEL then
+		fark -= 1
 	end
 
 	-- Tablonun altina dusen farklar en kolay degerde kalir
