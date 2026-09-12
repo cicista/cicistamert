@@ -48,7 +48,7 @@ Divine.colorB = Color3.fromRGB(255, 255, 255)
 	Artik en YAVAS parildayan kademe Divine; ust kademeler sirayla
 	hizlaniyor (bkz. Flashes): 0.7 / 0.6 / 0.5 / 0.4 / 0.3.
 ]]
-Divine.interval = 0.7
+Divine.interval = 0.5
 
 --[[
 	Ruletlerde ve panellerde kullanilan ZEMIN tonu.
@@ -119,8 +119,8 @@ Divine.Flashes = {
 		colorA = Divine.colorA,
 		colorB = Divine.colorB,
 		interval = Divine.interval,
-		sweep = 1.9,
-		band = 0.16,
+		sweep = 1.30,
+		band = 0.14,
 	},
 
 	-- Cosmic: parlak koyu mor <-> beyaz
@@ -128,9 +128,9 @@ Divine.Flashes = {
 		tag = "KozmikRenk",
 		colorA = Color3.fromRGB(138, 43, 226),
 		colorB = Color3.fromRGB(255, 255, 255),
-		interval = 0.6,
-		sweep = 1.5,
-		band = 0.13,
+		interval = 0.42,
+		sweep = 1.00,
+		band = 0.11,
 	},
 
 	-- Secret (kimligi Gizli): siyah <-> beyaz
@@ -145,9 +145,9 @@ Divine.Flashes = {
 		]]
 		colorA = Color3.fromRGB(245, 245, 250),
 		colorB = Color3.fromRGB(14, 14, 16),
-		interval = 0.5,
-		sweep = 1.2,
-		band = 0.10,
+		interval = 0.34,
+		sweep = 0.78,
+		band = 0.085,
 	},
 
 	-- Infernal: kan kirmizisi <-> beyaz
@@ -155,9 +155,9 @@ Divine.Flashes = {
 		tag = "InfernalRenk",
 		colorA = Color3.fromRGB(140, 6, 14),
 		colorB = Color3.fromRGB(14, 14, 16),
-		interval = 0.4,
-		sweep = 0.95,
-		band = 0.08,
+		interval = 0.26,
+		sweep = 0.58,
+		band = 0.065,
 	},
 
 	-- Abyssal: derin deniz mavisi <-> beyaz
@@ -165,9 +165,9 @@ Divine.Flashes = {
 		tag = "AbyssalRenk",
 		colorA = Color3.fromRGB(8, 52, 130),
 		colorB = Color3.fromRGB(255, 255, 255),
-		interval = 0.3,
-		sweep = 0.7,
-		band = 0.06,
+		interval = 0.18,
+		sweep = 0.40,
+		band = 0.045,
 	},
 } :: { [string]: Parilti }
 

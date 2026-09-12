@@ -278,6 +278,9 @@ local hucreler: { Hucre } = {}
 -- Kilit ikonu tek sefer cozulup buradaki butun rozetlere yaziliyor
 local kilitRozetleri: { ImageLabel } = {}
 
+-- Kademe basligindaki kesif sayaclari: rarityId -> yazi
+local kademeSayaclari: { [string]: TextLabel } = {}
+
 --[[
 	3B ONIZLEMEYI KUR
 
@@ -523,6 +526,12 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	kutu.BackgroundTransparency = 1
 	kutu.BorderSizePixel = 0
 	kutu.AutoButtonColor = false
+	--[[
+		Parilti bandi ve fareyle buyume hucrenin DISINA tasiyordu: ic
+		cerceve UIScale ile buyurken kutunun sinirlarini asiyor, komsu
+		hucrenin uzerine sarkiyordu. Kirpma en distaki kutuda.
+	]]
+	kutu.ClipsDescendants = true
 	kutu.Text = ""
 	kutu.LayoutOrder = sira
 	kutu.Parent = parent
@@ -730,17 +739,76 @@ for _, rarityId in siraliKademeler() do
 	baslik.BackgroundTransparency = 1
 	baslik.LayoutOrder = kademeSirasi * 10
 	baslik.Parent = liste
+	-- Doku basligin arkasinda kalsin, yazi onde olsun
+	baslik.ZIndex = 1
 
+	--[[
+		KADEME BASLIGI
+
+		Solda kademe adi, sagda o kademenin kesif sayaci (3 / 17).
+		Ustteki genel sayacin ayni bilgiyi kademe kademe verdigi hali --
+		oyuncu hangi kademede eksigi oldugunu bir bakista goruyor.
+	]]
 	local etiket = UI.text({
 		text = Rarity.displayName(rarityId),
 		size = UI.Sizes.label,
 		font = UI.Fonts.bold,
 		align = Enum.TextXAlignment.Left,
-		frameSize = UDim2.fromScale(1, 1),
+		frameSize = UDim2.new(1, -90, 1, 0),
 		parent = baslik,
 		name = "Etiket",
 	})
+	etiket.ZIndex = 2
 	UI.rarityStyle(etiket, rarityId)
+
+	local kademeSayac = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Right,
+		frameSize = UDim2.fromOffset(86, 26),
+		position = UDim2.new(1, -86, 0, 0),
+		parent = baslik,
+		name = "Sayac",
+	})
+	kademeSayac.ZIndex = 2
+	kademeSayaclari[rarityId] = kademeSayac
+
+	--[[
+		KADEMENIN KENDI DOKUSU
+
+		Baslik duz ve sade duruyordu. Arkasina kademe renginde egik bir
+		serit dokusu biniyor: her kademe kendi temasinda gorunuyor, liste
+		bolumlere ayrilmis gibi okunuyor.
+
+		Doku disaridan resim gerektirmiyor -- gecise bol sayida ANI
+		saydamlik duragi konarak kesik seritler olusturuluyor.
+	]]
+	local doku = Instance.new("Frame")
+	doku.Name = "Doku"
+	doku.Size = UDim2.fromScale(1, 1)
+	doku.BackgroundColor3 = Rarity.color(rarityId)
+	doku.BackgroundTransparency = 0.78
+	doku.BorderSizePixel = 0
+	doku.ZIndex = 0
+	doku.Parent = baslik
+	UI.corner(doku, 6)
+
+	do
+		local stops = {}
+		local sikilik = 13
+		for i = 0, sikilik do
+			table.insert(
+				stops,
+				NumberSequenceKeypoint.new(i / sikilik, if i % 2 == 0 then 0 else 1)
+			)
+		end
+
+		local gecis = Instance.new("UIGradient")
+		gecis.Rotation = 24
+		gecis.Transparency = NumberSequence.new(stops)
+		gecis.Parent = doku
+	end
 
 	local izgara = Instance.new("Frame")
 	izgara.Name = `Izgara_{rarityId}`
@@ -903,15 +971,36 @@ IndexDurum.OnClientEvent:Connect(function(kesfedilen)
 	end
 
 	local bulunan = 0
+
+	-- Kademe basina: rarityId -> { bulunan, toplam }
+	local kademe: { [string]: { number } } = {}
+
 	for _, hucre in hucreler do
 		hucre.kesif = kesfedilen[hucre.name] == true
+
+		local sayi = kademe[hucre.rarity]
+		if not sayi then
+			sayi = { 0, 0 }
+			kademe[hucre.rarity] = sayi
+		end
+		sayi[2] += 1
+
 		if hucre.kesif then
 			bulunan += 1
+			sayi[1] += 1
 		end
+
 		hucreCiz(hucre)
 	end
 
 	sayac.Text = `{bulunan} / {#hucreler} kesfedildi`
+
+	-- Her kademe basligi kendi payini yaziyor
+	for rarityId, etiket in kademeSayaclari do
+		local sayi = kademe[rarityId]
+		etiket.Text = if sayi then `{sayi[1]} / {sayi[2]}` else ""
+	end
+
 	pencereyiTazele()
 
 	--[[
