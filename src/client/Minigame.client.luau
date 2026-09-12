@@ -434,6 +434,12 @@ local otoSahip = OtoTiklayici.testSahipligi()
 local otoAcik = true
 
 local function otoCalisiyorMu(): boolean
+	--[[
+		Kurege gore ayrica bir kontrol YOK: tiklayici her kazida calisir.
+		Kuregin yetmedigi kademede geri tepme tavanin 2.5 kati oldugu icin
+		imlec yine dibe iner ve brainrot kacar -- denge minioyunun kendi
+		kuralindan geliyor, tiklayicidan degil.
+	]]
 	return OtoTiklayici.gorunur() and otoSahip and otoAcik
 end
 
@@ -985,6 +991,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		------------------------------------------------------------------
 		local oyun = KaziMinigame.new(gearId, rarityId)
 		kazi = oyun
+
 		bindInput()
 		renderKazi(oyun.state)
 

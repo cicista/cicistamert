@@ -37,6 +37,19 @@
 	Erisilemez kademeler (fark >= IMKANSIZ_FARK) yine alinamaz: oradaki
 	geri tepme tavanin 2.5 katini ister. Yani kurek-kademe merdiveninin
 	SINIRLARI korunur, kaybolan sey basamak icindeki efordur.
+
+	KUREGE GORE NE KIRAR  (simulasyonla olculdu, sunucu kontroluyle)
+
+	    kurek        Common Rare Epic Legend Mythic Divine
+	    Wooden  L1     +     +    -     -      -      -
+	    Iron    L2     +     +    +     -      -      -
+	    Golden  L3     +     +    +     +      -      -
+	    Diamond L4     +     +    +     +      +      -
+	    Celest. L5     +     +    +     +      +      +
+
+	Yetmeyen kademede tiklayici DURMAZ, vurmaya devam eder; ama imlec
+	geri tepmeye yetisemez, minioyun kaybedilir ve brainrot kacar.
+	Oyuncuya ayrica bir uyari gosterilmez.
 ]]
 
 local RunService = game:GetService("RunService")
