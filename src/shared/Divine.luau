@@ -68,12 +68,82 @@ function Divine.untag(instance: Instance)
 end
 
 --[[
-	Kademesi Divine ise etiketler, degilse dokunmaz.
+	ADAYA BAGLI UST KADEMELERIN PARILTILARI
+
+	Divine'in sari<->beyaz parildamasinin aynisi, her kademe icin ayri iki
+	uc renkle. Her birinin KENDI etiketi var; istemci hepsini ayri palet
+	olarak kaydediyor (bkz. StarterPlayerScripts > IlahiRenk).
+
+	Divine'in kendisi de burada: boylece "hangi kademe parildar" sorusunun
+	tek bir cevabi oluyor ve tagIf her yerde ayni sekilde calisiyor.
+
+	interval kucukse parildama sertlesir. Ust kademeler biraz daha hizli
+	parildiyor -- "her yeni ada oncekinden daha gosterisli" istegi.
+]]
+export type Parilti = {
+	tag: string,
+	colorA: Color3,
+	colorB: Color3,
+	interval: number,
+}
+
+Divine.Flashes = {
+	-- Divine (kimligi Secret): sari <-> beyaz
+	Secret = {
+		tag = Divine.Tag,
+		colorA = Divine.colorA,
+		colorB = Divine.colorB,
+		interval = Divine.interval,
+	},
+
+	-- Cosmic: parlak koyu mor <-> beyaz
+	Cosmic = {
+		tag = "KozmikRenk",
+		colorA = Color3.fromRGB(138, 43, 226),
+		colorB = Color3.fromRGB(255, 255, 255),
+		interval = 0.038,
+	},
+
+	-- Secret (kimligi Gizli): siyah <-> beyaz
+	Gizli = {
+		tag = "GizliRenk",
+		colorA = Color3.fromRGB(14, 14, 16),
+		colorB = Color3.fromRGB(255, 255, 255),
+		interval = 0.034,
+	},
+
+	-- Infernal: kan kirmizisi <-> beyaz
+	Infernal = {
+		tag = "InfernalRenk",
+		colorA = Color3.fromRGB(140, 6, 14),
+		colorB = Color3.fromRGB(255, 255, 255),
+		interval = 0.03,
+	},
+
+	-- Abyssal: derin deniz mavisi <-> beyaz
+	Abyssal = {
+		tag = "AbyssalRenk",
+		colorA = Color3.fromRGB(8, 52, 130),
+		colorB = Color3.fromRGB(255, 255, 255),
+		interval = 0.026,
+	},
+} :: { [string]: Parilti }
+
+--[[
+	Kademesi parildayan bir kademeyse ETIKETLER, degilse dokunmaz.
 	Cagiran taraflarin her yerde ayni "if" i yazmamasi icin.
+
+	Eskiden yalnizca Divine'i biliyordu; artik adaya bagli dort ust kademe
+	de ayni kapidan geciyor.
 ]]
 function Divine.tagIf(instance: Instance, rarityId: string?)
-	if rarityId == "Secret" then
-		Divine.tag(instance)
+	local parilti = if rarityId then Divine.Flashes[rarityId] else nil
+	if not parilti then
+		return
+	end
+
+	if not CollectionService:HasTag(instance, parilti.tag) then
+		CollectionService:AddTag(instance, parilti.tag)
 	end
 end
 

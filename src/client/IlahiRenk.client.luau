@@ -95,7 +95,14 @@ local function paletEkle(tag: string, colorA: Color3, colorB: Color3, interval: 
 	table.insert(paletler, palet)
 end
 
-paletEkle(Divine.Tag, Divine.colorA, Divine.colorB, Divine.interval)
+--[[
+	Divine ve adaya bagli dort ust kademe (Cosmic, Secret, Infernal,
+	Abyssal) ayni yerden geliyor: Shared > Divine > Flashes. Divine'in
+	kendisi de o tabloda oldugu icin ayrica eklemeye gerek yok.
+]]
+for _, flash in Divine.Flashes do
+	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval)
+end
 
 for _, flash in Mutations.Flash do
 	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval)

@@ -90,7 +90,32 @@ end
 	tekrar cagirmak guvenlidir.
 ]]
 function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
-	local L = Etiket.Layout
+	--[[
+		KADEMEYE GORE BUYUME
+
+		Adaya bagli ust kademeler (Cosmic, Secret, Infernal, Abyssal)
+		etikette daha iri gorunur; carpan Divine'a kadar 1 oldugu icin
+		mevcut kademelerin gorunumu hic degismez (bkz. Rarity.labelScale).
+
+		Carpan HEM yazi boyutlarina HEM cercevenin olcusune uygulaniyor --
+		yalnizca yaziyi buyutseydik satirlar cerceveye sigmazdi.
+	]]
+	local buyutme = Rarity.labelScale(item.rarity)
+
+	local L = {
+		width = Etiket.Layout.width * buyutme,
+		height = Etiket.Layout.height * buyutme,
+
+		nameSize = math.round(Etiket.Layout.nameSize * buyutme),
+		statSize = math.round(Etiket.Layout.statSize * buyutme),
+		incomeSize = math.round(Etiket.Layout.incomeSize * buyutme),
+
+		nameY = Etiket.Layout.nameY * buyutme,
+		statY = Etiket.Layout.statY * buyutme,
+		incomeY = Etiket.Layout.incomeY * buyutme,
+
+		maxDistance = Etiket.Layout.maxDistance,
+	}
 
 	local rarityInfo = Rarity.get(item.rarity)
 	local conditionInfo = Condition.get(item.condition)
