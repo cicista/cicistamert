@@ -40,6 +40,7 @@ local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
+local Patlama = require(Modules:WaitForChild("Patlama"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -217,6 +218,20 @@ local function finishDig(player: Player, won: boolean)
 	end
 
 	Beams.remove(session.beamId, if won then "kazi kazanildi" else "kazi kaybedildi")
+
+	--[[
+		KUMDA KAZANINCA PATLAMA
+
+		Gorev odulundeki (Quests > Collect) efektin AYNISI: Workspace'teki
+		FuseVFX, kazilan brainrotun kademe renginde. Denizde yok -- orada
+		zaten misina/girdap gosterisi var.
+
+		Efekt kaybetmede oynamaz; sonuc bildirimlerinden once cagriliyor ki
+		gorsel ile yazi ayni ana denk gelsin.
+	]]
+	if won and not session.sea then
+		Patlama.oynat(player, beam.kind)
+	end
 
 	if not won then
 		Bildirim:FireClient(player, "The brainrot got away!", Color3.fromRGB(255, 120, 120))

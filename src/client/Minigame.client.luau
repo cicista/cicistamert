@@ -155,26 +155,62 @@ progressFill.BorderSizePixel = 0
 progressFill.Parent = progressTrack
 UI.corner(progressFill, 10)
 
+------------------------------------------------------------------
+-- KUM MODU: YATAY BAR
+--
+-- Kum kazisinda PANEL YOK. Ekranin altinda tek bir yatay bar durur;
+-- uzerinde kurek ikonu ilerleme noktasinda gezer. Deniz oyunundaki
+-- pencere (root) o sirada tamamen gizlenir.
+------------------------------------------------------------------
+local KUREK_IKONU = "rbxassetid://82895822894928"
+
+local kaziEkran = Instance.new("ScreenGui")
+kaziEkran.Name = "KaziBar"
+kaziEkran.ResetOnSpawn = false
+kaziEkran.IgnoreGuiInset = true
+kaziEkran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+kaziEkran.Enabled = false
+kaziEkran.Parent = playerGui
+
+local kaziCerceve = Instance.new("Frame")
+kaziCerceve.Name = "Cerceve"
+kaziCerceve.AnchorPoint = Vector2.new(0.5, 0.5)
+kaziCerceve.Position = UDim2.fromScale(0.5, 0.78)
+kaziCerceve.Size = UDim2.new(0.46, 0, 0, 62)
+kaziCerceve.BackgroundColor3 = Color3.fromRGB(28, 22, 16)
+kaziCerceve.BorderSizePixel = 0
+kaziCerceve.ClipsDescendants = true
+kaziCerceve.Parent = kaziEkran
+UI.corner(kaziCerceve, 6)
+UI.stroke(kaziCerceve, Color3.fromRGB(0, 0, 0), 4)
+
 --[[
-	KUM MODUNUN DOLAN BARI
-
-	Tiklama oyununda ayni Track kullanilir -- bar oyuncunun istedigi gibi
-	AYNI YERDE durur. Fark: hareket eden yesil bar ve kacan hedef yerine
-	asagidan yukari dolan tek bir sutun var.
-
-	Iki mod ayni anda acik olmaz; hangisi calisiyorsa digerinin parcalari
-	gizlenir.
+	Dolan kisim: SOLDAN saga buyur ve rengi kazilan brainrotun kademe
+	rengidir, yani oyuncu ne pesinde oldugunu bara bakarak anlar.
 ]]
-local kaziFill = Instance.new("Frame")
-kaziFill.Name = "KaziFill"
-kaziFill.AnchorPoint = Vector2.new(0.5, 1)
-kaziFill.Position = UDim2.fromScale(0.5, 1)
-kaziFill.Size = UDim2.new(1, -12, 0, 0)
-kaziFill.BackgroundColor3 = UI.Colors.good
-kaziFill.BorderSizePixel = 0
-kaziFill.Visible = false
-kaziFill.Parent = track
-UI.corner(kaziFill, 8)
+local kaziDolgu = Instance.new("Frame")
+kaziDolgu.Name = "Dolgu"
+kaziDolgu.AnchorPoint = Vector2.new(0, 0.5)
+kaziDolgu.Position = UDim2.fromScale(0, 0.5)
+kaziDolgu.Size = UDim2.fromScale(0, 1)
+kaziDolgu.BackgroundColor3 = UI.Colors.good
+kaziDolgu.BorderSizePixel = 0
+kaziDolgu.Parent = kaziCerceve
+
+--[[
+	KUREK IKONU
+
+	Ilerleme noktasinda gezer. Cercevenin DISINDA duruyor cunku cerceve
+	ClipsDescendants: icinde olsaydi kenarlarda kirpilirdi.
+]]
+local kaziIkon = Instance.new("ImageLabel")
+kaziIkon.Name = "Kurek"
+kaziIkon.AnchorPoint = Vector2.new(0.5, 0.5)
+kaziIkon.Size = UDim2.fromOffset(88, 88)
+kaziIkon.BackgroundTransparency = 1
+kaziIkon.Image = KUREK_IKONU
+kaziIkon.ZIndex = 5
+kaziIkon.Parent = kaziEkran
 
 local hint = UI.text({
 	text = "",
@@ -187,6 +223,81 @@ local hint = UI.text({
 	name = "Ipucu",
 })
 
+
+------------------------------------------------------------------
+-- SARSINTI VE IKON VURUSU  (kum modu)
+--
+-- Ikisi de tek bir "guc" sayisiyla calisir: olay olunca guc yukselir,
+-- her karede sonumlenir. Tween yigmak yerine boyle yapiliyor cunku
+-- tiklamalar ust uste gelebiliyor -- yigilan tweenler birbirini ezip
+-- efekti takilmis gosteriyordu.
+------------------------------------------------------------------
+local SARSINTI_ADI = "KaziSarsinti"
+
+-- Sarsintinin sonumleme hizi (saniyede kaybedilen guc)
+local SONUM = 7
+
+-- Tiklama basina eklenen guc ve tavani
+local TIK_GUCU = 0.35
+local TIK_TAVAN = 1
+
+-- Brainrot cikinca eklenen guc: tiklamadan belirgin sekilde daha sert
+local ZAFER_GUCU = 4
+
+local sarsintiGucu = 0
+local vurusGucu = 0
+local sarsintiBagli = false
+local rng = Random.new()
+
+--[[
+	Kamerayi sarsar.
+
+	Kamera her karede yeniden hesaplandigi icin sarsinti KAMERA
+	ADIMINDAN SONRA uygulanmali; yoksa oyunun kendi kamera kodu uzerine
+	yazip etkiyi siler. BindToRenderStep'in oncelik sayisi bunun icin.
+]]
+local function sarsintiyiBagla()
+	if sarsintiBagli then
+		return
+	end
+	sarsintiBagli = true
+
+	RunService:BindToRenderStep(SARSINTI_ADI, Enum.RenderPriority.Camera.Value + 1, function(dt)
+		sarsintiGucu = math.max(0, sarsintiGucu - dt * SONUM)
+		vurusGucu = math.max(0, vurusGucu - dt * SONUM)
+
+		-- Ikonun vurus efekti: her tiklamada buyuyup hafifce egilir
+		kaziIkon.Size = UDim2.fromOffset(88 + vurusGucu * 26, 88 + vurusGucu * 26)
+		kaziIkon.Rotation = vurusGucu * 14
+
+		if sarsintiGucu <= 0 then
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return
+		end
+
+		local g = sarsintiGucu
+		camera.CFrame = camera.CFrame
+			* CFrame.new(rng:NextNumber(-g, g) * 0.35, rng:NextNumber(-g, g) * 0.35, 0)
+			* CFrame.Angles(0, 0, math.rad(rng:NextNumber(-g, g) * 1.2))
+	end)
+end
+
+local function sarsintiyiCoz()
+	if not sarsintiBagli then
+		return
+	end
+	sarsintiBagli = false
+	RunService:UnbindFromRenderStep(SARSINTI_ADI)
+
+	sarsintiGucu = 0
+	vurusGucu = 0
+	kaziIkon.Size = UDim2.fromOffset(88, 88)
+	kaziIkon.Rotation = 0
+end
 ------------------------------------------------------------------
 -- OYUN DONGUSU
 ------------------------------------------------------------------
@@ -199,6 +310,9 @@ local hint = UI.text({
 	Hangisinin acik oldugunu sunucu soyluyor (MinigameBasla'nin son
 	parametresi). Ayni anda yalnizca biri dolu olur.
 ]]
+-- Kum barinin rengi: kazilan brainrotun kademe rengi (modKur ayarlar)
+local kaziRenk = UI.Colors.good
+
 local mod: string = "sea"
 local active: DigMinigame.Minigame? = nil
 local kazi: KaziMinigame.Game? = nil
@@ -297,7 +411,12 @@ local function tikla()
 
 	if not oyun:click() then
 		throttleUntil = os.clock() + 0.4
+		return
 	end
+
+	-- Sayilan her tiklama ekrani sarsar ve kuregi vurdurur
+	sarsintiGucu = math.min(TIK_TAVAN, sarsintiGucu + TIK_GUCU)
+	vurusGucu = math.min(TIK_TAVAN, vurusGucu + TIK_GUCU)
 end
 
 local function bindInput()
@@ -342,6 +461,8 @@ local function stop()
 	unbindInput()
 	stopDigAnimation()
 	screen.Enabled = false
+	kaziEkran.Enabled = false
+	sarsintiyiCoz()
 end
 
 --[[
@@ -407,16 +528,36 @@ local function finish(won: boolean)
 	unbindInput()
 	stopDigAnimation()
 
+	--[[
+		KUMDA SONUC
+
+		Panel yok, o yuzden yazi/cerceve gosterisi de yok: geri bildirim
+		SARSINTIDAN geliyor. Brainrot cikinca ekran tiklamadakinden cok
+		daha sert sarsilir; patlama efektini sunucu oynatiyor (gorev
+		odulundekinin aynisi, bkz. KaziSistemi > finishDig).
+	]]
+	if kumdu then
+		if won then
+			sarsintiGucu = ZAFER_GUCU
+			vurusGucu = TIK_TAVAN
+		end
+
+		-- Bar hemen kaybolur, sarsinti sonumlenene kadar surer
+		kaziEkran.Enabled = false
+		task.delay(0.8, sarsintiyiCoz)
+
+		MinigameSonuc:FireServer(won)
+		return
+	end
+
 	-- Sonuc gorseli kisa sure ekranda kalir
 	rootStroke.Color = if won then UI.Colors.good else UI.Colors.bad
-	header.Text = if won
-		then (if kumdu then "DUG IT UP!" else "CAUGHT IT!")
-		else (if kumdu then "TOO SLOW!" else "IT GOT AWAY!")
+	header.Text = if won then "CAUGHT IT!" else "IT GOT AWAY!"
 	-- Kademe gorunumu (parilti / parildama) kalkmali, yoksa rengi ezer
 	UI.plainStyle(header, if won then UI.Colors.good else UI.Colors.bad)
 
 	-- PERFECT yalnizca deniz oyununda anlamli: kumda "disari cikma" yok
-	if won and not kumdu and not everLeft then
+	if won and not everLeft then
 		showPerfect()
 	end
 
@@ -457,36 +598,50 @@ end
 	kadar surer.
 ]]
 local function renderKazi(state: KaziMinigame.State)
-	kaziFill.Size = UDim2.new(1, -12, state.progress, 0)
+	kaziDolgu.Size = UDim2.fromScale(state.progress, 1)
 
 	--[[
-		Makro sinirina takilan tiklamada bar kisa sure sariya doner: oyuncu
-		"tikliyorum ama ilerlemiyor" demesin, sebebini gorsun.
+		Kurek ikonu dolgunun UCUNDA gezer. Cerceve ekran genisligine gore
+		olceklendigi icin konum her karede AbsolutePosition/Size'dan
+		okunuyor; sabit bir sayi farkli cozunurluklerde kayardi.
+	]]
+	local kok = kaziCerceve.AbsolutePosition
+	local boy = kaziCerceve.AbsoluteSize
+	kaziIkon.Position = UDim2.fromOffset(
+		kok.X + boy.X * state.progress,
+		kok.Y + boy.Y * 0.5
+	)
+
+	--[[
+		Makro sinirina takilan tiklamada dolgu kisa sure sariya doner:
+		oyuncu "tikliyorum ama ilerlemiyor" demesin, sebebini gorsun.
 	]]
 	local kisildi = os.clock() < throttleUntil
-	kaziFill.BackgroundColor3 = if kisildi then UI.Colors.warn else UI.Colors.good
-
-	if kisildi then
-		hint.Text = "Too fast - extra clicks don't count"
-	end
+	kaziDolgu.BackgroundColor3 = if kisildi then UI.Colors.warn else kaziRenk
 end
 
 --[[
-	MODA GORE PENCEREYI HAZIRLA
+	MODA GORE ARAYUZU HAZIRLA
 
-	Iki oyunun parcalari ayni panelde duruyor; hangisi calisacaksa onunkiler
-	acilir, digerininkiler gizlenir.
+	Kumda PANEL YOK: deniz penceresi tamamen gizlenir, ekranin altindaki
+	yatay bar acilir. Denizde tam tersi.
 ]]
-local function modKur(yeniMod: string)
+local function modKur(yeniMod: string, rarityId: string)
 	mod = yeniMod
 	local kumdu = yeniMod == "sand"
 
-	bar.Visible = not kumdu
-	target.Visible = not kumdu
-	progressTrack.Visible = not kumdu
+	root.Visible = not kumdu
+	kaziEkran.Enabled = kumdu
 
-	kaziFill.Visible = kumdu
-	kaziFill.Size = UDim2.new(1, -12, 0, 0)
+	if kumdu then
+		-- Imlecin rengi kazilan brainrotun kademe rengi
+		kaziRenk = Rarity.beamColor(rarityId)
+		kaziDolgu.BackgroundColor3 = kaziRenk
+		kaziDolgu.Size = UDim2.fromScale(0, 1)
+		sarsintiyiBagla()
+	else
+		sarsintiyiCoz()
+	end
 end
 
 MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
@@ -502,7 +657,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		Eski sunucular mod gondermiyordu; gelmezse denize dusuluyor ki
 		davranis en azindan taniddik kalsin.
 	]]
-	modKur(if gelenMod == "sand" then "sand" else "sea")
+	modKur(if gelenMod == "sand" then "sand" else "sea", rarityId)
 
 	header.Text = `{rarityInfo.displayName} BRAINROT`
 	-- Epic+ parlak, Divine parildar; cerceve kademe renginde kalir
@@ -510,21 +665,18 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	rootStroke.Color = rarityInfo.color
 
 	subHeader.Text = `{gearInfo.displayName}  |  Lv.{gearInfo.level}`
-
 	everLeft = false
 	perfectLabel.Visible = false
 	throttleUntil = 0
-	screen.Enabled = true
 	startDigAnimation()
 
 	if mod == "sand" then
 		------------------------------------------------------------------
 		-- KUM: TIKLAMA OYUNU
+		--
+		-- Panel acilmaz (screen kapali kalir); yalnizca alttaki yatay bar
+		-- gorunur. Baslik/altbaslik yazilari denize ait.
 		------------------------------------------------------------------
-		hint.Text = if UserInputService.TouchEnabled
-			then "Keep tapping - the bar slides back"
-			else "Keep clicking - the bar slides back"
-
 		local oyun = KaziMinigame.new(gearId, rarityId)
 		kazi = oyun
 		bindInput()
@@ -550,6 +702,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	------------------------------------------------------------------
 	-- DENIZ: BAR / HEDEF OYUNU
 	------------------------------------------------------------------
+	screen.Enabled = true
 	hint.Text = if UserInputService.TouchEnabled
 		then "Touch and hold the screen"
 		else "Hold SPACE or left click"
