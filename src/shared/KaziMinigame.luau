@@ -79,8 +79,14 @@ KaziMinigame.MAX_CPS = 12
 -- Kova kapasitesi: kisa serilerde tiklamalar bosa gitmesin
 KaziMinigame.BURST = 4
 
--- Imlec buradan baslar: oyuncunun toparlanmasi icin kucuk bir pay
-KaziMinigame.START = 0.25
+--[[
+	Imlec buradan baslar: barin yarisindan.
+
+	Iki yone de pay birakir -- oyuncu bastan hem kaybedebilecek hem
+	kazanabilecek mesafededir. Minioyunun suresini de bu belirliyor:
+	tavan hizda kalan mesafe (1 - START) kadar yol gider.
+]]
+KaziMinigame.START = 0.5
 
 --[[
 	Tiklama basina ilerleme. HER KUREKTE AYNI.
