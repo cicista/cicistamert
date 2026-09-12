@@ -55,13 +55,47 @@ task.spawn(setCoreGui)
 ------------------------------------------------------------------
 local tracks: { [Tool]: AnimationTrack } = {}
 
+--[[
+	URETILEN HER IZ burada da tutulur.
+
+	tracks yalnizca "su an hangi tool'un izi caliyor" sorusunu cevapliyor ve
+	stopTrack cagrilinca kayit oradan siliniyor. Iz gercekten durmadiysa
+	(asagidaki gecis sorunu) artik kimse onu bilmiyor ve supurge de goremiyor
+	oluyordu -- karakterin uzerinde asili kalan poz buydu.
+
+	Bu liste bagimsiz: bizim urettigimiz hicbir iz gozden kacmaz.
+]]
+local uretilen: { AnimationTrack } = {}
+
+--[[
+	IZI DURDURUR
+
+	Stop'tan HEMEN SONRA Destroy cagrilmiyor. Stop bir gecis suresi aliyor
+	ve iz o sure boyunca hala karisima katkida bulunuyor; ortasinda yok
+	edilirse gecis tamamlanmiyor ve SON POZ uzerinde kaliyor. Yurume
+	animasyonunun takili kalmasinin sebebi buydu.
+
+	Once durduruluyor, yok etme gecis bitince yapiliyor.
+]]
+local GECIS = 0.15
+
 local function stopTrack(tool: Tool)
 	local track = tracks[tool]
-	if track then
-		track:Stop(0.15)
-		track:Destroy()
-		tracks[tool] = nil
+	if not track then
+		return
 	end
+
+	tracks[tool] = nil
+
+	pcall(function()
+		track:Stop(GECIS)
+	end)
+
+	task.delay(GECIS + 0.05, function()
+		pcall(function()
+			track:Destroy()
+		end)
+	end)
 end
 
 -- Butun tutma animasyonlarini durdurur (olum, yeniden dogus)
@@ -116,6 +150,7 @@ local function playHoldAnimation(tool: Tool)
 	track.Looped = true
 	track:Play(0.15)
 	tracks[tool] = track
+	table.insert(uretilen, track)
 end
 
 -- Tool karaktere eklendiginde elde tutuluyor demektir
@@ -159,21 +194,53 @@ end)
 --[[
 	GUVENLIK SUPURGESI
 
-	Elde olmayan bir tool'un animasyonu hala caliyorsa durdurulur.
+	Iki is yapar:
 
-	Yukaridaki kontroller normal akista yetiyor, ama tool'un yok edilmesi
-	ile sinyallerin sirasi her zaman ayni olmuyor; kurek ve GPS saniyede
-	birkac kez el degistirebildigi icin arada bir kacak kalabiliyor.
-	Bu dongu onlari da toparliyor -- saniyede iki kez, birkac karsilastirma.
+	1. Elde olmayan bir tool'un izi hala kayitliysa durdurur. Kurek ve GPS
+	   saniyede birkac kez el degistirebildigi icin sinyallerin sirasi her
+	   zaman ayni olmuyor, arada bir kacak kalabiliyor.
+
+	2. BIZIM URETTIGIMIZ ama artik kimseye ait olmayan izleri durdurur.
+	   tracks yalnizca "su an caliyor olmasi gereken" izi tutuyor; oradan
+	   silinmis bir iz gercekten durmadiysa eskiden kimse fark etmiyordu.
+	   Artik uretilen listesi uzerinden bulunup susturuluyor.
+
+	Saniyede iki kez, birkac karsilastirma.
 ]]
 task.spawn(function()
 	while true do
 		task.wait(0.5)
 
 		local character = player.Character
+
 		for tool in tracks do
 			if tool.Parent ~= character then
 				stopTrack(tool)
+			end
+		end
+
+		-- Su an calmasi gereken iz (varsa) disinda ne kaldiysa sustur
+		local izinli: { [AnimationTrack]: boolean } = {}
+		for _, track in tracks do
+			izinli[track] = true
+		end
+
+		for i = #uretilen, 1, -1 do
+			local track = uretilen[i]
+			local ok, caliyor = pcall(function()
+				return track.IsPlaying
+			end)
+
+			if not ok then
+				-- Yok edilmis iz: listeden dus
+				table.remove(uretilen, i)
+			elseif not caliyor then
+				table.remove(uretilen, i)
+			elseif not izinli[track] then
+				pcall(function()
+					track:Stop(0)
+				end)
+				table.remove(uretilen, i)
 			end
 		end
 	end
