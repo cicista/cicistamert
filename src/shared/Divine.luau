@@ -96,11 +96,20 @@ end
 	interval kucukse parildama sertlesir. Ust kademeler biraz daha hizli
 	parildiyor -- "her yeni ada oncekinden daha gosterisli" istegi.
 ]]
+--[[
+	sweep: parlama bandinin yazinin uzerinden bir gecisi kac saniye surer.
+	band:  bandin YARI genisligi (0..1). Kucuk olan daha keskin, daha sert.
+
+	Ikisi de kademe yukseldikce sertlesir: Abyssal en hizli ve en keskin,
+	Divine en yumusak.
+]]
 export type Parilti = {
 	tag: string,
 	colorA: Color3,
 	colorB: Color3,
 	interval: number,
+	sweep: number,
+	band: number,
 }
 
 Divine.Flashes = {
@@ -110,6 +119,8 @@ Divine.Flashes = {
 		colorA = Divine.colorA,
 		colorB = Divine.colorB,
 		interval = Divine.interval,
+		sweep = 1.9,
+		band = 0.16,
 	},
 
 	-- Cosmic: parlak koyu mor <-> beyaz
@@ -118,6 +129,8 @@ Divine.Flashes = {
 		colorA = Color3.fromRGB(138, 43, 226),
 		colorB = Color3.fromRGB(255, 255, 255),
 		interval = 0.6,
+		sweep = 1.5,
+		band = 0.13,
 	},
 
 	-- Secret (kimligi Gizli): siyah <-> beyaz
@@ -126,6 +139,8 @@ Divine.Flashes = {
 		colorA = Color3.fromRGB(14, 14, 16),
 		colorB = Color3.fromRGB(255, 255, 255),
 		interval = 0.5,
+		sweep = 1.2,
+		band = 0.10,
 	},
 
 	-- Infernal: kan kirmizisi <-> beyaz
@@ -134,6 +149,8 @@ Divine.Flashes = {
 		colorA = Color3.fromRGB(140, 6, 14),
 		colorB = Color3.fromRGB(255, 255, 255),
 		interval = 0.4,
+		sweep = 0.95,
+		band = 0.08,
 	},
 
 	-- Abyssal: derin deniz mavisi <-> beyaz
@@ -142,6 +159,8 @@ Divine.Flashes = {
 		colorA = Color3.fromRGB(8, 52, 130),
 		colorB = Color3.fromRGB(255, 255, 255),
 		interval = 0.3,
+		sweep = 0.7,
+		band = 0.06,
 	},
 } :: { [string]: Parilti }
 

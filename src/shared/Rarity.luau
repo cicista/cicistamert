@@ -321,6 +321,29 @@ function Rarity.displayName(id: string): string
 end
 
 --[[
+	DUNYA ETIKETINDE YAZAN KADEME ADI
+
+	Divine ve USTU BUYUK HARF: DIVINE, COSMIC, SECRET, INFERNAL, ABYSSAL.
+	O kademelerin uzerinde parlama efekti var ve buyuk harf hem agirlik
+	veriyor hem uzaktan okunmasini kolaylastiriyor.
+
+	Altindakiler normal yazimda kaliyor: Common, Rare, Epic, Legendary,
+	Mythic. Aralarindaki fark bir bakista gorulsun.
+]]
+function Rarity.labelText(id: string): string
+	local info = Rarity.Info[id :: RarityId]
+	if not info then
+		return id
+	end
+
+	if info.order >= 6 then
+		return string.upper(info.displayName)
+	end
+
+	return info.displayName
+end
+
+--[[
 	Bu kademenin ISMI parlak yazilsin mi?
 
 	Mavinin (Rare) ustundeki her sey -- Epic, Legendary, Mythic, Divine --

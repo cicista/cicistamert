@@ -42,15 +42,18 @@ Etiket.Name = "Etiket"
 ]]
 Etiket.Layout = {
 	width = 190,
-	height = 62,
+	height = 82,
 
+	-- Kademe satiri (DIVINE, SECRET, ABYSSAL...) en ustte, efekt onun uzerinde
+	raritySize = 15,
 	nameSize = 18,
 	statSize = 14,
 	incomeSize = 16,
 
-	nameY = 2,
-	statY = 22,
-	incomeY = 40,
+	rarityY = 2,
+	nameY = 20,
+	statY = 42,
+	incomeY = 60,
 
 	-- Kac studdan uzakta gorunmez olsun
 	maxDistance = 120,
@@ -106,10 +109,12 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 		width = Etiket.Layout.width * buyutme,
 		height = Etiket.Layout.height * buyutme,
 
+		raritySize = math.round(Etiket.Layout.raritySize * buyutme),
 		nameSize = math.round(Etiket.Layout.nameSize * buyutme),
 		statSize = math.round(Etiket.Layout.statSize * buyutme),
 		incomeSize = math.round(Etiket.Layout.incomeSize * buyutme),
 
+		rarityY = Etiket.Layout.rarityY * buyutme,
 		nameY = Etiket.Layout.nameY * buyutme,
 		statY = Etiket.Layout.statY * buyutme,
 		incomeY = Etiket.Layout.incomeY * buyutme,
@@ -150,23 +155,40 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	billboard.Parent = adornee
 
 	------------------------------------------------------------------
-	-- ISIM
+	-- KADEME SATIRI
+	--
+	-- Brainrotun uzerinde kademesi de yaziyor: MYTHIC, DIVINE, ABYSSAL...
+	-- Butun gorsel efekt (parlak gradyan + suzulen parlama bandi) ARTIK
+	-- BURADA. Isim sade kalinca ikisi birbiriyle yarismiyor ve etiket
+	-- uzaktan da okunuyor.
 	------------------------------------------------------------------
-	local nameLabel = line(billboard, "Isim", item.name or "???", rarityInfo.color, L.nameSize, L.nameY)
+	local rarityLabel = line(
+		billboard,
+		"Kademe",
+		Rarity.labelText(item.rarity),
+		rarityInfo.color,
+		L.raritySize,
+		L.rarityY
+	)
 
 	if Rarity.isDivine(item.rarity) then
 		--[[
-			Once Mythic ile ayni parlak gradyan, sonra parildama etiketi.
-			Gradyan olmadan ust kademeler duz tek renk kaliyor ve alt
-			kademelerden daha ucuz gorunuyorlardi.
-
+			Mythic ile ayni parlak gradyan, ustune parildama etiketi.
 			tagIf: Cosmic mor, Secret siyah, Infernal kirmizi, Abyssal mavi.
 		]]
-		Fonts.applyGlow(nameLabel, rarityInfo.color)
-		Divine.tagIf(nameLabel, item.rarity)
+		Fonts.applyGlow(rarityLabel, rarityInfo.color)
+		Divine.tagIf(rarityLabel, item.rarity)
 	elseif Rarity.isGlowing(item.rarity) then
-		Fonts.applyGlow(nameLabel, rarityInfo.color)
+		Fonts.applyGlow(rarityLabel, rarityInfo.color)
 	end
+
+	------------------------------------------------------------------
+	-- ISIM
+	--
+	-- TEK RENK: kademenin rengi. Efekt kademe satirinda oldugu icin isim
+	-- sade duruyor -- iki satir birden parlarsa hicbiri okunmuyor.
+	------------------------------------------------------------------
+	local nameLabel = line(billboard, "Isim", item.name or "???", rarityInfo.color, L.nameSize, L.nameY)
 
 	------------------------------------------------------------------
 	-- BOYUT (+ mutasyon)

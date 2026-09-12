@@ -37,33 +37,54 @@ local Mutations = require(Shared:WaitForChild("Mutations"))
 --[[
 	ETIKETLI NESNEYI BOYAR
 
-	TEXT ICIN GRADYAN KORUNUR
-	Mythic gibi kademelerde yazinin uzerinde bir UIGradient var (Fonts
-	"Parilti"): parlak -> renk -> parlak, yaziya hacim veriyor. Parildayan
-	kademelerde bu gradyan SILINIYORDU ve geriye duz tek renk kaliyordu --
-	ust kademeler alt kademelerden daha ucuz gorunuyordu.
+	YAZILARDA KESKIN PARLAMA BANDI
+	Onceki hal yumusak bir uc-durakli gradyandi (parlak -> renk -> parlak)
+	ve Offset ile kaydiriliyordu; sonuc "soft" duruyordu, sertligi yoktu.
 
-	Artik gradyan duruyor ve PARILDAYAN SEY GRADYANIN KENDISI. Yazinin
-	TextColor3'u beyaz kalir ki gradyan kendi rengini bozulmadan gostersin.
+	Artik gradyan her karede YENIDEN kuruluyor: yazinin cogu kademenin duz
+	rengi, uzerinden DAR ve PARLAK bir bant geciyor. Metal yazilardaki
+	isik silme efekti gibi -- keskin ve okunabilir.
 
-	sweep: gradyanin kaydirma miktari. Isik yazinin uzerinden gecer gibi
-	suzulur -- asil "pahali" duran sey bu.
+	Bandin genisligi ve gecis hizi kademeye gore degisiyor (bkz. Divine >
+	Flashes): Abyssal en dar ve en hizli, Divine en genis ve en yavas.
 ]]
-local function paint(instance: Instance, color: Color3, sweep: number?)
+local function bandliGecis(color: Color3, parlak: Color3, yer: number, yari: number): ColorSequence
+	--[[
+		Duraklar sirali OLMAK ZORUNDA ve 0 ile 1'i icermeli; bant kenara
+		tasarsa kirpiliyor, boylece bant ekrandan girip cikiyormus gibi olur.
+	]]
+	local duraklar = {}
+	local sol = math.clamp(yer - yari, 0, 1)
+	local sag = math.clamp(yer + yari, 0, 1)
+
+	table.insert(duraklar, ColorSequenceKeypoint.new(0, if sol <= 0 then parlak else color))
+
+	if sol > 0 then
+		table.insert(duraklar, ColorSequenceKeypoint.new(sol, color))
+	end
+
+	if yer > 0 and yer < 1 then
+		table.insert(duraklar, ColorSequenceKeypoint.new(yer, parlak))
+	end
+
+	if sag < 1 then
+		table.insert(duraklar, ColorSequenceKeypoint.new(sag, color))
+	end
+
+	table.insert(duraklar, ColorSequenceKeypoint.new(1, if sag >= 1 then parlak else color))
+
+	return ColorSequence.new(duraklar)
+end
+
+local function paint(instance: Instance, color: Color3, yer: number?, yari: number?)
 	if instance:IsA("TextLabel") or instance:IsA("TextButton") then
 		local gradient = instance:FindFirstChild("Parilti")
 
 		if gradient and gradient:IsA("UIGradient") then
-			-- Ucu az beyaz: 0.7 iken yazi rengini kaybedip solgun gorunuyordu
-			local bright = color:Lerp(Color3.new(1, 1, 1), 0.32)
-			gradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, bright),
-				ColorSequenceKeypoint.new(0.5, color),
-				ColorSequenceKeypoint.new(1, bright),
-			})
-			if sweep then
-				gradient.Offset = Vector2.new(0, sweep)
-			end
+			-- Bant BEYAZA yakin ama tam beyaz degil: renk hep okunuyor
+			local parlak = color:Lerp(Color3.new(1, 1, 1), 0.55)
+			gradient.Offset = Vector2.zero
+			gradient.Color = bandliGecis(color, parlak, yer or 0.5, yari or 0.12)
 			instance.TextColor3 = Color3.new(1, 1, 1)
 		else
 			instance.TextColor3 = color
@@ -100,16 +121,22 @@ type Palet = {
 	colorA: Color3,
 	colorB: Color3,
 	interval: number,
+	-- Parlama bandinin bir gecisi kac saniye surer
+	sweep: number,
+	-- Bandin yari genisligi: kucuk olan daha keskin
+	band: number,
 	tracked: { [Instance]: boolean },
 }
 
 local paletler: { Palet } = {}
 
-local function paletEkle(tag: string, colorA: Color3, colorB: Color3, interval: number)
+local function paletEkle(tag: string, colorA: Color3, colorB: Color3, interval: number, sweep: number?, band: number?)
 	local palet: Palet = {
 		colorA = colorA,
 		colorB = colorB,
 		interval = interval,
+		sweep = sweep or 1.6,
+		band = band or 0.12,
 		tracked = {},
 	}
 
@@ -134,50 +161,42 @@ end
 	kendisi de o tabloda oldugu icin ayrica eklemeye gerek yok.
 ]]
 for _, flash in Divine.Flashes do
-	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval)
+	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval, flash.sweep, flash.band)
 end
 
 for _, flash in Mutations.Flash do
-	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval)
+	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval, flash.sweep, flash.band)
 end
 
 local elapsed = 0
-
---[[
-	Isik suzulmesinin bir turu kac saniye surer. Renk gecisinden bagimsiz:
-	yavas parildayan bir kademede bile parlama akmaya devam etsin.
-]]
-local SUZULME = 1.6
-
 RunService.RenderStepped:Connect(function(dt)
 	elapsed += dt
-
-	--[[
-		Isik yazinin uzerinden asagidan yukari suzulur. -1..1 araligi
-		gradyani tam disaridan tam disariya tasir, yani parlama girip cikar.
-	]]
-	local sweep = (elapsed / SUZULME) % 2 - 1
 
 	for _, palet in paletler do
 		--[[
 			RENK GECISI  --  renk esas, beyaz misafir
 
-			Iki sorun vardi:
-
-			1. Gecis ANIYDI (step % 2): yazi strobe gibi kirpisiyordu.
-			2. Duz sinus kullaninca sure iki renk arasinda ESIT paylasiliyor
-			   ve ikinci uc BEYAZ oldugu icin yazi zamanin yarisini solgun
-			   geciriyordu -- "renkten cok beyaz gorunuyor" sikayeti buydu.
-
-			Cozum sinusu KUVVETE almak: egri zamanin cogunu 0'a yakin, yani
-			KADEMENIN KENDI RENGINDE geciriyor, arada kisa bir beyaz parlama
-			gelip gidiyor. Ust sinir da 1 degil: tam beyaza hic varmiyor,
-			en parlak anda bile rengin izi kaliyor.
+			Duz sinus kullaninca sure iki renk arasinda ESIT paylasiliyordu
+			ve ikinci uc beyaz oldugu icin yazi zamanin yarisini solgun
+			geciriyordu. Sinus 4. kuvvete alinip 0.85 ile olcekleniyor:
+			zamanin cogu kademenin KENDI RENGINDE, arada kisa bir parlama.
 		]]
 		local faz = elapsed / math.max(palet.interval, 1 / 240) * math.pi
 		local dalga = (math.sin(faz) + 1) / 2
 		local oran = dalga ^ 4 * 0.85
 		local color = palet.colorA:Lerp(palet.colorB, oran)
+
+		--[[
+			PARLAMA BANDININ YERI
+
+			Bant -yari'dan 1+yari'ya kadar gidiyor, yani yazinin disindan
+			girip disindan cikiyor: parlama beliriverip kaybolmuyor,
+			uzerinden GECIYOR.
+
+			Hiz kademeye gore: Abyssal en hizli (0.7 sn), Divine en yavas.
+		]]
+		local tur = (elapsed / palet.sweep) % 1
+		local yer = -palet.band + tur * (1 + palet.band * 2)
 
 		for instance in palet.tracked do
 			-- Silinen nesneler listeden kendiliginden dusmez; burada temizlenir
@@ -186,7 +205,7 @@ RunService.RenderStepped:Connect(function(dt)
 				continue
 			end
 
-			paint(instance, color, sweep)
+			paint(instance, color, yer, palet.band)
 		end
 	end
 end)
