@@ -270,6 +270,25 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		end)
 	end
 
+	--[[
+		PARCACIK GECISI  --  beyaz patlamaya karsi
+
+		Duz tek renkte parcaciklar ekranda beyaza patliyordu. Sebep renk
+		degil LightEmission: yuksek oldugunda parcacik eklemeli cizilir ve
+		rengi ne olursa olsun merkez bembeyaz olur.
+
+		Acikken parcaciklar kademe renginin ACIK -> KOYU gecisine cevrilir
+		ve parlama tavana cekilir. Flyboard tahtalarinda da ayni yol
+		kullaniliyor.
+
+		Bu adim renklendirmeden SONRA gelir: parcaciklarda son soz onun.
+	]]
+	if cfg.ramp then
+		step("parcacik gecisi", function()
+			Assets.rampEffects(template, color, cfg.ramp, cfg.keepColor)
+		end)
+	end
+
 	if cfg.softenWhite then
 		step("beyaz yumusatma", function()
 			Assets.softenWhites(template, color, {

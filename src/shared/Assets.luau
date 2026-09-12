@@ -1097,6 +1097,89 @@ function Assets.stripScripts(root: Instance): number
 end
 
 --[[
+	PARCACIKLARI RENGIN KENDI TONLARINA CEVIRIR
+
+	Duz tek renk verildiginde parcaciklar ekranda BEYAZA patliyordu. Sebep
+	renk degil LightEmission: 1'e yakin oldugunda parcacik EKLEMELI cizilir,
+	yani rengi ne olursa olsun arkasindaki goruntunun uzerine parlaklik
+	biner ve merkez bembeyaz olur.
+
+	Burada iki sey birden yapiliyor:
+
+	  1. GECIS   Kademe renginin ACIK tonundan KOYU tonuna bir gecis
+	             kuruluyor (tam olarak flyboard tahtalarindaki gibi).
+	             Boylece efektin derinligi oluyor ama rengi hep kademenin
+	             rengi kaliyor -- beyaz hic girmiyor.
+
+	  2. TAVAN   LightEmission ve isik parlakligi tavana cekiliyor, yani
+	             eklemeli patlama kisiliyor.
+
+	opts:
+	  lightMix        acik uc ne kadar beyaza yaklassin (0 = hic)
+	  darkMix         koyu uc ne kadar siyaha yaklassin
+	  lightEmission   parcacik parlamasinin tavani
+	  lightBrightness isiklarin parlaklik tavani
+	  extraTransparency  butun parcaciklara eklenen saydamlik
+
+	keep: adi gecen dallar ve icerikleri disarida kalir.
+]]
+function Assets.rampEffects(root: Instance, color: Color3, opts: any, keep: { string }?)
+	local lightMix = opts.lightMix or 0.45
+	local darkMix = opts.darkMix or 0.35
+	local emission = opts.lightEmission
+	local brightness = opts.lightBrightness
+	local extra = opts.extraTransparency or 0
+
+	local acik = color:Lerp(Color3.new(1, 1, 1), lightMix)
+	local koyu = color:Lerp(Color3.new(0, 0, 0), darkMix)
+
+	local gecis = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, acik),
+		ColorSequenceKeypoint.new(0.5, color),
+		ColorSequenceKeypoint.new(1, koyu),
+	})
+
+	local nodes = root:GetDescendants()
+	table.insert(nodes, root)
+
+	for _, node in nodes do
+		if isProtected(node, root, keep) then
+			continue
+		end
+
+		if node:IsA("ParticleEmitter") or node:IsA("Beam") or node:IsA("Trail") then
+			node.Color = gecis
+
+			if emission and node:IsA("ParticleEmitter") then
+				node.LightEmission = math.min(node.LightEmission, emission)
+			end
+
+			--[[
+				Saydamlik EKLENEREK uygulanir, ustune yazilmaz: paketin
+				kendi solma egrisi (dogarken belirip olurken kaybolma)
+				korunmali. Zarf de birlikte kirpiliyor -- zarf degeri
+				degerin disina tasarsa Roblox NumberSequence'i reddediyor
+				ve efektin tamami curuyor.
+			]]
+			if extra > 0 then
+				local keys = {}
+				for _, key in node.Transparency.Keypoints do
+					local value = math.clamp(key.Value + extra, 0, 1)
+					local envelope = math.min(key.Envelope, value, 1 - value)
+					table.insert(keys, NumberSequenceKeypoint.new(key.Time, value, envelope))
+				end
+				node.Transparency = NumberSequence.new(keys)
+			end
+		elseif node:IsA("Light") then
+			node.Color = color
+			if brightness then
+				node.Brightness = math.min(node.Brightness, brightness)
+			end
+		end
+	end
+end
+
+--[[
 	SIYAH EFEKTLERI KALDIRIR
 
 	Hazir paketlerde efektin icinde bir de KOYU duman/golge katmani oluyor.

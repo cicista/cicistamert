@@ -583,6 +583,32 @@ Config.WhirlVFX = {
 	tintParts = true,
 
 	--[[
+		PARCACIK GECISI  --  ustteki beyaz patlamaya karsi
+
+		Girdabin ustunden savrulan parcaciklar bembeyaz patliyordu. Sebep
+		renk degil LIGHTEMISSION: 1'e yakin oldugunda parcacik EKLEMELI
+		cizilir, yani rengi ne olursa olsun arkasindaki goruntunun uzerine
+		parlaklik biner ve merkez beyaza doner.
+
+		Cozum flyboard tahtalarindakiyle ayni: parcaciklar kademe renginin
+		ACIK tonundan KOYU tonuna bir gecise cevriliyor ve parlama tavana
+		cekiliyor. Boylece derinlik kaliyor, beyaz hic girmiyor.
+
+		  lightMix   acik uc ne kadar beyaza yaklassin (buyutursen aydinlanir)
+		  darkMix    koyu uc ne kadar siyaha yaklassin
+		  lightEmission  parlamanin tavani -- HALA BEYAZ PATLIYORSA BURAYI KUCULT
+		  lightBrightness  isiklarin parlaklik tavani
+		  extraTransparency  parcaciklara eklenen saydamlik (yoguntsa buyut)
+	]]
+	ramp = {
+		lightMix = 0.45,
+		darkMix = 0.35,
+		lightEmission = 0.15,
+		lightBrightness = 1,
+		extraTransparency = 0.08,
+	},
+
+	--[[
 		SIYAH KATMAN VE BEYAZ YUMUSATMA -- GIRDAPTA KAPALI
 
 		Ikisi de PARCACIK paketleri icin yazildi. Doku tabanli girdapta
