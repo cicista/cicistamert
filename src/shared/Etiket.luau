@@ -155,7 +155,14 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	local nameLabel = line(billboard, "Isim", item.name or "???", rarityInfo.color, L.nameSize, L.nameY)
 
 	if Rarity.isDivine(item.rarity) then
-		-- tagIf: Cosmic mor, Secret siyah, Infernal kirmizi, Abyssal mavi parildar
+		--[[
+			Once Mythic ile ayni parlak gradyan, sonra parildama etiketi.
+			Gradyan olmadan ust kademeler duz tek renk kaliyor ve alt
+			kademelerden daha ucuz gorunuyorlardi.
+
+			tagIf: Cosmic mor, Secret siyah, Infernal kirmizi, Abyssal mavi.
+		]]
+		Fonts.applyGlow(nameLabel, rarityInfo.color)
 		Divine.tagIf(nameLabel, item.rarity)
 	elseif Rarity.isGlowing(item.rarity) then
 		Fonts.applyGlow(nameLabel, rarityInfo.color)

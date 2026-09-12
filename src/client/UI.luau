@@ -170,8 +170,15 @@ function UI.rarityStyle(label: TextLabel, rarityId: string): TextLabel
 	Divine.untag(label)
 
 	if Rarity.isDivine(rarityId) then
-		-- Parildama TextColor3 uzerinden calisiyor; gradyan olmamali
-		Fonts.clearGlow(label, color)
+		--[[
+			GRADYAN KALIR
+
+			Eskiden burada clearGlow cagriliyordu ve ust kademeler duz tek
+			renk kaliyordu -- Mythic'ten bile ucuz gorunuyorlardi. Artik
+			Mythic ile ayni parlak gradyan uygulaniyor, PARILDAYAN SEY de
+			gradyanin kendisi oluyor (bkz. IlahiRenk > paint).
+		]]
+		Fonts.applyGlow(label, color)
 		-- tagIf: kademenin KENDI paleti takilir, hepsi Divine olmaz
 		Divine.tagIf(label, rarityId)
 	elseif Rarity.isGlowing(rarityId) then

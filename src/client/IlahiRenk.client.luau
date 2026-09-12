@@ -34,9 +34,39 @@ local Mutations = require(Shared:WaitForChild("Mutations"))
 	Sinif kontrolleri en sik gorulenden basliyor: her karede butun etiketli
 	nesneler icin calisiyor, gereksiz IsA cagrisi yapmayalim.
 ]]
-local function paint(instance: Instance, color: Color3)
+--[[
+	ETIKETLI NESNEYI BOYAR
+
+	TEXT ICIN GRADYAN KORUNUR
+	Mythic gibi kademelerde yazinin uzerinde bir UIGradient var (Fonts
+	"Parilti"): parlak -> renk -> parlak, yaziya hacim veriyor. Parildayan
+	kademelerde bu gradyan SILINIYORDU ve geriye duz tek renk kaliyordu --
+	ust kademeler alt kademelerden daha ucuz gorunuyordu.
+
+	Artik gradyan duruyor ve PARILDAYAN SEY GRADYANIN KENDISI. Yazinin
+	TextColor3'u beyaz kalir ki gradyan kendi rengini bozulmadan gostersin.
+
+	sweep: gradyanin kaydirma miktari. Isik yazinin uzerinden gecer gibi
+	suzulur -- asil "pahali" duran sey bu.
+]]
+local function paint(instance: Instance, color: Color3, sweep: number?)
 	if instance:IsA("TextLabel") or instance:IsA("TextButton") then
-		instance.TextColor3 = color
+		local gradient = instance:FindFirstChild("Parilti")
+
+		if gradient and gradient:IsA("UIGradient") then
+			local bright = color:Lerp(Color3.new(1, 1, 1), 0.7)
+			gradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, bright),
+				ColorSequenceKeypoint.new(0.5, color),
+				ColorSequenceKeypoint.new(1, bright),
+			})
+			if sweep then
+				gradient.Offset = Vector2.new(0, sweep)
+			end
+			instance.TextColor3 = Color3.new(1, 1, 1)
+		else
+			instance.TextColor3 = color
+		end
 	elseif instance:IsA("BasePart") then
 		instance.Color = color
 	elseif instance:IsA("UIStroke") then
@@ -49,6 +79,8 @@ local function paint(instance: Instance, color: Color3)
 	elseif instance:IsA("Highlight") then
 		-- Siyah brainrotun kademe konturu
 		instance.OutlineColor = color
+	elseif instance:IsA("UIGradient") then
+		instance.Color = ColorSequence.new(color)
 	elseif instance:IsA("Frame") then
 		instance.BackgroundColor3 = color
 	elseif instance:IsA("GuiObject") then
@@ -110,12 +142,32 @@ end
 
 local elapsed = 0
 
+--[[
+	Isik suzulmesinin bir turu kac saniye surer. Renk gecisinden bagimsiz:
+	yavas parildayan bir kademede bile parlama akmaya devam etsin.
+]]
+local SUZULME = 1.6
+
 RunService.RenderStepped:Connect(function(dt)
 	elapsed += dt
 
+	--[[
+		Isik yazinin uzerinden asagidan yukari suzulur. -1..1 araligi
+		gradyani tam disaridan tam disariya tasir, yani parlama girip cikar.
+	]]
+	local sweep = (elapsed / SUZULME) % 2 - 1
+
 	for _, palet in paletler do
-		local step = math.floor(elapsed / math.max(palet.interval, 1 / 240))
-		local color = if step % 2 == 0 then palet.colorA else palet.colorB
+		--[[
+			RENK GECISI YUMUSAK
+
+			Eskiden iki renk arasinda ANI gecis vardi (step % 2) ve yazi
+			strobe gibi kirpisiyordu -- goz yoran, ucuz duran sey buydu.
+			Artik sinus egrisiyle suzulerek geciyor: ayni ritim, yumusak.
+		]]
+		local faz = elapsed / math.max(palet.interval, 1 / 240) * math.pi
+		local oran = (math.sin(faz) + 1) / 2
+		local color = palet.colorA:Lerp(palet.colorB, oran)
 
 		for instance in palet.tracked do
 			-- Silinen nesneler listeden kendiliginden dusmez; burada temizlenir
@@ -124,7 +176,7 @@ RunService.RenderStepped:Connect(function(dt)
 				continue
 			end
 
-			paint(instance, color)
+			paint(instance, color, sweep)
 		end
 	end
 end)
