@@ -15,6 +15,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -217,6 +218,21 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 			end
 		end
 	end)
+
+	--[[
+		PAKETIN KENDI SCRIPTLERINI SIL
+
+		Toolbox efektlerinin icinde kendi dondurme/animasyon scriptleri
+		oluyor. Girdabin donusunu oyunun kendisi yonetiyor (bkz. spin);
+		paketin scripti ayni modeli ayri bir eksende cevirince efekt yan
+		yatmis gibi donuyordu. Ayrica efekt paketinin script CALISTIRMASI
+		icin bir sebep yok -- olmayan script arka kapi da olamaz.
+	]]
+	if cfg.stripScripts then
+		step("script temizligi", function()
+			Assets.stripScripts(template)
+		end)
+	end
 
 	--[[
 		EFEKT BORUSU  --  sira onemli
@@ -630,6 +646,22 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 	model:SetAttribute("BeamId", id)
 	model:SetAttribute("Owner", player.UserId)
 	model.Parent = folder
+
+	--[[
+		GIRDAP YATAYDA DONER
+
+		Donusu ISTEMCI yapiyor: model etiketleniyor, her oyuncu kendi
+		ekraninda ceviriyor. Sunucuda cevirmek her karede CFrame
+		replikasyonu demek olurdu -- gorsel bir detay icin gereksiz trafik.
+
+		Tek eksen: dunya Y'si. Paketin kendi dondurme scriptleri silindigi
+		icin (stripScripts) baska bir eksende ceviren kimse kalmiyor;
+		girdap eskiden onlar yuzunden yan yatmis gibi donuyordu.
+	]]
+	if sea and W.spin and W.spin ~= 0 then
+		model:SetAttribute("DonusHizi", W.spin)
+		CollectionService:AddTag(model, W.spinTag)
+	end
 
 	local beam: Beam = {
 		id = id,

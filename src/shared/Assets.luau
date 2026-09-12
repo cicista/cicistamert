@@ -1063,6 +1063,40 @@ function Assets.tintSurfaces(root: Instance, color: Color3, preserveShading: boo
 end
 
 --[[
+	SABLONDAKI SCRIPTLERI SILER
+
+	Toolbox'tan gelen efekt paketlerinin icinde cogu zaman kendi kucuk
+	scriptleri olur: dondurme, yanip sonme, olcek animasyonu... Iki sebeple
+	temizleniyor:
+
+	  1. CAKISMA. Girdabin donusunu oyunun kendisi yonetiyor; paketin kendi
+	     dondurme scripti ayni modeli ayri bir eksende cevirince efekt yan
+	     yatmis gibi donuyordu.
+
+	  2. GUVENLIK. 12 Eylul 2026'da haritada toolbox modellerine saklanmis
+	     72 arka kapi bulundu (bkz. tools/scan.luau). Efekt paketinin icinde
+	     script CALISTIRMAK icin bir sebep yok; olmayan script zarar veremez.
+
+	Silinen scriptler yalnizca OYUNUN kullandigi kopyadan gider; Studio'daki
+	orijinal sablona dokunulmaz.
+]]
+function Assets.stripScripts(root: Instance): number
+	local doomed: { Instance } = {}
+
+	for _, node in root:GetDescendants() do
+		if node:IsA("LuaSourceContainer") then
+			table.insert(doomed, node)
+		end
+	end
+
+	for _, node in doomed do
+		node:Destroy()
+	end
+
+	return #doomed
+end
+
+--[[
 	SIYAH EFEKTLERI KALDIRIR
 
 	Hazir paketlerde efektin icinde bir de KOYU duman/golge katmani oluyor.

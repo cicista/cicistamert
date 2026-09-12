@@ -523,88 +523,134 @@ Config.BeamVFX = {
 -- Output'a duser), yani girdap her halukarda dogar.
 ------------------------------------------------------------------
 Config.WhirlVFX = {
-	-- Studio'daki VFX'in adi
+	-- Studio'daki VFX'in adi (ReplicatedStorage > Assets icinde)
 	name = "VortexVFX",
 
+	-- Uretilen modelin adi ve Output uyarilarindaki etiket
 	label = "Girdap",
 
 	keepColor = {},
 	hide = {},
 
-	preserveShading = true,
-	vividness = 0.9,
+	--[[
+		PAKETIN KENDI SCRIPTLERINI SIL
+
+		Girdap paketinin icinde iki dondurme scripti vardi ve modeli kendi
+		yerel eksenlerinde ceviriyorlardi -- girdap yan yatmis gibi
+		donuyordu. Donusu artik oyun yonetiyor (bkz. spin), o yuzden
+		paketin scriptlerine ihtiyac yok.
+
+		Ikinci fayda guvenlik: toolbox paketlerinin icindeki scriptler bu
+		haritada bir kez 72 arka kapi olarak cikti (bkz. tools/scan.luau).
+		Olmayan script arka kapi da olamaz.
+	]]
+	stripScripts = true,
+
+	--[[
+		YATAY DONUS
+
+		Derece/saniye, DUNYA Y ekseni etrafinda. Donduren taraf istemci
+		(bkz. StarterPlayerScripts > GirdapDonus): gorsel bir detay icin
+		her karede CFrame replike etmenin anlami yok.
+
+		0 yaparsan girdap sabit durur.
+	]]
+	spin = 45,
+	spinTag = "GirdapDonus",
+
+	--[[
+		RENKLENDIRME
+
+		Girdap PNG dokusuyla cizilmis. Doku rengi CARPILARAK uygulanir:
+		Color3 beyazken doku kendi rengiyle gorunur, baska bir renk
+		verilince doku o renge boyanir.
+
+		preserveShading KAPALI: acikken dokunun kendi koyu/mavi yapisi
+		korunuyor ve kademe rengi uzerine oturmuyordu -- Legendary girdap
+		bile mavi kaliyor, uzerine kirli lekeler biniyordu. Kapaliyken
+		doku duz olarak kademe renginde gorunur.
+	]]
+	preserveShading = false,
+	vividness = 1,
 
 	--[[
 		DOKULU PARCALARI DA BOYA
 
-		VortexVFX efekti parcaciklarla degil DONEN DOKULU PARCALARLA
-		kurulu. Renk parcanin kendisinde durdugu icin normal renklendirme
-		ona dokunmuyordu ve girdap kademe ne olursa olsun hep ayni mavi
-		kaliyordu. Acikken parcalar, decal'lar ve dokular da boyanir.
-
-		Kumdaki DigLightVFX'te kapali: orasi zaten parcacik tabanli ve
-		acilirsa taslarin (Rocks) disindaki govde parcalari da boyanir.
+		Renklendirme normalde yalnizca parcacik/Beam/Trail/isik renklerine
+		dokunur. Girdap ise dokulu parcalardan kurulu; acik olmazsa rengi
+		hic degismez.
 	]]
 	tintParts = true,
 
 	--[[
-		TABAN BUYUKLUK
+		SIYAH KATMAN VE BEYAZ YUMUSATMA -- GIRDAPTA KAPALI
 
-		Paketin kendi boyu oyuna gore cok kucuktu -- carpani 1 olan
-		Common/Rare girdaplar ekranda tek bir parcacik gibi duruyordu.
-		Bu sayi kademe carpaniyla CARPILIR: 3 taban * 1.3 Legendary = 3.9.
-
-		Girdap kucuk/buyuk gelirse once burayi oynat.
+		Ikisi de PARCACIK paketleri icin yazildi. Doku tabanli girdapta
+		ters tepiyor: koyu bolgeler dokunun kendi cizgileri, silinince
+		girdap dagiliyor; beyaz yumusatma da parlak merkezi kirletiyordu.
 	]]
-	baseScale = 3,
+	removeDark = false,
+	darkThreshold = 0.22,
+	softenWhite = false,
+	whiteSaturation = 0.5,
+	whiteValue = 0.72,
+	whiteGrey = 0.22,
+	whiteSaturationRef = 0.5,
+	whiteMaxValue = 0.35,
+	whiteHighlight = 0,
+	whiteHighlightValue = 0.65,
+	whiteGlow = 0,
 
 	--[[
-		Kademeye gore buyukluk. Kumdakiyle ayni egri: Legendary'den
-		itibaren buyur, Divine belirgin genis parlar.
+		TABAN BUYUKLUK
+
+		Kademe carpaniyla CARPILIR. Girdap butun kademelerde buyuk/kucuk
+		geliyorsa once BURAYI oynat; kademeler arasi fark icin asagidaki
+		tabloyu kullan.
+	]]
+	baseScale = 1,
+
+	--[[
+		KADEMEYE GORE BUYUKLUK
+
+		Kumdan farkli olarak HER kademe yaziliyor: girdap Common'da kucuk
+		baslayip Divine'a dogru buyusun isteniyor. Kumda yalnizca
+		Legendary'den itibaren buyuyor, orada taban boy zaten dogru.
 	]]
 	scaleByRarity = {
-		Legendary = 1.3,
-		Mythic = 1.7,
-		Secret = 2.4,
+		Common = 0.6,
+		Rare = 0.75,
+		Epic = 0.95,
+		Legendary = 1.15,
+		Mythic = 1.4,
+		Secret = 1.7,
+		RotCoin = 0.8,
+		LuckyBlock = 1,
 	},
 
 	--[[
 		SU YUZEYINE OTURTMA
 
-		Kumda efektin ALT UCU zemine hizalaniyor (alignToGround). Girdapta
-		oyle degil: girdap suyun hem altina iner hem ustune sicrar, o yuzden
-		efekt su yuzeyine ORTALANIR -- alignToGround kapali.
+		Kumda efektin ALT UCU zemine hizalanir. Girdapta oyle degil: girdap
+		suyun hem altina iner hem ustune sicrar, o yuzden efekt su yuzeyine
+		ORTALANIR.
 	]]
 	alignToGround = false,
 
 	--[[
 		DENIZ YUZEYININ Y'SI
 
-		Girdabin dikey yeri isinin carptigi noktadan DEGIL, buradan gelir.
+		Girdabin dikey yeri isinin carptigi noktadan DEGIL buradan gelir.
 		Isin dalganin tepesine ya da cukuruna denk gelebiliyor ve girdap
-		bazen suyun biraz altinda/ustunde kaliyordu; sabit deger hepsini
-		ayni hizaya getiriyor.
+		bazen suyun biraz altinda/ustunde kaliyordu.
 
 		Denizin yuksekligini degistirirsen BURAYI guncelle. nil yaparsan
-		eski davranisa doner ve isinin buldugu yukseklik kullanilir.
+		isinin buldugu yukseklik kullanilir.
 	]]
 	fixedY = 20,
 
 	-- Ince ayar: yuzeyden kac stud yukari kaydirilsin (eksi = suya gomer)
 	height = 0,
-
-	removeDark = true,
-	darkThreshold = 0.22,
-
-	softenWhite = true,
-	whiteSaturation = 0.5,
-	whiteValue = 0.72,
-	whiteGrey = 0.22,
-	whiteSaturationRef = 0.55,
-	whiteMaxValue = 0.8,
-	whiteHighlight = 0.15,
-	whiteHighlightValue = 0.9,
-	whiteGlow = 0,
 }
 
 return Config
