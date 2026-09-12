@@ -396,6 +396,12 @@ Config.BeamVFX = {
 		Legendary = 1.3,
 		Mythic = 1.7,
 		Secret = 2.4,
+
+		-- Adaya bagli ust kademeler Divine'in USTUNE devam eder
+		Cosmic = 2.9,
+		Gizli = 3.4,
+		Infernal = 3.9,
+		Abyssal = 4.5,
 	},
 
 	--[[
@@ -685,6 +691,12 @@ Config.WhirlVFX = {
 		Legendary = 1.15,
 		Mythic = 1.4,
 		Secret = 1.7,
+
+		-- Adaya bagli ust kademeler Divine'in USTUNE devam eder
+		Cosmic = 2.0,
+		Gizli = 2.3,
+		Infernal = 2.6,
+		Abyssal = 3.0,
 		RotCoin = 0.8,
 		LuckyBlock = 1,
 	},

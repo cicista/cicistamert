@@ -149,7 +149,7 @@ local SALINIM_HIZ = 1.7
 	4. ada oyunda "Alev Kum" ama parcanin adi hala "gizlikum".
 ]]
 local ADA_ADI: { [string]: string } = {
-	kum = "Sand Island",
+	kum = "Main Island",
 	sekerkum = "Candy Island",
 	snowkum = "Snow Island",
 	gizlikum = "Lava Island",

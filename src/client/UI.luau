@@ -172,7 +172,8 @@ function UI.rarityStyle(label: TextLabel, rarityId: string): TextLabel
 	if Rarity.isDivine(rarityId) then
 		-- Parildama TextColor3 uzerinden calisiyor; gradyan olmamali
 		Fonts.clearGlow(label, color)
-		Divine.tag(label)
+		-- tagIf: kademenin KENDI paleti takilir, hepsi Divine olmaz
+		Divine.tagIf(label, rarityId)
 	elseif Rarity.isGlowing(rarityId) then
 		Fonts.applyGlow(label, color)
 	else

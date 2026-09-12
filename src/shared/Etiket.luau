@@ -155,7 +155,8 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	local nameLabel = line(billboard, "Isim", item.name or "???", rarityInfo.color, L.nameSize, L.nameY)
 
 	if Rarity.isDivine(item.rarity) then
-		Divine.tag(nameLabel)
+		-- tagIf: Cosmic mor, Secret siyah, Infernal kirmizi, Abyssal mavi parildar
+		Divine.tagIf(nameLabel, item.rarity)
 	elseif Rarity.isGlowing(item.rarity) then
 		Fonts.applyGlow(nameLabel, rarityInfo.color)
 	end

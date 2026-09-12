@@ -63,8 +63,17 @@ function Divine.tag(instance: Instance)
 	end
 end
 
+--[[
+	Butun parildama etiketlerini soker.
+
+	Eskiden yalnizca Divine etiketini kaldiriyordu; artik dort kademe daha
+	parildadigi icin tek tek sokmek gerekiyor. Yeniden kullanilan bir yazi
+	(ornegin envanter satiri) eski paletiyle parildamaya devam ederdi.
+]]
 function Divine.untag(instance: Instance)
-	CollectionService:RemoveTag(instance, Divine.Tag)
+	for _, parilti in Divine.Flashes do
+		CollectionService:RemoveTag(instance, parilti.tag)
+	end
 end
 
 --[[
