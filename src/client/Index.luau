@@ -57,7 +57,8 @@ local IndexDurum = Net.event("IndexDurum")
 local Index = {}
 
 -- Hucre olculeri
-local HUCRE = Vector2.new(132, 156)
+-- Ada satiri eklenince yukseklik 156'dan buyutuldu; yoksa yazi tasiyordu
+local HUCRE = Vector2.new(132, 176)
 local BOSLUK = 10
 
 -- Gorus penceresinin ustune/altina birakilan pay (piksel)
@@ -141,6 +142,20 @@ local SALINIM_HIZ = 1.7
 -- Rarity.Order esas alinir; katalogda olup Order'da olmayan bir kademe
 -- cikarsa sessizce dusmesin diye sona eklenir.
 ------------------------------------------------------------------
+--[[
+	ADA ADLARI
+
+	Kimlik Studio'daki kum parcasinin adi; oyuncuya gosterilen ad ayri.
+	4. ada oyunda "Alev Kum" ama parcanin adi hala "gizlikum".
+]]
+local ADA_ADI: { [string]: string } = {
+	kum = "Sand Island",
+	sekerkum = "Candy Island",
+	snowkum = "Snow Island",
+	gizlikum = "Lava Island",
+	deniz = "The Sea",
+}
+
 local function siraliKademeler(): { string }
 	local sirali = {}
 	local gorulen: { [string]: boolean } = {}
@@ -643,6 +658,27 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		position = UDim2.fromOffset(4, 136),
 		parent = ic,
 		name = "Gelir",
+	})
+
+	--[[
+		HANGI ADADAN CIKAR
+
+		Ayni kademe her adada farkli brainrotlar veriyor, o yuzden hucrede
+		adanin adi da yaziyor -- oyuncu "bunu nerede arayacagim" sorusunu
+		Index'ten cevapliyor.
+
+		Kilitli hucrelerde de gorunur: hangi adaya gidilecegi bilgisi
+		brainrotun kendisini ele vermiyor, aksine yol gosteriyor.
+	]]
+	local ada = UI.text({
+		text = ADA_ADI[string.lower(info.island or "")] or "?",
+		size = UI.Sizes.tiny,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -8, 0, 16),
+		position = UDim2.fromOffset(4, 155),
+		parent = ic,
+		name = "Ada",
 	})
 
 	local hucre: Hucre = {
