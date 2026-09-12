@@ -41,7 +41,14 @@ Divine.Tag = "IlahiRenk"
 ]]
 Divine.colorA = Color3.fromRGB(255, 232, 90)
 Divine.colorB = Color3.fromRGB(255, 255, 255)
-Divine.interval = 0.04
+--[[
+	DIVINE'IN PARILDAMA ARALIGI
+
+	0.04 saniyede bir renk degistiriyordu -- saniyede 25 gecis, goz yoruyordu.
+	Artik en YAVAS parildayan kademe Divine; ust kademeler sirayla
+	hizlaniyor (bkz. Flashes): 0.7 / 0.6 / 0.5 / 0.4 / 0.3.
+]]
+Divine.interval = 0.7
 
 --[[
 	Ruletlerde ve panellerde kullanilan ZEMIN tonu.
@@ -110,7 +117,7 @@ Divine.Flashes = {
 		tag = "KozmikRenk",
 		colorA = Color3.fromRGB(138, 43, 226),
 		colorB = Color3.fromRGB(255, 255, 255),
-		interval = 0.038,
+		interval = 0.6,
 	},
 
 	-- Secret (kimligi Gizli): siyah <-> beyaz
@@ -118,7 +125,7 @@ Divine.Flashes = {
 		tag = "GizliRenk",
 		colorA = Color3.fromRGB(14, 14, 16),
 		colorB = Color3.fromRGB(255, 255, 255),
-		interval = 0.034,
+		interval = 0.5,
 	},
 
 	-- Infernal: kan kirmizisi <-> beyaz
@@ -126,7 +133,7 @@ Divine.Flashes = {
 		tag = "InfernalRenk",
 		colorA = Color3.fromRGB(140, 6, 14),
 		colorB = Color3.fromRGB(255, 255, 255),
-		interval = 0.03,
+		interval = 0.4,
 	},
 
 	-- Abyssal: derin deniz mavisi <-> beyaz
@@ -134,7 +141,7 @@ Divine.Flashes = {
 		tag = "AbyssalRenk",
 		colorA = Color3.fromRGB(8, 52, 130),
 		colorB = Color3.fromRGB(255, 255, 255),
-		interval = 0.026,
+		interval = 0.3,
 	},
 } :: { [string]: Parilti }
 

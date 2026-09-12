@@ -59,11 +59,14 @@ Brainrots.List = {
 	-- 2. ada -- Seker Kum
 	{ name = "Bambini Crostini", rarity = "Common", incomeFactor = 0.49, island = "sekerkum" },
 	{ name = "Banana Dancana", rarity = "Common", incomeFactor = 0.54, island = "sekerkum" },
+	{ name = "Bananini Kittini", rarity = "Common", incomeFactor = 0.58, island = "sekerkum" },
 	-- 3. ada -- Snow Kum
-	{ name = "Bananini Kittini", rarity = "Common", incomeFactor = 0.58, island = "snowkum" },
 	{ name = "Cachorrito Melonito", rarity = "Common", incomeFactor = 0.66, island = "snowkum" },
+	{ name = "Avocadini Guffo", rarity = "Common", incomeFactor = 0.7, island = "snowkum" },
+	{ name = "Lerulerulerule", rarity = "Common", incomeFactor = 0.74, island = "snowkum" },
 	-- 4. ada -- Alev Kum
-	{ name = "Avocadini Guffo", rarity = "Common", incomeFactor = 0.7, island = "gizlikum" },
+	{ name = "Talpa Di Fero", rarity = "Common", incomeFactor = 0.78, island = "gizlikum" },
+	{ name = "Fluri Flura", rarity = "Common", incomeFactor = 0.83, island = "gizlikum" },
 	-- 5. ada -- Deniz (balikcilik)
 	{ name = "Bananita Dolphinita", rarity = "Common", incomeFactor = 0.62, island = "deniz" },
 
@@ -78,12 +81,15 @@ Brainrots.List = {
 	{ name = "Brri Brri Bicus Dicus", rarity = "Rare", incomeFactor = 0.31, island = "kum" },
 	{ name = "Nyannini Cattalini", rarity = "Rare", incomeFactor = 0.37, island = "kum" },
 	{ name = "Cacto Hipopotamo", rarity = "Rare", incomeFactor = 0.43, island = "kum" },
+	{ name = "Chef Crabracadabra", rarity = "Rare", incomeFactor = 0.49, island = "kum" },
 	-- 2. ada -- Seker Kum
-	{ name = "Chef Crabracadabra", rarity = "Rare", incomeFactor = 0.49, island = "sekerkum" },
+	{ name = "Ganganzelli Trulala", rarity = "Rare", incomeFactor = 0.54, island = "sekerkum" },
+	{ name = "Agarrini La Pallini", rarity = "Rare", incomeFactor = 0.6, island = "sekerkum" },
 	-- 3. ada -- Snow Kum
-	{ name = "Ganganzelli Trulala", rarity = "Rare", incomeFactor = 0.54, island = "snowkum" },
+	{ name = "Lionel Cactuseli", rarity = "Rare", incomeFactor = 0.72, island = "snowkum" },
+	{ name = "Gangster Footera", rarity = "Rare", incomeFactor = 0.78, island = "snowkum" },
 	-- 4. ada -- Alev Kum
-	{ name = "Agarrini La Pallini", rarity = "Rare", incomeFactor = 0.6, island = "gizlikum" },
+	{ name = "Tric Trac Barabum", rarity = "Rare", incomeFactor = 0.83, island = "gizlikum" },
 	-- 5. ada -- Deniz (balikcilik)
 	{ name = "Blueberrinni Octopusini", rarity = "Rare", incomeFactor = 0.66, island = "deniz" },
 
@@ -95,12 +101,16 @@ Brainrots.List = {
 	{ name = "Smurfo Gatto", rarity = "Epic", incomeFactor = 0.15, island = "kum" },
 	{ name = "Rhino Toasterino", rarity = "Epic", incomeFactor = 0.22, island = "kum" },
 	{ name = "Quesadilla Crocodila", rarity = "Epic", incomeFactor = 0.3, island = "kum" },
+	{ name = "Tirilikalika Tirilikalako", rarity = "Epic", incomeFactor = 0.37, island = "kum" },
 	-- 2. ada -- Seker Kum
-	{ name = "Tirilikalika Tirilikalako", rarity = "Epic", incomeFactor = 0.37, island = "sekerkum" },
+	{ name = "Torrtuginni Dragonfrutini", rarity = "Epic", incomeFactor = 0.44, island = "sekerkum" },
+	{ name = "Strawberrelli Flamingelli", rarity = "Epic", incomeFactor = 0.52, island = "sekerkum" },
 	-- 3. ada -- Snow Kum
-	{ name = "Torrtuginni Dragonfrutini", rarity = "Epic", incomeFactor = 0.44, island = "snowkum" },
+	{ name = "Pandaccini Bananini", rarity = "Epic", incomeFactor = 0.59, island = "snowkum" },
+	{ name = "Ballerino Lololo", rarity = "Epic", incomeFactor = 0.66, island = "snowkum" },
 	-- 4. ada -- Alev Kum
-	{ name = "Strawberrelli Flamingelli", rarity = "Epic", incomeFactor = 0.52, island = "gizlikum" },
+	{ name = "Brr Brr Patapim", rarity = "Epic", incomeFactor = 0.73, island = "gizlikum" },
+	{ name = "Chimpanzini Bananini", rarity = "Epic", incomeFactor = 0.8, island = "gizlikum" },
 
 	------------------------------------------------------------------
 	-- LEGENDARY
@@ -170,17 +180,11 @@ Brainrots.List = {
 	-- 2. ada -- Seker Kum
 	{ name = "Ballerina Cappuccina", rarity = "Cosmic", incomeFactor = 0.95, island = "sekerkum" },
 	-- 3. ada -- Snow Kum
-	{ name = "Pandaccini Bananini", rarity = "Cosmic", incomeFactor = 0.59, island = "snowkum" },
-	{ name = "Ballerino Lololo", rarity = "Cosmic", incomeFactor = 0.66, island = "snowkum" },
+	{ name = "Trippi Troppi", rarity = "Cosmic", incomeFactor = 0.95, island = "snowkum" },
 	-- 4. ada -- Alev Kum
-	{ name = "Lerulerulerule", rarity = "Cosmic", incomeFactor = 0.74, island = "gizlikum" },
-	{ name = "Lionel Cactuseli", rarity = "Cosmic", incomeFactor = 0.72, island = "gizlikum" },
-	{ name = "Brr Brr Patapim", rarity = "Cosmic", incomeFactor = 0.73, island = "gizlikum" },
+	{ name = "Tung Sahur", rarity = "Cosmic", incomeFactor = 0.95, island = "gizlikum" },
 	-- 5. ada -- Deniz (balikcilik)
-	{ name = "Talpa Di Fero", rarity = "Cosmic", incomeFactor = 0.78, island = "deniz" },
-	{ name = "Gangster Footera", rarity = "Cosmic", incomeFactor = 0.78, island = "deniz" },
-	{ name = "Tric Trac Barabum", rarity = "Cosmic", incomeFactor = 0.83, island = "deniz" },
-	{ name = "Chimpanzini Bananini", rarity = "Cosmic", incomeFactor = 0.8, island = "deniz" },
+	{ name = "Frigo Camelo", rarity = "Cosmic", incomeFactor = 0.91, island = "deniz" },
 
 	------------------------------------------------------------------
 	-- GIZLI (EKRANDA SECRET)
@@ -188,11 +192,8 @@ Brainrots.List = {
 	-- 3. ada -- Snow Kum
 	{ name = "Strawberry Elephant", rarity = "Gizli", incomeFactor = 0.41, island = "snowkum" },
 	-- 4. ada -- Alev Kum
-	{ name = "Fluri Flura", rarity = "Gizli", incomeFactor = 0.83, island = "gizlikum" },
-	{ name = "Svinina Bombardino", rarity = "Gizli", incomeFactor = 0.87, island = "gizlikum" },
+	{ name = "Boneca Ambalabu", rarity = "Gizli", incomeFactor = 0.89, island = "gizlikum" },
 	-- 5. ada -- Deniz (balikcilik)
-	{ name = "Frigo Camelo", rarity = "Gizli", incomeFactor = 0.91, island = "deniz" },
-	{ name = "Boneca Ambalabu", rarity = "Gizli", incomeFactor = 0.89, island = "deniz" },
 	{ name = "Cappuccino Assassino", rarity = "Gizli", incomeFactor = 0.88, island = "deniz" },
 
 	------------------------------------------------------------------
@@ -201,16 +202,14 @@ Brainrots.List = {
 	-- 4. ada -- Alev Kum
 	{ name = "Dragon Cannelloni", rarity = "Infernal", incomeFactor = 0.52, island = "gizlikum" },
 	-- 5. ada -- Deniz (balikcilik)
-	{ name = "Trippi Troppi", rarity = "Infernal", incomeFactor = 0.95, island = "deniz" },
-	{ name = "Tung Sahur", rarity = "Infernal", incomeFactor = 0.95, island = "deniz" },
+	{ name = "Svinina Bombardino", rarity = "Infernal", incomeFactor = 0.87, island = "deniz" },
 
 	------------------------------------------------------------------
 	-- ABYSSAL
 	------------------------------------------------------------------
 	-- 5. ada -- Deniz (balikcilik)
 	{ name = "Tralaledon", rarity = "Abyssal", incomeFactor = 0.6, island = "deniz" },
-} :: { BrainrotInfo }-- rarity -> o rarity'deki brainrotlar
-local byRarity: { [string]: { BrainrotInfo } } = {}
+} :: { BrainrotInfo }local byRarity: { [string]: { BrainrotInfo } } = {}
 local byName: { [string]: BrainrotInfo } = {}
 
 -- "rarity|ada" -> o adadaki o kademenin brainrotlari
@@ -253,20 +252,61 @@ function Brainrots.pool(rarityId: Rarity.RarityId): { BrainrotInfo }
 end
 
 --[[
+	ADA SIRASI
+
+	Ust kademelerin BIRIKIMLI havuzu bunu kullaniyor: bir adada acilan
+	brainrot sonraki adalarda da cikmaya devam eder.
+]]
+Brainrots.IslandOrder = { "kum", "sekerkum", "snowkum", "gizlikum", "deniz" }
+
+local adaSirasi: { [string]: number } = {}
+for i, ada in Brainrots.IslandOrder do
+	adaSirasi[ada] = i
+end
+
+--[[
 	ADAYA OZEL HAVUZ
 
-	Kazidan cikan brainrot BURADAN seciliyor: ayni rarity her adada farkli
-	brainrotlar veriyor, yani oyuncu ilerledikce yeni isimler goruyor.
+	Kazidan cikan brainrot BURADAN seciliyor.
 
-	Ada bilinmiyorsa ya da o adada o kademeden brainrot yoksa butun havuza
-	dusulur -- kazi hicbir kosulda bos donmemeli.
+	ALT KADEMELER (Divine ve asagisi) adaya OZEL: ayni kademe her adada
+	farkli brainrotlar verir, brainrot yalnizca kendi adasindan cikar.
+
+	UST KADEMELER (Cosmic, Secret, Infernal, Abyssal) BIRIKIMLI: bir adada
+	acilan sonraki adalarda da cikmaya devam eder. Denizde Cosmic cikarsa
+	dort Cosmic'ten HERHANGI biri olabilir -- yoksa onceki adalarin ozel
+	brainrotlari ileride tamamen erisilemez olurdu.
+
+	Ada bilinmiyorsa ya da havuz bossa butun havuza dusulur; kazi hicbir
+	kosulda bos donmemeli.
 ]]
 function Brainrots.islandPool(rarityId: Rarity.RarityId, island: string?): { BrainrotInfo }
 	if not island then
 		return Brainrots.pool(rarityId)
 	end
 
-	local pool = byIsland[`{rarityId}|{string.lower(island)}`]
+	local ada = string.lower(island)
+	local info = Rarity.Info[rarityId]
+
+	-- Adaya bagli ust kademeler: bu adaya KADAR acilmis olanlarin hepsi
+	if info and info.order > 6 then
+		local sinir = adaSirasi[ada]
+		if sinir then
+			local birikim = {}
+			for _, brainrot in Brainrots.pool(rarityId) do
+				local nerede = adaSirasi[string.lower(brainrot.island)]
+				if nerede and nerede <= sinir then
+					table.insert(birikim, brainrot)
+				end
+			end
+			if #birikim > 0 then
+				return birikim
+			end
+		end
+		return Brainrots.pool(rarityId)
+	end
+
+	local pool = byIsland[`{rarityId}|{ada}`]
 	if pool and #pool > 0 then
 		return pool
 	end
