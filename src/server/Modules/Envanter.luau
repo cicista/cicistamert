@@ -37,6 +37,26 @@ function Envanter.push(player: Player)
 		return
 	end
 
+	--[[
+		INDEX KAYDI BURADA TUTULUYOR
+
+		Brainrotun kimligi BES ayri yerde aciliyor (Detective, Fuse, Lucky
+		Block, gunluk odul, admin paneli). Bes cagri yerine tek bir yere
+		yazmanin sebebi: her acilis sonunda envanter istemciye
+		senkronlanmak ZORUNDA -- oyuncu esyanin adini baska turlu
+		ogrenemez. Yani burasi butun acilis yollarinin ortak bogazi ve
+		ileride altinci bir yol eklenirse onu da kendiliginden yakalar.
+
+		Yan fayda: guncellemeden once oynayanlarin elindeki acilmis
+		brainrotlar ilk senkronda Index'e islenir, eski oyuncular sifir
+		Index'le baslamaz.
+	]]
+	for _, item in data.inventory do
+		if item.revealed and item.name then
+			PlayerData.discover(player, item.name)
+		end
+	end
+
 	EnvanterGuncelle:FireClient(player, {
 		rot = data.rot,
 		rotCoins = data.rotCoins,

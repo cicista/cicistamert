@@ -115,6 +115,14 @@ export type Data = {
 	uiScale: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
+	--[[
+		INDEX  --  kimligi ogrenilmis brainrot adlari
+
+		Esyanin kendisi degil BILGISI tutuluyor: oyuncu brainrotu satsa,
+		fuse etse, base'e koysa da Index'te kayitli kalir. Anahtar
+		brainrotun katalogdaki tam adi.
+	]]
+	discovered: { [string]: boolean },
 }
 
 local PlayerData = {}
@@ -152,6 +160,7 @@ local function defaultData(): Data
 		islands = 1,
 		uiScale = 100,
 		quests = { cycle = 0, progress = {}, done = {} },
+		discovered = {},
 	}
 end
 
@@ -326,6 +335,22 @@ local function migrate(raw: any): Data
 		end
 	end
 
+	--[[
+		INDEX GERI YUKLENIYOR
+
+		Katalogdan cikarilmis isimler ATILIYOR (envanterdeki esyalarda
+		oldugu gibi baska bir brainrota cevrilmiyor): Index bir kayit
+		defteri, oyuncuya gormedigi bir brainrotu gormus gibi yazmak
+		yanlis olur. Artik var olmayan isim de panelde cizilemez.
+	]]
+	if type(raw.discovered) == "table" then
+		for name, kesfedildi in raw.discovered do
+			if kesfedildi == true and type(name) == "string" and Brainrots.get(name) then
+				data.discovered[name] = true
+			end
+		end
+	end
+
 	return data
 end
 
@@ -431,6 +456,36 @@ function PlayerData.addBrainrot(
 	}
 	table.insert(data.inventory, item)
 	return item
+end
+
+--[[
+	INDEX'E BIR BRAINROT ISLE
+
+	Yeni kayit eklendiyse true doner (cagiran taraf "yeni kesif" bildirimi
+	gostermek isterse kullanir). Katalogda olmayan ad yok sayilir.
+]]
+function PlayerData.discover(player: Player, name: string?): boolean
+	if type(name) ~= "string" then
+		return false
+	end
+
+	local data = cache[player]
+	if not data or data.discovered[name] then
+		return false
+	end
+
+	if not Brainrots.get(name) then
+		return false
+	end
+
+	data.discovered[name] = true
+	return true
+end
+
+-- Index panelinin okudugu kesif tablosu; salt okunur kullanilmali
+function PlayerData.discovered(player: Player): { [string]: boolean }
+	local data = cache[player]
+	return if data then data.discovered else {}
 end
 
 function PlayerData.findItem(player: Player, uid: string): InventoryItem?

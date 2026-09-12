@@ -251,7 +251,36 @@ function KaziMinigame.minDuration(gearId: string, rarityId: string): number
 	if net <= 0 then
 		return math.huge
 	end
-	return (1 - KaziMinigame.START) / net
+
+	--[[
+		KOVADAKI HAZIR JETONLAR ALT SINIRDAN DUSULUR
+
+		Minioyun kova DOLU baslar: ilk BURST tiklama beklemeden sayilir,
+		yani imlec daha ilk karede BURST * GAIN kadar ilerleyebilir. Bu
+		ilerleme zaman almadigi icin "en hizli sure" hesabina girmemeli.
+
+		Once girmiyordu ve alt sinir GERCEKTEN ULASILABILIR SUREDEN
+		yukari cikiyordu. Ornek (fark 0, normal kademe):
+
+		    eski alt sinir : 0.50 / 0.24 = 2.08 s  ->  %85'i = 1.77 s
+		    gercek en hizli: 0.38 / 0.24 = 1.58 s
+
+		Yani basta hizli tiklayip kovayi bosaltan oyuncu 1.58 saniyede
+		DOGRU kazaniyor, sunucu ise 1.77 saniyeden once biten zaferi
+		reddediyordu. Otomatik tiklayici (bkz. OtoTiklayici) bunu her
+		seferinde tetikliyor, hizli tiklayan insan ise ara ara.
+
+		Burst dusuldukten sonra alt sinir gercek tabanin altinda kaliyor;
+		KaziSistemi'ndeki %15 pay da uzerine binerek kare dususu ve ag
+		gecikmesi payini veriyor.
+	]]
+	local mesafe = 1 - KaziMinigame.START - KaziMinigame.BURST * KaziMinigame.GAIN
+	if mesafe <= 0 then
+		-- Kova tek basina bari doldurabiliyor: zaman alt siniri yok
+		return 0
+	end
+
+	return mesafe / net
 end
 
 function KaziMinigame.new(gearId: string, rarityId: string): Game

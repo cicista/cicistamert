@@ -98,6 +98,14 @@ Net.Events = {
 	"AyarDurum",       -- server -> client: kayitli ayarlar (arayuz olcegi)
 	"AyarKaydet",      -- client -> server: ayari kaydet
 
+	-- Index (brainrot kesif defteri)
+	"IndexAc",          -- client -> server: defteri istiyorum
+	"IndexDurum",       -- server -> client: kesfedilen brainrot adlari
+
+	-- Otomatik tiklayici (Pass)
+	"OtoTiklayiciDurum", -- server -> client: oyuncu passi aldi mi
+	"OtoTiklayiciSor",   -- client -> server: durumumu soyle
+
 	-- Admin
 	"AdminPanelAc",     -- server -> client: panel + yetki
 	"AdminKomut",       -- client -> server: komut calistir

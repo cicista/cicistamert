@@ -17,6 +17,7 @@
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -29,6 +30,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
+local OtoTiklayici = require(Shared:WaitForChild("OtoTiklayici"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -36,6 +38,8 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local MinigameBasla = Net.event("MinigameBasla")
 local MinigameSonuc = Net.event("MinigameSonuc")
 local KaziBitti = Net.event("KaziBitti")
+local OtoTiklayiciDurum = Net.event("OtoTiklayiciDurum")
+local OtoTiklayiciSor = Net.event("OtoTiklayiciSor")
 
 local ACTION_NAME = "KaziMinigameTut"
 
@@ -312,6 +316,181 @@ kaziIkon.Image = KUREK_IKONU
 kaziIkon.Rotation = IKON_ACI
 kaziIkon.ZIndex = 8
 kaziIkon.Parent = kaziKatman
+
+------------------------------------------------------------------
+-- OTOMATIK TIKLAYICI DUGMESI  (yalnizca kum modu)
+--
+-- Barin SOLUNDA, kurek ikonuyla ayni yukseklikte durur. Uc hali var:
+--
+--   pass yok      ->  "500 R$ AL"   (tiklayinca satin alma penceresi)
+--   pass var, kapali ->  "DEVRE DISI"
+--   pass var, acik   ->  "ACIK"     (kurek kendi kendine vurur)
+--
+-- Pass ID girilmediyse (bkz. Shared > OtoTiklayici) hic cizilmez.
+------------------------------------------------------------------
+
+--[[
+	DUGMENIN YERI  --  piksel ofseti degil EKRAN ORANI
+
+	Once bara gore piksel ofsetiyle konuluyordu ve barin tam soluna,
+	orta yukseklige denk geliyordu. Iki sebeple orana cevrildi:
+
+	  1. Istenen yer orasi degil: kazi sirasinda fare ekranin ALT
+	     tarafinda duruyor, dugme de oraya yakin olmali ki oyuncu
+	     fareyi yukari tasimadan basabilsin.
+
+	  2. Arayuz olcegi (UI.setScale) nesnelerin BOYUTUNU carpiyor ama
+	     konum OFSETINI carpmiyor. Ofsetle yerlestirilen dugme, olcek
+	     degistiginde bardan kayiyordu; oran her olcekte ayni noktada
+	     durur.
+
+	Kaydirmak istersen yalnizca bu iki sayi: 0 = sol/ust, 1 = sag/alt.
+]]
+local OTO_X = 0.72
+local OTO_Y = 0.8
+
+local otoKutu = Instance.new("Frame")
+otoKutu.Name = "OtoTiklayici"
+otoKutu.AnchorPoint = Vector2.new(0.5, 0.5)
+otoKutu.Position = UDim2.fromScale(OTO_X, OTO_Y)
+otoKutu.Size = UDim2.fromOffset(176, 92)
+otoKutu.BackgroundTransparency = 1
+otoKutu.Visible = OtoTiklayici.gorunur()
+otoKutu.ZIndex = 8
+otoKutu.Parent = kaziEkran
+
+UI.text({
+	text = "OTOMATIK TIKLAYICI",
+	size = UI.Sizes.small,
+	color = UI.Colors.textDim,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, 0, 0, 22),
+	position = UDim2.fromOffset(0, 0),
+	parent = otoKutu,
+	name = "Baslik",
+})
+
+--[[
+	DUGME ELLE KURULUYOR, UI.button KULLANILMIYOR
+
+	UI.hover temel rengi ILK fare temasinda onbellege aliyor ve fare
+	cikinca o renge donuyor. Bu dugmenin rengi ise duruma gore
+	degisiyor (kirmizi/yesil/altin): oyuncu kirmizi haldeyken uzerine
+	gelip tiklasa, dugme yesile donse ve fareyi cekse, hover eski
+	KIRMIZIYA geri tweenlerdi.
+
+	O yuzden hover'i burada, her temasta GUNCEL rengi okuyacak sekilde
+	kuruyoruz.
+]]
+local otoDugme = Instance.new("TextButton")
+otoDugme.Name = "Dugme"
+otoDugme.Position = UDim2.fromOffset(0, 30)
+otoDugme.Size = UDim2.new(1, 0, 0, 58)
+otoDugme.BackgroundColor3 = UI.Colors.bad
+otoDugme.BorderSizePixel = 0
+otoDugme.AutoButtonColor = false
+otoDugme.Text = ""
+otoDugme.ZIndex = 8
+otoDugme.Parent = otoKutu
+UI.corner(otoDugme, 10)
+UI.stroke(otoDugme, Color3.fromRGB(0, 0, 0), 3)
+
+local otoYazi = UI.text({
+	text = "",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromScale(1, 1),
+	parent = otoDugme,
+	name = "Label",
+	zIndex = 9,
+})
+
+-- Durum rengi burada tutuluyor; hover her seferinde bunu okur
+local otoRenk = UI.Colors.bad
+
+otoDugme.MouseEnter:Connect(function()
+	otoDugme.BackgroundColor3 = UI.shade(otoRenk, UI.HoverLift)
+end)
+
+otoDugme.MouseLeave:Connect(function()
+	otoDugme.BackgroundColor3 = otoRenk
+end)
+
+--[[
+	Pass sahipligi sunucudan gelir; bilinene kadar false sayilir, yani
+	dugme "satin al" halinde baslar. Yanlis tarafta hata yapmak bu yon:
+	sahip olmayana acik dugme gostermekten iyidir.
+]]
+local otoSahip = OtoTiklayici.testSahipligi()
+
+--[[
+	Acik/kapali tercihi.
+
+	Pass alindiktan sonra ACIK baslar -- oyuncu tiklamamak icin para
+	verdi, ilk kazisinda bir de dugme aramasin. Kapatabilir ve tercih
+	oturum boyunca korunur.
+]]
+local otoAcik = true
+
+local function otoCalisiyorMu(): boolean
+	return OtoTiklayici.gorunur() and otoSahip and otoAcik
+end
+
+local function otoDugmeyiCiz()
+	if not OtoTiklayici.gorunur() then
+		otoKutu.Visible = false
+		return
+	end
+
+	otoKutu.Visible = true
+
+	if not otoSahip then
+		otoYazi.Text = `{OtoTiklayici.FIYAT} R$  AL`
+		otoRenk = UI.Colors.gold
+		otoDugme.BackgroundColor3 = otoRenk
+		return
+	end
+
+	otoYazi.Text = if otoAcik then "ACIK" else "DEVRE DISI"
+	otoRenk = if otoAcik then UI.Colors.good else UI.Colors.bad
+	otoDugme.BackgroundColor3 = otoRenk
+end
+
+otoDugmeyiCiz()
+
+otoDugme.Activated:Connect(function()
+	if not OtoTiklayici.gorunur() then
+		return
+	end
+
+	--[[
+		Pass yoksa dugme satin alma penceresini acar. Sonucu beklemiyoruz:
+		sunucu PromptGamePassPurchaseFinished'i dinliyor ve durumu
+		kendiliginden gonderiyor (bkz. OtoTiklayici.server).
+	]]
+	if not otoSahip then
+		local ok, hata = pcall(function()
+			MarketplaceService:PromptGamePassPurchase(player, OtoTiklayici.GAMEPASS_ID)
+		end)
+		if not ok then
+			warn(`[OtoTiklayici] satin alma penceresi acilamadi: {hata}`)
+		end
+		return
+	end
+
+	otoAcik = not otoAcik
+	otoDugmeyiCiz()
+end)
+
+OtoTiklayiciDurum.OnClientEvent:Connect(function(sahipMi)
+	otoSahip = sahipMi == true
+	otoDugmeyiCiz()
+end)
+
+if OtoTiklayici.kurulu() then
+	OtoTiklayiciSor:FireServer()
+end
 
 local hint = UI.text({
 	text = "",
@@ -809,6 +988,12 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		bindInput()
 		renderKazi(oyun.state)
 
+		--[[
+			Otomatik tiklamanin zaman birikimi. Her minioyunda sifirdan
+			baslar -- kapanista kalan artik sure bir sonrakine tasinmasin.
+		]]
+		local otoBirikim = 0
+
 		connection = RunService.RenderStepped:Connect(function(dt)
 			local g = kazi
 			if not g then
@@ -816,7 +1001,32 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 			end
 
 			-- Cok buyuk dt sicramalarini kirp (kare dususu oyunu bozmasin)
-			local state = g:step(math.min(dt, 1 / 20))
+			local step = math.min(dt, 1 / 20)
+			local state = g:step(step)
+
+			--[[
+				OTOMATIK TIKLAMA  (pass sahipleri)
+
+				SABIT ARALIKLA tiklanir: saniyede OtoTiklayici.CPS kadar,
+				daha hizli DEGIL. Sebebi Shared > OtoTiklayici'da uzun
+				uzun yazili; kisaca fazla tiklamanin faydasi yok (jeton
+				kovasi yok sayar) ve zarari var (kova bir kerede
+				bosalirsa minioyun sunucunun bekledigi alt sinirdan once
+				biter).
+
+				state ile g.state AYNI tablo (step kendi state'ini
+				donduruyor), bu yuzden tikla() sonrasi yeniden okumaya
+				gerek yok -- asagidaki renderKazi ve finished kontrolu
+				guncel degeri gorur.
+			]]
+			if otoCalisiyorMu() then
+				otoBirikim += step
+				while otoBirikim >= OtoTiklayici.ARALIK do
+					otoBirikim -= OtoTiklayici.ARALIK
+					tikla()
+				end
+			end
+
 			renderKazi(state)
 
 			if state.finished then
