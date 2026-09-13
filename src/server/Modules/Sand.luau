@@ -198,6 +198,29 @@ function Sand.report(player: Player): (boolean, { string })
 			`  Isinin buldugu parca           : {if ground.part then ground.part:GetFullName() else "Terrain"}`
 		)
 		table.insert(lines, `  O parcanin malzemesi           : {ground.material.Name}`)
+
+		--[[
+			GORUNMEZ ZEMIN TESHISI: parcanin boyu, saydamligi ve ust yuzu.
+			Suyun ustunde isik suzmesi doguyorsa sebep genelde gorunmez ya
+			da gorunenden buyuk bir kum parcasidir -- burasi onu ele verir.
+		]]
+		local p = ground.part
+		if p then
+			table.insert(
+				lines,
+				string.format(
+					"  Boyu / konumu                  : (%.0f, %.1f, %.0f)  @ (%.0f, %.1f, %.0f)",
+					p.Size.X, p.Size.Y, p.Size.Z, p.Position.X, p.Position.Y, p.Position.Z
+				)
+			)
+			table.insert(
+				lines,
+				string.format(
+					"  Saydamlik / CanCollide / sinif : %.2f / %s / %s",
+					p.Transparency, tostring(p.CanCollide), p.ClassName
+				)
+			)
+		end
 		table.insert(
 			lines,
 			`  Addan kum sayildi mi           : {ground.part ~= nil and Sand.isSandName(ground.part.Name)}`
@@ -205,6 +228,47 @@ function Sand.report(player: Player): (boolean, { string })
 		table.insert(lines, `  Zemin sans carpani             : x{ground.luck}`)
 	else
 		table.insert(lines, `  Isin hicbir zemine carpmadi ({S.rayDepth} stud asagi bakildi)`)
+	end
+
+	--[[
+		YAKINDAKI KUM PARCALARI (80 stud)
+
+		Isinin carptigi tek parca yetmeyebilir: suzme oyuncudan uzakta
+		doguyor. Cevredeki kum sayilan butun parcalar saydamlik ve boyuyla
+		listelenir; gorunmez olanlar isaretlenir.
+	]]
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		local params = OverlapParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char }
+
+		local bulunan = 0
+		table.insert(lines, "")
+		table.insert(lines, "  Yakindaki kum parcalari (80 stud):")
+
+		for _, part in Workspace:GetPartBoundsInRadius(root.Position, 80, params) do
+			if Sand.isSandMaterial(part.Material) or Sand.isSandName(part.Name) then
+				bulunan += 1
+				if bulunan <= 12 then
+					local isaret = if part.Transparency >= 0.9 then "   <-- GORUNMEZ" else ""
+					table.insert(
+						lines,
+						string.format(
+							"    %s  boy=(%.0f, %.1f, %.0f)  saydam=%.2f%s",
+							part:GetFullName(), part.Size.X, part.Size.Y, part.Size.Z, part.Transparency, isaret
+						)
+					)
+				end
+			end
+		end
+
+		if bulunan == 0 then
+			table.insert(lines, "    (yok)")
+		elseif bulunan > 12 then
+			table.insert(lines, `    ... ve {bulunan - 12} parca daha`)
+		end
 	end
 
 	table.insert(lines, "")
