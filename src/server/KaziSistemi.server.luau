@@ -42,6 +42,7 @@ local Ores = require(Shared:WaitForChild("Ores"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
+local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -98,8 +99,11 @@ local function luckFor(player: Player): number
 	local data = PlayerData.get(player)
 	local detector = if data then Detectors.get(data.detector :: any) else Detectors.get(Detectors.Default)
 
-	-- Gunluk odulden gelen gecici carpan da hesaba katilir
-	return ground * detector.luck * PlayerData.luckBonus(player)
+	--[[
+		Gecici sans carpani ve ARKADAS BUFFI da hesaba katilir: ayni sunucuda
+		Roblox arkadasi varsa x1.15 (bkz. Modules > Arkadaslar).
+	]]
+	return ground * detector.luck * PlayerData.luckBonus(player) * Arkadaslar.carpan(player)
 end
 
 -- Oyuncunun dedektorune gore tarama ayarlari

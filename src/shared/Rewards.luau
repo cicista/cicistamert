@@ -1,131 +1,145 @@
 --!strict
 --[[
-	GUNLUK ODUL
+	GUNLUK ODUL  --  7 gunluk takvim
 
-	Her 24 saatte bir hediye carki cevrilir. Carkta dort odul var:
+	Her 24 saatte bir o gunun odulu alinir; alinan her odul takvimi bir
+	sonraki gune gecirir. 7. gunden sonra takvim 1. gune doner.
 
-	  luck        30 dakikalik sans carpani (kazida daha iyi suzme cikar)
-	  brainrot    dogrudan envantere giren ACILMIS brainrot
-	  luckyblock  bir Lucky Block (istedigin zaman acarsin)
-	  skin        sahip olmadigin bir kurek/GPS skini
+	    Gun 1   5K Rot
+	    Gun 2   50K Rot
+	    Gun 3   100K Rot
+	    Gun 4   1 x en ucuz Lucky Block
+	    Gun 5   2 x en ucuz Lucky Block
+	    Gun 6   3 x en ucuz Lucky Block
+	    Gun 7   1 x en pahali Lucky Block
 
-	Sure sunucu saatiyle (os.time) tutulur, oyundan cikmak sayaci sifirlamaz.
+	EN UCUZ / EN PAHALI Lucky Block adla yazilmiyor; LuckyBlock.Tiers
+	icindeki SIRADAN (order) bulunuyor. Yeni bir tur eklenirse 7. gun
+	kendiliginden en ustteki tur olur.
+
+	SERI BOZULMASI
+	Bir odul alindiktan sonra streakReset saniye (48 saat) icinde siradaki
+	alinmazsa seri bozulur ve takvim 1. gune doner. Yani oyuncunun her gun
+	ugramak icin tam bir gunluk payi var.
+
+	Sure sunucu saatiyle (os.time) tutulur; oyundan cikmak sayaci sifirlamaz.
+
+	(Onceki surum her 24 saatte bir hediye carkiydi; bu takvim onun yerini aldi.)
 ]]
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
+local Format = require(script.Parent.Format)
 
 local Rewards = {}
 
 -- Iki odul arasi bekleme (saniye). 86400 = 24 saat
 Rewards.cooldown = 86400
 
---[[
-	Sans odulu: verilen sure boyunca kazidaki sans carpanini yukseltir.
-	Zemin ve dedektor carpanlariyla CARPILIR, yani en iyi kurulumda etkisi
-	daha da buyuk olur.
-]]
-Rewards.luckBoost = {
-	multiplier = 2,
-	-- Saniye (1800 = 30 dakika)
-	duration = 1800,
-}
+-- Son odulden bu kadar saniye gecerse seri bozulur, 1. gune donulur (48 saat)
+Rewards.streakReset = 172800
 
--- Skin odulunde oyuncunun sahip olmadigi bir skin verilir; hepsi doluysa
--- bunun yerine asagidaki tur Lucky Block verilir.
-Rewards.skinFallbackTier = "Normal"
-
---[[
-	Carkin odulleri. weight = agirlik (toplamlarinin 100 olmasi gerekmez).
-	Bir odulu kaldirmak istersen agirligini 0 yap.
-]]
-export type Prize = {
-	id: string,
-	label: string,
-	weight: number,
-	color: Color3,
-}
-
-Rewards.Prizes = {
-	{
-		id = "brainrot",
-		label = "BRAINROT",
-		weight = 34,
-		color = Color3.fromRGB(180, 100, 255),
-	},
-	{
-		id = "luck",
-		label = "30 MIN LUCK",
-		weight = 30,
-		color = Color3.fromRGB(120, 226, 150),
-	},
-	{
-		id = "luckyblock",
-		label = "LUCKY BLOCK",
-		weight = 24,
-		color = Color3.fromRGB(255, 236, 90),
-	},
-	{
-		id = "skin",
-		label = "SKIN",
-		weight = 12,
-		color = Color3.fromRGB(90, 180, 255),
-	},
-} :: { Prize }
-
--- Cark gorunumu (Lucky Block carkiyla ayni mantik)
-Rewards.Wheel = {
-	cellCount = 40,
-	winnerIndex = 33,
-	spinTime = 3.2,
-	-- Cark durduktan sonra odulun verilmesi icin beklenen ek sure
-	settle = 0.4,
-}
-
-function Rewards.totalSpinTime(): number
-	return Rewards.Wheel.spinTime + Rewards.Wheel.settle
-end
-
-local byId: { [string]: Prize } = {}
-for _, prize in Rewards.Prizes do
-	byId[prize.id] = prize
-end
-
-function Rewards.get(id: string): Prize?
-	return byId[id]
-end
-
--- Carkin duracagi odulu secer
-function Rewards.roll(rng: Random): Prize
-	local total = 0
-	for _, prize in Rewards.Prizes do
-		total += math.max(0, prize.weight)
-	end
-
-	if total <= 0 then
-		return Rewards.Prizes[1]
-	end
-
-	local roll = rng:NextNumber() * total
-	local cursor = 0
-	for _, prize in Rewards.Prizes do
-		cursor += math.max(0, prize.weight)
-		if roll <= cursor then
-			return prize
+-- LuckyBlock.Tiers icinde sirasi en dusuk / en yuksek tur
+local function uctakiTur(enPahali: boolean): string
+	local secilen = LuckyBlock.Tiers[1]
+	for _, tur in LuckyBlock.Tiers do
+		if (enPahali and tur.order > secilen.order) or (not enPahali and tur.order < secilen.order) then
+			secilen = tur
 		end
 	end
-
-	return Rewards.Prizes[#Rewards.Prizes]
+	return secilen.id
 end
+
+local EN_UCUZ = uctakiTur(false)
+local EN_PAHALI = uctakiTur(true)
+
+export type Day = {
+	day: number,
+	-- "rot" ya da "luckyblock"
+	kind: string,
+	amount: number,
+	-- Yalnizca luckyblock odullerinde: hangi tur
+	tier: string?,
+}
 
 --[[
-	Brainrot odulunde hangi kademe cikacagi.
-	Lucky Block'un Normal tur tablosu kullaniliyor: Common yok, cogu Epic.
+	TAKVIM. Odulleri degistirmek icin yalnizca bu tabloyu duzenle; kartlar,
+	bildirim ve sunucu hepsini buradan okuyor.
 ]]
-function Rewards.rollBrainrotRarity(rng: Random): string
-	return LuckyBlock.rollRarity("Normal", rng)
+Rewards.Days = {
+	{ day = 1, kind = "rot", amount = 5000 },
+	{ day = 2, kind = "rot", amount = 50000 },
+	{ day = 3, kind = "rot", amount = 100000 },
+	{ day = 4, kind = "luckyblock", amount = 1, tier = EN_UCUZ },
+	{ day = 5, kind = "luckyblock", amount = 2, tier = EN_UCUZ },
+	{ day = 6, kind = "luckyblock", amount = 3, tier = EN_UCUZ },
+	{ day = 7, kind = "luckyblock", amount = 1, tier = EN_PAHALI },
+} :: { Day }
+
+function Rewards.get(day: number): Day
+	return Rewards.Days[math.clamp(math.floor(day), 1, #Rewards.Days)]
 end
 
--- Kalan sureyi "5s 12dk" gibi okunur yaziya cevirir
+-- Takvimde siradaki gun (7'den sonra 1)
+function Rewards.nextDay(day: number): number
+	return day % #Rewards.Days + 1
+end
+
+-- Kartta ve bildirimde yazan odul adi
+function Rewards.label(day: number): string
+	local odul = Rewards.get(day)
+	if odul.kind == "rot" then
+		return `+{Format.short(odul.amount)} Rot`
+	end
+
+	local tur = LuckyBlock.get(odul.tier)
+	return if odul.amount > 1 then `{odul.amount}x {tur.displayName}` else tur.displayName
+end
+
+-- Odulun rengi: Rot sari, Lucky Block kendi turunun renginde
+function Rewards.color(day: number): Color3
+	local odul = Rewards.get(day)
+	if odul.kind == "rot" then
+		return Color3.fromRGB(255, 214, 41)
+	end
+	return LuckyBlock.get(odul.tier).color
+end
+
+export type State = {
+	-- Takvimde alinacak gun
+	day: number,
+	ready: boolean,
+	-- Alinabilir olmasina kalan saniye (hazirsa 0)
+	remaining: number,
+}
+
+--[[
+	OYUNCUNUN DURUMU
+
+	lastReward : son odulun alindigi an (0 = hic alinmamis)
+	rewardDay  : takvimde siradaki gun
+]]
+function Rewards.state(lastReward: number, rewardDay: number, now: number): State
+	local day = math.clamp(math.floor(rewardDay), 1, #Rewards.Days)
+
+	if lastReward <= 0 then
+		return { day = day, ready = true, remaining = 0 }
+	end
+
+	local elapsed = now - lastReward
+
+	if elapsed >= Rewards.streakReset then
+		-- Seri bozuldu: takvim basa doner
+		return { day = 1, ready = true, remaining = 0 }
+	end
+
+	if elapsed >= Rewards.cooldown then
+		return { day = day, ready = true, remaining = 0 }
+	end
+
+	return { day = day, ready = false, remaining = Rewards.cooldown - elapsed }
+end
+
+-- Kalan sureyi "5h 12m" gibi okunur yaziya cevirir (bildirimlerde)
 function Rewards.formatRemaining(seconds: number): string
 	local total = math.max(0, math.floor(seconds))
 	local hours = math.floor(total / 3600)
@@ -139,6 +153,12 @@ function Rewards.formatRemaining(seconds: number): string
 		return `{minutes}m {secs}s`
 	end
 	return `{secs}s`
+end
+
+-- Kartin dugmesindeki geri sayim: "23:59:07"
+function Rewards.formatClock(seconds: number): string
+	local t = math.max(0, math.floor(seconds))
+	return string.format("%02d:%02d:%02d", t // 3600, (t % 3600) // 60, t % 60)
 end
 
 return Rewards

@@ -14,6 +14,7 @@
 	  baseFloors -- base'te acilmis kat sayisi (1..3)
 	  baseSlots  -- acilmis toplam slot sayisi (10..30)
 	  lastReward -- son gunluk odulun alindigi an (os.time)
+	  rewardDay  -- gunluk odul takviminde siradaki gun (1..7)
 	  luckUntil  -- gecici sans carpaninin bitis ani (os.time)
 	  luckBonus  -- gecici sans carpani (1 = bonus yok)
 
@@ -34,6 +35,8 @@ local Detectors = require(Shared:WaitForChild("Detectors"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Rods = require(Shared:WaitForChild("Rods"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
+-- Gunluk odul takviminin gun sayisi (rewardDay sinirlari)
+local Rewards = require(Shared:WaitForChild("Rewards"))
 local Ores = require(Shared:WaitForChild("Ores"))
 
 export type InventoryItem = {
@@ -116,6 +119,8 @@ export type Data = {
 	baseSlots: number,
 	-- Gunluk odul ve gecici sans
 	lastReward: number,
+	-- Gunluk odul takviminde siradaki gun (bkz. Shared > Rewards)
+	rewardDay: number,
 	luckUntil: number,
 	luckBonus: number,
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
@@ -176,6 +181,7 @@ local function defaultData(): Data
 		baseFloors = 1,
 		baseSlots = 10,
 		lastReward = 0,
+		rewardDay = 1,
 		luckUntil = 0,
 		luckBonus = 1,
 		islands = 1,
@@ -271,6 +277,8 @@ local function migrate(raw: any): Data
 
 	-- Odul oncesi kayitlarda bu alanlar yok; sifirdan baslarlar
 	data.lastReward = math.max(0, tonumber(raw.lastReward) or 0)
+	-- Takvim oncesi kayitlarda yok: 1. gunden baslarlar
+	data.rewardDay = math.clamp(math.floor(tonumber(raw.rewardDay) or 1), 1, #Rewards.Days)
 	data.luckUntil = math.max(0, tonumber(raw.luckUntil) or 0)
 	data.luckBonus = math.max(1, tonumber(raw.luckBonus) or 1)
 

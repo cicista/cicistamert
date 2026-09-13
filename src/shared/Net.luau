@@ -47,10 +47,14 @@ Net.Events = {
 	"LuckyBlockSonuc",  -- server -> client: cark verisi + kazanan
 
 	-- Gunluk odul
-	"OdulDurum",        -- server -> client: kalan sure / cevrilebilir mi
+	"OdulDurum",        -- server -> client: takvimde hangi gun, alinabilir mi, kalan sure
 	"OdulAc",           -- client -> server: durumu istiyorum
-	"OdulCevir",        -- client -> server: carki cevir
-	"OdulSonuc",        -- server -> client: cark verisi + kazanilan odul
+	"OdulAl",           -- client -> server: bugunun odulunu al
+	"OdulSonuc",        -- server -> client: odulu alinan gun (kart kutlamasi icin)
+
+	-- Arkadaslar (Friends sekmesi + arkadas buffi)
+	"ArkadasDurum",     -- server -> client: sunucudaki arkadaslar + buff yuzdesi
+	"ArkadasAc",        -- client -> server: durumumu soyle
 
 	-- Slot makinesi
 	"SlotMakinesiAc",   -- server -> client: makine arayuzu

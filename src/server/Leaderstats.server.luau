@@ -46,6 +46,8 @@ Icons.report()
 	sey kurulmaz.
 ]]
 require(Modules:WaitForChild("Odul"))
+-- Arkadas buffi: oyuncular girerken arkadasliklari hemen olculsun
+require(Modules:WaitForChild("Arkadaslar"))
 
 local function setupStats(player: Player)
 	local data = PlayerData.load(player)

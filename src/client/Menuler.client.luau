@@ -17,6 +17,8 @@ local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+-- Friends sekmesindeki "Invite Friends" dugmesi
+local SocialService = game:GetService("SocialService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -52,9 +54,11 @@ local SlottanAl = Net.event("SlottanAl")
 local EtkinlikSayaci = Net.event("EtkinlikSayaci")
 local LuckyBlockSonuc = Net.event("LuckyBlockSonuc")
 local OdulAc = Net.event("OdulAc")
-local OdulCevir = Net.event("OdulCevir")
+local OdulAl = Net.event("OdulAl")
 local OdulDurum = Net.event("OdulDurum")
 local OdulSonuc = Net.event("OdulSonuc")
+local ArkadasDurum = Net.event("ArkadasDurum")
+local ArkadasAc = Net.event("ArkadasAc")
 local SlotMakinesiAc = Net.event("SlotMakinesiAc")
 local SlotMakinesiCevir = Net.event("SlotMakinesiCevir")
 local SlotMakinesiSonuc = Net.event("SlotMakinesiSonuc")
@@ -499,6 +503,27 @@ local function refreshRot(rot: number?)
 end
 
 refreshRot(inventory.rot)
+
+--[[
+	ARKADAS BUFFI YAZISI  --  Rot'un hemen ustunde
+
+	Ayni sunucuda Roblox arkadasi varken gorunur: "Friend Boost: +15% Luck".
+	Konumu ve sol menunun ona gore yukari itilmesi solSutunuYerlestir'de;
+	gorunurlugu ArkadasDurum gelince degisir (bkz. FRIENDS bolumu).
+]]
+local arkadasBuff = UI.text({
+	text = "",
+	size = UI.Sizes.label,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(120, 255, 150),
+	align = Enum.TextXAlignment.Left,
+	frameSize = UDim2.fromOffset(360, 28),
+	anchor = Vector2.new(0, 1),
+	position = UDim2.new(0, 20, 1, -112),
+	parent = screen,
+	name = "ArkadasBuffu",
+})
+arkadasBuff.Visible = false
 
 --[[
 	Ayri bir baglanti: gelen veriyi DOGRUDAN okuyor, yukaridaki envanter
@@ -1248,6 +1273,8 @@ end)
 -- Odul paneli dosyanin sonunda kuruluyor; buton ondan once dizildigi
 -- icin acma fonksiyonu once bildirilip sonra atanir
 local odulPaneliniAc: () -> ()
+-- Friends sekmesi de dosyanin sonunda kuruluyor
+local arkadasPaneliniAc: () -> ()
 -- Ayarlar paneli de dosyanin sonunda kuruluyor; ayni sebeple once bildirilir
 local ayarPaneliniAc: () -> ()
 -- Gorev panosu da oyle
@@ -1325,7 +1352,15 @@ local function solSutunuYerlestir()
 	local paraYuksekligi = rotKutu.Size.Y.Offset * carpan
 	local altBosluk = -rotKutu.Position.Y.Offset
 
-	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + SUTUN_BOSLUK))
+	--[[
+		Arkadas buffi yazisi Rot kutusunun hemen ustunde. Gorunurken sol
+		menu onun yuksekligi kadar daha yukari itilir: yazi butonlarin
+		altinda kalmasin.
+	]]
+	arkadasBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi))
+	local buffYuksekligi = if arkadasBuff.Visible then arkadasBuff.Size.Y.Offset * carpan else 0
+
+	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + SUTUN_BOSLUK))
 end
 
 solSutunuYerlestir()
@@ -1588,7 +1623,9 @@ end)
 menuButonu(solSutun, "index", "Index", MenuRenk.index, function()
 	Index.ac()
 end)
-menuButonu(solSutun, "friends", "Friends", MenuRenk.friends)
+menuButonu(solSutun, "friends", "Friends", MenuRenk.friends, function()
+	arkadasPaneliniAc()
+end)
 
 -- SAG: ekstra
 menuButonu(sagSutun, "settings", "Settings", MenuRenk.settings, function()
@@ -1597,17 +1634,43 @@ end)
 
 
 ------------------------------------------------------------------
--- GUNLUK ODUL PANELI
+-- GUNLUK ODUL PANELI  --  7 gunluk takvim
 --
--- Cark yalnizca gosterim: kazanan bolmeyi sunucu belirliyor, istemci
--- gelen indekste durduruyor. Odul de cark durunca veriliyor.
+-- Kartlar bir kez kuruluyor; sunucudan gelen durumla (hangi gun, alinabilir
+-- mi, kalan sure) yalnizca dugme yazilari ve renkleri degisiyor. Oduller ve
+-- dogrulama SUNUCUDA (bkz. Modules > Odul, Shared > Rewards); "Claim"
+-- yalnizca istek gonderir.
+--
+--   gecmis gun     karartilmis, "Claimed"
+--   bugun (hazir)  yesil "Claim", dugme nabiz atar
+--   bugun (bekle)  turuncu, kalan sure (sa:dk:sn)
+--   gelecek gun    sari, "2 Days" gibi
 ------------------------------------------------------------------
-local ODUL_CELL_W = 130
-local ODUL_CELL_GAP = 6
-local ODUL_REEL_W = 400
-local ODUL_REEL_H = 92
+local ODUL_KART = 150
+local ODUL_BOSLUK = 10
+local ODUL_UST = 64
+-- 7. gun karti daha genis ve iki satir boyu
+local ODUL_BUYUK_EN = ODUL_KART + 20
 
-local odulPanel = UI.panel(screen, UDim2.fromOffset(460, 330), "GunlukOdul")
+-- Kart zeminleri (canli takvim gorunumu); 7. gunun zemini gokkusagi
+local ODUL_RENK: { [number]: Color3 } = {
+	[1] = Color3.fromRGB(40, 170, 255),
+	[2] = Color3.fromRGB(255, 160, 30),
+	[3] = Color3.fromRGB(30, 200, 220),
+	[4] = Color3.fromRGB(255, 190, 40),
+	[5] = Color3.fromRGB(220, 60, 230),
+	[6] = Color3.fromRGB(30, 200, 220),
+	[7] = Color3.fromRGB(255, 255, 255),
+}
+
+local odulPanel = UI.panel(
+	screen,
+	UDim2.fromOffset(
+		ODUL_BOSLUK + 3 * (ODUL_KART + ODUL_BOSLUK) + ODUL_BUYUK_EN + ODUL_BOSLUK,
+		ODUL_UST + 2 * ODUL_KART + ODUL_BOSLUK * 2
+	),
+	"GunlukOdul"
+)
 
 UI.text({
 	text = "DAILY REWARD",
@@ -1623,247 +1686,488 @@ UI.closeButton(odulPanel).MouseButton1Click:Connect(function()
 	odulPanel.Visible = false
 end)
 
-local odulReel = Instance.new("Frame")
-odulReel.Name = "Cark"
-odulReel.AnchorPoint = Vector2.new(0.5, 0)
-odulReel.Position = UDim2.new(0.5, 0, 0, 62)
-odulReel.Size = UDim2.fromOffset(ODUL_REEL_W, ODUL_REEL_H)
-odulReel.BackgroundColor3 = Color3.fromRGB(12, 14, 19)
-odulReel.BorderSizePixel = 0
-odulReel.ClipsDescendants = true
-odulReel.Parent = odulPanel
-UI.corner(odulReel, 12)
-UI.stroke(odulReel, UI.Colors.gold, 2)
+type OdulKart = {
+	gun: number,
+	olcek: UIScale,
+	cubuk: Frame,
+	cubukOlcek: UIScale,
+	cubukYazi: TextLabel,
+	karartma: Frame,
+}
 
--- "BRAINROT" bolmelerindeki resimler; yalnizca carkin icinden gecenlere kurulur
-local odulOnizleme = BrainrotOnizleme.seritPencere(odulReel)
+local odulKartlari: { [number]: OdulKart } = {}
 
-local odulSerit = Instance.new("Frame")
-odulSerit.Name = "Serit"
-odulSerit.AnchorPoint = Vector2.new(0, 0.5)
-odulSerit.Position = UDim2.new(0, 0, 0.5, 0)
-odulSerit.Size = UDim2.new(0, 0, 1, -14)
-odulSerit.BackgroundTransparency = 1
-odulSerit.Parent = odulReel
+-- Sunucudan gelen son durum
+local odulGun = 1
+local odulHazir = false
+local odulKalan = 0
 
-local odulIsaretci = Instance.new("Frame")
-odulIsaretci.Name = "Isaretci"
-odulIsaretci.AnchorPoint = Vector2.new(0.5, 0.5)
-odulIsaretci.Position = UDim2.fromScale(0.5, 0.5)
-odulIsaretci.Size = UDim2.new(0, 3, 1, 0)
-odulIsaretci.BackgroundColor3 = UI.Colors.gold
-odulIsaretci.BorderSizePixel = 0
-odulIsaretci.ZIndex = 6
-odulIsaretci.Parent = odulReel
+local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: number)
+	local buyuk = gun == #Rewards.Days
 
-local odulSonucYazi = UI.text({
-	text = "",
-	size = UI.Sizes.label,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 26),
-	position = UDim2.fromOffset(10, 168),
-	parent = odulPanel,
-})
+	local kart = Instance.new("Frame")
+	kart.Name = `Gun{gun}`
+	kart.AnchorPoint = Vector2.new(0.5, 0.5)
+	kart.Position = UDim2.fromOffset(x + en / 2, y + boy / 2)
+	kart.Size = UDim2.fromOffset(en, boy)
+	kart.BackgroundColor3 = ODUL_RENK[gun] or UI.Colors.accent
+	kart.BorderSizePixel = 0
+	kart.Parent = odulPanel
+	UI.corner(kart, 10)
+	UI.stroke(kart, Color3.fromRGB(0, 0, 0), 3)
 
-local odulDurumYazi = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.fromOffset(10, 198),
-	parent = odulPanel,
-})
+	--[[
+		ZEMIN GECISI
+		Normal kartlar ustten asagi hafifce koyulasiyor (duz renk yerine
+		parlak kart hissi). Son gunun zemini gokkusagi: en buyuk odul
+		ilk bakista ayrilsin. Gecis zemin rengiyle carpildigi icin son
+		gunun zemini beyaz.
+	]]
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Color = if buyuk
+		then ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 70, 70)),
+			ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 160, 40)),
+			ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 230, 60)),
+			ColorSequenceKeypoint.new(0.6, Color3.fromRGB(90, 220, 90)),
+			ColorSequenceKeypoint.new(0.8, Color3.fromRGB(60, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 80, 255)),
+		})
+		else ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 175, 175))
+	gecis.Parent = kart
 
-local odulButon = UI.button(odulPanel, "SPIN", UDim2.new(1, -40, 0, 48), UI.Colors.gold)
-odulButon.AnchorPoint = Vector2.new(0.5, 1)
-odulButon.Position = UDim2.new(0.5, 0, 1, -18)
+	local olcek = Instance.new("UIScale")
+	olcek.Parent = kart
 
-local odulButonYazi = odulButon:FindFirstChild("Label", true) :: TextLabel?
-if odulButonYazi then
-	odulButonYazi.TextColor3 = Color3.fromRGB(30, 26, 8)
-end
+	UI.text({
+		text = `Day {gun}`,
+		size = if buyuk then UI.Sizes.heading else UI.Sizes.label,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 255, 255),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, 0, 0, 28),
+		position = UDim2.fromOffset(0, 6),
+		parent = kart,
+	})
 
-local function odulOffsetFor(index: number): number
-	local center = (index - 1) * ODUL_CELL_W + ODUL_CELL_W / 2
-	return -(center - ODUL_REEL_W / 2)
-end
+	local odul = Rewards.get(gun)
 
-local function odulSeritKur(cells: { any })
-	-- Resimler bolmelerle birlikte silinmesin: havuza donsunlar
-	odulOnizleme.temizle()
+	-- Odulun ikonu: Rot icin para, Lucky Block icin blok (ikon paketi)
+	local ikon = Instance.new("ImageLabel")
+	ikon.Name = "Ikon"
+	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+	ikon.Position = UDim2.new(0.5, 0, 0.5, -10)
+	ikon.Size = UDim2.fromOffset(if buyuk then 120 else 62, if buyuk then 120 else 62)
+	ikon.BackgroundTransparency = 1
+	ikon.ScaleType = Enum.ScaleType.Fit
+	ikon.Parent = kart
+	Icons.bind(ikon, if odul.kind == "rot" then "rot" else "luckyBlock")
 
-	for _, child in odulSerit:GetChildren() do
-		child:Destroy()
+	-- Lucky Block ikonu turun renginde hafifce boyanir: en pahali blok ucuzundan ayrilsin
+	if odul.kind == "luckyblock" then
+		ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(Rewards.color(gun), 0.35)
 	end
 
-	odulSerit.Size = UDim2.new(0, ODUL_CELL_W * #cells, 1, -14)
+	UI.text({
+		text = Rewards.label(gun),
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 255, 255),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -8, 0, 20),
+		position = UDim2.new(0, 4, 1, -66),
+		parent = kart,
+	})
 
-	for index, entry in cells do
-		local hucre = Instance.new("Frame")
-		hucre.Name = `Bolme{index}`
-		hucre.AnchorPoint = Vector2.new(0, 0.5)
-		hucre.Position = UDim2.fromOffset((index - 1) * ODUL_CELL_W + ODUL_CELL_GAP, 0)
-		hucre.Size = UDim2.fromOffset(ODUL_CELL_W - ODUL_CELL_GAP * 2, 70)
-		hucre.BackgroundColor3 = entry.color
-		hucre.BackgroundTransparency = 0.78
-		hucre.BorderSizePixel = 0
-		hucre.Parent = odulSerit
-		UI.corner(hucre, 8)
-		UI.stroke(hucre, entry.color, 2)
+	-- Alt dugme cubugu: durum yazisi + (yalnizca bugun hazirken) tiklanir
+	local cubuk = Instance.new("Frame")
+	cubuk.Name = "Dugme"
+	cubuk.AnchorPoint = Vector2.new(0.5, 1)
+	cubuk.Position = UDim2.new(0.5, 0, 1, -8)
+	cubuk.Size = UDim2.new(1, -20, 0, 36)
+	cubuk.BackgroundColor3 = UI.Colors.gold
+	cubuk.BorderSizePixel = 0
+	cubuk.Parent = kart
+	UI.corner(cubuk, 8)
+	UI.stroke(cubuk, Color3.fromRGB(0, 0, 0), 2)
 
-		--[[
-			BRAINROT BOLMESI: ustte resmi, altta adi.
+	-- Nabiz bu olcekte; kartin kendi olcegi kutlamaya ayrildi, ikisi karismasin
+	local cubukOlcek = Instance.new("UIScale")
+	cubukOlcek.Parent = cubuk
 
-			Sunucu "brainrot" bolmelerine hangi brainrotu gosterecegini
-			yolluyor (bkz. Modules > Odul > buildCells). Kazanan bolme
-			GERCEKTEN verilecek olani gosteriyor; digerleri oyuncunun
-			adasinda cikabilecek brainrotlardan secilmis gosterimlik.
-		]]
-		local resim = entry.brainrot
-		if type(resim) == "table" and type(resim.name) == "string" then
-			local yuva = Instance.new("Frame")
-			yuva.Name = "Resim"
-			yuva.BackgroundTransparency = 1
-			yuva.Position = UDim2.fromOffset(4, 2)
-			yuva.Size = UDim2.new(1, -8, 1, -22)
-			yuva.Parent = hucre
+	local cubukYazi = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 255, 255),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = cubuk,
+	})
 
-			odulOnizleme.ekle(yuva, {
-				name = resim.name,
-				mutation = if type(resim.mutation) == "string" then resim.mutation else nil,
-				revealed = true,
-			})
+	local tikla = Instance.new("TextButton")
+	tikla.Name = "Tikla"
+	tikla.Size = UDim2.fromScale(1, 1)
+	tikla.BackgroundTransparency = 1
+	tikla.AutoButtonColor = false
+	tikla.Text = ""
+	tikla.Parent = cubuk
+	tikla.MouseButton1Click:Connect(function()
+		-- Yalnizca istek: gun ve odul sunucuda belirleniyor
+		if gun == odulGun and odulHazir then
+			OdulAl:FireServer()
+		end
+	end)
 
-			local ad = UI.text({
-				text = resim.name,
-				size = UI.Sizes.tiny,
-				font = UI.Fonts.bold,
-				color = entry.color,
-				align = Enum.TextXAlignment.Center,
-				frameSize = UDim2.new(1, -6, 0, 18),
-				position = UDim2.new(0, 3, 1, -20),
-				parent = hucre,
-			})
-			ad.TextTruncate = Enum.TextTruncate.AtEnd
+	-- Alinmis gunun karartmasi
+	local karartma = Instance.new("Frame")
+	karartma.Name = "Karartma"
+	karartma.Size = UDim2.fromScale(1, 1)
+	karartma.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	karartma.BackgroundTransparency = 0.5
+	karartma.BorderSizePixel = 0
+	karartma.ZIndex = 5
+	karartma.Visible = false
+	karartma.Parent = kart
+	UI.corner(karartma, 10)
+
+	odulKartlari[gun] = {
+		gun = gun,
+		olcek = olcek,
+		cubuk = cubuk,
+		cubukOlcek = cubukOlcek,
+		cubukYazi = cubukYazi,
+		karartma = karartma,
+	}
+end
+
+-- Gun 1-6: 3 sutun x 2 satir; son gun sagda iki satir boyunda
+for gun = 1, #Rewards.Days - 1 do
+	local sutun = (gun - 1) % 3
+	local satir = (gun - 1) // 3
+	odulKartiKur(
+		gun,
+		ODUL_BOSLUK + sutun * (ODUL_KART + ODUL_BOSLUK),
+		ODUL_UST + satir * (ODUL_KART + ODUL_BOSLUK),
+		ODUL_KART,
+		ODUL_KART
+	)
+end
+
+odulKartiKur(
+	#Rewards.Days,
+	ODUL_BOSLUK + 3 * (ODUL_KART + ODUL_BOSLUK),
+	ODUL_UST,
+	ODUL_BUYUK_EN,
+	ODUL_KART * 2 + ODUL_BOSLUK
+)
+
+local function odulCiz()
+	for gun, kart in odulKartlari do
+		if gun < odulGun then
+			kart.karartma.Visible = true
+			kart.cubuk.BackgroundColor3 = UI.Colors.panelLight
+			kart.cubukYazi.Text = "Claimed"
+		elseif gun == odulGun then
+			kart.karartma.Visible = false
+			if odulHazir then
+				kart.cubuk.BackgroundColor3 = UI.Colors.good
+				kart.cubukYazi.Text = "Claim"
+			else
+				kart.cubuk.BackgroundColor3 = UI.Colors.warn
+				kart.cubukYazi.Text = Rewards.formatClock(odulKalan)
+			end
 		else
-			UI.text({
-				text = entry.label,
-				size = UI.Sizes.tiny,
-				font = UI.Fonts.bold,
-				color = entry.color,
-				align = Enum.TextXAlignment.Center,
-				frameSize = UDim2.new(1, -8, 1, -8),
-				position = UDim2.fromOffset(4, 4),
-				parent = hucre,
-				wrapped = true,
-			})
+			kart.karartma.Visible = false
+			kart.cubuk.BackgroundColor3 = UI.Colors.gold
+			local kalanGun = gun - odulGun
+			kart.cubukYazi.Text = if kalanGun == 1 then "1 Day" else `{kalanGun} Days`
 		end
 	end
 end
 
-local odulKalan = 0
-local odulHazir = false
-local odulDonuyor = false
+--[[
+	NABIZ: alinabilir gunun dugmesi hafifce buyuyup kuculur.
+	Durum her degistiginde eski nabiz durdurulup yenisi kuruluyor.
+]]
+local odulNabiz: Tween? = nil
+local odulNabizOlcek: UIScale? = nil
 
-local function odulButonTazele()
-	if odulDonuyor then
-		odulButon.Visible = false
+local function nabizGuncelle()
+	local eski = odulNabiz
+	if eski then
+		eski:Cancel()
+		odulNabiz = nil
+	end
+	local eskiOlcek = odulNabizOlcek
+	if eskiOlcek then
+		eskiOlcek.Scale = 1
+		odulNabizOlcek = nil
+	end
+
+	if not odulHazir then
 		return
 	end
 
-	odulButon.Visible = true
-	if odulButonYazi then
-		odulButonYazi.Text = if odulHazir then "SPIN" else Rewards.formatRemaining(odulKalan)
+	local kart = odulKartlari[odulGun]
+	if not kart then
+		return
 	end
+
+	odulNabizOlcek = kart.cubukOlcek
+	local yeni = TweenService:Create(
+		kart.cubukOlcek,
+		TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.08 }
+	)
+	yeni:Play()
+	odulNabiz = yeni
 end
+
+odulCiz()
 
 OdulDurum.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" then
 		return
 	end
 
-	odulKalan = tonumber(data.remaining) or 0
+	odulGun = math.clamp(math.floor(tonumber(data.day) or 1), 1, #Rewards.Days)
 	odulHazir = data.ready == true
+	odulKalan = tonumber(data.remaining) or 0
 
-	odulDurumYazi.Text = if odulHazir
-		then "Wheel is ready!"
-		else `Next reward in {Rewards.formatRemaining(odulKalan)}`
-
-	odulButonTazele()
+	odulCiz()
+	nabizGuncelle()
 end)
 
--- Sayac istemcide de ilerlesin; sunucu her cevirmede tazeliyor
+-- Odulu alinan kart kisaca buyuyup yerine oturur
+OdulSonuc.OnClientEvent:Connect(function(data)
+	local gun = if type(data) == "table" then tonumber(data.day) else nil
+	local kart = if gun then odulKartlari[gun] else nil
+	if not kart then
+		return
+	end
+
+	local buyu = TweenService:Create(
+		kart.olcek,
+		TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Scale = 1.12 }
+	)
+	buyu:Play()
+	buyu.Completed:Once(function()
+		TweenService:Create(kart.olcek, TweenInfo.new(0.2), { Scale = 1 }):Play()
+	end)
+end)
+
+--[[
+	GERI SAYIM istemcide de ilerliyor. Sifira inince sunucudan taze durum
+	isteniyor: "Claim" gercekten acildi mi, sunucu karar versin.
+]]
 task.spawn(function()
 	while true do
 		task.wait(1)
 		if not odulHazir and odulKalan > 0 then
 			odulKalan -= 1
 			if odulKalan <= 0 then
-				odulHazir = true
-				odulDurumYazi.Text = "Wheel is ready!"
-			elseif odulPanel.Visible then
-				odulDurumYazi.Text = `Next reward in {Rewards.formatRemaining(odulKalan)}`
+				OdulAc:FireServer()
 			end
-			odulButonTazele()
+			if odulPanel.Visible then
+				odulCiz()
+			end
 		end
 	end
-end)
-
-odulButon.MouseButton1Click:Connect(function()
-	if odulDonuyor or not odulHazir then
-		return
-	end
-	OdulCevir:FireServer()
-end)
-
-OdulSonuc.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" or type(data.cells) ~= "table" then
-		return
-	end
-
-	odulDonuyor = true
-	odulSonucYazi.Text = "..."
-	odulButonTazele()
-
-	odulSeritKur(data.cells)
-	odulSerit.Position = UDim2.new(0, 0, 0.5, 0)
-	odulPanel.Visible = true
-
-	local tween = TweenService:Create(
-		odulSerit,
-		TweenInfo.new(data.spinTime or 3.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-		{ Position = UDim2.new(0, odulOffsetFor(data.winnerIndex), 0.5, 0) }
-	)
-
-	tween.Completed:Connect(function()
-		odulDonuyor = false
-		odulButonTazele()
-
-		local winner = data.winner
-		if type(winner) == "table" then
-			--[[
-				Brainrot kazanildiysa sonuc "BRAINROT" degil adini yazar.
-				Mutasyonlu ad prefix VERI alanindan kuruluyor ("Gold " + ad);
-				Mutations'ta bunu yapan bir fonksiyon yok (bkz. Assets >
-				brainrotModel notu).
-			]]
-			local b = winner.brainrot
-			odulSonucYazi.Text = if type(b) == "table" and type(b.name) == "string"
-				then Mutations.get(b.mutation).prefix .. b.name
-				else winner.label
-			odulSonucYazi.TextColor3 = winner.color
-		end
-	end)
-
-	tween:Play()
 end)
 
 function odulPaneliniAc()
 	odulPanel.Visible = not odulPanel.Visible
 	if odulPanel.Visible then
 		OdulAc:FireServer()
+	end
+end
+
+
+------------------------------------------------------------------
+-- FRIENDS SEKMESI  --  arkadas buffi
+--
+-- Ayni sunucuda Roblox arkadasi olan oyuncu kazida +%15 sans alir. Bonus
+-- sunucuda hesaplanir (bkz. Modules > Arkadaslar); burasi yalnizca
+-- gosterir: buffun durumu, sunucudaki arkadaslar ve davet dugmesi.
+------------------------------------------------------------------
+local arkadasPanel = UI.panel(screen, UDim2.fromOffset(440, 440), "Arkadaslar")
+
+UI.text({
+	text = "Friends",
+	size = UI.Sizes.title,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(255, 120, 190),
+	frameSize = UDim2.new(1, -80, 0, 34),
+	position = UDim2.fromOffset(18, 14),
+	parent = arkadasPanel,
+})
+
+UI.closeButton(arkadasPanel).MouseButton1Click:Connect(function()
+	arkadasPanel.Visible = false
+end)
+
+local arkadasDurumYazi = UI.text({
+	text = "",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = UI.Colors.textDim,
+	frameSize = UDim2.new(1, -36, 0, 40),
+	position = UDim2.fromOffset(18, 50),
+	parent = arkadasPanel,
+	wrapped = true,
+})
+
+local arkadasListe = makeScroll(arkadasPanel, UDim2.fromOffset(14, 98), UDim2.new(1, -28, 1, -172))
+
+local davetButon = UI.button(arkadasPanel, "Invite Friends", UDim2.new(1, -40, 0, 48), Color3.fromRGB(255, 120, 190))
+davetButon.AnchorPoint = Vector2.new(0.5, 1)
+davetButon.Position = UDim2.new(0.5, 0, 1, -16)
+
+-- Sunucudan gelen son durum
+local arkadasSayisi = 0
+local arkadasYuzde = 15
+local arkadasListesi: { any } = {}
+
+local function arkadasCiz()
+	if arkadasSayisi > 0 then
+		arkadasDurumYazi.Text = `Friend Boost active: +{arkadasYuzde}% Luck`
+			.. `  ({arkadasSayisi} friend{if arkadasSayisi == 1 then "" else "s"} in this server)`
+		arkadasDurumYazi.TextColor3 = Color3.fromRGB(120, 255, 150)
+	else
+		arkadasDurumYazi.Text = `Play in the same server with a friend to get +{arkadasYuzde}% Luck!`
+		arkadasDurumYazi.TextColor3 = UI.Colors.textDim
+	end
+
+	clearRows(arkadasListe)
+
+	if #arkadasListesi == 0 then
+		UI.text({
+			text = "No friends in this server yet. Invite them below!",
+			size = UI.Sizes.small,
+			color = UI.Colors.textDim,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, 0, 0, 36),
+			parent = arkadasListe,
+			wrapped = true,
+		})
+		return
+	end
+
+	for sira, arkadas in arkadasListesi do
+		local satir = Instance.new("Frame")
+		satir.Name = `Arkadas{sira}`
+		satir.Size = UDim2.new(1, -6, 0, 56)
+		satir.BackgroundColor3 = UI.Colors.panelLight
+		satir.BorderSizePixel = 0
+		satir.LayoutOrder = sira
+		satir.Parent = arkadasListe
+		UI.corner(satir, 10)
+
+		local avatar = Instance.new("ImageLabel")
+		avatar.Name = "Avatar"
+		avatar.Position = UDim2.fromOffset(6, 6)
+		avatar.Size = UDim2.fromOffset(44, 44)
+		avatar.BackgroundColor3 = UI.Colors.panel
+		avatar.BorderSizePixel = 0
+		avatar.Parent = satir
+		UI.corner(avatar, 22)
+
+		-- Avatar resmi web'den gelir ve bekletir: listeyi tutmasin
+		local userId = tonumber(arkadas.userId)
+		if userId then
+			task.spawn(function()
+				local ok, resim = pcall(function()
+					return Players:GetUserThumbnailAsync(
+						userId,
+						Enum.ThumbnailType.HeadShot,
+						Enum.ThumbnailSize.Size100x100
+					)
+				end)
+				if ok and avatar.Parent then
+					avatar.Image = resim
+				end
+			end)
+		end
+
+		UI.text({
+			text = tostring(arkadas.displayName or arkadas.name or "?"),
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			frameSize = UDim2.new(1, -150, 0, 22),
+			position = UDim2.fromOffset(60, 8),
+			parent = satir,
+		})
+
+		UI.text({
+			text = `@{tostring(arkadas.name or "?")}`,
+			size = UI.Sizes.small,
+			color = UI.Colors.textDim,
+			frameSize = UDim2.new(1, -150, 0, 18),
+			position = UDim2.fromOffset(60, 30),
+			parent = satir,
+		})
+
+		UI.text({
+			text = `+{arkadasYuzde}% Luck`,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = Color3.fromRGB(120, 255, 150),
+			align = Enum.TextXAlignment.Right,
+			frameSize = UDim2.fromOffset(90, 22),
+			position = UDim2.new(1, -100, 0.5, -11),
+			parent = satir,
+		})
+	end
+end
+
+ArkadasDurum.OnClientEvent:Connect(function(data)
+	if type(data) ~= "table" then
+		return
+	end
+
+	arkadasSayisi = tonumber(data.sayi) or 0
+	arkadasYuzde = tonumber(data.yuzde) or arkadasYuzde
+	arkadasListesi = if type(data.arkadaslar) == "table" then data.arkadaslar else {}
+
+	-- Rot'un ustundeki buff yazisi
+	arkadasBuff.Text = `Friend Boost: +{arkadasYuzde}% Luck`
+	arkadasBuff.Visible = arkadasSayisi > 0
+	solSutunuYerlestir()
+
+	if arkadasPanel.Visible then
+		arkadasCiz()
+	end
+end)
+
+--[[
+	DAVET
+	Roblox'un kendi davet penceresi. Studio'da ve davete izin vermeyen
+	hesaplarda acilamaz; o durumda panel sebebini yazar.
+]]
+davetButon.MouseButton1Click:Connect(function()
+	local oyuncu = Players.LocalPlayer
+	local ok, izin = pcall(function()
+		return SocialService:CanSendGameInviteAsync(oyuncu)
+	end)
+
+	if ok and izin then
+		pcall(function()
+			SocialService:PromptGameInvite(oyuncu)
+		end)
+	else
+		arkadasDurumYazi.Text = "Invites are not available right now (they don't work in Studio)."
+		arkadasDurumYazi.TextColor3 = UI.Colors.warn
+	end
+end)
+
+function arkadasPaneliniAc()
+	arkadasPanel.Visible = not arkadasPanel.Visible
+	if arkadasPanel.Visible then
+		arkadasCiz()
+		ArkadasAc:FireServer()
 	end
 end
 
