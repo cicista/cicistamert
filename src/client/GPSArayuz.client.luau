@@ -26,6 +26,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -51,7 +52,8 @@ local hint = Instance.new("Frame")
 hint.Name = "KaziIpucu"
 hint.AnchorPoint = Vector2.new(0.5, 1)
 hint.Position = UDim2.new(0.5, 0, 1, -110)
-hint.Size = UDim2.fromOffset(280, 44)
+-- Madende solda ikon duruyor; yazi sigsin diye 280'den genisletildi
+hint.Size = UDim2.fromOffset(310, 44)
 hint.BackgroundColor3 = UI.Colors.panel
 hint.BackgroundTransparency = 0.1
 hint.BorderSizePixel = 0
@@ -69,6 +71,17 @@ local hintLabel = UI.text({
 	frameSize = UDim2.fromScale(1, 1),
 	parent = hint,
 })
+
+-- Maden suzmesinde ipucunun solunda madenin ikonu (Assets > Icons)
+local hintIkon = Instance.new("ImageLabel")
+hintIkon.Name = "MadenIkonu"
+hintIkon.AnchorPoint = Vector2.new(0, 0.5)
+hintIkon.Position = UDim2.new(0, 10, 0.5, 0)
+hintIkon.Size = UDim2.fromOffset(28, 28)
+hintIkon.BackgroundTransparency = 1
+hintIkon.ScaleType = Enum.ScaleType.Fit
+hintIkon.Visible = false
+hintIkon.Parent = hint
 
 ------------------------------------------------------------------
 -- DUNYA ETIKETLERI
@@ -288,6 +301,15 @@ task.spawn(function()
 			local color = kindColor(best.kind)
 			hintStroke.Color = color
 			hintLabel.TextColor3 = color
+
+			-- Madense ikon solda; yazi ona yer acmak icin biraz saga kayar
+			local madenAnahtari = `ore_{best.kind}`
+			local madenMi = Icons.Map[madenAnahtari] ~= nil
+			if madenMi then
+				Icons.bind(hintIkon, madenAnahtari)
+			end
+			hintIkon.Visible = madenMi
+			hintLabel.Position = UDim2.fromOffset(if madenMi then 16 else 0, 0)
 
 			-- Denizdeki girdapta "dig" degil "fish" yazar
 			local eylem = if best.sea then "fish" else "dig"

@@ -20,7 +20,31 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+-- Maden ikonlari katalogdaki her maden icin otomatik tanimlaniyor (asagida)
+local Ores = require(script.Parent:WaitForChild("Ores"))
+
 local Icons = {}
+
+--[[
+	OYUNUN KENDI IKONLARI  --  ReplicatedStorage > Assets > Icons
+
+	Paketten ayri: buraya elle konan ikonlar (su an maden ikonlari).
+	Haritada kategori olarak "Assets" yazilan girisler paketten degil bu
+	klasorden okunur, orn. { "Assets", "Ruby" }.
+
+	ISIM ESLESMESI ESNEK: buyuk/kucuk harf, bosluk, alt cizgi ve basta/sonda
+	"icon" kelimesi yok sayilir. "Ruby", "ruby_icon", "RubyIcon", "icon ruby"
+	hepsi "Ruby" aramasina denk gelir. Tam eslesme yoksa adinda aranan
+	kelimeyi IcERen ilk ikon kullanilir.
+
+	ICERIK TURU ESNEK: Decal/Texture (Texture), ImageLabel/ImageButton
+	(Image), StringValue (Value) ya da bunlardan birini icinde tasiyan
+	herhangi bir nesne (paketteki gibi Part > Decal).
+
+	Hangi ikonlarin eslestigini gormek icin: Icons.assetRaporu()
+]]
+local ASSET_KATEGORI = "Assets"
+Icons.AssetKlasoru = "Icons"
 
 -- Paketin adi (Explorer'da gorunen klasor adi)
 Icons.PackName = "Simulator Icon Pack"
@@ -93,6 +117,18 @@ local Map: { [string]: IconEntry } = {
 	trophies = { "Stats", "Trophies/Wins" },
 }
 
+--[[
+	MADEN IKONLARI  --  kisa ad: "ore_<maden kimligi>"  (orn. "ore_Ruby")
+
+	Katalogdaki (Shared > Ores) her maden icin kendiliginden tanimlaniyor;
+	yeni maden eklenince burada bir sey degistirmek gerekmiyor. Ikonun
+	Assets > Icons icinde madenin adini tasimasi yeterli (bkz. ustteki
+	ISIM ESLESMESI).
+]]
+for id in Ores.Info do
+	Map[`ore_{id}`] = { ASSET_KATEGORI, id }
+end
+
 Icons.Map = Map
 
 local packFolder: Instance? = nil
@@ -126,7 +162,9 @@ local function findPack(): Instance?
 	-- Adi degistirilmisse: icinde "icon" gecen ve alt klasoru olan bir klasor
 	for _, root in roots do
 		for _, node in root:GetDescendants() do
-			if node:IsA("Folder") and string.find(string.lower(node.Name), "icon", 1, true) then
+			-- Assets > Icons oyunun kendi ikon klasoru, paket DEGIL: adinda "icon" gecse de atlanir
+			local assetIkonlari = node.Name == Icons.AssetKlasoru and node.Parent ~= nil and node.Parent.Name == "Assets"
+			if node:IsA("Folder") and not assetIkonlari and string.find(string.lower(node.Name), "icon", 1, true) then
 				packFolder = node
 				return node
 			end
@@ -141,6 +179,11 @@ end
 	Sonuc onbellege alinir; ayni ikon her istendiginde agac taranmaz.
 ]]
 function Icons.get(category: string, name: string): string?
+	-- Oyunun kendi ikonlari paketten degil Assets > Icons klasorunden okunur
+	if category == ASSET_KATEGORI then
+		return Icons.asset(name)
+	end
+
 	local key = `{category}/{name}`
 
 	local cached = cache[key]
@@ -219,6 +262,24 @@ end
 	yedegini gosterir ya da gizler.
 ]]
 function Icons.bind(target: ImageLabel | ImageButton, id: string, onResult: ((ok: boolean) -> ())?)
+	--[[
+		HANGI IKONUN BAGLI OLDUGU NESNENIN USTUNDE TUTULUYOR
+
+		Ayni yaziya ard arda FARKLI ikon baglanabiliyor (maden sayaci ada
+		degisince, GPS ipucu suzme degisince). Eskiden ilk baglamanin
+		yeniden deneme dongusu sonradan ikon bulup YENI ikonun ustune eski
+		resmi basabiliyordu. Artik dongu her adimda "hala ben mi bagliyim"
+		diye bakiyor; degilse sessizce cekiliyor.
+	]]
+	if target:GetAttribute("IkonKimligi") == id and target.Image ~= "" then
+		-- Zaten bu ikon takili: sik cagrilarda (GPS ipucu) bosuna is yapilmasin
+		if onResult then
+			onResult(true)
+		end
+		return
+	end
+	target:SetAttribute("IkonKimligi", id)
+
 	if Icons.apply(target, id) then
 		if onResult then
 			onResult(true)
@@ -226,10 +287,13 @@ function Icons.bind(target: ImageLabel | ImageButton, id: string, onResult: ((ok
 		return
 	end
 
+	-- Yeni ikon henuz yok: onceki ikon ekranda yanlis bilgi olarak kalmasin
+	target.Image = ""
+
 	task.spawn(function()
 		for _ = 1, 20 do
 			task.wait(0.5)
-			if not target.Parent then
+			if not target.Parent or target:GetAttribute("IkonKimligi") ~= id then
 				return
 			end
 			if Icons.apply(target, id) then
@@ -240,10 +304,138 @@ function Icons.bind(target: ImageLabel | ImageButton, id: string, onResult: ((ok
 			end
 		end
 
-		if onResult then
+		if onResult and target:GetAttribute("IkonKimligi") == id then
 			onResult(false)
 		end
 	end)
+end
+
+------------------------------------------------------------------
+-- ASSETS > ICONS OKUYUCU
+------------------------------------------------------------------
+local assetCache: { [string]: string } = {}
+
+local function assetKlasoru(): Instance?
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	return assets and assets:FindFirstChild(Icons.AssetKlasoru)
+end
+
+-- Isim eslesmesi icin sadelestirme (bkz. OYUNUN KENDI IKONLARI)
+local function sadelestir(ad: string): string
+	local s = (string.gsub(string.lower(ad), "[^%w]", ""))
+	if #s > 4 and string.sub(s, -4) == "icon" then
+		s = string.sub(s, 1, -5)
+	end
+	if #s > 4 and string.sub(s, 1, 4) == "icon" then
+		s = string.sub(s, 5)
+	end
+	return s
+end
+
+-- Bir nesneden resim kimligini cikarir; icinde tasiyorsa oradan
+local function goruntu(node: Instance): string?
+	if node:IsA("Decal") then
+		-- Texture sinifi da Decal'den turuyor, ikisi birden burada
+		return if node.Texture ~= "" then node.Texture else nil
+	elseif node:IsA("ImageLabel") then
+		return if node.Image ~= "" then node.Image else nil
+	elseif node:IsA("ImageButton") then
+		return if node.Image ~= "" then node.Image else nil
+	elseif node:IsA("StringValue") then
+		return if node.Value ~= "" then node.Value else nil
+	end
+
+	for _, cocuk in node:GetDescendants() do
+		if cocuk:IsA("Decal") or cocuk:IsA("ImageLabel") or cocuk:IsA("ImageButton") then
+			local bulunan = goruntu(cocuk)
+			if bulunan then
+				return bulunan
+			end
+		end
+	end
+
+	return nil
+end
+
+--[[
+	Assets > Icons icinden adla resim.
+
+	Bulunan onbellege alinir; BULUNAMAYAN alinmaz (Icons.get ile ayni
+	sebep: istemci acilirken klasor henuz replike edilmemis olabilir).
+]]
+function Icons.asset(ad: string): string?
+	local cached = assetCache[ad]
+	if cached then
+		return cached
+	end
+
+	local klasor = assetKlasoru()
+	if not klasor then
+		return nil
+	end
+
+	local aranan = sadelestir(ad)
+	if aranan == "" then
+		return nil
+	end
+
+	local icerenden: string? = nil
+	for _, node in klasor:GetDescendants() do
+		local kok = sadelestir(node.Name)
+		if kok == aranan then
+			local bulunan = goruntu(node)
+			if bulunan then
+				assetCache[ad] = bulunan
+				return bulunan
+			end
+		elseif not icerenden and string.find(kok, aranan, 1, true) then
+			icerenden = goruntu(node)
+		end
+	end
+
+	if icerenden then
+		assetCache[ad] = icerenden
+	end
+	return icerenden
+end
+
+--[[
+	Assets > Icons eslesme raporu (Output).
+
+	Klasorun icerigi koddan gorunmuyor; isim tutmayan bir ikon oldugunda
+	hangisi oldugu ve klasorde neler bulundugu tek satirda yaziliyor.
+]]
+function Icons.assetRaporu()
+	local klasor = assetKlasoru()
+	if not klasor then
+		warn(
+			"[Icons] ReplicatedStorage > Assets > Icons bulunamadi; "
+				.. "maden ikonlari cikmaz."
+		)
+		return
+	end
+
+	local eksik: { string } = {}
+	for id in Ores.Info do
+		if not Icons.asset(id) then
+			table.insert(eksik, id)
+		end
+	end
+
+	if #eksik == 0 then
+		print("[Icons] Assets > Icons: butun maden ikonlari bulundu.")
+		return
+	end
+
+	local adlar: { string } = {}
+	for _, cocuk in klasor:GetChildren() do
+		table.insert(adlar, `{cocuk.Name} ({cocuk.ClassName})`)
+	end
+	table.sort(eksik)
+	warn(
+		`[Icons] Assets > Icons icinde karsiligi bulunamayan: {table.concat(eksik, ", ")}. `
+			.. `Klasorde olanlar: {table.concat(adlar, ", ")}`
+	)
 end
 
 --[[

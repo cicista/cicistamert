@@ -38,6 +38,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
+-- 2. asama bolmelerinde brainrot resmi (bkz. BrainrotOnizleme.seritPencere)
+local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
 
 local Rulet = {}
 
@@ -49,6 +51,12 @@ local CELL_GAP = 6
 export type Cell = {
 	text: string,
 	color: Color3,
+	--[[
+		Verilirse 2. asama bolmesinde brainrotun 3B resmi ustte, adi altta
+		durur. Verilmezse bolme eskisi gibi yalnizca yazi (skin, coin...).
+		1. asamada ("?" bolmeleri) hic kullanilmaz: kademe gizli kalmali.
+	]]
+	brainrot: { name: string, mutation: string? }?,
 }
 
 export type Reel = {
@@ -61,6 +69,8 @@ export type Reel = {
 	-- Serit su an hangi bolme genisligiyle kurulu
 	cellWidth: number,
 	busy: boolean,
+	-- Seritteki brainrot resimleri; yalnizca cercevenin icinden gecenlere kurulur
+	onizleme: BrainrotOnizleme.Pencere,
 }
 
 --[[
@@ -142,6 +152,7 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 		height = height,
 		cellWidth = NAME_CELL_WIDTH,
 		busy = false,
+		onizleme = BrainrotOnizleme.seritPencere(frame),
 	}
 end
 
@@ -159,6 +170,9 @@ local function offsetFor(reel: Reel, index: number): number
 end
 
 local function clearStrip(reel: Reel)
+	-- Resimler bolmelerle birlikte silinmesin: havuza donsunlar
+	reel.onizleme.temizle()
+
 	for _, child in reel.strip:GetChildren() do
 		child:Destroy()
 	end
@@ -191,18 +205,51 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 		UI.corner(cell, 8)
 		UI.stroke(cell, entry.color, 2)
 
-		UI.text({
-			text = if showText then entry.text else "?",
-			size = if showText then UI.Sizes.tiny else UI.Sizes.title,
-			font = UI.Fonts.bold,
-			color = entry.color,
-			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, -8, 1, -8),
-			position = UDim2.fromOffset(4, 4),
-			parent = cell,
-			wrapped = showText,
-			name = "Isaret",
-		})
+		local resim = if showText then entry.brainrot else nil
+
+		if resim then
+			--[[
+				BRAINROT BOLMESI: ustte resmi, altta adi.
+
+				Resim cercevesi bolmeye ORANLA bagli: kazanan bolme vurgulanip
+				buyurken resim de onunla buyuyor.
+			]]
+			local yuva = Instance.new("Frame")
+			yuva.Name = "Resim"
+			yuva.BackgroundTransparency = 1
+			yuva.Position = UDim2.fromOffset(4, 2)
+			yuva.Size = UDim2.new(1, -8, 1, -24)
+			yuva.Parent = cell
+
+			reel.onizleme.ekle(yuva, { name = resim.name, mutation = resim.mutation, revealed = true })
+
+			local ad = UI.text({
+				text = entry.text,
+				size = UI.Sizes.tiny,
+				font = UI.Fonts.bold,
+				color = entry.color,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -6, 0, 18),
+				position = UDim2.new(0, 3, 1, -20),
+				parent = cell,
+				name = "Isaret",
+			})
+			-- Uzun adlar tek satirda kalsin, bolmeden tasmasin
+			ad.TextTruncate = Enum.TextTruncate.AtEnd
+		else
+			UI.text({
+				text = if showText then entry.text else "?",
+				size = if showText then UI.Sizes.tiny else UI.Sizes.title,
+				font = UI.Fonts.bold,
+				color = entry.color,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -8, 1, -8),
+				position = UDim2.fromOffset(4, 4),
+				parent = cell,
+				wrapped = showText,
+				name = "Isaret",
+			})
+		end
 	end
 end
 

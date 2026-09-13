@@ -32,6 +32,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 local Ores = require(Shared:WaitForChild("Ores"))
+local Icons = require(Shared:WaitForChild("Icons"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -44,7 +45,8 @@ local SINIR_TAZELE = 5
 -- Kutunun ayarlar ikonuna olan dikey boslugu
 local IKON_BOSLUK = 8
 
-local SATIR_BOY = 24
+-- Ikon + sayi satiri; ikon buyudugu icin 24'ten 34'e cikti
+local SATIR_BOY = 34
 
 ------------------------------------------------------------------
 -- ARAYUZ
@@ -59,15 +61,19 @@ local kutu = Instance.new("Frame")
 kutu.Name = "Kutu"
 -- Sag alt kose ikonun sag ust kosesine oturur
 kutu.AnchorPoint = Vector2.new(1, 1)
-kutu.Size = UDim2.fromOffset(176, SATIR_BOY * 3 + 16)
+-- Yalnizca ikon + "x12": eski 176'lik panel genisligine gerek yok
+kutu.Size = UDim2.fromOffset(96, SATIR_BOY * 3 + 16)
 kutu.Position = UDim2.new(1, -20, 1, -120)
-kutu.BackgroundColor3 = UI.Colors.panel
-kutu.BackgroundTransparency = 0.15
+--[[
+	POP-UP GORUNUMU YOK
+
+	Once koyu zeminli, ada renginde cerceveli bir paneldi. Artik zemin ve
+	cerceve yok: ekranda yalnizca madenin ikonu ve yaninda sayisi durur.
+]]
+kutu.BackgroundTransparency = 1
 kutu.BorderSizePixel = 0
 kutu.Visible = false
 kutu.Parent = screen
-UI.corner(kutu, 10)
-local kontur = UI.stroke(kutu, Color3.fromRGB(0, 0, 0), 2)
 
 local ic = Instance.new("Frame")
 ic.Name = "Ic"
@@ -81,7 +87,7 @@ duzen.Padding = UDim.new(0, 0)
 duzen.SortOrder = Enum.SortOrder.LayoutOrder
 duzen.Parent = ic
 
-type Satir = { nokta: Frame, yazi: TextLabel }
+type Satir = { nokta: Frame, ikon: ImageLabel, yazi: TextLabel }
 local satirlar: { Satir } = {}
 
 for i = 1, 3 do
@@ -96,24 +102,44 @@ for i = 1, 3 do
 	local nokta = Instance.new("Frame")
 	nokta.Name = "Gem"
 	nokta.AnchorPoint = Vector2.new(0.5, 0.5)
-	nokta.Position = UDim2.new(0, 8, 0.5, 0)
-	nokta.Size = UDim2.fromOffset(11, 11)
+	nokta.Position = UDim2.new(0, 14, 0.5, 0)
+	nokta.Size = UDim2.fromOffset(14, 14)
 	nokta.Rotation = 45
 	nokta.BorderSizePixel = 0
 	nokta.Parent = satir
 	UI.stroke(nokta, Color3.fromRGB(0, 0, 0), 1.5)
 
+	--[[
+		MADEN IKONU  (Assets > Icons)
+
+		Baklavanin yerini aliyor. Ikon gelene kadar ya da bulunamazsa
+		baklava gorunur kalir -- satir hicbir durumda isaretsiz kalmaz.
+	]]
+	local ikon = Instance.new("ImageLabel")
+	ikon.Name = "Ikon"
+	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+	ikon.Position = UDim2.new(0, 14, 0.5, 0)
+	ikon.Size = UDim2.fromOffset(28, 28)
+	ikon.BackgroundTransparency = 1
+	ikon.ScaleType = Enum.ScaleType.Fit
+	ikon.Image = ""
+	ikon.Parent = satir
+	ikon:GetPropertyChangedSignal("Image"):Connect(function()
+		nokta.Visible = ikon.Image == ""
+	end)
+
+	-- Zemin kalktigi icin sayi kendi konturuyla (UI.text varsayilani) okunuyor
 	local yazi = UI.text({
 		text = "",
-		size = UI.Sizes.small,
+		size = UI.Sizes.label,
 		font = UI.Fonts.bold,
-		frameSize = UDim2.new(1, -24, 1, 0),
-		position = UDim2.fromOffset(24, 0),
+		frameSize = UDim2.new(1, -34, 1, 0),
+		position = UDim2.fromOffset(34, 0),
 		parent = satir,
 		name = "Yazi",
 	})
 
-	table.insert(satirlar, { nokta = nokta, yazi = yazi })
+	table.insert(satirlar, { nokta = nokta, ikon = ikon, yazi = yazi })
 end
 
 ------------------------------------------------------------------
@@ -129,14 +155,15 @@ local function yaz()
 		return
 	end
 
-	kontur.Color = cfg.color
-
 	for i, id in cfg.ores do
 		local satir = satirlar[i]
 		local info = Ores.Info[id]
 		if satir and info then
 			satir.nokta.BackgroundColor3 = info.color
-			satir.yazi.Text = `{info.displayName}   {sayilar[id] or 0}`
+			-- Ada degisince ayni satira baska madenin ikonu baglanir
+			Icons.bind(satir.ikon, `ore_{id}`)
+			-- Ad yazmiyor: maden ikonundan taniniyor, yaninda yalnizca adet
+			satir.yazi.Text = `x{sayilar[id] or 0}`
 		end
 	end
 
@@ -312,3 +339,9 @@ RunService.RenderStepped:Connect(function()
 	local boyut = buton.AbsoluteSize
 	kutu.Position = UDim2.fromOffset(konum.X + boyut.X, konum.Y - IKON_BOSLUK)
 end)
+
+--[[
+	Assets > Icons eslesmesini Output'a bir kez yaz: adi tutmayan ikon varsa
+	hangisi oldugu hemen gorulsun. Klasor replike olsun diye biraz bekleniyor.
+]]
+task.delay(8, Icons.assetRaporu)

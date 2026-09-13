@@ -176,10 +176,11 @@ Bases.CollectPad = {
 		TOPLAMA SONRASI BEKLEME
 
 		Rot toplandiktan sonra bu kadar saniye ayni base tekrar toplanamaz.
-		Bekleme suresince buton TURUNCU yanar ve ustunde kalan sure yazar.
+		Bekleme suresince buton KIRMIZI yanar ve ustunde kalan sure yazar.
 	]]
 	collectCooldown = 7,
-	cooldownColor = Color3.fromRGB(255, 150, 40),
+	-- Kirmizi: "simdi toplanamaz" bir bakista okunsun (once turuncuydu)
+	cooldownColor = Color3.fromRGB(220, 40, 40),
 	--[[
 		TOPLAMA SESI
 
@@ -188,8 +189,8 @@ Bases.CollectPad = {
 		Bulunamazsa sessizce atlanir.
 	]]
 	collectSound = { "GoldCollect" },
-	-- Icinde toplanacak rot varken
-	color = Color3.fromRGB(70, 210, 120),
+	-- Icinde toplanacak rot varken: canli yesil (Neon kalkinca soluk kalmasin diye doygun)
+	color = Color3.fromRGB(55, 205, 85),
 	-- Bosken
 	idleColor = Color3.fromRGB(90, 100, 115),
 }

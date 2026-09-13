@@ -37,6 +37,7 @@ Net.Events = {
 
 	-- Base
 	"BaseGuncelle",     -- server -> client: base durumu + toplam gelir
+	"ParaSac",          -- server -> client: toplama efekti (toplayan, padin ust yuzu, miktar)
 	"SlotaKoy",         -- client -> server: brainrotu slota yerlestir
 	"SlottanAl",        -- client -> server: brainrotu slottan al
 

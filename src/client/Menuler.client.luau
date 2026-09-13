@@ -40,6 +40,8 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local Rulet = require(script.Parent:WaitForChild("Rulet"))
 -- Brainrot kesif defteri (mavi kitap dugmesi)
 local Index = require(script.Parent:WaitForChild("Index"))
+-- Liste satirlarindaki brainrot resimleri (Envanter, Detective)
+local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 local DetectiveAc = Net.event("DetectiveAc")
@@ -124,7 +126,12 @@ local function clearRows(scroll: ScrollingFrame)
 end
 
 -- Brainrot satiri: siyah halde sadece rarity, acilmisken isim + gelir
-local function brainrotRow(parent: Instance, item: any, order: number): TextButton
+local function brainrotRow(
+	parent: Instance,
+	item: any,
+	order: number,
+	pencere: BrainrotOnizleme.Pencere?
+): TextButton
 	local rarityInfo = Rarity.get(item.rarity)
 	local conditionInfo = Condition.get(item.condition)
 	local mutationInfo = Mutations.get(item.mutation)
@@ -144,18 +151,32 @@ local function brainrotRow(parent: Instance, item: any, order: number): TextButt
 	UI.corner(row, 10)
 	UI.stroke(row, rarityInfo.color, 1)
 
-	-- Simsiyah brainrot: kare tamamen siyah, sadece rarity belli
+	--[[
+		BRAINROT RESMI
+
+		Kare artik brainrotun 3B onizlemesini tasiyor (bkz. BrainrotOnizleme);
+		onizleme kurulana kadar ya da model bulunamazsa eski gorunum kalir.
+		Kare 42'den 50'ye buyutuldu: 42 pikselde model secilmiyordu.
+
+		Zemin kademe renginin koyulastirilmis hali: duz kademe rengi
+		modelin kendi renkleriyle karisip onu bogiyordu.
+	]]
 	local icon = Instance.new("Frame")
-	icon.Size = UDim2.fromOffset(42, 42)
-	icon.Position = UDim2.fromOffset(10, 10)
-	icon.BackgroundColor3 = if revealed then rarityInfo.color else Color3.fromRGB(10, 10, 12)
+	icon.Size = UDim2.fromOffset(50, 50)
+	icon.Position = UDim2.fromOffset(6, 6)
+	icon.BackgroundColor3 = if revealed
+		then rarityInfo.color:Lerp(Color3.new(0, 0, 0), 0.45)
+		else Color3.fromRGB(10, 10, 12)
 	icon.BorderSizePixel = 0
+	icon.ClipsDescendants = true
 	icon.Parent = row
 	UI.corner(icon, 8)
 	UI.stroke(icon, rarityInfo.color, 1)
 
+	-- Simsiyah brainrot: onizleme gelene kadar "?" durur
+	local soru: TextLabel? = nil
 	if not revealed then
-		UI.text({
+		soru = UI.text({
 			text = "?",
 			size = UI.Sizes.heading,
 			font = UI.Fonts.bold,
@@ -164,6 +185,14 @@ local function brainrotRow(parent: Instance, item: any, order: number): TextButt
 			frameSize = UDim2.fromScale(1, 1),
 			parent = icon,
 		})
+	end
+
+	if pencere then
+		pencere.ekle(icon, {
+			name = item.name,
+			mutation = item.mutation,
+			revealed = if revealed then true else false,
+		}, soru)
 	end
 
 	--[[
@@ -176,8 +205,8 @@ local function brainrotRow(parent: Instance, item: any, order: number): TextButt
 			size = UI.Sizes.body,
 			font = UI.Fonts.bold,
 			color = rarityInfo.color,
-			frameSize = UDim2.new(1, -180, 0, 22),
-			position = UDim2.fromOffset(62, 9),
+			frameSize = UDim2.new(1, -186, 0, 22),
+			position = UDim2.fromOffset(68, 9),
 			parent = row,
 		}),
 		item.rarity
@@ -200,8 +229,8 @@ local function brainrotRow(parent: Instance, item: any, order: number): TextButt
 			kendi kimliginde kalir, mutasyon zaten ISIMDE gorunuyor.
 		]]
 		color = if revealed then conditionInfo.color else UI.Colors.textDim,
-		frameSize = UDim2.new(1, -180, 0, 20),
-		position = UDim2.fromOffset(62, 32),
+		frameSize = UDim2.new(1, -186, 0, 20),
+		position = UDim2.fromOffset(68, 32),
 		parent = row,
 	})
 
@@ -280,6 +309,9 @@ end)
 
 local envanterListe = makeScroll(envanter, UDim2.fromOffset(14, 96), UDim2.new(1, -28, 1, -110))
 
+-- Yalnizca ekrandaki satirlara brainrot resmi kurulur (bkz. BrainrotOnizleme)
+local envanterPencere = BrainrotOnizleme.pencere(envanterListe, envanter)
+
 -- Ayirici baslik satiri (BRAINROTLAR gibi)
 local function sectionHeader(parent: Instance, text: string, order: number)
 	local holder = Instance.new("Frame")
@@ -299,6 +331,12 @@ local function sectionHeader(parent: Instance, text: string, order: number)
 end
 
 local function refreshEnvanter()
+	--[[
+		Satirlar silinmeden ONCE resimler havuza aliniyor: bu fonksiyon her
+		EnvanterGuncelle'de calisiyor, yeni satirlar ayni brainrotlari
+		havuzdan hazir alsin, modeller her seferinde yeniden klonlanmasin.
+	]]
+	envanterPencere.temizle()
 	clearRows(envanterListe)
 
 	local items = inventory.inventory or {}
@@ -364,7 +402,7 @@ local function refreshEnvanter()
 	end)
 
 	for index, item in sorted do
-		local row = brainrotRow(envanterListe, item, 100 + index)
+		local row = brainrotRow(envanterListe, item, 100 + index, envanterPencere)
 
 		-- Base'e konmus olanlar tiklaninca geri alinir
 		if item.slot then
@@ -516,8 +554,10 @@ UI.closeButton(detective).MouseButton1Click:Connect(function()
 end)
 
 local detectiveListe = makeScroll(detective, UDim2.fromOffset(14, 78), UDim2.new(1, -28, 1, -92))
+local detectivePencere = BrainrotOnizleme.pencere(detectiveListe, detective)
 
 DetectiveAc.OnClientEvent:Connect(function(pending)
+	detectivePencere.temizle()
 	clearRows(detectiveListe)
 
 	for index, item in pending do
@@ -528,7 +568,7 @@ DetectiveAc.OnClientEvent:Connect(function(pending)
 			condition = item.condition,
 			mutation = item.mutation,
 			revealed = false,
-		}, index)
+		}, index, detectivePencere)
 
 		row.MouseButton1Click:Connect(function()
 			DetectiveTeslim:FireServer(item.uid)
@@ -1010,9 +1050,26 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		Kademe o asamada zaten belli oldugu icin serit tek renktir; oyuncu
 		"bu kirmizidan hangisi cikacak" diye bekler.
 	]]
+	--[[
+		Her bolmede brainrotun resmi de var (bkz. Rulet > Cell.brainrot).
+		Kazanan bolmede MUTASYONLU model: Gold cikacaksa carkin durdugu
+		bolme de altin gorunsun, oyuncunun eline gecenle ayni olsun.
+	]]
+	local kazananSira = tonumber(data.winnerIndex) or LuckyBlock.Wheel.revealWinnerIndex
+	local kazanan = if type(data.winner) == "table" then data.winner else nil
+
 	local cells: { Rulet.Cell } = {}
-	for _, entry in data.cells do
-		table.insert(cells, { text = entry.name, color = Rarity.color(entry.rarity) })
+	for index, entry in data.cells do
+		table.insert(cells, {
+			text = entry.name,
+			color = Rarity.color(entry.rarity),
+			brainrot = if type(entry.name) == "string"
+				then {
+					name = entry.name,
+					mutation = if index == kazananSira and kazanan then kazanan.mutation else nil,
+				}
+				else nil,
+		})
 	end
 
 	--[[
@@ -1578,6 +1635,9 @@ odulReel.Parent = odulPanel
 UI.corner(odulReel, 12)
 UI.stroke(odulReel, UI.Colors.gold, 2)
 
+-- "BRAINROT" bolmelerindeki resimler; yalnizca carkin icinden gecenlere kurulur
+local odulOnizleme = BrainrotOnizleme.seritPencere(odulReel)
+
 local odulSerit = Instance.new("Frame")
 odulSerit.Name = "Serit"
 odulSerit.AnchorPoint = Vector2.new(0, 0.5)
@@ -1631,6 +1691,9 @@ local function odulOffsetFor(index: number): number
 end
 
 local function odulSeritKur(cells: { any })
+	-- Resimler bolmelerle birlikte silinmesin: havuza donsunlar
+	odulOnizleme.temizle()
+
 	for _, child in odulSerit:GetChildren() do
 		child:Destroy()
 	end
@@ -1650,17 +1713,53 @@ local function odulSeritKur(cells: { any })
 		UI.corner(hucre, 8)
 		UI.stroke(hucre, entry.color, 2)
 
-		UI.text({
-			text = entry.label,
-			size = UI.Sizes.tiny,
-			font = UI.Fonts.bold,
-			color = entry.color,
-			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, -8, 1, -8),
-			position = UDim2.fromOffset(4, 4),
-			parent = hucre,
-			wrapped = true,
-		})
+		--[[
+			BRAINROT BOLMESI: ustte resmi, altta adi.
+
+			Sunucu "brainrot" bolmelerine hangi brainrotu gosterecegini
+			yolluyor (bkz. Modules > Odul > buildCells). Kazanan bolme
+			GERCEKTEN verilecek olani gosteriyor; digerleri oyuncunun
+			adasinda cikabilecek brainrotlardan secilmis gosterimlik.
+		]]
+		local resim = entry.brainrot
+		if type(resim) == "table" and type(resim.name) == "string" then
+			local yuva = Instance.new("Frame")
+			yuva.Name = "Resim"
+			yuva.BackgroundTransparency = 1
+			yuva.Position = UDim2.fromOffset(4, 2)
+			yuva.Size = UDim2.new(1, -8, 1, -22)
+			yuva.Parent = hucre
+
+			odulOnizleme.ekle(yuva, {
+				name = resim.name,
+				mutation = if type(resim.mutation) == "string" then resim.mutation else nil,
+				revealed = true,
+			})
+
+			local ad = UI.text({
+				text = resim.name,
+				size = UI.Sizes.tiny,
+				font = UI.Fonts.bold,
+				color = entry.color,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -6, 0, 18),
+				position = UDim2.new(0, 3, 1, -20),
+				parent = hucre,
+			})
+			ad.TextTruncate = Enum.TextTruncate.AtEnd
+		else
+			UI.text({
+				text = entry.label,
+				size = UI.Sizes.tiny,
+				font = UI.Fonts.bold,
+				color = entry.color,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -8, 1, -8),
+				position = UDim2.fromOffset(4, 4),
+				parent = hucre,
+				wrapped = true,
+			})
+		end
 	end
 end
 
@@ -1744,7 +1843,16 @@ OdulSonuc.OnClientEvent:Connect(function(data)
 
 		local winner = data.winner
 		if type(winner) == "table" then
-			odulSonucYazi.Text = winner.label
+			--[[
+				Brainrot kazanildiysa sonuc "BRAINROT" degil adini yazar.
+				Mutasyonlu ad prefix VERI alanindan kuruluyor ("Gold " + ad);
+				Mutations'ta bunu yapan bir fonksiyon yok (bkz. Assets >
+				brainrotModel notu).
+			]]
+			local b = winner.brainrot
+			odulSonucYazi.Text = if type(b) == "table" and type(b.name) == "string"
+				then Mutations.get(b.mutation).prefix .. b.name
+				else winner.label
 			odulSonucYazi.TextColor3 = winner.color
 		end
 	end)

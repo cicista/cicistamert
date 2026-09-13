@@ -119,7 +119,8 @@ local KILITLI_ZEMIN = Color3.fromRGB(58, 62, 74)
 	  BULUNAN   buyume + kademe renginde supurulen parilti + modelin
 	            hafif sag-sol salinimi. "Bu benim" hissi.
 	  KILITLI   yalnizca kucuk bir buyume ve konturun belirginlesmesi.
-	            Hareket yok -- odul verilmemis bir seyi kutlamak yanlis.
+	            Fareye ozel hareket yok; ama fare degmeden de hafifce
+	            sallaniyor (bkz. KILITLI_SALINIM_ACI) -- panel olu durmasin.
 
 	Buyume UIScale ile yapiliyor ve hucrenin ICINDEKI katmana uygulaniyor:
 	UIScale nesneyi AnchorPoint'inden buyutuyor, izgara hucreleri ise
@@ -145,6 +146,54 @@ local PARILTI_SURE = 1.1
 -- Modelin salinim genligi ve hizi. Tam tur atmiyor: arkasi gorunmesin.
 local SALINIM_ACI = math.rad(24)
 local SALINIM_HIZ = 1.7
+
+--[[
+	KILITLI HUCRELERIN CANLILIGI
+
+	Fare degmese de kilitli modeller hafifce saga sola sallaniyor; panel
+	olu bir izgara gibi durmasin. Fareyle acilmis hucrenin salinimindan
+	(24 derece) bilerek cok daha kucuk ve yavas: canlilik var ama
+	"bu benim" hissi yalnizca acilmis olanda.
+
+	Hucreler ayni anda ayni yone sallanmasin diye her birinin FAZI farkli.
+]]
+local KILITLI_SALINIM_ACI = math.rad(10)
+local KILITLI_SALINIM_HIZ = 0.9
+
+--[[
+	ISIM RENKLERI
+
+	Kademe sirasi DEGERLI_SIRA ve ustu olanlarin adi gokkusagi gibi kayar
+	(diger brainrot oyunlarindaki degerli isimler gibi). Varsayilan 5:
+	Mythic ve Divine. Legendary'yi de katmak icin 4 yap.
+
+	Digerlerinin adi siyah ile gri arasinda gidip gelir. Bu isimlerin
+	siyah konturu ACIK_KONTUR'a cekiliyor: siyaha yaklasan yazi siyah
+	konturla koyu zeminde tamamen kayboluyordu.
+]]
+local DEGERLI_SIRA = 5
+-- Gokkusaginin saniyede ne kadar kaydigi (1 = bir tam renk turu)
+local GOKKUSAGI_HIZ = 0.35
+-- Isim boyunca kac renk tonu gorunsun (1 = butun gokkusagi tek isimde)
+local GOKKUSAGI_YAYILIM = 0.6
+local SIYAH = Color3.fromRGB(28, 28, 34)
+local GRI = Color3.fromRGB(170, 172, 182)
+local SIYAHGRI_HIZ = 1.6
+local ACIK_KONTUR = Color3.fromRGB(215, 218, 228)
+
+--[[
+	ACILMIS HUCRENIN ZEMINI
+
+	Eskiden duz kademe rengiyle kapliydi. Artik renkler akiyor: kademe
+	renginden baslayan uc tonlu bir gecis hem tonunu kaydiriyor hem
+	yavasca donuyor.
+]]
+-- Tonun saniyede ne kadar kaydigi (1 = bir tam renk turu)
+local ZEMIN_GECIS_HIZ = 0.08
+-- Gecisin saniyede kac derece dondugu
+local ZEMIN_DONUS_HIZ = 25
+local ZEMIN_DOYGUNLUK = 0.6
+local ZEMIN_PARLAKLIK = 0.95
 
 ------------------------------------------------------------------
 -- KATALOGU KADEMEYE GORE SIRALA
@@ -281,6 +330,14 @@ type Hucre = {
 		kaydirmada var olmayan model tekrar tekrar aranirdi.
 	]]
 	modelYok: boolean,
+	-- Gorus penceresinde mi: canlilik yalnizca bunlara uygulanir
+	gorunur: boolean,
+	-- Isimdeki gokkusagi gecisi (yalnizca degerli kademelerde, digerlerinde nil)
+	adGecis: UIGradient?,
+	-- Acilmis hucrenin zeminindeki akan renk gecisi
+	zeminGecis: UIGradient,
+	-- Hucreler ayni anda ayni yone sallanmasin / ayni renkte olmasin diye
+	faz: number,
 }
 
 local hucreler: { Hucre } = {}
@@ -448,13 +505,29 @@ local function hucreCiz(hucre: Hucre)
 	hucre.cizgi.Color = hucre.renk
 
 	if hucre.kesif then
-		hucre.yuva.BackgroundColor3 = hucre.renk
+		--[[
+			Zemin BEYAZ, rengi gecis veriyor: UIGradient nesnenin rengiyle
+			CARPILIYOR, kademe rengi uzerine binse akan renkler ona boyanip
+			bulaniklasirdi.
+		]]
+		hucre.yuva.BackgroundColor3 = Color3.new(1, 1, 1)
 		hucre.yuva.BackgroundTransparency = 0.12
+		hucre.zeminGecis.Enabled = true
 		hucre.cizgi.Thickness = 3
 		hucre.cizgi.Transparency = 0
+
+		--[[
+			Kilitliyken salinan kamera, acildigi anda o egik acida donup
+			kalmasin: acilmis hucre fare degmedikce dimdik durur.
+		]]
+		local kamera, merkez, uzaklik = hucre.kamera, hucre.merkez, hucre.uzaklik
+		if kamera and merkez and uzaklik then
+			kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * uzaklik, merkez)
+		end
 	else
 		hucre.yuva.BackgroundColor3 = KILITLI_ZEMIN
 		hucre.yuva.BackgroundTransparency = 0.25
+		hucre.zeminGecis.Enabled = false
 		hucre.cizgi.Thickness = 1.5
 		hucre.cizgi.Transparency = 0.45
 	end
@@ -509,8 +582,13 @@ local function hoverBitir(hucre: Hucre)
 		Kamerayi notr cerceveye dondur. Yapilmazsa model fare ciktigi
 		andaki egik acida donup kaliyor ve izgara duzensiz gorunuyor.
 	]]
+	--[[
+		Yalnizca ACILMIS hucrede: kilitli hucrenin salinimi fareden
+		bagimsiz suruyor, burada sifirlansa bir kare ortaya sicrayip geri
+		donuyordu.
+	]]
 	local kamera, merkez, uzaklik = hucre.kamera, hucre.merkez, hucre.uzaklik
-	if kamera and merkez and uzaklik then
+	if hucre.kesif and kamera and merkez and uzaklik then
 		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * uzaklik, merkez)
 	end
 end
@@ -578,6 +656,12 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	yuva.ClipsDescendants = true
 	yuva.Parent = ic
 	UI.corner(yuva, 8)
+
+	-- Acilmis hucrede akan renkler; renkleri RenderStepped surucusu yaziyor
+	local zeminGecis = Instance.new("UIGradient")
+	zeminGecis.Name = "ZeminGecis"
+	zeminGecis.Enabled = false
+	zeminGecis.Parent = yuva
 
 	--[[
 		PARILTI BANDI
@@ -697,7 +781,30 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		wrapped = true,
 		name = "Ad",
 	})
-	UI.rarityStyle(ad, info.rarity)
+	--[[
+		ISIM RENGI  (bkz. DEGERLI_SIRA)
+
+		rarityStyle KULLANILMIYOR: o isme kendi parilti gradyanini koyuyor
+		ve ust kademeleri IlahiRenk'e etiketliyor; IlahiRenk de her karede
+		TextColor3'u yazip buradaki animasyonu eziyordu. plainStyle ikisini
+		de temizliyor, renk tamamen asagidaki surucude.
+	]]
+	local degerli = Rarity.get(info.rarity).order >= DEGERLI_SIRA
+	UI.plainStyle(ad, if degerli then Color3.new(1, 1, 1) else GRI)
+
+	local adGecis: UIGradient? = nil
+	if degerli then
+		-- Gradyan yazi rengiyle carpildigi icin taban beyaz (yukarida)
+		local gecis = Instance.new("UIGradient")
+		gecis.Name = "Gokkusagi"
+		gecis.Parent = ad
+		adGecis = gecis
+	else
+		local kontur = ad:FindFirstChildOfClass("UIStroke")
+		if kontur then
+			kontur.Color = ACIK_KONTUR
+		end
+	end
 
 	local gelir = UI.text({
 		text = Format.perSecond(Brainrots.income(info.name, "Normal")),
@@ -751,6 +858,11 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		merkez = nil,
 		uzaklik = nil,
 		modelYok = false,
+		gorunur = false,
+		adGecis = adGecis,
+		zeminGecis = zeminGecis,
+		-- Katalog sirasindan turuyor: komsu hucreler hep farkli fazda
+		faz = #hucreler * 0.77,
 	}
 
 	kutu.MouseEnter:Connect(function()
@@ -918,6 +1030,8 @@ local function pencereyiTazele()
 		local y = hucre.kutu.AbsolutePosition.Y
 		local icinde = y + hucre.kutu.AbsoluteSize.Y >= ustSinir and y <= altSinir
 
+		hucre.gorunur = icinde
+
 		if icinde then
 			onizlemeKur(hucre)
 		else
@@ -953,6 +1067,7 @@ panel:GetPropertyChangedSignal("Visible"):Connect(function()
 	end
 
 	for _, hucre in hucreler do
+		hucre.gorunur = false
 		onizlemeYik(hucre)
 	end
 end)
@@ -960,46 +1075,96 @@ end)
 ------------------------------------------------------------------
 -- HAREKET SURUCUSU
 --
--- Ayni anda YALNIZCA BIR hucrenin ustunde olunabildigi icin tek bir
--- RenderStepped yetiyor; her hucreye ayri dongu acmak 87 dongu olurdu.
+-- Tek bir RenderStepped butun canliligi suruyor; 87 hucreye ayri dongu
+-- acmak yerine. Isler yalnizca GORUS PENCERESINDEKI hucrelere uygulanir
+-- (gorunur bayragi): ekran disindaki isimlere, zeminlere dokunulmuyor.
 --
--- Kilitli hucrede hic hareket yok: onun tepkisi hoverBaslat'taki buyume
--- ve kontur ile bitiyor.
+--   isim     : degerli kademede gokkusagi kayar, digerleri siyah <-> gri
+--   zemin    : acilmis hucrede renkler akar ve doner
+--   kilitli  : fare degmeden de model hafifce sallanir
+--   fare     : acilmis hucrede parilti + belirgin salinim
 ------------------------------------------------------------------
-RunService.RenderStepped:Connect(function(dt)
-	local hucre = ustundeki
-	if not hucre or not panel.Visible then
-		return
-	end
+local zaman = 0
 
-	if not hucre.kesif then
-		return
-	end
-
-	hoverT += dt
-
-	--[[
-		PARILTI SUPURMESI
-
-		Bant sol disindan sag disina gecer, sonra basa doner. Modulo ile
-		dondugu icin bitis-baslangic arasinda sicrama gorunmez: iki uc da
-		kutunun DISINDA.
-	]]
-	local ilerleme = (hoverT % PARILTI_SURE) / PARILTI_SURE
-	hucre.parilti.Position = UDim2.fromScale(PARILTI_BAS + ilerleme * (PARILTI_BIT - PARILTI_BAS), 0.5)
-
-	--[[
-		MODELIN SALINIMI
-
-		Tam tur DEGIL, sag-sol salinim: tam tur atsa modelin arkasi
-		gorunurdu, ki oradan basladik. sin() ile gidip geliyor, uclarda
-		kendiliginden yavasliyor.
-	]]
+local function kameraCevir(hucre: Hucre, aci: number)
 	local kamera, merkez, uzaklik = hucre.kamera, hucre.merkez, hucre.uzaklik
 	if kamera and merkez and uzaklik then
-		local aci = math.sin(hoverT * SALINIM_HIZ) * SALINIM_ACI
 		local yon = CFrame.Angles(0, aci, 0):VectorToWorldSpace(BAKIS_YONU)
 		kamera.CFrame = CFrame.lookAt(merkez + yon * uzaklik, merkez)
+	end
+end
+
+-- Isim boyunca GOKKUSAGI_YAYILIM kadar tonu kaplayan bes duraklik gecis
+local function gokkusagi(bas: number): ColorSequence
+	local duraklar = {}
+	for i = 0, 4 do
+		local t = i / 4
+		table.insert(
+			duraklar,
+			ColorSequenceKeypoint.new(t, Color3.fromHSV((bas + t * GOKKUSAGI_YAYILIM) % 1, 0.85, 1))
+		)
+	end
+	return ColorSequence.new(duraklar)
+end
+
+-- Zeminin uc tonu: ayni doygunlukta, birbirinden 0.22 ton uzakta
+local function zeminRengi(bas: number): ColorSequence
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromHSV(bas % 1, ZEMIN_DOYGUNLUK, ZEMIN_PARLAKLIK)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromHSV((bas + 0.22) % 1, ZEMIN_DOYGUNLUK, ZEMIN_PARLAKLIK)),
+		ColorSequenceKeypoint.new(1, Color3.fromHSV((bas + 0.44) % 1, ZEMIN_DOYGUNLUK, ZEMIN_PARLAKLIK)),
+	})
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	if not panel.Visible then
+		return
+	end
+
+	zaman += dt
+	local fareHucre = ustundeki
+
+	for _, hucre in hucreler do
+		if not hucre.gorunur then
+			continue
+		end
+
+		-- ISIM
+		local adGecis = hucre.adGecis
+		if adGecis then
+			adGecis.Color = gokkusagi(zaman * GOKKUSAGI_HIZ + hucre.faz * 0.05)
+		else
+			local karisim = (math.sin(zaman * SIYAHGRI_HIZ + hucre.faz) + 1) * 0.5
+			hucre.ad.TextColor3 = SIYAH:Lerp(GRI, karisim)
+		end
+
+		if hucre.kesif then
+			--[[
+				ZEMIN: kademe renginin tonundan baslar, oradan akar. Her
+				hucre kendi renginden yola ciktigi icin kademeler akarken
+				bile birbirinden ayri okunuyor.
+			]]
+			local ton = hucre.renk:ToHSV()
+			hucre.zeminGecis.Color = zeminRengi(ton + zaman * ZEMIN_GECIS_HIZ)
+			hucre.zeminGecis.Rotation = (zaman * ZEMIN_DONUS_HIZ + hucre.faz * 40) % 360
+		else
+			-- KILITLI: fareden bagimsiz, yavas ve kucuk salinim
+			kameraCevir(hucre, math.sin(zaman * KILITLI_SALINIM_HIZ + hucre.faz) * KILITLI_SALINIM_ACI)
+		end
+	end
+
+	--[[
+		FARE USTUNDE (yalnizca acilmis hucre)
+
+		Parilti bant sol disindan sag disina gecer ve basa doner; model
+		tam tur atmadan saga sola sallanir (tam tur arkasini gosterirdi).
+	]]
+	if fareHucre and fareHucre.kesif then
+		hoverT += dt
+		local ilerleme = (hoverT % PARILTI_SURE) / PARILTI_SURE
+		fareHucre.parilti.Position =
+			UDim2.fromScale(PARILTI_BAS + ilerleme * (PARILTI_BIT - PARILTI_BAS), 0.5)
+		kameraCevir(fareHucre, math.sin(hoverT * SALINIM_HIZ) * SALINIM_ACI)
 	end
 end)
 

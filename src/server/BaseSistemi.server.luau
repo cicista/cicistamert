@@ -49,6 +49,8 @@ local Bildirim = Net.event("Bildirim")
 local BaseGuncelle = Net.event("BaseGuncelle")
 local SlotaKoy = Net.event("SlotaKoy")
 local SlottanAl = Net.event("SlottanAl")
+-- Toplama aninda para destelerinin sacilma efekti (bkz. ParaSacma.client)
+local ParaSac = Net.event("ParaSac")
 
 -- [baseIndex] = Player | nil
 local owners: { [number]: Player? } = {}
@@ -276,7 +278,20 @@ function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: an
 	pad.Anchored = true
 	-- Uzerine basilabilsin ama takilmasin: carpisma yok, dokunma var
 	pad.CanCollide = false
-	pad.Material = Enum.Material.Neon
+	--[[
+		DUZ, DOLGUN RENK
+
+		Once Neon'du. Neon rengi parlatip SOLDURUYOR: kirmizi soluk pembe-beyaz,
+		yesil acik yesil gorunuyor, bekleme rengi "gri" sanilacak kadar
+		solgundu. SmoothPlastic kirmiziyi kirmizi, yesili yesil gosteriyor --
+		diger brainrot oyunlarindaki toplama basamagi gibi.
+
+		Saydamlik ve yansima sifirlaniyor: Studio'da konan isaret parcasi
+		(ToplaNoktasi) yari saydamsa alttaki zemin rengi butona karisiyordu.
+	]]
+	pad.Material = Enum.Material.SmoothPlastic
+	pad.Transparency = 0
+	pad.Reflectance = 0
 	pad.Color = cfg.idleColor
 	pad.TopSurface = Enum.SurfaceType.Smooth
 	pad.BottomSurface = Enum.SurfaceType.Smooth
@@ -1548,8 +1563,9 @@ end
 
 --[[
 	Butonun uzerindeki miktari ve rengini tazeler.
+	  bekleme suresinde  -> kirmizi, kalan sure yazili
 	  toplanacak rot var -> yesil, miktar yazili
-	  bos / sahipsiz     -> gri
+	  bos / sahipsiz     -> duz (gri)
 ]]
 local function updateCollectButton(baseIndex: number)
 	local pad = collectPads[baseIndex]
@@ -1560,7 +1576,7 @@ local function updateCollectButton(baseIndex: number)
 	local cfg = Bases.CollectPad
 	local waiting = pending[baseIndex] or 0
 
-	-- Toplama sonrasi bekleme: buton bu sure boyunca TURUNCU ve kapali
+	-- Toplama sonrasi bekleme: buton bu sure boyunca KIRMIZI ve kapali
 	local bekleme = math.max(0, (collectUntil[baseIndex] or 0) - os.clock())
 	local ready = owners[baseIndex] ~= nil and waiting >= 1 and bekleme <= 0
 
@@ -1602,7 +1618,7 @@ function collectRot(player: Player, baseIndex: number)
 		return
 	end
 
-	-- Bekleme surerken toplanmaz (buton turuncu yanarken)
+	-- Bekleme surerken toplanmaz (buton kirmizi yanarken)
 	if os.clock() < (collectUntil[baseIndex] or 0) then
 		return
 	end
@@ -1620,10 +1636,10 @@ function collectRot(player: Player, baseIndex: number)
 	--[[
 		BEKLEME BASLAR
 
-		Buton collectCooldown saniye boyunca turuncu yanar ve toplama kabul
+		Buton collectCooldown saniye boyunca kirmizi yanar ve toplama kabul
 		etmez. Sure dolunca buton kendiliginden yesile doner; bekleme bitisi
 		ayrica tazelenir, yoksa gelir dongusunun bir sonraki adimina kadar
-		turuncu kalirdi.
+		kirmizi kalirdi.
 	]]
 	local cfg = Bases.CollectPad
 	collectUntil[baseIndex] = os.clock() + cfg.collectCooldown
@@ -1631,6 +1647,20 @@ function collectRot(player: Player, baseIndex: number)
 	local pad = collectPads[baseIndex]
 	if pad then
 		Assets.playSoundAt(cfg.collectSound, pad)
+
+		--[[
+			PARA SACMA EFEKTI
+
+			Desteler sunucuda KURULMUYOR; burasi yalnizca haber veriyor,
+			her istemci kendi desteleri kurup ucuruyor (bkz. StarterPlayer
+			Scripts > ParaSacma). Sunucuda ucan onlarca parca hem takilarak
+			gorunur hem agi doldururdu.
+
+			Herkese gidiyor: yakindaki oyuncular da baskasinin toplamasini
+			gorsun. Uzaktakileri istemci kendisi eliyor (GORUNME_MESAFESI).
+			Nokta padin UST yuzu; desteler oradan firliyor.
+		]]
+		ParaSac:FireAllClients(player, pad.Position + Vector3.new(0, pad.Size.Y * 0.5, 0), payout)
 	end
 
 	updateCollectButton(baseIndex)

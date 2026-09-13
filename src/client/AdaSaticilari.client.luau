@@ -22,6 +22,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
+local Icons = require(Shared:WaitForChild("Icons"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -100,12 +101,102 @@ local function satir(parent: Instance, order: number, renk: Color3, vurgulu: boo
 	return row
 end
 
-local function madenYazisi(ores: { any }): string
-	local parcalar = {}
-	for _, ore in ores do
-		table.insert(parcalar, `{ore.displayName} x{ore.count}`)
+--[[
+	MADEN IKONU  (Assets > Icons)
+
+	Ikon gelene kadar gizli. Seritteki UIListLayout gizli nesneye yer
+	ayirmadigi icin ikonu bulunamayan maden bosluk birakmaz, yalnizca
+	yazisiyla kalir.
+]]
+local function madenIkonu(parent: Instance, oreId: string, boy: number): ImageLabel
+	local ikon = Instance.new("ImageLabel")
+	ikon.Name = "MadenIkonu"
+	ikon.BackgroundTransparency = 1
+	ikon.Size = UDim2.fromOffset(boy, boy)
+	ikon.ScaleType = Enum.ScaleType.Fit
+	ikon.Visible = false
+	ikon.Parent = parent
+	Icons.bind(ikon, `ore_{oreId}`, function(ok)
+		if ok then
+			ikon.Visible = true
+		end
+	end)
+	return ikon
+end
+
+--[[
+	IKONLU YAZI SERIDI
+
+	Eskiden maden adlari tek bir duz yaziydi ("Needs: 5 Amethyst, 5 Opal").
+	Artik yan yana parcalar: her parca istege bagli bir maden ikonu +
+	yazisi. Oyuncu madeni adini okumadan ikonundan taniyor.
+]]
+type Parca = { ore: string?, yazi: string }
+
+local function serit(
+	parent: Instance,
+	position: UDim2,
+	size: UDim2,
+	parcalar: { Parca },
+	renk: Color3,
+	ikonBoy: number
+): Frame
+	local kap = Instance.new("Frame")
+	kap.Name = "Serit"
+	kap.Position = position
+	kap.Size = size
+	kap.BackgroundTransparency = 1
+	kap.Parent = parent
+
+	local dizi = Instance.new("UIListLayout")
+	dizi.FillDirection = Enum.FillDirection.Horizontal
+	dizi.VerticalAlignment = Enum.VerticalAlignment.Center
+	dizi.SortOrder = Enum.SortOrder.LayoutOrder
+	dizi.Padding = UDim.new(0, 4)
+	dizi.Parent = kap
+
+	local sira = 0
+	for i, parca in parcalar do
+		-- Parcalar arasinda nefes payi (ilkinden once degil)
+		if i > 1 then
+			sira += 1
+			local ara = Instance.new("Frame")
+			ara.Name = "Ara"
+			ara.BackgroundTransparency = 1
+			ara.Size = UDim2.fromOffset(6, 1)
+			ara.LayoutOrder = sira
+			ara.Parent = kap
+		end
+
+		local ore = parca.ore
+		if ore then
+			sira += 1
+			madenIkonu(kap, ore, ikonBoy).LayoutOrder = sira
+		end
+
+		sira += 1
+		local yazi = UI.text({
+			text = parca.yazi,
+			size = UI.Sizes.small,
+			color = renk,
+			frameSize = UDim2.new(0, 0, 1, 0),
+			parent = kap,
+		})
+		yazi.AutomaticSize = Enum.AutomaticSize.X
+		yazi.TextXAlignment = Enum.TextXAlignment.Left
+		yazi.LayoutOrder = sira
 	end
-	return table.concat(parcalar, "     ")
+
+	return kap
+end
+
+-- "Your ores:  [ikon] x3  [ikon] x1  [ikon] x0"
+local function madenStogu(ores: { any }): { Parca }
+	local parcalar: { Parca } = { { yazi = "Your ores:" } }
+	for _, ore in ores do
+		table.insert(parcalar, { ore = ore.id, yazi = `{ore.displayName} x{ore.count}` })
+	end
+	return parcalar
 end
 
 local function durumYazisi(entry: any, fiyat: string): (string, Color3)
@@ -151,6 +242,8 @@ end
 local kurekPanel = UI.panel(screen, UDim2.fromOffset(600, 520), "AdaKurekSaticisi")
 local kurekBaslik, kurekAlt = panelBasligi(kurekPanel)
 local kurekListe = liste(kurekPanel, UDim2.fromOffset(14, 80), UDim2.new(1, -28, 1, -94))
+-- Basliktaki "Your ores" seridi; her acilista yeniden kuruluyor
+local kurekSerit: Frame? = nil
 
 AdaKurekAc.OnClientEvent:Connect(function(payload)
 	if type(payload) ~= "table" then
@@ -161,7 +254,18 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 
 	kurekBaslik.Text = `{payload.name} Shovel Seller`
 	kurekBaslik.TextColor3 = payload.color
-	kurekAlt.Text = `Your ores:  {madenYazisi(payload.ores)}`
+	kurekAlt.Text = ""
+	if kurekSerit then
+		kurekSerit:Destroy()
+	end
+	kurekSerit = serit(
+		kurekPanel,
+		UDim2.fromOffset(18, 50),
+		UDim2.new(1, -36, 0, 20),
+		madenStogu(payload.ores),
+		UI.Colors.textDim,
+		18
+	)
 
 	local sayac: { [string]: number } = {}
 	for _, ore in payload.ores do
@@ -186,9 +290,9 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 
 		-- Bedel satiri: yetiyorsa yesil, sirasi gelmis ama yetmiyorsa sari
 		local yeterli = payload.rot >= entry.price
-		local parcalar = {}
+		local parcalar: { Parca } = { { yazi = "Needs:" } }
 		for _, ore in payload.ores do
-			table.insert(parcalar, `{entry.oreCost} {ore.displayName}`)
+			table.insert(parcalar, { ore = ore.id, yazi = tostring(entry.oreCost) })
 			if (sayac[ore.id] or 0) < entry.oreCost then
 				yeterli = false
 			end
@@ -200,14 +304,19 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 			elseif entry.buyable then UI.Colors.warn
 			else UI.Colors.textDim
 
-		UI.text({
-			text = if entry.owned then "Owned" else `Needs: {table.concat(parcalar, ", ")}`,
-			size = UI.Sizes.small,
-			color = bedelRengi,
-			frameSize = UDim2.new(1, -170, 0, 20),
-			position = UDim2.fromOffset(14, 34),
-			parent = row,
-		})
+		if entry.owned then
+			UI.text({
+				text = "Owned",
+				size = UI.Sizes.small,
+				color = bedelRengi,
+				frameSize = UDim2.new(1, -170, 0, 20),
+				position = UDim2.fromOffset(14, 34),
+				parent = row,
+			})
+		else
+			-- "Needs:  [ikon] 5  [ikon] 5  [ikon] 5"
+			serit(row, UDim2.fromOffset(14, 34), UDim2.new(1, -170, 0, 20), parcalar, bedelRengi, 16)
+		end
 
 		local yazi, renk = durumYazisi(entry, `{Format.short(entry.price)} Rot`)
 		UI.text({
@@ -238,6 +347,7 @@ end)
 local kazmaPanel = UI.panel(screen, UDim2.fromOffset(540, 480), "KazmaSaticisi")
 local kazmaBaslik, kazmaAlt = panelBasligi(kazmaPanel)
 local kazmaListe = liste(kazmaPanel, UDim2.fromOffset(14, 80), UDim2.new(1, -28, 1, -94))
+local kazmaSerit: Frame? = nil
 
 KazmaAc.OnClientEvent:Connect(function(payload)
 	if type(payload) ~= "table" then
@@ -248,7 +358,18 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 
 	kazmaBaslik.Text = `{payload.name} Pickaxe Seller`
 	kazmaBaslik.TextColor3 = payload.color
-	kazmaAlt.Text = `Your ores:  {madenYazisi(payload.ores)}`
+	kazmaAlt.Text = ""
+	if kazmaSerit then
+		kazmaSerit:Destroy()
+	end
+	kazmaSerit = serit(
+		kazmaPanel,
+		UDim2.fromOffset(18, 50),
+		UDim2.new(1, -36, 0, 20),
+		madenStogu(payload.ores),
+		UI.Colors.textDim,
+		18
+	)
 
 	local order = 0
 
@@ -270,19 +391,12 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 		parent = kazmaSatiri,
 	})
 
-	local madenAdlari = {}
+	-- "Mines  [ikon] Ruby  [ikon] Obsidian  [ikon] Basalt"
+	local kazdiklari: { Parca } = { { yazi = "Mines" } }
 	for _, ore in payload.ores do
-		table.insert(madenAdlari, ore.displayName)
+		table.insert(kazdiklari, { ore = ore.id, yazi = ore.displayName })
 	end
-
-	UI.text({
-		text = `Mines {table.concat(madenAdlari, ", ")}`,
-		size = UI.Sizes.small,
-		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -170, 0, 20),
-		position = UDim2.fromOffset(14, 34),
-		parent = kazmaSatiri,
-	})
+	serit(kazmaSatiri, UDim2.fromOffset(14, 34), UDim2.new(1, -170, 0, 20), kazdiklari, UI.Colors.textDim, 16)
 
 	UI.text({
 		text = if kazma.owned then "OWNED" else `{Format.short(kazma.price)} Rot`,
@@ -310,35 +424,40 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 		order += 1
 		local row = satir(kazmaListe, order, ore.color, false)
 
+		-- Satirin solunda alinacak madenin buyuk ikonu
+		local buyukIkon = madenIkonu(row, ore.id, 44)
+		buyukIkon.Position = UDim2.fromOffset(12, 15)
+
 		UI.text({
 			text = `{ore.displayName}  x{ore.count}`,
 			size = UI.Sizes.body,
 			font = UI.Fonts.bold,
 			color = ore.color,
-			frameSize = UDim2.new(1, -150, 0, 22),
-			position = UDim2.fromOffset(14, 9),
+			frameSize = UDim2.new(1, -200, 0, 22),
+			position = UDim2.fromOffset(64, 9),
 			parent = row,
 		})
 
-		local bedel = {}
+		-- "Costs  [ikon] 1  [ikon] 1"
+		local bedel: { Parca } = { { yazi = "Costs" } }
 		local yeterli = true
 		for _, diger in payload.ores do
 			if diger.id ~= ore.id then
-				table.insert(bedel, `{payload.tradeCost} {diger.displayName}`)
+				table.insert(bedel, { ore = diger.id, yazi = tostring(payload.tradeCost) })
 				if diger.count < payload.tradeCost then
 					yeterli = false
 				end
 			end
 		end
 
-		UI.text({
-			text = `Costs {table.concat(bedel, " + ")}`,
-			size = UI.Sizes.small,
-			color = if yeterli then UI.Colors.textDim else UI.Colors.warn,
-			frameSize = UDim2.new(1, -150, 0, 20),
-			position = UDim2.fromOffset(14, 34),
-			parent = row,
-		})
+		serit(
+			row,
+			UDim2.fromOffset(64, 34),
+			UDim2.new(1, -200, 0, 20),
+			bedel,
+			if yeterli then UI.Colors.textDim else UI.Colors.warn,
+			16
+		)
 
 		local dugme = UI.button(row, "GET 1", UDim2.fromOffset(110, 42), if yeterli then UI.Colors.good else UI.Colors.panel)
 		dugme.Position = UDim2.new(1, -124, 0.5, -21)

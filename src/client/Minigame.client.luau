@@ -32,6 +32,8 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local OtoTiklayici = require(Shared:WaitForChild("OtoTiklayici"))
 local Ores = require(Shared:WaitForChild("Ores"))
+-- Maden kazisindaki kazma resmi Assets > Icons klasorunden okunuyor
+local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -182,6 +184,26 @@ local IKON_BOY = 96
 	Yon ters gelirse -90 yap.
 ]]
 local IKON_ACI = 90
+
+--[[
+	MADEN KAZISINDA KAZMA
+
+	Minioyun madende de aynisi; yalnizca bardaki ikon kurek yerine KAZMA.
+	Resim koda yazilmiyor: ReplicatedStorage > Assets > Icons icinde bu adla
+	duran ikondan okunuyor (Decal / ImageLabel; ad eslesmesi esnek, bkz.
+	Icons > OYUNUN KENDI IKONLARI). Bulunamazsa kurek resmi kalir ve
+	Output'a bir kez uyari duser.
+
+	KAZMA_ACI: kazma resmi kendi icinde zaten YATAY cizilmis (basi solda,
+	sapi sagda) -- kurek gibi 90 derece cevrilmesine gerek yok. Ters
+	gelirse 180 yap.
+]]
+local KAZMA_IKON_ADI = "pickaxe_icon"
+local KAZMA_ACI = 0
+
+-- Su anki kazinin ikon taban acisi: kurekte IKON_ACI, madende KAZMA_ACI
+local ikonAci = IKON_ACI
+local kazmaUyarisiVerildi = false
 
 -- Barin sag kenardan uzakligi: sag alttaki ayarlar dugmesiyle cakismasin
 local SAG_BOSLUK = 150
@@ -571,7 +593,7 @@ local function sarsintiyiBagla()
 		local v = math.min(vurusGucu, 1)
 		kaziIkon.Size = UDim2.fromOffset(IKON_BOY + v * 45, IKON_BOY + v * 45)
 		-- Vurus, durus acisinin UZERINE ekleniyor; taban aci hep korunur
-		kaziIkon.Rotation = IKON_ACI + vurusYon * v * 27
+		kaziIkon.Rotation = ikonAci + vurusYon * v * 27
 
 		if sarsintiGucu <= 0 then
 			return
@@ -599,7 +621,7 @@ local function sarsintiyiCoz()
 	sarsintiGucu = 0
 	vurusGucu = 0
 	kaziIkon.Size = UDim2.fromOffset(IKON_BOY, IKON_BOY)
-	kaziIkon.Rotation = IKON_ACI
+	kaziIkon.Rotation = ikonAci
 end
 ------------------------------------------------------------------
 -- OYUN DONGUSU
@@ -951,6 +973,19 @@ local function modKur(yeniMod: string, rarityId: string)
 		-- Madende imlec ADANIN renginde (gemin rengi kristallerde)
 		local maden = Ores.get(rarityId)
 		kaziRenk = if maden then maden.islandColor else Rarity.beamColor(rarityId)
+
+		-- Madende bardaki ikon KAZMA, digerlerinde KUREK (bkz. KAZMA_IKON_ADI)
+		local kazmaResmi = if maden then Icons.asset(KAZMA_IKON_ADI) else nil
+		if maden and not kazmaResmi and not kazmaUyarisiVerildi then
+			kazmaUyarisiVerildi = true
+			warn(
+				`[Minigame] Kazma ikonu bulunamadi: ReplicatedStorage > Assets > Icons `
+					.. `icine "{KAZMA_IKON_ADI}" adli bir Decal ya da ImageLabel koy. Simdilik kurek gorunuyor.`
+			)
+		end
+		kaziIkon.Image = kazmaResmi or KUREK_IKONU
+		ikonAci = if kazmaResmi then KAZMA_ACI else IKON_ACI
+		kaziIkon.Rotation = ikonAci
 		kaziDolgu.BackgroundColor3 = kaziRenk
 		kaziDolgu.Size = UDim2.fromScale(1, KaziMinigame.START)
 		sarsintiyiBagla()
