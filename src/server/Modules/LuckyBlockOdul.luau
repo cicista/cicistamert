@@ -567,13 +567,13 @@ local function openBlock(player: Player, tierId: string)
 
 	LuckyBlockSonuc:FireClient(player, {
 		-- 1. asama: kademe carki ("?" bolmeler, sadece renk)
-		rarityCells = buildRarityCells(tierId, W.winnerIndex, rarityId),
+		rarityCells = buildRarityCells(tierId, W.winnerIndex, rarityId, ada),
 		rarityWinnerIndex = W.winnerIndex,
 		raritySpinTime = W.spinTime,
 		pause = W.pause,
 
 		-- 2. asama: o kademedeki brainrotlarin carki
-		cells = buildBrainrotCells(rarityId, W.revealWinnerIndex, info.name),
+		cells = buildBrainrotCells(rarityId, W.revealWinnerIndex, info.name, ada),
 		winnerIndex = W.revealWinnerIndex,
 		spinTime = W.revealSpinTime,
 
