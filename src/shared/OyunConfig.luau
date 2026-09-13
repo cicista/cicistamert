@@ -152,24 +152,25 @@ Config.Islands = {
 		luck = 1,
 		color = Color3.fromRGB(245, 222, 140),
 	},
+	-- Sira brainrot adalariyla ayni: kum > sekerkum > snowkum > alevkum
 	{
-		name = "Ice Island",
-		desc = "Frozen sands. Epic and legendary brainrots.",
-		spawnPartName = "Spawn_Buz",
-		position = Vector3.new(-262.8, 30.5, 709.7),
+		name = "Candy Island",
+		desc = "Sticky pink sands. Sweet brainrots await.",
+		spawnPartName = "Spawn_Sakiz",
+		position = Vector3.new(-990.1, 28.6, -747.5),
 		-- Ana adada Epic/Legendary base ile ~1 saat farm
 		price = 20_000_000_000,
 		luck = 3,
-		color = Color3.fromRGB(140, 220, 245),
+		color = Color3.fromRGB(255, 130, 200),
 	},
 	{
-		name = "Candy Island",
-		desc = "Sticky pink sands. Sweet but expensive.",
-		spawnPartName = "Spawn_Sakiz",
-		position = Vector3.new(-990.1, 28.6, -747.5),
+		name = "Snow Island",
+		desc = "Frozen sands. Cold but rewarding.",
+		spawnPartName = "Spawn_Buz",
+		position = Vector3.new(-262.8, 30.5, 709.7),
 		price = 120_000_000_000,
 		luck = 4.5,
-		color = Color3.fromRGB(255, 130, 200),
+		color = Color3.fromRGB(140, 220, 245),
 	},
 	{
 		name = "Volcano Island",
@@ -181,8 +182,10 @@ Config.Islands = {
 		color = Color3.fromRGB(230, 110, 70),
 	},
 	{
-		name = "Secret Island",
-		desc = "Nobody leaves empty-handed... or do they?",
+		-- Henuz oyunda yok: kaptanda "Coming Soon" olarak kilitli durur
+		comingSoon = true,
+		name = "Coming Soon",
+		desc = "A new island is on its way!",
 		spawnPartName = "Spawn_Gizli",
 		position = Vector3.new(-956.3, 28.6, -738.6),
 		price = 8_000_000_000_000,

@@ -84,7 +84,17 @@ local function buildIslandList(player: Player, fromIndex: number?)
 	for i, island in ipairs(Config.Islands) do
 		-- Donus satiri zaten eklendiyse ilk adayi tekrar listeleme
 		if not (home ~= 1 and i == 1) then
-			if i <= unlocked then
+			if island.comingSoon then
+				-- Henuz oyunda olmayan ada: her zaman kilitli, adiyla gorunur
+				table.insert(list, {
+					index = i,
+					name = "Coming Soon",
+					desc = island.desc,
+					price = 0,
+					color = Color3.fromRGB(120, 126, 138),
+					state = "locked",
+				})
+			elseif i <= unlocked then
 				-- Zaten acik: bedava gidilir
 				table.insert(list, {
 					index = i,
@@ -169,7 +179,8 @@ local function nearestIslandIndex(position: Vector3): number
 	local best, bestDistance = 1, math.huge
 
 	for index, island in ipairs(Config.Islands) do
-		local distance = (islandPosition(island) - position).Magnitude
+		-- Oyunda olmayan ada kaptan eslesmesine girmez
+		local distance = if island.comingSoon then math.huge else (islandPosition(island) - position).Magnitude
 		if distance < bestDistance then
 			bestDistance = distance
 			best = index
@@ -246,7 +257,7 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 	if typeof(index) ~= "number" then return end
 
 	local island = Config.Islands[index]
-	if not island then return end
+	if not island or island.comingSoon then return end
 
 	local now = os.clock()
 	if lastUse[player] and now - lastUse[player] < COOLDOWN then
