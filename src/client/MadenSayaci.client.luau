@@ -181,18 +181,79 @@ local function sinirAl(ada: string): Sinir?
 	return yeni
 end
 
--- Oyuncu hangi madenli adanin sinirlari icinde; hicbiri degilse nil
-local function hangiAda(konum: Vector3): string?
+--[[
+	1) ZEMIN: ayagin altina isin atilir; carpilan parca hangi ada modelinin
+	   icindeyse o ada. En guvenilir yol -- ada kutulari birbirine
+	   tasabiliyor (SnowIsland'in kutusu Volcano'yu da kapliyordu ve
+	   volkanda Snow madenleri gorunuyordu).
+
+	   MainIsland'a basiliyorsa "main" doner: sayac gizlenir.
+]]
+local ANA_ADA_MODELI = "MainIsland"
+
+local isinAyari = RaycastParams.new()
+isinAyari.FilterType = Enum.RaycastFilterType.Exclude
+
+local function zemindenAda(konum: Vector3): string?
+	isinAyari.FilterDescendantsInstances = { player.Character :: Instance }
+
+	local hit = Workspace:Raycast(konum, Vector3.new(0, -80, 0), isinAyari)
+	if not hit then
+		return nil
+	end
+
+	local node: Instance? = hit.Instance
+	while node and node ~= Workspace do
+		if node.Name == ANA_ADA_MODELI then
+			return "main"
+		end
+		for _, ada in Ores.IslandOrder do
+			if node.Name == Ores.Islands[ada].modelName then
+				return ada
+			end
+		end
+		node = node.Parent
+	end
+
+	return nil
+end
+
+--[[
+	2) KUTU: zemin bir adaya ait degilse (su, hava, Terrain) oyuncuyu
+	   kapsayan ada kutularina bakilir. Birden fazlasi kapsiyorsa ALANI EN
+	   KUCUK olan secilir -- tasan buyuk kutu kucuk adayi ezmesin.
+]]
+local function kutudanAda(konum: Vector3): string?
+	local secilen: string? = nil
+	local enKucuk = math.huge
+
 	for _, ada in Ores.IslandOrder do
 		local sinir = sinirAl(ada)
 		if sinir then
 			local yerel = sinir.cf:PointToObjectSpace(konum)
 			if math.abs(yerel.X) <= sinir.size.X / 2 and math.abs(yerel.Z) <= sinir.size.Z / 2 then
-				return ada
+				local alan = sinir.size.X * sinir.size.Z
+				if alan < enKucuk then
+					enKucuk = alan
+					secilen = ada
+				end
 			end
 		end
 	end
-	return nil
+
+	return secilen
+end
+
+-- Oyuncu hangi madenli adada; Main Island ya da hicbiri ise nil
+local function hangiAda(konum: Vector3): string?
+	local zemin = zemindenAda(konum)
+	if zemin == "main" then
+		return nil
+	end
+	if zemin then
+		return zemin
+	end
+	return kutudanAda(konum)
 end
 
 task.spawn(function()
