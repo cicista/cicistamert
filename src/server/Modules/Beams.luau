@@ -22,6 +22,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Divine = require(Shared:WaitForChild("Divine"))
 
@@ -44,9 +45,9 @@ export type Beam = {
 	-- Denizde dogan GIRDAP mi (olta sistemi), yoksa kumdaki suzme mi
 	sea: boolean?,
 	--[[
-		Dogdugu adanin kum parcasinin ADI (kum, sekerkum, snowkum,
-		gizlikum, deniz). Kazidan cikan brainrotun ismi bu adaya gore
-		seciliyor -- ayni kademe her adada farkli brainrotlar veriyor.
+		Dogdugu adanin kimligi (kum, sekerkum, snowkum, alevkum, deniz).
+		Kazidan cikan brainrot bu adanin VE onceki adalarin havuzundan
+		seciliyor (bkz. Brainrots.islandPool).
 	]]
 	island: string?,
 }
@@ -353,9 +354,28 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	local zeminParcalari: { ZeminParcasi } = {}
 	local kademeOlcegi = (cfg.baseScale or 1) * (cfg.scaleByRarity[kind] or 1)
 
-	if cfg.groundParts and #cfg.groundParts > 0 and kademeOlcegi ~= 1 and template:IsA("Model") then
+	--[[
+		KOK PART DA OLABILIR
+
+		DigLightVFX'in koku bir Model degil, bir PART (isik sutunu); Rocks
+		onun icinde bir Model. Bu adim ilk yazildiginda yalnizca Model kokunu
+		kabul ediyordu ve hic calismadi -- taslar yine havada kaldi.
+
+		Sinirlar, asil yerlestirmedeki ile BIREBIR ayni sekilde olculmeli:
+		orada Assets.worldBounds(model) cagriliyor ve kok Part da sayiliyor.
+		Bu yuzden sablon gecici bir Model'e konup ayni fonksiyonla olculuyor.
+	]]
+	if cfg.groundParts and #cfg.groundParts > 0 and kademeOlcegi ~= 1
+		and (template:IsA("Model") or template:IsA("BasePart"))
+	then
 		step("zemin parcalari", function()
-			local min, max = Assets.worldBounds(template :: Model)
+			local gecici = Instance.new("Model")
+			local eskiEbeveyn = template.Parent
+			template.Parent = gecici
+			local min, max = Assets.worldBounds(gecici)
+			template.Parent = eskiEbeveyn
+			gecici:Destroy()
+
 			if not min or not max then
 				return
 			end
@@ -512,8 +532,38 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	]]
 	if #zeminParcalari > 0 then
 		step("zemin parcalari geri", function()
+			--[[
+				DigLightVFX bir Rig: tas parcalari Motor6D / Weld ile govdeye
+				bagli. Bagli parcaya yazilan CFrame yok sayiliyor ve taslar
+				buyuyen govdeyle birlikte havada kaliyordu. Once taslara
+				dokunan eklemler sokulur, sonra taslar sabitlenip yerine konur.
+			]]
+			local taslar: { [Instance]: boolean } = {}
+			for _, kayit in zeminParcalari do
+				taslar[kayit.part] = true
+			end
+
+			for _, node in model:GetDescendants() do
+				if node:IsA("JointInstance") then
+					if taslar[node.Part0 :: any] or taslar[node.Part1 :: any] then
+						node:Destroy()
+					end
+				elseif node:IsA("WeldConstraint") or node:IsA("RigidConstraint") then
+					local a = if node:IsA("WeldConstraint") then node.Part0 else nil
+					local b = if node:IsA("WeldConstraint") then node.Part1 else nil
+					if node:IsA("RigidConstraint") then
+						a = node.Attachment0 and node.Attachment0.Parent :: any
+						b = node.Attachment1 and node.Attachment1.Parent :: any
+					end
+					if taslar[a :: any] or taslar[b :: any] then
+						node:Destroy()
+					end
+				end
+			end
+
 			for _, kayit in zeminParcalari do
 				if kayit.part.Parent then
+					kayit.part.Anchored = true
 					kayit.part.Size = kayit.size
 					kayit.part.CFrame = kayit.cframe
 					for mesh, olcek in kayit.meshes do
@@ -726,8 +776,12 @@ local function findSandSpot(player: Player): (Vector3?, string?)
 
 		local ground = Sand.probe(candidate, { char, folder })
 		if ground and ground.isSand then
-			-- Ada adi da doner: brainrot ismi buna gore secilecek
-			return ground.position, if ground.part then string.lower(ground.part.Name) else nil
+			--[[
+				Ada kimligi da doner. Parca adi ya da ust ada modeli
+				(MainIsland, CandyIsland...) uzerinden cozuluyor; taninmayan
+				zemin ilk ada sayilir, sonraki adalarin brainrotu sizmaz.
+			]]
+			return ground.position, Brainrots.islandOf(ground.part)
 		end
 	end
 
@@ -888,6 +942,17 @@ local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 end
 
 --[[
+	ADA IZNI: bu adada (onceki adalar dahil) brainrotu olmayan kademenin
+	isini hic dogmaz. Yoksa main island'da Cosmic isini cikip kaziya
+	baska adanin brainrotunu verirdi.
+]]
+local function adaIzni(ada: string?): (string) -> boolean
+	return function(kademe: string): boolean
+		return Brainrots.availableOn(kademe, ada)
+	end
+end
+
+--[[
 	Denizde girdap dogurmayi dener. Kumdaki trySpawn ile ayni kurallar;
 	fark yalnizca noktanin suda aranmasi ve gorunumun huni olmasi.
 ]]
@@ -901,7 +966,7 @@ function Beams.trySpawnSea(player: Player, luck: number, rng: Random, maxWhirls:
 		return nil
 	end
 
-	return createBeam(player, Rarity.rollBeam(rng, luck), spot, true)
+	return createBeam(player, Rarity.rollBeam(rng, luck, adaIzni("deniz")), spot, true)
 end
 
 function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: number?): Beam?
@@ -914,7 +979,7 @@ function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: num
 		return nil
 	end
 
-	return createBeam(player, Rarity.rollBeam(rng, luck), spot, false, ada)
+	return createBeam(player, Rarity.rollBeam(rng, luck, adaIzni(ada)), spot, false, ada)
 end
 
 --[[
@@ -939,7 +1004,7 @@ function Beams.spawnKind(player: Player, kind: string): Beam?
 		spot = if ground then ground.position else root.Position - Vector3.new(0, 3, 0)
 	end
 
-	return createBeam(player, kind, spot :: Vector3)
+	return createBeam(player, kind, spot :: Vector3, false, ada)
 end
 
 function Beams.get(id: string): Beam?

@@ -216,7 +216,7 @@ Config.Sand = {
 		-- Ayni ada: zemini SekerKum diye adlandirdiysan da calisir
 		sekerkum = 4.5,
 		volkankum = 6,
-		gizlikum = 10,
+		alevkum = 10,
 	},
 }
 

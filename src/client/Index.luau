@@ -156,13 +156,13 @@ local SALINIM_HIZ = 1.7
 	ADA ADLARI
 
 	Kimlik Studio'daki kum parcasinin adi; oyuncuya gosterilen ad ayri.
-	4. ada oyunda "Alev Kum" ama parcanin adi hala "gizlikum".
+	4. ada VolcanoIsland modelinin icindeki "alevkum" parcasi.
 ]]
 local ADA_ADI: { [string]: string } = {
 	kum = "Main Island",
 	sekerkum = "Candy Island",
 	snowkum = "Snow Island",
-	gizlikum = "Lava Island",
+	alevkum = "Lava Island",
 	deniz = "The Sea",
 }
 

@@ -46,7 +46,7 @@ export type InventoryItem = {
 	-- Base'e yerlestirildiyse slot indeksi, degilse nil
 	slot: number?,
 	--[[
-		Kazildigi ada (kum, sekerkum, snowkum, gizlikum, deniz).
+		Kazildigi ada (kum, sekerkum, snowkum, alevkum, deniz).
 
 		Detective adi SECERKEN kullaniliyor: esya hangi adadan ciktiysa o
 		adanin listesinden isim aliyor. Eski kayitlarda yok; nil gelirse

@@ -443,8 +443,13 @@ end
 
 	luckMultiplier: 1'den buyuk degerler yuksek kademelere kayma sagligi verir
 	(ada bonusu / gelecekteki sans iksirleri icin).
+
+	izin (istege bagli): kademenin bu zeminde dogup dogamayacagini soyler.
+	Beams adaya gore veriyor; o adada (onceki adalar dahil) brainrotu
+	olmayan kademenin isini orada hic dogmaz. Rot Coin / Lucky Block
+	bundan etkilenmez.
 ]]
-function Rarity.rollBeam(rng: Random, luckMultiplier: number?): string
+function Rarity.rollBeam(rng: Random, luckMultiplier: number?, izin: ((string) -> boolean)?): string
 	local luck = luckMultiplier or 1
 
 	-- Agirliklari topla: yuksek kademeler luck ile carpilir
@@ -452,6 +457,11 @@ function Rarity.rollBeam(rng: Random, luckMultiplier: number?): string
 	local total = 0
 
 	for _, id in Rarity.Order do
+		-- Bu adada brainrotu olmayan kademe cekilise girmez
+		if izin and not izin(id) then
+			continue
+		end
+
 		local info = Rarity.Info[id]
 		local w = info.beamChance
 

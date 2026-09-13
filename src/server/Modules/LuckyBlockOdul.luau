@@ -345,7 +345,7 @@ end
 	  1. kum        -> Normal
 	  2. candykum   -> Normal
 	  3. snowkum    -> Golden
-	  4. gizlikum   -> Golden
+	  4. alevkum    -> Golden
 	  5. deniz      -> Diamond
 ]]
 local function tierForIsland(index: number, islandCount: number): string

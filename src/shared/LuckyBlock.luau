@@ -114,7 +114,7 @@ LuckyBlock.Event = {
 		En degerli kademe HER ZAMAN listenin SONUNCU adasina duser: ulasmasi
 		en zor ada en iyi odulu tasisin.
 	]]
-	islandSands = { "kum", "sekerkum", "snowkum", "gizlikum", "deniz" },
+	islandSands = { "kum", "sekerkum", "snowkum", "alevkum", "deniz" },
 	-- Sunucu acildiktan kac saniye sonra ilk etkinlik olsun
 	firstDelay = 180,
 	-- Toplanmayan blok kac saniye sonra kaybolur (0 = hic kaybolmasin)
