@@ -635,14 +635,14 @@ end
 	Carkin bolmeleri: hepsi coinin kademesinden, biri gercek odul.
 	Kademe zaten belli oldugu icin tek asamali doner (bkz. Rulet).
 ]]
-local function buildCells(rarityId: string, winnerIndex: number, winnerName: string): { { name: string, rarity: string } }
+local function buildCells(rarityId: string, winnerIndex: number, winnerName: string, ada: string): { { name: string, rarity: string } }
 	local cells = {}
 
 	for index = 1, Fuse.Wheel.cellCount do
 		if index == winnerIndex then
 			table.insert(cells, { name = winnerName, rarity = rarityId })
 		else
-			table.insert(cells, { name = Brainrots.roll(rarityId :: any, rng).name, rarity = rarityId })
+			table.insert(cells, { name = Brainrots.rollIsland(rarityId :: any, ada, rng).name, rarity = rarityId })
 		end
 	end
 
@@ -659,6 +659,23 @@ local function openCoin(player: Player, uid: string)
 		return
 	end
 
+	--[[
+		ADA KISITI: coinin kademesinden oyuncunun ulastigi adaya kadar hic
+		brainrot yoksa coin ACILMAZ (kaybolmaz, cantada bekler). Yoksa main
+		island'da Cosmic coin bozdurup baska adanin brainrotu alinirdi.
+	]]
+	local ada = PlayerData.reachedIsland(player)
+	if not Brainrots.availableOn(coin.rarity, ada) then
+		local gerekli = Brainrots.firstIslandOf(coin.rarity)
+		local adaAdi = if gerekli then Brainrots.IslandNames[gerekli] or gerekli else "a later island"
+		Bildirim:FireClient(
+			player,
+			`{Rarity.get(coin.rarity :: any).displayName} coins open after you dig on {adaAdi}.`,
+			Color3.fromRGB(255, 200, 90)
+		)
+		return
+	end
+
 	opening[player] = true
 
 	--[[
@@ -669,7 +686,7 @@ local function openCoin(player: Player, uid: string)
 		Cekilis zaten makinede yapildi; burada tekrar cekmek oyuncunun
 		makinede gordugu orani anlamsiz kilardi.
 	]]
-	local info = Brainrots.roll(coin.rarity :: any, rng)
+	local info = Brainrots.rollIsland(coin.rarity :: any, ada, rng)
 	local condition = Condition.get(coin.condition).id
 	local mutation = Mutations.get(coin.mutation).id
 
@@ -692,7 +709,7 @@ local function openCoin(player: Player, uid: string)
 	local income = Brainrots.income(info.name, condition :: any, mutation :: any)
 
 	CoinSonuc:FireClient(player, {
-		cells = buildCells(coin.rarity, Fuse.Wheel.winnerIndex, info.name),
+		cells = buildCells(coin.rarity, Fuse.Wheel.winnerIndex, info.name, ada),
 		winnerIndex = Fuse.Wheel.winnerIndex,
 		spinTime = Fuse.Wheel.spinTime,
 		coinName = Fuse.coinName(coin.rarity, coin.condition, coin.mutation),

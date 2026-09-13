@@ -348,6 +348,62 @@ function Brainrots.availableOn(rarityId: string, island: string?): boolean
 	return #Brainrots.islandPool(rarityId :: any, island) > 0
 end
 
+-- Oyuncuya gosterilen ada adlari
+Brainrots.IslandNames = {
+	kum = "Main Island",
+	sekerkum = "Candy Island",
+	snowkum = "Snow Island",
+	alevkum = "Lava Island",
+	deniz = "The Sea",
+}
+
+-- Iki adadan SIRADA ILERIDE olani
+function Brainrots.laterIsland(a: string?, b: string?): string
+	local na, nb = Brainrots.normalizeIsland(a), Brainrots.normalizeIsland(b)
+	return if adaSirasi[nb] > adaSirasi[na] then nb else na
+end
+
+-- Kademenin ILK ciktigi ada (hic yoksa nil)
+function Brainrots.firstIslandOf(rarityId: string): string?
+	local enErken: number? = nil
+	for _, brainrot in Brainrots.pool(rarityId :: any) do
+		local sira = adaSirasi[string.lower(brainrot.island)]
+		if sira and (enErken == nil or sira < enErken) then
+			enErken = sira
+		end
+	end
+	return if enErken then Brainrots.IslandOrder[enErken] else nil
+end
+
+--[[
+	KADEMEYI ADAYA INDIR
+
+	Lucky Block ve gunluk odul kademeyi ada bilmeden cekiyor. Cikan kademenin
+	o adada (onceki adalar dahil) brainrotu yoksa, adada BULUNAN en yuksek
+	alt kademeye inilir. Boylece main island oyuncusuna Cosmic cikip baska
+	adanin brainrotu verilmez.
+]]
+function Brainrots.clampRarity(rarityId: string, island: string?): string
+	if Brainrots.availableOn(rarityId, island) then
+		return rarityId
+	end
+
+	local info = Rarity.Info[rarityId :: any]
+	if not info then
+		return rarityId
+	end
+
+	local enIyi, enIyiSira = nil, -math.huge
+	for _, id in Rarity.Order do
+		local diger = Rarity.Info[id]
+		if diger.order < info.order and diger.order > enIyiSira and Brainrots.availableOn(id, island) then
+			enIyi, enIyiSira = id, diger.order
+		end
+	end
+
+	return enIyi or rarityId
+end
+
 -- Bir rarity havuzundan rastgele brainrot secer (ada ayrimi yok).
 function Brainrots.roll(rarityId: Rarity.RarityId, rng: Random): BrainrotInfo
 	local pool = Brainrots.pool(rarityId)
@@ -359,14 +415,15 @@ end
 	ADADAN rastgele brainrot secer. Kazi bunu kullanir.
 
 	Havuz yalnizca ESKI kayitlarda bos gelebilir (ada bilgisi olmayan ya da
-	kazildigi adada o kademe olmayan esya). Esya kaybolmasin diye YALNIZCA
-	o durumda butun havuzdan secilir; yeni kazilarda isinin rarity'si adaya
-	gore secildigi icin buraya dusulmez.
+	kazildigi adada o kademe olmayan esya). Esya kaybolmasin diye o durumda
+	kademenin ILK ciktigi adanin havuzu kullanilir -- butun havuz degil.
+	Yeni kazilarda isinin rarity'si adaya gore secildigi icin buraya
+	dusulmez.
 ]]
 function Brainrots.rollIsland(rarityId: Rarity.RarityId, island: string?, rng: Random): BrainrotInfo
 	local pool = Brainrots.islandPool(rarityId, island)
 	if #pool == 0 then
-		pool = Brainrots.pool(rarityId)
+		pool = Brainrots.islandPool(rarityId, Brainrots.firstIslandOf(rarityId))
 	end
 	assert(#pool > 0, `{rarityId} icin brainrot havuzu bos`)
 	return pool[rng:NextInteger(1, #pool)]

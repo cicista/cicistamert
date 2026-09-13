@@ -459,14 +459,14 @@ end
 	gercek kademe, digerlerine blogun kendi tablosundan cekilmis rastgele
 	kademeler konur -- boylece serit o blogun dagilimina benzer gorunur.
 ]]
-local function buildRarityCells(tierId: string, winnerIndex: number, winnerRarity: string): { string }
+local function buildRarityCells(tierId: string, winnerIndex: number, winnerRarity: string, ada: string): { string }
 	local cells = {}
 
 	for index = 1, LuckyBlock.Wheel.cellCount do
 		if index == winnerIndex then
 			table.insert(cells, winnerRarity)
 		else
-			table.insert(cells, LuckyBlock.rollRarity(tierId, rng))
+			table.insert(cells, Brainrots.clampRarity(LuckyBlock.rollRarity(tierId, rng), ada))
 		end
 	end
 
@@ -483,7 +483,8 @@ end
 local function buildBrainrotCells(
 	rarityId: string,
 	winnerIndex: number,
-	winnerName: string
+	winnerName: string,
+	ada: string
 ): { { name: string, rarity: string } }
 	local cells = {}
 
@@ -491,7 +492,7 @@ local function buildBrainrotCells(
 		if index == winnerIndex then
 			table.insert(cells, { name = winnerName, rarity = rarityId })
 		else
-			local info = Brainrots.roll(rarityId :: any, rng)
+			local info = Brainrots.rollIsland(rarityId :: any, ada, rng)
 			table.insert(cells, { name = info.name, rarity = rarityId })
 		end
 	end
@@ -522,8 +523,13 @@ local function openBlock(player: Player, tierId: string)
 	Envanter.syncLuckyBlocks(player)
 
 	-- Odul: kademe, brainrot, kondisyon ve mutasyon burada belirlenir
-	local rarityId = LuckyBlock.rollRarity(tierId, rng)
-	local info = Brainrots.roll(rarityId :: any, rng)
+	--[[
+		Oyuncunun ulastigi adaya KADAR olan havuz. Cekilen kademenin o adaya
+		kadar brainrotu yoksa en yakin alt kademeye inilir.
+	]]
+	local ada = PlayerData.reachedIsland(player)
+	local rarityId = Brainrots.clampRarity(LuckyBlock.rollRarity(tierId, rng), ada)
+	local info = Brainrots.rollIsland(rarityId :: any, ada, rng)
 	local condition = Condition.roll(rng)
 	local mutation = LuckyBlock.rollMutation(tierId, rng)
 

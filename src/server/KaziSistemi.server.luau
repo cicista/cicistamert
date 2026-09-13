@@ -257,6 +257,9 @@ local function finishDig(player: Player, won: boolean)
 		return
 	end
 
+	-- Oyuncunun ulastigi ada: Lucky Block / odul / Fuse havuzlari buna bakar
+	PlayerData.reachIsland(player, beam.island)
+
 	-- Rot Coin suzmesi
 	if beam.kind == "RotCoin" then
 		local amount = rng:NextInteger(Rarity.RotCoin.amountMin, Rarity.RotCoin.amountMax)

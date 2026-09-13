@@ -50,7 +50,7 @@ export type InventoryItem = {
 
 		Detective adi SECERKEN kullaniliyor: esya hangi adadan ciktiysa o
 		adanin listesinden isim aliyor. Eski kayitlarda yok; nil gelirse
-		butun havuza dusuluyor.
+		ilk ada sayiliyor.
 	]]
 	island: string?,
 }
@@ -119,6 +119,14 @@ export type Data = {
 	luckBonus: number,
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
 	islands: number,
+	--[[
+		KAZI YAPILAN EN ILERI ADA (Brainrots.IslandOrder kimligi)
+
+		Lucky Block, gunluk odul ve Fuse coin brainrotlari bu adaya KADAR
+		olan havuzdan seciliyor; oyuncu henuz gitmedigi adanin brainrotunu
+		bu yollardan da alamaz.
+	]]
+	reachedIsland: string,
 	-- Arayuz olcegi yuzdesi (Settings > Interface Scale); 100 = varsayilan
 	uiScale: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
@@ -166,6 +174,7 @@ local function defaultData(): Data
 		luckUntil = 0,
 		luckBonus = 1,
 		islands = 1,
+		reachedIsland = Brainrots.IslandOrder[1],
 		uiScale = 100,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
@@ -228,6 +237,7 @@ local function migrate(raw: any): Data
 		end
 	end
 	data.islands = math.max(1, tonumber(raw.islands) or 1)
+	data.reachedIsland = Brainrots.normalizeIsland(if type(raw.reachedIsland) == "string" then raw.reachedIsland else nil)
 
 	-- Ayar oncesi kayitlarda uiScale yok; varsayilan %100 ile acilir
 	data.uiScale = math.clamp(tonumber(raw.uiScale) or 100, 50, 150)
@@ -338,6 +348,12 @@ local function migrate(raw: any): Data
 					-- Adsiz kalan esya "kimligi belirlenmemis" durumuna doner
 					revealed = item.revealed == true and ad ~= nil,
 					slot = tonumber(item.slot),
+					--[[
+						Ada KORUNMALI: eskiden burada dusuyordu ve yeniden girince
+						kimliksiz esya adasiz kaliyor, Detective butun havuzdan
+						isim veriyordu.
+					]]
+					island = if type(item.island) == "string" then item.island else nil,
 				})
 			end
 		end
@@ -484,6 +500,20 @@ end
 	Yeni kayit eklendiyse true doner (cagiran taraf "yeni kesif" bildirimi
 	gostermek isterse kullanir). Katalogda olmayan ad yok sayilir.
 ]]
+-- Kazi yapilan adayi kaydeder; yalnizca ILERI gider
+function PlayerData.reachIsland(player: Player, island: string?)
+	local data = cache[player]
+	if not data or not island then
+		return
+	end
+	data.reachedIsland = Brainrots.laterIsland(data.reachedIsland, island)
+end
+
+function PlayerData.reachedIsland(player: Player): string
+	local data = cache[player]
+	return if data then data.reachedIsland else Brainrots.IslandOrder[1]
+end
+
 function PlayerData.discover(player: Player, name: string?): boolean
 	if type(name) ~= "string" then
 		return false

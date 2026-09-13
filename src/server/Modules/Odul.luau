@@ -104,8 +104,10 @@ local function grant(player: Player, prizeId: string)
 	end
 
 	if prizeId == "brainrot" then
-		local rarityId = Rewards.rollBrainrotRarity(rng)
-		local info = Brainrots.roll(rarityId :: any, rng)
+		-- Oyuncunun ulastigi adaya kadar: sonraki adalarin brainrotu cikmaz
+		local ada = PlayerData.reachedIsland(player)
+		local rarityId = Brainrots.clampRarity(Rewards.rollBrainrotRarity(rng), ada)
+		local info = Brainrots.rollIsland(rarityId :: any, ada, rng)
 		local condition = Condition.roll(rng)
 		local mutation = Mutations.roll(rng)
 
