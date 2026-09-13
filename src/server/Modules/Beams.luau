@@ -311,6 +311,91 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	end
 
 	--[[
+		YERLESTIRME KAYMASI
+
+		Efektin sinirlarina (min/max) bakip onu suzmenin noktasina tasiyacak
+		oteleme. Hem asil yerlestirmede hem taslarin Common yerini
+		hesaplarken AYNI formul kullaniliyor -- ikisi ayri yazilsaydi biri
+		degistiginde taslar yine kayardi.
+	]]
+	local function yerlestirmeKaymasi(min: Vector3, max: Vector3): Vector3
+		local tabanY = cfg.fixedY or position.Y
+		local targetY = tabanY + cfg.height
+		local shiftY = if cfg.alignToGround
+			then targetY - min.Y
+			else targetY - (min.Y + max.Y) / 2
+
+		return Vector3.new(
+			position.X - (min.X + max.X) / 2,
+			shiftY,
+			position.Z - (min.Z + max.Z) / 2
+		)
+	end
+
+	--[[
+		ZEMIN PARCALARI (Rocks) COMMON YERINDE KALIR
+
+		Kademe olcegi efektin TAMAMINI buyutuyor ve sonra alt ucu zemine
+		oturtuluyordu. Isik sutunu tasin altina da uzandigi icin buyuyen
+		modelde taslar sutunla birlikte YUKARI kayiyor, nadir suzmelerde
+		havada asili duruyordu.
+
+		Olceklemeden ONCE taslarin Common'da (olcek 1) nereye oturacagi ve
+		boyu kaydediliyor; yerlestirmeden sonra taslar oraya geri konuyor.
+		Efektin geri kalani oldugu gibi buyuyup yerlesiyor.
+	]]
+	type ZeminParcasi = {
+		part: BasePart,
+		cframe: CFrame,
+		size: Vector3,
+		meshes: { [SpecialMesh]: Vector3 },
+	}
+	local zeminParcalari: { ZeminParcasi } = {}
+	local kademeOlcegi = (cfg.baseScale or 1) * (cfg.scaleByRarity[kind] or 1)
+
+	if cfg.groundParts and #cfg.groundParts > 0 and kademeOlcegi ~= 1 and template:IsA("Model") then
+		step("zemin parcalari", function()
+			local min, max = Assets.worldBounds(template :: Model)
+			if not min or not max then
+				return
+			end
+
+			local commonKaymasi = yerlestirmeKaymasi(min, max)
+
+			local function zeminde(node: Instance): boolean
+				local cursor: Instance? = node
+				while cursor and cursor ~= template do
+					for _, ad in cfg.groundParts do
+						if cursor.Name == ad then
+							return true
+						end
+					end
+					cursor = cursor.Parent
+				end
+				return false
+			end
+
+			for _, node in template:GetDescendants() do
+				if node:IsA("BasePart") and zeminde(node) then
+					local meshes = {}
+					for _, child in node:GetChildren() do
+						if child:IsA("SpecialMesh") then
+							meshes[child] = child.Scale
+						end
+					end
+
+					table.insert(zeminParcalari, {
+						part = node,
+						cframe = node.CFrame + commonKaymasi,
+						size = node.Size,
+						meshes = meshes,
+					})
+				end
+			end
+		end)
+	end
+
+	--[[
 		BUYUKLUK
 
 		Parcacik boyu/hizi, isik menzili ve efektin kendi geometrisi birlikte
@@ -408,17 +493,7 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 			kaliyordu. Kumda fixedY yok -- zemin her yerde ayni yukseklikte
 			degil, orada isinin buldugu nokta dogru olan.
 		]]
-		local tabanY = cfg.fixedY or position.Y
-		local targetY = tabanY + cfg.height
-		local shiftY = if cfg.alignToGround
-			then targetY - min.Y
-			else targetY - (min.Y + max.Y) / 2
-
-		local shift = Vector3.new(
-			position.X - (min.X + max.X) / 2,
-			shiftY,
-			position.Z - (min.Z + max.Z) / 2
-		)
+		local shift = yerlestirmeKaymasi(min, max)
 
 		for _, part in model:GetDescendants() do
 			if part:IsA("BasePart") then
@@ -426,6 +501,28 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 			end
 		end
 	end)
+
+	--[[
+		TASLAR COMMON YERINE DONER
+
+		Efektin geri kalani buyuyup yerlesti; zemin parcalari olceklenmeden
+		once kaydedilen boy ve konumlarina geri aliniyor. Boyut ONCE
+		yaziliyor, sonra CFrame -- tersi olsaydi boy degisimi merkezi
+		kaydirabilirdi.
+	]]
+	if #zeminParcalari > 0 then
+		step("zemin parcalari geri", function()
+			for _, kayit in zeminParcalari do
+				if kayit.part.Parent then
+					kayit.part.Size = kayit.size
+					kayit.part.CFrame = kayit.cframe
+					for mesh, olcek in kayit.meshes do
+						mesh.Scale = olcek
+					end
+				end
+			end
+		end)
+	end
 
 	--[[
 		Divine suzmesi tek renk degil: isiklari sari <-> beyaz parildar.

@@ -346,6 +346,16 @@ Config.BeamVFX = {
 	keepColor = { "Rocks" },
 
 	--[[
+		KADEMEYLE BUYUMEYEN ZEMIN PARCALARI
+
+		Adi burada gecen nesne (ve icindekiler) kademe olcegine ragmen
+		COMMON'daki boyunda ve yerinde kalir. Nadir suzmelerde efekt
+		buyurken taslar sutunla birlikte yukari kayip havada kaliyordu;
+		artik yalnizca isik buyuyor, taslar zeminde duruyor.
+	]]
+	groundParts = { "Rocks" },
+
+	--[[
 		EFEKTTEN SILINECEK NESNELER
 
 		Adi burada gecen nesne (ve icindekiler) suzme dogarken tamamen
