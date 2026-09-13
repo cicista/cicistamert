@@ -212,14 +212,16 @@ end
 --[[
 	Envanterdeki TUM siyah brainrotlarin kimligini aciga cikarir.
 	Detective'in yaptigi isin toplu ve beklemesiz hali: rarity sabit kalir,
-	havuzdan rastgele bir brainrot secilir.
+	isim esyanin KAZILDIGI ADANIN (ve onceki adalarin) havuzundan secilir --
+	Detective ile birebir ayni kural. Eskiden butun havuzdan seciyordu ve
+	main island'da kazilanlara diger adalarin brainrotlari cikiyordu.
 ]]
 function commands.revealAll(player, data)
 	local count = 0
 
 	for _, item in data.inventory do
 		if not item.revealed then
-			local picked = Brainrots.roll(item.rarity :: any, rng)
+			local picked = Brainrots.rollIsland(item.rarity :: any, item.island, rng)
 			item.name = picked.name
 			item.revealed = true
 			count += 1
