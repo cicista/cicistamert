@@ -37,6 +37,8 @@ export type OreInfo = {
 	color: Color3,
 	-- Adanin rengi (kazi minioyununun imleci)
 	islandColor: Color3,
+	-- Kayadan cikan gemin sekli: nil = kristal, "ball" = yuvarlak
+	shape: string?,
 	-- Kazi minioyununda imleci yerinde tutmak icin gereken tiklama hizi
 	cps: number,
 }
@@ -60,6 +62,8 @@ export type IslandOres = {
 	shovelSeller: string,
 	-- NPC haritada yoksa yedek tezgah bu spawn noktasinin yanina kurulur
 	spawnPart: string,
+	-- Workspace'teki ada modeli: "bu adadasin" siniri bunun kutusundan gelir
+	modelName: string,
 }
 
 -- Suzme dogacagi zaman madenin cikma ihtimali (yuzde)
@@ -88,6 +92,7 @@ Ores.Islands = {
 		pickaxeSeller = "CandySeller",
 		shovelSeller = "CandyShovelSeller",
 		spawnPart = "Spawn_Sakiz",
+		modelName = "CandyIsland",
 	},
 	snowkum = {
 		island = "snowkum",
@@ -99,6 +104,7 @@ Ores.Islands = {
 		pickaxeSeller = "FrostySeller",
 		shovelSeller = "FrostyShovelSeller",
 		spawnPart = "Spawn_Buz",
+		modelName = "SnowIsland",
 	},
 	alevkum = {
 		island = "alevkum",
@@ -110,6 +116,7 @@ Ores.Islands = {
 		pickaxeSeller = "PhoenixSeller",
 		shovelSeller = "PhoenixShovelSeller",
 		spawnPart = "Spawn_Volkan",
+		modelName = "VolcanoIsland",
 	},
 } :: { [string]: IslandOres }
 
@@ -156,6 +163,11 @@ Ores.GemColors = {
 	Basalt = Color3.fromRGB(150, 152, 162), -- gri
 } :: { [string]: Color3 }
 
+-- Kristal disinda sekli olan gemler
+Ores.GemShapes = {
+	Basalt = "ball",
+} :: { [string]: string }
+
 -- Maden kayitlari ada tablosundan uretilir: ad bir kez yazilsin
 Ores.Info = {} :: { [string]: OreInfo }
 
@@ -168,6 +180,7 @@ for _, ada in Ores.IslandOrder do
 			island = ada,
 			color = Ores.GemColors[id] or cfg.color,
 			islandColor = cfg.color,
+			shape = Ores.GemShapes[id],
 			cps = Ores.MineCps,
 		}
 	end

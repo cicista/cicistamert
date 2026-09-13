@@ -830,7 +830,6 @@ local function buildOreModel(kind: string, position: Vector3): Model
 			local kalinlik = 0.5 * (if j == 1 then 1 else 0.75)
 
 			local part = kayaParcasi(model, "Kristal")
-			part.Size = Vector3.new(kalinlik, uzunluk, kalinlik)
 			part.Color = renk
 			part.CastShadow = false
 
@@ -844,12 +843,25 @@ local function buildOreModel(kind: string, position: Vector3): Model
 			-- Ikinci kristal biraz yana ve farkli aciyla: tek cubuk gibi durmasin
 			local yan = if j == 1 then CFrame.identity else CFrame.new(0.35, 0, 0.2) * CFrame.Angles(0.35, 0, -0.3)
 
-			-- 45 derece donus: kesit baklava olur, kesilmis tas gibi gorunur
-			part.CFrame = kok
-				* egim
-				* yan
-				* CFrame.Angles(0, math.pi / 4 + i * 0.3, 0)
-				* CFrame.new(0, uzunluk * 0.35, 0)
+			if maden and maden.shape == "ball" then
+				--[[
+					YUVARLAK GEM (Basalt): ayni noktalardan cubuk yerine top
+					cikar. Capi kristal boyunun yarisi kadar; yarisi kayaya
+					gomulu durur, kaya yuzeyinden tomurcuk gibi tasar.
+				]]
+				local cap = uzunluk * 0.55
+				part.Shape = Enum.PartType.Ball
+				part.Size = Vector3.new(cap, cap, cap)
+				part.CFrame = kok * egim * yan * CFrame.new(0, cap * 0.2, 0)
+			else
+				part.Size = Vector3.new(kalinlik, uzunluk, kalinlik)
+				-- 45 derece donus: kesit baklava olur, kesilmis tas gibi gorunur
+				part.CFrame = kok
+					* egim
+					* yan
+					* CFrame.Angles(0, math.pi / 4 + i * 0.3, 0)
+					* CFrame.new(0, uzunluk * 0.35, 0)
+			end
 		end
 	end
 
