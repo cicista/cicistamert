@@ -581,42 +581,43 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 
 	--[[
 		PARILTI BANDI
+	--[[
+		PARILTI BANDI
 
-		Egik, yumusak kenarli bir isik seridi. Bir uctan bir uca
-		supuruluyor (bkz. RenderStepped surucusu). Rengi kademe rengiyle
-		beyaz arasinda gidiyor, duz beyaz degil.
+		Yumusak kenarli bir isik seridi; bir uctan bir uca supuruluyor
+		(bkz. RenderStepped surucusu).
 
-		GEOMETRI ONIZLEME KUTUSUNA GORE
-		Bant eskiden kutunun IKI KATI yuksekligindeydi (Size.Y = 2) ve 18
-		derece egikti; bu kadar buyuk ve egik bir dikdortgen kutunun
-		kosesinden tasip disariya sarkiyordu -- yuva ClipsDescendants olsa
-		bile yuvarlatilmis koseler DIKDORTGENE gore kirpildigi icin koselerde
-		gorunuyordu.
+		BANT DONDURULMUYOR -- SEBEBI ONEMLI
+		Roblox, DONDURULMUS bir GuiObject'i ustundeki ClipsDescendants ile
+		KIRPMAZ. Bant egik oldugu surece (Rotation ~= 0) onizleme kutusu
+		"kirp" dese de bant disari tasiyor: ekranin yarisini kesen o beyaz
+		cizgi buydu. Egimi kucultmek de ise yaramadi, cunku sorun egimin
+		MIKTARI degil VARLIGI.
 
-		Artik bant kutuyla ayni yukseklikte (1.35 pay yeter: egim yuzunden
-		biraz uzun olmali) ve egim 12 dereceye indi. Boylece band kutunun
-		ICINDEN gecip cikiyor, kenarlardan tasmiyor.
+		Cozum: cerceve DIMDIK duruyor, egik gorunumu GRADYAN veriyor.
+		UIGradient'in Rotation'i nesneyi dondurmez, yalnizca renk rampasini
+		egik uygular -- kirpma bozulmadan capraz isik hissi kaliyor.
 	]]
 	local parilti = Instance.new("Frame")
 	parilti.Name = "Parilti"
 	parilti.AnchorPoint = Vector2.new(0.5, 0.5)
 	parilti.Position = UDim2.fromScale(PARILTI_BAS, 0.5)
-	parilti.Size = UDim2.fromScale(0.26, 1.35)
-	parilti.Rotation = 12
+	-- Tam kutu yuksekligi: dondurulmedigi icin fazladan paya gerek yok
+	parilti.Size = UDim2.fromScale(0.3, 1)
+	parilti.Rotation = 0
 	parilti.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	parilti.BorderSizePixel = 0
-	--[[
-		ZIndex 1: onizlemenin (2) ALTINDA degil ustunde olmasi gerekiyordu
-		ama kilidin (4) altinda kalmali. 3 uygun; daha yukarisi kutunun
-		kirpmasini asmaz ama komsu hucrelerin uzerine cizilme riskini artirir.
-	]]
+	-- Onizlemenin (2) ustunde, kilidin (4) altinda
 	parilti.ZIndex = 3
 	parilti.Visible = false
 	parilti.Parent = yuva
 
 	local pGecis = Instance.new("UIGradient")
-	-- Gecis bandin DAR eksenine: kenarlari saydam, ortasi parlak
-	pGecis.Rotation = 0
+	--[[
+		Egimi BURASI veriyor: cerceve dimdik durdugu icin kirpma calisiyor,
+		gradyanin donmesi ise nesneyi dondurmeden isigi capraz gosteriyor.
+	]]
+	pGecis.Rotation = 22
 	pGecis.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, renk),
 		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
