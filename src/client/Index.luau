@@ -603,7 +603,8 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	parilti.AnchorPoint = Vector2.new(0.5, 0.5)
 	parilti.Position = UDim2.fromScale(PARILTI_BAS, 0.5)
 	-- Tam kutu yuksekligi: dondurulmedigi icin fazladan paya gerek yok
-	parilti.Size = UDim2.fromScale(0.3, 1)
+	-- Biraz genis: solma yoluna daha cok yer kalsin, kenarlar yumusasin
+	parilti.Size = UDim2.fromScale(0.42, 1)
 	parilti.Rotation = 0
 	parilti.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	parilti.BorderSizePixel = 0
@@ -611,23 +612,37 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	parilti.ZIndex = 3
 	parilti.Visible = false
 	parilti.Parent = yuva
-
 	local pGecis = Instance.new("UIGradient")
 	--[[
-		Egimi BURASI veriyor: cerceve dimdik durdugu icin kirpma calisiyor,
-		gradyanin donmesi ise nesneyi dondurmeden isigi capraz gosteriyor.
+		SOLMA EKSENI BANDIN DAR YONUNDE  (Rotation = 0)
+
+		22 dereceye cevrilmisti ki isik capraz gorunsun; ama o zaman solma
+		ekseni de capraz oluyor ve bandin SOL/SAG kenarlari tam opaklikta
+		kaliyor -- kenarlardan bicakla kesilmis gibi duruyordu.
+
+		Solma soldan saga olunca bant iki kenarindan da yumusakca eriyor.
+		Capraz gorunumden vazgecildi: cerceveyi dondurmek kirpmayi bozuyor
+		(bkz. yukarisi), gradyani dondurmek de kenarlari kesiyor.
 	]]
-	pGecis.Rotation = 22
+	pGecis.Rotation = 0
 	pGecis.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, renk),
 		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
 		ColorSequenceKeypoint.new(1, renk),
 	})
+	--[[
+		Uclar TAM saydam, orta parlak. Araya birer durak daha konuyor:
+		gecis daha uzun bir yola yayiliyor, yani kenarlar daha yumusak
+		eriyor.
+	]]
 	pGecis.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.25, 0.8),
 		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(0.75, 0.8),
 		NumberSequenceKeypoint.new(1, 1),
 	})
+	pGecis.Parent = parilti
 	pGecis.Parent = parilti
 
 	--[[
