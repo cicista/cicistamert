@@ -33,7 +33,10 @@ export type OreInfo = {
 	id: string,
 	displayName: string,
 	island: string,
+	-- Gemin kendi rengi (kristaller, GPS etiketi, bildirim)
 	color: Color3,
+	-- Adanin rengi (kazi minioyununun imleci)
+	islandColor: Color3,
 	-- Kazi minioyununda imleci yerinde tutmak icin gereken tiklama hizi
 	cps: number,
 }
@@ -134,6 +137,25 @@ Ores.Pickaxes = {
 	},
 } :: { [string]: PickaxeInfo }
 
+--[[
+	GEM RENKLERI  --  parlak, her gem kendi renginde
+
+	Kayanin damarlarindan cikan kristaller bu renkte parlar. Cok koyu
+	renkler (Obsidian) neon ile parlayamadigi icin cam gibi yansitici
+	cizilir (bkz. Modules > Beams > buildOreModel).
+]]
+Ores.GemColors = {
+	Amethyst = Color3.fromRGB(176, 80, 255), -- mor
+	Opal = Color3.fromRGB(255, 222, 50), -- sari
+	Morganite = Color3.fromRGB(255, 130, 195), -- pembe
+	Sapphire = Color3.fromRGB(25, 100, 255), -- safir mavisi
+	Lapis = Color3.fromRGB(40, 55, 175), -- lacivert
+	Quartz = Color3.fromRGB(242, 246, 255), -- beyaz
+	Ruby = Color3.fromRGB(240, 25, 50), -- kirmizi
+	Obsidian = Color3.fromRGB(28, 22, 38), -- siyah
+	Basalt = Color3.fromRGB(150, 152, 162), -- gri
+} :: { [string]: Color3 }
+
 -- Maden kayitlari ada tablosundan uretilir: ad bir kez yazilsin
 Ores.Info = {} :: { [string]: OreInfo }
 
@@ -144,7 +166,8 @@ for _, ada in Ores.IslandOrder do
 			id = id,
 			displayName = id,
 			island = ada,
-			color = cfg.color,
+			color = Ores.GemColors[id] or cfg.color,
+			islandColor = cfg.color,
 			cps = Ores.MineCps,
 		}
 	end

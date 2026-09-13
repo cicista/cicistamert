@@ -747,53 +747,116 @@ local function buildWithVFX(
 end
 
 --[[
-	MADEN KAYASI
+	MADEN KAYASI  --  low poly gem damari
 
-	Simdilik kod ile kurulan bir kaya: dondurulmus birkac blok ust uste
-	binerek duzensiz bir tas yigini olusturuyor. Rengi adanin imlec rengi
-	(bkz. Shared > Ores). Uzerinden yurunebilsin diye carpisma kapali.
+	Koyu, dik duran bir kaya kulesi (ust uste binmis egik bloklar) ve
+	aralarindan disari dogru firlayan PARLAK KRISTALLER. Kristaller gemin
+	kendi renginde (bkz. Shared > Ores > GemColors).
+
+	Kristal: 45 derece cevrilmis ince uzun bir parca -- kesiti baklava
+	oldugu icin tek parcayla kesilmis tas gibi gorunur. Dibi kayaya
+	gomulu, ucu disari bakar; yanina kisa bir ikinci kristal eslik eder.
+
+	Butun model rastgele bir Y acisiyla doner: her maden ayni durmasin.
+	Uzerinden yurunebilsin diye carpisma kapali.
 ]]
-local KAYA_PARCALARI = {
-	{ Vector3.new(4.2, 3.2, 3.6), Vector3.new(0, 1.3, 0) },
-	{ Vector3.new(2.8, 2.3, 2.5), Vector3.new(2.1, 0.8, 1.1) },
-	{ Vector3.new(2.4, 1.9, 2.9), Vector3.new(-1.9, 0.6, -0.9) },
-	{ Vector3.new(1.7, 1.5, 1.7), Vector3.new(0.7, 0.5, -2.1) },
+
+-- { boyut, merkez (tabana gore), egim (x, y, z), renk }
+local KAYA_BLOKLARI = {
+	{ Vector3.new(3.4, 5.6, 3.0), Vector3.new(0, 2.8, 0), Vector3.new(0.08, 0, -0.1), Color3.fromRGB(78, 70, 64) },
+	{ Vector3.new(2.8, 3.6, 2.6), Vector3.new(1.5, 1.8, 0.6), Vector3.new(0, 0.4, 0.18), Color3.fromRGB(64, 58, 54) },
+	{ Vector3.new(2.4, 2.6, 2.4), Vector3.new(-1.5, 1.3, 0.3), Vector3.new(0.1, -0.3, -0.2), Color3.fromRGB(88, 80, 72) },
+	{ Vector3.new(1.8, 2.0, 1.8), Vector3.new(0.1, 6.2, 0.2), Vector3.new(0.25, 0.5, 0.15), Color3.fromRGB(70, 64, 60) },
 }
+
+-- { kok noktasi (kaya yuzeyinde), egim (x, z), uzunluk }
+local KRISTALLER = {
+	{ Vector3.new(1.4, 3.8, 0.9), Vector2.new(0.3, -0.75), 1.7 },
+	{ Vector3.new(1.9, 1.5, -0.6), Vector2.new(0, -1.1), 1.9 },
+	{ Vector3.new(-1.8, 1.2, 0.8), Vector2.new(0.4, 1.0), 1.6 },
+	{ Vector3.new(-0.4, 5.4, -0.3), Vector2.new(-0.3, 0.5), 1.3 },
+	{ Vector3.new(0.2, 0.7, 1.8), Vector2.new(1.1, 0.1), 1.5 },
+	{ Vector3.new(-1.0, 3.0, -1.4), Vector2.new(-0.9, 0.4), 1.4 },
+}
+
+local function kayaParcasi(parent: Instance, name: string): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Parent = parent
+	return part
+end
 
 local function buildOreModel(kind: string, position: Vector3): Model
 	local maden = Ores.get(kind)
 	local renk = if maden then maden.color else Color3.new(1, 1, 1)
 	local rng = Random.new()
 
+	--[[
+		Cok koyu gemler (Obsidian) neonla parlayamaz -- siyah neon yok gibi
+		gorunur. Onlar parlak cam gibi cizilir: yansima isigi yakalar.
+	]]
+	local koyu = (renk.R + renk.G + renk.B) / 3 < 0.25
+
 	local model = Instance.new("Model")
 	model.Name = `Maden_{kind}`
 
-	for i, parca in KAYA_PARCALARI do
-		local part = Instance.new("Part")
-		part.Name = if i == 1 then "Govde" else "Parca"
-		part.Size = parca[1]
-		-- Kucuk parcalar hafif koyu: tek duz renk yerine hacim hissi
-		part.Color = renk:Lerp(Color3.new(0, 0, 0), 0.12 * (i - 1))
+	local taban = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+
+	for i, blok in KAYA_BLOKLARI do
+		local part = kayaParcasi(model, if i == 1 then "Govde" else "Kaya")
+		part.Size = blok[1]
+		part.Color = blok[4]
 		part.Material = Enum.Material.Slate
-		part.Anchored = true
-		part.CanCollide = false
-		part.CanQuery = false
-		part.CanTouch = false
-		part.TopSurface = Enum.SurfaceType.Smooth
-		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.CFrame = CFrame.new(position + parca[2])
-			* CFrame.Angles(rng:NextNumber(-0.45, 0.45), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.45, 0.45))
-		part.Parent = model
+		part.CFrame = taban * CFrame.new(blok[2]) * CFrame.Angles(blok[3].X, blok[3].Y, blok[3].Z)
 
 		if i == 1 then
 			model.PrimaryPart = part
 		end
 	end
 
+	for i, kristal in KRISTALLER do
+		local kok = taban * CFrame.new(kristal[1])
+		local egim = CFrame.Angles(kristal[2].X, 0, kristal[2].Y)
+
+		-- Ana kristal + yaninda kisa ikincisi; dibi kayada, ucu disarida
+		for j, olcek in { 1, 0.6 } do
+			local uzunluk = kristal[3] * olcek
+			local kalinlik = 0.5 * (if j == 1 then 1 else 0.75)
+
+			local part = kayaParcasi(model, "Kristal")
+			part.Size = Vector3.new(kalinlik, uzunluk, kalinlik)
+			part.Color = renk
+			part.CastShadow = false
+
+			if koyu then
+				part.Material = Enum.Material.Glass
+				part.Reflectance = 0.5
+			else
+				part.Material = Enum.Material.Neon
+			end
+
+			-- Ikinci kristal biraz yana ve farkli aciyla: tek cubuk gibi durmasin
+			local yan = if j == 1 then CFrame.identity else CFrame.new(0.35, 0, 0.2) * CFrame.Angles(0.35, 0, -0.3)
+
+			-- 45 derece donus: kesit baklava olur, kesilmis tas gibi gorunur
+			part.CFrame = kok
+				* egim
+				* yan
+				* CFrame.Angles(0, math.pi / 4 + i * 0.3, 0)
+				* CFrame.new(0, uzunluk * 0.35, 0)
+		end
+	end
+
 	local isik = Instance.new("PointLight")
-	isik.Color = renk
+	isik.Color = if koyu then Color3.fromRGB(120, 90, 170) else renk
 	isik.Range = 14
-	isik.Brightness = 1.5
+	isik.Brightness = if koyu then 0.8 else 2
 	isik.Parent = model.PrimaryPart
 
 	return model

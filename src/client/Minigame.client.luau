@@ -31,6 +31,7 @@ local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local OtoTiklayici = require(Shared:WaitForChild("OtoTiklayici"))
+local Ores = require(Shared:WaitForChild("Ores"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -947,7 +948,9 @@ local function modKur(yeniMod: string, rarityId: string)
 
 	if kumdu then
 		-- Imlecin rengi kazilan brainrotun kademe rengi
-		kaziRenk = Rarity.beamColor(rarityId)
+		-- Madende imlec ADANIN renginde (gemin rengi kristallerde)
+		local maden = Ores.get(rarityId)
+		kaziRenk = if maden then maden.islandColor else Rarity.beamColor(rarityId)
 		kaziDolgu.BackgroundColor3 = kaziRenk
 		kaziDolgu.Size = UDim2.fromScale(1, KaziMinigame.START)
 		sarsintiyiBagla()
