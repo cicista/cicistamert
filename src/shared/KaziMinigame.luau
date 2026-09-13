@@ -64,6 +64,8 @@
 
 local DigMinigame = require(script.Parent.DigMinigame)
 local Rarity = require(script.Parent.Rarity)
+local Ores = require(script.Parent.Ores)
+local Shovels = require(script.Parent.Shovels)
 
 local KaziMinigame = {}
 KaziMinigame.__index = KaziMinigame
@@ -176,13 +178,31 @@ export type Game = typeof(setmetatable(
 	KaziMinigame
 ))
 
--- Kurek ile kademe arasindaki fark; buyudukce zorlasir
+--[[
+	Kurek ile kademe arasindaki fark; buyudukce zorlasir.
+
+	Kurekte seviye degil KAZI GUCU kullaniliyor (bkz. Shovels.power): ada
+	kureklerinde her 5 seviye bir kademe, yani fark ONDALIKLI olabilir
+	(Lv7 ile Divine: 6 - 5.4 = 0.6).
+]]
 function KaziMinigame.fark(gearId: string, rarityId: string): number
 	local gear = DigMinigame.gear(gearId)
 	local info = Rarity.Info[rarityId]
 	local order = if info then info.order else 1
 
-	return order - gear.level
+	local guc = if Shovels.Info[gearId] then Shovels.power(gear.level) else gear.level
+	return order - guc
+end
+
+--[[
+	ERISILEMEZ MI
+
+	Tam sayi farklarda eskisiyle ayni: 2 ve ustu erisilemez. Ondalikli
+	farklarda en zor basamagi (1) GECEN her fark erisilemez -- Lv9 ile
+	Cosmic (7 - 5.8 = 1.2) alinamaz, Cosmic ancak Lv10'da zor olur.
+]]
+local function erisilemez(fark: number): boolean
+	return fark > KaziMinigame.IMKANSIZ_FARK - 1 + 1e-6
 end
 --[[
 	Imleci YERINDE tutmak icin gereken tiklama hizi.
@@ -192,6 +212,12 @@ end
 	tiklama hizi karsilayamaz.
 ]]
 function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
+	-- Maden: kurek/kazma farki yok, sabit hiz (bkz. Shared > Ores)
+	local maden = Ores.get(rarityId)
+	if maden then
+		return maden.cps
+	end
+
 	local fark = KaziMinigame.fark(gearId, rarityId)
 
 	--[[
@@ -199,7 +225,7 @@ function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
 		olsaydi imlec ilk karede sifira iner, minioyun acilir acilmaz
 		kapanirdi.
 	]]
-	if fark >= KaziMinigame.IMKANSIZ_FARK then
+	if erisilemez(fark) then
 		return KaziMinigame.MAX_CPS * KaziMinigame.IMKANSIZ_KATI
 	end
 
@@ -211,8 +237,20 @@ function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
 		fark -= 1
 	end
 
-	-- Tablonun altina dusen farklar en kolay degerde kalir
-	return GEREKEN_CPS[math.max(fark, -2)] or GEREKEN_CPS[-2]
+	--[[
+		Tablonun altina dusen farklar en kolay degerde kalir. Ondalikli
+		farklar (ada kurekleri) iki komsu basamak arasinda oranlanir:
+		Lv7 ile Divine (0.6) normal (4) ile zor (5.5) arasinda 4.9 cps.
+	]]
+	local f = math.max(fark, -2)
+	local alt = math.floor(f)
+	local ust = math.ceil(f)
+	local altCps = GEREKEN_CPS[alt] or GEREKEN_CPS[-2]
+	if alt == ust then
+		return altCps
+	end
+	local ustCps = GEREKEN_CPS[ust] or altCps
+	return altCps + (ustCps - altCps) * (f - alt)
 end
 
 -- Saniye basina geri tepme
@@ -227,8 +265,13 @@ end
 	tiklandiginin onemi yoktur.
 ]]
 function KaziMinigame.reachable(gearId: string, rarityId: string): boolean
+	-- Maden her kazmayla alinabilir
+	if Ores.get(rarityId) then
+		return true
+	end
+
 	-- Farka DOGRUDAN bakiliyor: gerekenCps artik erisilemezde de sonlu doner
-	return KaziMinigame.fark(gearId, rarityId) < KaziMinigame.IMKANSIZ_FARK
+	return not erisilemez(KaziMinigame.fark(gearId, rarityId))
 end
 
 --[[

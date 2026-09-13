@@ -70,6 +70,9 @@ function Envanter.push(player: Player)
 		inventory = data.inventory,
 		-- Fuse coinleri (bozdurucu ekrani ve envanter ozeti bunu kullanir)
 		coins = data.coins,
+		-- Madenler ve kazmalar (ada saticilari ve ileride envanter ekrani)
+		ores = data.ores,
+		pickaxes = data.pickaxes,
 	})
 end
 
@@ -182,6 +185,7 @@ end
 function Envanter.unequipTools(player: Player)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.GPSName)
+	Tools.remove(player, Tools.PickaxeName)
 end
 
 --[[
@@ -203,7 +207,30 @@ function Envanter.equipShovel(player: Player)
 	clearHands(player)
 	Tools.remove(player, Tools.GPSName)
 	Tools.remove(player, Tools.ShovelName)
+	Tools.remove(player, Tools.PickaxeName)
 	Tools.buildShovel(data.shovel, data.equipped.Shovel).Parent = character
+end
+
+--[[
+	KAZMAYI ELINE verir (maden kazisi). Kurekle ayni kural: zaten eldeyse
+	yeniden uretilmez.
+]]
+function Envanter.equipPickaxe(player: Player, pickaxeId: string)
+	local character = player.Character
+	if not character then
+		return
+	end
+
+	local eldeki = held(player, Tools.PickaxeName)
+	if eldeki and eldeki:GetAttribute("PickaxeId") == pickaxeId then
+		return
+	end
+
+	clearHands(player)
+	Tools.remove(player, Tools.GPSName)
+	Tools.remove(player, Tools.ShovelName)
+	Tools.remove(player, Tools.PickaxeName)
+	Tools.buildPickaxe(pickaxeId).Parent = character
 end
 
 --[[
@@ -227,6 +254,7 @@ function Envanter.equipGPS(player: Player)
 	clearHands(player)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.GPSName)
+	Tools.remove(player, Tools.PickaxeName)
 	Tools.buildGPS(data.detector, data.equipped.GPS).Parent = character
 end
 
@@ -253,6 +281,7 @@ function Envanter.equipRod(player: Player)
 	clearHands(player)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.GPSName)
+	Tools.remove(player, Tools.PickaxeName)
 
 	local model = Olta.build(data.rod)
 	if not Olta.attach(character, model) then

@@ -30,12 +30,14 @@ local Fuse = require(Shared:WaitForChild("Fuse"))
 local Etiket = require(Shared:WaitForChild("Etiket"))
 local GPSEfekt = require(Shared:WaitForChild("GPSEfekt"))
 local Fonts = require(Shared:WaitForChild("Fonts"))
+local Ores = require(Shared:WaitForChild("Ores"))
 
 local Tools = {}
 
 Tools.ShovelName = "Shovel"
 Tools.GPSName = "Brainrot GPS"
 Tools.LuckyBlockName = "Lucky Block"
+Tools.PickaxeName = "Pickaxe"
 
 --[[
 	Lucky Block cantadan kullanilinca cagrilir.
@@ -212,6 +214,53 @@ function Tools.buildShovel(shovelId: string, skinId: string?): Tool
 
 	-- Seviye parlamasi skinden bagimsizdir; en sonda uygulanir
 	LevelGlow.apply(tool, info.level)
+
+	return tool
+end
+
+------------------------------------------------------------------
+-- KAZMA  (maden kazmak icin; kurek gibi cantaya girmez, kazida ele verilir)
+------------------------------------------------------------------
+--[[
+	Simdilik parcalardan kurulan basit bir kazma: tahta sap ve adanin
+	renginde bas. Assets'e model eklenince buraya baglanabilir.
+]]
+function Tools.buildPickaxe(pickaxeId: string): Tool
+	local info = Ores.Pickaxes[pickaxeId]
+	assert(info, `bilinmeyen kazma: {tostring(pickaxeId)}`)
+
+	local tool = Instance.new("Tool")
+	tool.RequiresHandle = true
+
+	local body = Instance.new("Part")
+	body.Name = "Handle"
+	body.Size = Vector3.new(0.35, 3.4, 0.35)
+	body.Color = Color3.fromRGB(110, 76, 44)
+	body.Material = Enum.Material.Wood
+	body.CanCollide = false
+	body.Parent = tool
+
+	local head = Instance.new("Part")
+	head.Name = "Bas"
+	head.Size = Vector3.new(2.8, 0.45, 0.45)
+	head.Color = info.color
+	head.Material = Enum.Material.SmoothPlastic
+	head.CanCollide = false
+	head.Massless = true
+	head.CFrame = body.CFrame * CFrame.new(0, 1.55, 0)
+	head.Parent = tool
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = body
+	weld.Part1 = head
+	weld.Parent = body
+
+	tool.Name = Tools.PickaxeName
+	tool.CanBeDropped = false
+	tool.ToolTip = info.displayName
+	tool:SetAttribute("PickaxeId", info.id)
+
+	setHoldAnimation(tool, Assets.Animations.shovelHold)
 
 	return tool
 end

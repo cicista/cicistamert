@@ -89,6 +89,13 @@ Net.Events = {
 	"RodAc",            -- server -> client: olta saticisi paneli
 	"RodAl",            -- client -> server: bu kademeyi al ya da kusan
 
+	-- Ada saticilari (kurek + kazma + maden takasi)
+	"AdaKurekAc",       -- server -> client: adanin kurek saticisi paneli
+	"AdaKurekAl",       -- client -> server: ada kuregini al ya da kusan
+	"KazmaAc",          -- server -> client: kazma saticisi paneli (kazma + takas)
+	"KazmaAl",          -- client -> server: adanin kazmasini satin al
+	"MadenTakas",       -- client -> server: diger iki madenden birer tane ver, bunu al
+
 	-- Gorevler (Quests paneli)
 	"GorevDurum",       -- server -> client: pano + ilerleme + kalan sure
 	"GorevAc",          -- client -> server: panoyu istiyorum

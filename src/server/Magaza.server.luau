@@ -40,8 +40,8 @@ local function shovelList(player: Player)
 	local equipped = if data then data.shovel else nil
 
 	local out = {}
-	for _, id in Shovels.Order do
-		local info = Shovels.get(id)
+	-- Yalnizca ana adanin kurekleri (Lv 1-5); ada kurekleri ada saticilarinda
+	for _, info in Shovels.forIsland(nil) do
 		table.insert(out, {
 			id = info.id,
 			displayName = info.displayName,
@@ -129,6 +129,12 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 		MagazaAc:FireClient(player, shopPayload(player))
 
 		Bildirim:FireClient(player, `{info.displayName} equipped.`, Rarity.color(info.rarity))
+		return
+	end
+
+	-- Ada kurekleri Rot + maden ister ve yalnizca adanin saticisinda satilir
+	if info.island then
+		Bildirim:FireClient(player, "Buy island shovels from the island's shovel seller.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 

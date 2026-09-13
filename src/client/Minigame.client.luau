@@ -664,7 +664,7 @@ local function startDigAnimation()
 	-- Elde kurek var mi, uzerinde kazma animasyonu tanimli mi
 	local id: string? = nil
 	for _, item in character:GetChildren() do
-		if item:IsA("Tool") and item:GetAttribute("ShovelId") then
+		if item:IsA("Tool") and (item:GetAttribute("ShovelId") or item:GetAttribute("PickaxeId")) then
 			id = item:GetAttribute("DigAnimation") :: string?
 			break
 		end
@@ -961,7 +961,12 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		return
 	end
 
-	local rarityInfo = Rarity.get(rarityId)
+	--[[
+		Maden kazisinda gelen kimlik bir kademe DEGIL (Amethyst, Ruby...);
+		Rarity.get onda hata atardi. Kum modunda imlec rengi zaten
+		Rarity.beamColor'dan geliyor ve madenin ada rengini veriyor.
+	]]
+	local rarityInfo = Rarity.Info[rarityId]
 	-- Kumda kurek, denizde olta: hangisi geldiyse ayni yuzden okunur
 	local gearInfo = DigMinigame.gear(gearId)
 
@@ -971,10 +976,16 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	]]
 	modKur(if gelenMod == "sand" then "sand" else "sea", rarityId)
 
-	header.Text = `{rarityInfo.displayName} BRAINROT`
-	-- Epic+ parlak, Divine parildar; cerceve kademe renginde kalir
-	UI.rarityStyle(header, rarityId)
-	rootStroke.Color = rarityInfo.color
+	if rarityInfo then
+		header.Text = `{rarityInfo.displayName} BRAINROT`
+		-- Epic+ parlak, Divine parildar; cerceve kademe renginde kalir
+		UI.rarityStyle(header, rarityId)
+		rootStroke.Color = rarityInfo.color
+	else
+		header.Text = string.upper(Rarity.beamName(rarityId))
+		UI.plainStyle(header, Rarity.beamColor(rarityId))
+		rootStroke.Color = Rarity.beamColor(rarityId)
+	end
 
 	subHeader.Text = `{gearInfo.displayName}  |  Lv.{gearInfo.level}`
 	everLeft = false

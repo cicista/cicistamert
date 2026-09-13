@@ -38,6 +38,7 @@ local Olta = require(Modules:WaitForChild("Olta"))
 local Beams = require(Modules:WaitForChild("Beams"))
 local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
+local Ores = require(Shared:WaitForChild("Ores"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
@@ -157,7 +158,10 @@ local function otoEkipman(player: Player)
 	if oturum then
 		-- Kazi sirasinda da elde baska bir sey duramaz
 		player:SetAttribute(KESIF_NITELIGI, true)
-		if not oturum.sea then
+		if oturum.pickaxeId then
+			-- Maden kazisi: elde kazma durur
+			Envanter.equipPickaxe(player, oturum.pickaxeId)
+		elseif not oturum.sea then
 			Envanter.equipShovel(player)
 		end
 		return
@@ -248,17 +252,28 @@ local function finishDig(player: Player, won: boolean)
 		Efekt kaybetmede oynamaz; sonuc bildirimlerinden once cagriliyor ki
 		gorsel ile yazi ayni ana denk gelsin.
 	]]
-	if won and not session.sea then
+	local maden = Ores.get(beam.kind)
+
+	if won and not session.sea and not maden then
 		Patlama.oynat(player, beam.kind)
 	end
 
 	if not won then
-		Bildirim:FireClient(player, "The brainrot got away!", Color3.fromRGB(255, 120, 120))
+		local kayip = if maden then `The {maden.displayName} crumbled!` else "The brainrot got away!"
+		Bildirim:FireClient(player, kayip, Color3.fromRGB(255, 120, 120))
 		return
 	end
 
 	-- Oyuncunun ulastigi ada: Lucky Block / odul / Fuse havuzlari buna bakar
 	PlayerData.reachIsland(player, beam.island)
+
+	-- Maden: hesaba eklenir, brainrot akisina girmez
+	if maden then
+		local adet = PlayerData.addOre(player, maden.id, Ores.MineAmount)
+		Envanter.push(player)
+		Bildirim:FireClient(player, `+{Ores.MineAmount} {maden.displayName} (x{adet})`, maden.color)
+		return
+	end
 
 	-- Rot Coin suzmesi
 	if beam.kind == "RotCoin" then
@@ -345,6 +360,26 @@ local function startDig(player: Player, beamId: string)
 		return
 	end
 
+	--[[
+		MADEN YALNIZCA ADANIN KAZMASIYLA KAZILIR
+
+		Kazmasi yoksa maden yerinde kalir (claimed olmaz), oyuncuya hangi
+		kazmayi alacagi yazilir.
+	]]
+	local maden = Ores.get(beam.kind)
+	local pickaxeId: string? = nil
+	if maden then
+		local madenAdasi = Ores.island(maden.island)
+		pickaxeId = if madenAdasi then madenAdasi.pickaxe else nil
+
+		if not PlayerData.hasPickaxe(player, pickaxeId) then
+			local kazma = if pickaxeId then Ores.Pickaxes[pickaxeId] else nil
+			local kazmaAdi = if kazma then kazma.displayName else "the right pickaxe"
+			Bildirim:FireClient(player, `You need the {kazmaAdi} to mine {maden.displayName}!`, maden.color)
+			return
+		end
+	end
+
 	beam.claimed = true
 
 	--[[
@@ -360,6 +395,8 @@ local function startDig(player: Player, beamId: string)
 		if char then
 			Olta.cast(char, beam.position)
 		end
+	elseif pickaxeId then
+		Envanter.equipPickaxe(player, pickaxeId)
 	else
 		Envanter.equipShovel(player)
 	end
@@ -371,7 +408,8 @@ local function startDig(player: Player, beamId: string)
 		girmez: girdabi yakalama kolayligi tamamen olta kademesinden gelir
 		(bkz. Shared > DigMinigame > gear).
 	]]
-	local gearId = if beam.sea then (data.rod or Rods.Order[1]) else data.shovel
+	-- Madende kazma: zorluk madenin sabit hizindan gelir (bkz. KaziMinigame)
+	local gearId = if beam.sea then (data.rod or Rods.Order[1]) elseif pickaxeId then pickaxeId else data.shovel
 	local gear = DigMinigame.gear(gearId)
 
 	--[[
@@ -393,6 +431,8 @@ local function startDig(player: Player, beamId: string)
 		gearId = gearId,
 		rarityId = beam.kind,
 		startPos = root.Position,
+		-- Maden kazisinda elde tutulacak kazma (otomatik ekipman buna bakar)
+		pickaxeId = pickaxeId,
 	}
 
 	task.wait(prepare)
@@ -623,7 +663,9 @@ local UYARI_ARASI = 2
 local sonUyari: { [Player]: number } = {}
 
 local function kesifAraciMi(tool: Tool): boolean
-	return tool:GetAttribute("ShovelId") ~= nil or tool:GetAttribute("DetectorId") ~= nil
+	return tool:GetAttribute("ShovelId") ~= nil
+		or tool:GetAttribute("DetectorId") ~= nil
+		or tool:GetAttribute("PickaxeId") ~= nil
 end
 
 local function toolEngelle(player: Player, tool: Tool)

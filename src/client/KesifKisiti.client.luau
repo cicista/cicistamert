@@ -31,7 +31,9 @@ local player = Players.LocalPlayer
 local KESIF_NITELIGI = "KesifKisiti"
 
 local function kesifAraciMi(tool: Tool): boolean
-	return tool:GetAttribute("ShovelId") ~= nil or tool:GetAttribute("DetectorId") ~= nil
+	return tool:GetAttribute("ShovelId") ~= nil
+		or tool:GetAttribute("DetectorId") ~= nil
+		or tool:GetAttribute("PickaxeId") ~= nil
 end
 
 local function denetle(character: Model, child: Instance)

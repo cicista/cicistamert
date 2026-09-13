@@ -1,18 +1,38 @@
 --!strict
 --[[
-	5 kademeli kurek sistemi.
+	20 kademeli kurek sistemi.
 
-	Kurek iki seyi belirler:
-	  1. digSpeed  -- kazi animasyonu / hazirlik suresi carpani (dusuk = hizli)
-	  2. minigame parametreleri -- Stardew Valley balik minioyunundaki
-	     yesil barin buyuklugu ve kontrol tepkiselligi
+	    Lv 1-5    Main Island     Shopkeeper            yalnizca Rot
+	    Lv 6-10   Candy Island    CandyShovelSeller     Rot + Amethyst, Opal, Morganite
+	    Lv 11-15  Snow Island     FrostyShovelSeller    Rot + Sapphire, Lapis, Quartz
+	    Lv 16-20  Volcano Island  PhoenixShovelSeller   Rot + Ruby, Obsidian, Basalt
 
-	Yeni kurek satin alinip envantere girdiginde eskisi silinir (tek slot).
+	Ada kureklerinde adanin UC madeninin HER BIRINDEN istenen adet, kuregin
+	adadaki sirasina gore (bkz. OreCosts):
+
+	    1. kurek 2   2. kurek 3   3. kurek 5   4. kurek 7   5. kurek 10
+
+	KAZI GUCU
+	Kazi zorlugu "rarity.order - kurek gucu" farkindan gelir (bkz. Shared >
+	KaziMinigame). Guc ilk bes kurekte seviyenin kendisi; ada kureklerinde
+	her 5 seviye BIR kademe ekler:
+
+	    Lv5   guc 5   Divine ZOR
+	    Lv10  guc 6   Cosmic ZOR
+	    Lv15  guc 7   Secret ZOR
+	    Lv20  guc 8   Infernal ZOR
+
+	Aradaki seviyeler oranli ilerler: Lv7'nin gucu 5.4 -- Divine normal ile
+	zor arasinda, Cosmic ise ancak Lv10'da alinabilir hale gelir.
+
+	Kurek iki seyi daha belirler:
+	  digSpeed  -- kazi hazirlik suresi carpani (dusuk = hizli)
+	  bar*      -- denizdeki bar oyununun ortak yuzu (bkz. DigMinigame)
 ]]
 
 local Shovels = {}
 
-export type ShovelId = "Wooden" | "Iron" | "Golden" | "Diamond" | "Celestial"
+export type ShovelId = string
 
 export type ShovelInfo = {
 	id: ShovelId,
@@ -31,7 +51,14 @@ export type ShovelInfo = {
 	-- Minigame: hedef bar disindayken gerileme hizi (saniyede oran)
 	drainRate: number,
 	color: Color3,
+	-- Ada kuregi ise satildigi ada (Brainrots.IslandOrder kimligi); ana adada nil
+	island: string?,
+	-- Ada kuregi ise adanin her madeninden istenen adet
+	oreCost: number?,
 }
+
+-- Ada kureklerinin maden bedeli: adadaki sirasina gore (1..5)
+Shovels.OreCosts = { 2, 3, 5, 7, 10 }
 
 Shovels.Order = { "Wooden", "Iron", "Golden", "Diamond", "Celestial" } :: { ShovelId }
 
@@ -107,6 +134,58 @@ Shovels.Info = {
 	},
 } :: { [ShovelId]: ShovelInfo }
 
+--[[
+	ADA KUREGI EKLER
+
+	Kimliklerin sonunda "Shovel" var: DigMinigame.gear once kurek, sonra
+	olta tablosuna bakiyor; bir olta ile ayni kimlik denizde yanlis ekipmani
+	secerdi.
+
+	rarity yalnizca arayuz rengi icin: kuregin ACTIGI kademe.
+]]
+local function adaKuregi(id: string, displayName: string, level: number, island: string, rarity: string, price: number, color: Color3)
+	local ilerleme = level - 5
+	local sira = ((level - 6) % 5) + 1
+
+	Shovels.Info[id] = {
+		id = id,
+		displayName = displayName,
+		level = level,
+		rarity = rarity,
+		price = price,
+		digSpeed = math.max(0.2, 0.4 - ilerleme * 0.012),
+		barSize = 0.40,
+		barAcceleration = 1.75,
+		progressRate = 0.72,
+		drainRate = 0.08,
+		color = color,
+		island = island,
+		oreCost = Shovels.OreCosts[sira],
+	}
+	table.insert(Shovels.Order, id)
+end
+
+-- CANDY ISLAND  (Lv 6-10) -- Lv10 Cosmic'i zor alir
+adaKuregi("LollipopShovel", "Lollipop Shovel", 6, "sekerkum", "Cosmic", 30_000_000_000, Color3.fromRGB(255, 150, 210))
+adaKuregi("GummyShovel", "Gummy Shovel", 7, "sekerkum", "Cosmic", 60_000_000_000, Color3.fromRGB(255, 130, 200))
+adaKuregi("CandyCaneShovel", "Candy Cane Shovel", 8, "sekerkum", "Cosmic", 100_000_000_000, Color3.fromRGB(255, 110, 170))
+adaKuregi("CaramelShovel", "Caramel Shovel", 9, "sekerkum", "Cosmic", 160_000_000_000, Color3.fromRGB(240, 120, 190))
+adaKuregi("SugarCrystalShovel", "Sugar Crystal Shovel", 10, "sekerkum", "Cosmic", 250_000_000_000, Color3.fromRGB(255, 90, 200))
+
+-- SNOW ISLAND  (Lv 11-15) -- Lv15 Secret'i zor alir
+adaKuregi("FrostShovel", "Frost Shovel", 11, "snowkum", "Gizli", 400_000_000_000, Color3.fromRGB(170, 230, 255))
+adaKuregi("GlacierShovel", "Glacier Shovel", 12, "snowkum", "Gizli", 650_000_000_000, Color3.fromRGB(140, 215, 255))
+adaKuregi("BlizzardShovel", "Blizzard Shovel", 13, "snowkum", "Gizli", 1_000_000_000_000, Color3.fromRGB(120, 200, 250))
+adaKuregi("PermafrostShovel", "Permafrost Shovel", 14, "snowkum", "Gizli", 1_600_000_000_000, Color3.fromRGB(100, 185, 245))
+adaKuregi("AuroraShovel", "Aurora Shovel", 15, "snowkum", "Gizli", 2_500_000_000_000, Color3.fromRGB(110, 240, 230))
+
+-- VOLCANO ISLAND  (Lv 16-20) -- Lv20 Infernal'i zor alir
+adaKuregi("EmberShovel", "Ember Shovel", 16, "alevkum", "Infernal", 4_000_000_000_000, Color3.fromRGB(255, 170, 70))
+adaKuregi("MagmaShovel", "Magma Shovel", 17, "alevkum", "Infernal", 6_500_000_000_000, Color3.fromRGB(255, 145, 50))
+adaKuregi("BlazeShovel", "Blaze Shovel", 18, "alevkum", "Infernal", 10_000_000_000_000, Color3.fromRGB(255, 120, 40))
+adaKuregi("InfernoShovel", "Inferno Shovel", 19, "alevkum", "Infernal", 16_000_000_000_000, Color3.fromRGB(255, 95, 30))
+adaKuregi("EruptionShovel", "Eruption Shovel", 20, "alevkum", "Infernal", 25_000_000_000_000, Color3.fromRGB(255, 70, 20))
+
 Shovels.Default = "Wooden" :: ShovelId
 
 function Shovels.get(id: ShovelId): ShovelInfo
@@ -124,6 +203,33 @@ function Shovels.next(id: ShovelId): ShovelInfo?
 		end
 	end
 	return nil
+end
+
+--[[
+	KAZI GUCU  (bkz. baslik)
+
+	Ilk bes seviyede seviyenin kendisi, sonrasinda her 5 seviye 1 kademe.
+]]
+function Shovels.power(level: number): number
+	if level <= 5 then
+		return level
+	end
+	return 5 + (level - 5) / 5
+end
+
+-- Bir adanin kurekleri seviyeye gore; island nil ise ana adanin kurekleri
+function Shovels.forIsland(island: string?): { ShovelInfo }
+	local out = {}
+	for _, id in Shovels.Order do
+		local info = Shovels.Info[id]
+		if info.island == island then
+			table.insert(out, info)
+		end
+	end
+	table.sort(out, function(a, b)
+		return a.level < b.level
+	end)
+	return out
 end
 
 return Shovels

@@ -34,6 +34,7 @@ local Detectors = require(Shared:WaitForChild("Detectors"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Rods = require(Shared:WaitForChild("Rods"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
+local Ores = require(Shared:WaitForChild("Ores"))
 
 export type InventoryItem = {
 	uid: string,
@@ -127,6 +128,10 @@ export type Data = {
 		bu yollardan da alamaz.
 	]]
 	reachedIsland: string,
+	-- Madenler: { Amethyst = 3, ... } (bkz. Shared > Ores)
+	ores: { [string]: number },
+	-- Satin alinmis kazmalar: { CandyPickaxe = true }
+	pickaxes: { [string]: boolean },
 	-- Arayuz olcegi yuzdesi (Settings > Interface Scale); 100 = varsayilan
 	uiScale: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
@@ -175,6 +180,8 @@ local function defaultData(): Data
 		luckBonus = 1,
 		islands = 1,
 		reachedIsland = Brainrots.IslandOrder[1],
+		ores = {},
+		pickaxes = {},
 		uiScale = 100,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
@@ -238,6 +245,22 @@ local function migrate(raw: any): Data
 	end
 	data.islands = math.max(1, tonumber(raw.islands) or 1)
 	data.reachedIsland = Brainrots.normalizeIsland(if type(raw.reachedIsland) == "string" then raw.reachedIsland else nil)
+
+	-- Maden oncesi kayitlarda bu alanlar yok; bos baslanir. Bilinmeyen kimlikler atilir.
+	if type(raw.ores) == "table" then
+		for id, count in raw.ores do
+			if Ores.get(id) and tonumber(count) then
+				data.ores[id] = math.max(0, math.floor(tonumber(count) :: number))
+			end
+		end
+	end
+	if type(raw.pickaxes) == "table" then
+		for id, owned in raw.pickaxes do
+			if type(id) == "string" and Ores.Pickaxes[id] and owned == true then
+				data.pickaxes[id] = true
+			end
+		end
+	end
 
 	-- Ayar oncesi kayitlarda uiScale yok; varsayilan %100 ile acilir
 	data.uiScale = math.clamp(tonumber(raw.uiScale) or 100, 50, 150)
@@ -500,6 +523,27 @@ end
 	Yeni kayit eklendiyse true doner (cagiran taraf "yeni kesif" bildirimi
 	gostermek isterse kullanir). Katalogda olmayan ad yok sayilir.
 ]]
+-- Maden ekler (eksi deger duser); yeni adedi doner
+function PlayerData.addOre(player: Player, oreId: string, amount: number): number
+	local data = cache[player]
+	if not data or not Ores.get(oreId) then
+		return 0
+	end
+	local yeni = math.max(0, (data.ores[oreId] or 0) + amount)
+	data.ores[oreId] = yeni
+	return yeni
+end
+
+function PlayerData.oreCount(player: Player, oreId: string): number
+	local data = cache[player]
+	return if data then data.ores[oreId] or 0 else 0
+end
+
+function PlayerData.hasPickaxe(player: Player, pickaxeId: string?): boolean
+	local data = cache[player]
+	return data ~= nil and pickaxeId ~= nil and data.pickaxes[pickaxeId] == true
+end
+
 -- Kazi yapilan adayi kaydeder; yalnizca ILERI gider
 function PlayerData.reachIsland(player: Player, island: string?)
 	local data = cache[player]

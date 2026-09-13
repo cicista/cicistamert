@@ -25,6 +25,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Divine = require(Shared:WaitForChild("Divine"))
+local Ores = require(Shared:WaitForChild("Ores"))
 
 local Sand = require(script.Parent:WaitForChild("Sand"))
 
@@ -745,6 +746,59 @@ local function buildWithVFX(
 	return fallback(kind, position)
 end
 
+--[[
+	MADEN KAYASI
+
+	Simdilik kod ile kurulan bir kaya: dondurulmus birkac blok ust uste
+	binerek duzensiz bir tas yigini olusturuyor. Rengi adanin imlec rengi
+	(bkz. Shared > Ores). Uzerinden yurunebilsin diye carpisma kapali.
+]]
+local KAYA_PARCALARI = {
+	{ Vector3.new(4.2, 3.2, 3.6), Vector3.new(0, 1.3, 0) },
+	{ Vector3.new(2.8, 2.3, 2.5), Vector3.new(2.1, 0.8, 1.1) },
+	{ Vector3.new(2.4, 1.9, 2.9), Vector3.new(-1.9, 0.6, -0.9) },
+	{ Vector3.new(1.7, 1.5, 1.7), Vector3.new(0.7, 0.5, -2.1) },
+}
+
+local function buildOreModel(kind: string, position: Vector3): Model
+	local maden = Ores.get(kind)
+	local renk = if maden then maden.color else Color3.new(1, 1, 1)
+	local rng = Random.new()
+
+	local model = Instance.new("Model")
+	model.Name = `Maden_{kind}`
+
+	for i, parca in KAYA_PARCALARI do
+		local part = Instance.new("Part")
+		part.Name = if i == 1 then "Govde" else "Parca"
+		part.Size = parca[1]
+		-- Kucuk parcalar hafif koyu: tek duz renk yerine hacim hissi
+		part.Color = renk:Lerp(Color3.new(0, 0, 0), 0.12 * (i - 1))
+		part.Material = Enum.Material.Slate
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.CFrame = CFrame.new(position + parca[2])
+			* CFrame.Angles(rng:NextNumber(-0.45, 0.45), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.45, 0.45))
+		part.Parent = model
+
+		if i == 1 then
+			model.PrimaryPart = part
+		end
+	end
+
+	local isik = Instance.new("PointLight")
+	isik.Color = renk
+	isik.Range = 14
+	isik.Brightness = 1.5
+	isik.Parent = model.PrimaryPart
+
+	return model
+end
+
 -- Kumdaki isik sutunu: DigLightVFX
 local function buildBeamModel(kind: string, position: Vector3): Model
 	return buildWithVFX(V, kind, position, buildFallbackModel)
@@ -819,7 +873,10 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 	beamCounter += 1
 	local id = `beam_{beamCounter}`
 
-	local model = if sea then buildWhirlModel(kind, spot) else buildBeamModel(kind, spot)
+	local model = if sea
+		then buildWhirlModel(kind, spot)
+		elseif Ores.get(kind) then buildOreModel(kind, spot)
+		else buildBeamModel(kind, spot)
 	model:SetAttribute("BeamId", id)
 	model:SetAttribute("Owner", player.UserId)
 	model.Parent = folder
@@ -977,6 +1034,17 @@ function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: num
 	local spot, ada = findSandSpot(player)
 	if not spot then
 		return nil
+	end
+
+	--[[
+		MADEN: madenli adalarda (Candy, Snow, Volcano) suzme yerine
+		Ores.SpawnChance yuzde ihtimalle adanin madenlerinden biri cikar.
+	]]
+	if Ores.island(ada) and rng:NextNumber() * 100 < Ores.SpawnChance then
+		local maden = Ores.roll(ada, rng)
+		if maden then
+			return createBeam(player, maden, spot, false, ada)
+		end
 	end
 
 	return createBeam(player, Rarity.rollBeam(rng, luck, adaIzni(ada)), spot, false, ada)

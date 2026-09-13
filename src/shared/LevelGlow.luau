@@ -27,6 +27,14 @@ LevelGlow.Colors = {
 }
 
 function LevelGlow.color(level: number): Color3
+	-- Ada kurekleri adanin renginde parlar: Candy pembe, Snow buz mavisi, Volcano turuncu
+	if level > 15 then
+		return Color3.fromRGB(255, 140, 40)
+	elseif level > 10 then
+		return Color3.fromRGB(130, 215, 255)
+	elseif level > 5 then
+		return Color3.fromRGB(255, 120, 200)
+	end
 	return LevelGlow.Colors[math.clamp(level, 1, 5)] or LevelGlow.Colors[1]
 end
 

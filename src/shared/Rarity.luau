@@ -41,6 +41,8 @@ export type RarityInfo = {
 	(Rarity.isDivine). Divine hicbir sey require etmiyor, dongu olusmaz.
 ]]
 local Divine = require(script.Parent.Divine)
+-- Maden suzmeleri GPS'te kendi ad ve renkleriyle gorunsun (Ores hicbir sey require etmiyor)
+local Ores = require(script.Parent.Ores)
 
 
 local Rarity = {}
@@ -423,6 +425,10 @@ function Rarity.beamName(kind: string): string
 	if kind == "LuckyBlock" then
 		return Rarity.LuckyBlock.displayName
 	end
+	local maden = Ores.get(kind)
+	if maden then
+		return maden.displayName
+	end
 	return Rarity.displayName(kind)
 end
 
@@ -432,6 +438,10 @@ function Rarity.beamColor(kind: string): Color3
 	end
 	if kind == "LuckyBlock" then
 		return Rarity.LuckyBlock.colorA
+	end
+	local maden = Ores.get(kind)
+	if maden then
+		return maden.color
 	end
 	return Rarity.color(kind)
 end
