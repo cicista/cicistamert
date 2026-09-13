@@ -29,6 +29,7 @@ local Mutations = require(Shared:WaitForChild("Mutations"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
+local Ores = require(Shared:WaitForChild("Ores"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -225,18 +226,26 @@ local function buildPanel(info: any)
 	actionButton("VFX raporu (suzme efektinin icerigi)", "vfxRaporu", nil, UI.Colors.textDim)
 	actionButton("Gizli brainrot raporu (HiddenPart modeli)", "gizliRaporu", nil, UI.Colors.textDim)
 
-	section("KUREK SEVIYESI")
-	local shovelChips = {}
-	for _, id in Shovels.Order do
-		local shovel = Shovels.get(id)
-		table.insert(shovelChips, {
-			label = `Lv{shovel.level}`,
-			command = "setShovel",
-			arg = id,
-			color = Rarity.color(shovel.rarity),
-		})
+	--[[
+		KUREK SEVIYESI: 20 seviye tek satira sigmiyor; her ada ayri satir
+		(Main 1-5, Candy 6-10, Snow 11-15, Volcano 16-20).
+	]]
+	section("KUREK SEVIYESI  --  Main / Candy / Snow / Volcano")
+	-- "main" yalnizca isaret: tabloda nil tutulamiyor (dongu onu atlardi)
+	for _, ada in { "main", "sekerkum", "snowkum", "alevkum" } do
+		local shovelChips = {}
+		for _, shovel in Shovels.forIsland(if ada == "main" then nil else ada) do
+			table.insert(shovelChips, {
+				label = `Lv{shovel.level}`,
+				command = "setShovel",
+				arg = shovel.id,
+				color = if shovel.island then shovel.color else Rarity.color(shovel.rarity),
+			})
+		end
+		if #shovelChips > 0 then
+			chipRow(shovelChips)
+		end
 	end
-	chipRow(shovelChips)
 
 	section("DEDEKTOR SEVIYESI")
 	local detectorChips = {}
@@ -276,6 +285,67 @@ local function buildPanel(info: any)
 		})
 	end
 	chipRow(rodChips)
+
+	------------------------------------------------------------------
+	-- KAZMA + MADEN
+	------------------------------------------------------------------
+	section("KAZMA VER")
+	local pickaxeChips: { any } = {}
+	for _, ada in Ores.IslandOrder do
+		local kazma = Ores.Pickaxes[Ores.Islands[ada].pickaxe]
+		table.insert(pickaxeChips, {
+			label = string.gsub(kazma.displayName, " Pickaxe", ""),
+			command = "givePickaxe",
+			arg = kazma.id,
+			color = kazma.color,
+		})
+	end
+	table.insert(pickaxeChips, {
+		label = "Hepsi",
+		command = "givePickaxe",
+		arg = "all",
+		color = UI.Colors.good,
+	})
+	chipRow(pickaxeChips)
+
+	-- Her ada bir satir: once "uc maden birden", sonra tek tek
+	section("MADEN VER  (+10)")
+	for _, ada in Ores.IslandOrder do
+		local cfg = Ores.Islands[ada]
+		local oreChips: { any } = {
+			{
+				label = `{string.gsub(cfg.name, " Island", "")} x3`,
+				command = "giveOres",
+				arg = ada,
+				color = cfg.color,
+			},
+		}
+		for _, id in cfg.ores do
+			table.insert(oreChips, {
+				label = id,
+				command = "giveOres",
+				arg = id,
+				color = cfg.color,
+			})
+		end
+		chipRow(oreChips)
+	end
+
+	-- Maden kayasini dogurur (kazmak icin adanin kazmasi gerekir)
+	section("MADEN SPAWNLA  --  kazma ile kaz")
+	for _, ada in Ores.IslandOrder do
+		local cfg = Ores.Islands[ada]
+		local spawnChips: { any } = {}
+		for _, id in cfg.ores do
+			table.insert(spawnChips, {
+				label = id,
+				command = "spawnBeam",
+				arg = id,
+				color = cfg.color,
+			})
+		end
+		chipRow(spawnChips)
+	end
 
 	--[[
 		MUTASYON butonlari iki is birden yapar:

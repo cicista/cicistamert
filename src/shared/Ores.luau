@@ -60,7 +60,8 @@ export type IslandOres = {
 }
 
 -- Suzme dogacagi zaman madenin cikma ihtimali (yuzde)
-Ores.SpawnChance = 5
+-- TEST ICIN 50; oyun icin 5'e geri cekilecek
+Ores.SpawnChance = 50
 
 -- Madenin kazi zorlugu: 4 cps = kurek tablosundaki "normal"
 Ores.MineCps = 4

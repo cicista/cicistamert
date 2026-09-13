@@ -38,8 +38,21 @@ local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 
--- KaziSistemi'ndeki kurek yenileme tetigi (eldeki kurek yenisiyle degissin)
-local kurekYenile = script.Parent:WaitForChild("KaziSistemi"):WaitForChild("KurekYenile") :: BindableEvent
+--[[
+	KaziSistemi'ndeki kurek yenileme tetigi (eldeki kurek yenisiyle degissin).
+
+	Script basinda WaitForChild ile BEKLENMIYOR: KaziSistemi gecikir ya da
+	hata verirse bu script de orada takili kalir ve hicbir NPC'ye prompt
+	takilmazdi. Satin alma aninda aranir; yoksa kurek bir sonraki kazida
+	zaten yenisiyle gelir.
+]]
+local function kurekYenile(player: Player)
+	local kazi = script.Parent:FindFirstChild("KaziSistemi")
+	local tetik = kazi and kazi:FindFirstChild("KurekYenile")
+	if tetik and tetik:IsA("BindableEvent") then
+		tetik:Fire(player)
+	end
+end
 
 local Bildirim = Net.event("Bildirim")
 local AdaKurekAc = Net.event("AdaKurekAc")
@@ -277,7 +290,7 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 		end
 
 		data.shovel = info.id
-		kurekYenile:Fire(player)
+		kurekYenile(player)
 		Envanter.push(player)
 		AdaKurekAc:FireClient(player, kurekPayload(player, ada))
 		Bildirim:FireClient(player, `{info.displayName} equipped.`, info.color)
@@ -313,7 +326,7 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 
 	data.shovel = info.id
 	data.shovelMax = info.id
-	kurekYenile:Fire(player)
+	kurekYenile(player)
 
 	Envanter.push(player)
 	AdaKurekAc:FireClient(player, kurekPayload(player, ada))
@@ -435,20 +448,64 @@ local function promptTak(anchor: BasePart, ad: string, nesne: string, tetik: (Pl
 	prompt.Triggered:Connect(tetik)
 end
 
-local function saticiKur(ada: string, npcAdi: string, baslik: string, kayma: Vector3): BasePart?
-	local cfg = Ores.island(ada) :: Ores.IslandOres
+--[[
+	NPC BAGLAMA
 
-	local anchor = findAnchor(npcAdi)
+	NPC'ler TEK SEFERDE aranmiyor. Model sunucu acildiktan sonra gelebilir
+	(Rojo senkronu, akis/streaming, elle eklenen model); tek arama onu
+	kacirir ve prompt hic takilmazdi. Bu yuzden:
+
+	  1. acilista bir kez aranir
+	  2. Workspace'e bu adla bir sey eklenince yeniden aranir
+	  3. YEDEK_BEKLEME saniye sonra hala yoksa spawn yanina yedek tezgah
+	     kurulur; gercek NPC sonradan gelirse tezgah silinip ona gecilir
+
+	Her baglanti Output'a yazilir: "[AdaSatici] CandySeller baglandi: ..."
+]]
+local YEDEK_BEKLEME = 8
+
+type Satici = {
+	ada: string,
+	npcAdi: string,
+	anahtar: string,
+	baslik: string,
+	kayma: Vector3,
+	promptAdi: string,
+	tetik: (Player) -> (),
+}
+
+local saticilar: { Satici } = {}
+local yedekler: { [string]: Instance } = {}
+
+local function normal(ad: string): string
+	return string.lower((string.gsub(ad, "%s", "")))
+end
+
+local function bagla(s: Satici, anchor: BasePart)
+	anchors[s.anahtar] = anchor
+	promptTak(anchor, s.promptAdi, s.baslik, s.tetik)
+	print(`[AdaSatici] {s.npcAdi} baglandi: {anchor:GetFullName()}`)
+end
+
+-- Gercek NPC'yi arar; bulursa yedek tezgahi kaldirip ona baglar
+local function saticiBul(s: Satici): boolean
+	local anchor = findAnchor(s.npcAdi)
 	if not anchor then
-		warn(`[AdaSatici] '{npcAdi}' haritada bulunamadi -- {cfg.name} spawn noktasinin yanina yedek tezgah kuruldu`)
-		anchor = standKur(npcAdi, baslik, cfg, kayma)
+		return false
 	end
 
-	if not anchor then
-		warn(`[AdaSatici] '{npcAdi}' kurulamadi: {cfg.spawnPart} bulunamadi`)
+	if anchors[s.anahtar] == anchor and anchor:FindFirstChild(s.promptAdi) then
+		return true
 	end
 
-	return anchor
+	local yedek = yedekler[s.npcAdi]
+	if yedek then
+		yedek:Destroy()
+		yedekler[s.npcAdi] = nil
+	end
+
+	bagla(s, anchor)
+	return true
 end
 
 local function kur()
@@ -456,32 +513,69 @@ local function kur()
 		local cfg = Ores.island(ada) :: Ores.IslandOres
 		local kazma = Ores.Pickaxes[cfg.pickaxe]
 
-		local kurekBaslik = `{cfg.name} Shovels`
-		local kurek = saticiKur(ada, cfg.shovelSeller, kurekBaslik, Vector3.new(12, 0, 8))
-		if kurek then
-			anchors[`{ada}|kurek`] = kurek
-			promptTak(kurek, "AdaKurekPrompt", kurekBaslik, function(player)
+		table.insert(saticilar, {
+			ada = ada,
+			npcAdi = cfg.shovelSeller,
+			anahtar = `{ada}|kurek`,
+			baslik = `{cfg.name} Shovels`,
+			kayma = Vector3.new(12, 0, 8),
+			promptAdi = "AdaKurekPrompt",
+			tetik = function(player: Player)
 				local payload = kurekPayload(player, ada)
 				if payload then
 					AdaKurekAc:FireClient(player, payload)
 				end
-			end)
-		end
+			end,
+		})
 
-		local kazmaBaslik = `{kazma.displayName} Seller`
-		local satici = saticiKur(ada, cfg.pickaxeSeller, kazmaBaslik, Vector3.new(-12, 0, 8))
-		if satici then
-			anchors[`{ada}|kazma`] = satici
-			promptTak(satici, "KazmaPrompt", kazmaBaslik, function(player)
+		table.insert(saticilar, {
+			ada = ada,
+			npcAdi = cfg.pickaxeSeller,
+			anahtar = `{ada}|kazma`,
+			baslik = `{kazma.displayName} Seller`,
+			kayma = Vector3.new(-12, 0, 8),
+			promptAdi = "KazmaPrompt",
+			tetik = function(player: Player)
 				local payload = kazmaPayload(player, ada)
 				if payload then
 					KazmaAc:FireClient(player, payload)
 				end
-			end)
-		end
+			end,
+		})
 	end
 
-	print("[AdaSatici] Ada saticilari kuruldu")
+	local adlar: { [string]: Satici } = {}
+	for _, s in saticilar do
+		adlar[normal(s.npcAdi)] = s
+		saticiBul(s)
+	end
+
+	-- Sonradan eklenen NPC: model icerigi yuklensin diye kisa bir bekleme
+	Workspace.DescendantAdded:Connect(function(node)
+		local s = adlar[normal(node.Name)]
+		if s then
+			task.delay(0.5, saticiBul, s)
+		end
+	end)
+
+	task.wait(YEDEK_BEKLEME)
+
+	for _, s in saticilar do
+		if anchors[s.anahtar] or saticiBul(s) then
+			continue
+		end
+
+		local cfg = Ores.island(s.ada) :: Ores.IslandOres
+		-- Yedegin adi farkli: arama ona takilip gercek NPC sanmasin
+		local tezgah = standKur(`{s.npcAdi}_Yedek`, s.baslik, cfg, s.kayma)
+		if tezgah then
+			warn(`[AdaSatici] '{s.npcAdi}' haritada bulunamadi -- {cfg.name} spawn yanina yedek tezgah kuruldu`)
+			yedekler[s.npcAdi] = tezgah.Parent :: Instance
+			bagla(s, tezgah)
+		else
+			warn(`[AdaSatici] '{s.npcAdi}' bulunamadi ve yedek kurulamadi ({cfg.spawnPart} yok)`)
+		end
+	end
 end
 
 task.spawn(kur)

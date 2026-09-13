@@ -48,6 +48,7 @@ local Fuse = require(Shared:WaitForChild("Fuse"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Assets = require(Shared:WaitForChild("Assets"))
+local Ores = require(Shared:WaitForChild("Ores"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -317,7 +318,8 @@ function commands.spawnBeam(player, data, arg)
 		return nil
 	end
 
-	local valid = Rarity.Info[arg] ~= nil or arg == "RotCoin" or arg == "LuckyBlock"
+	local maden = Ores.get(arg)
+	local valid = Rarity.Info[arg] ~= nil or arg == "RotCoin" or arg == "LuckyBlock" or maden ~= nil
 	if not valid then
 		return nil
 	end
@@ -325,6 +327,13 @@ function commands.spawnBeam(player, data, arg)
 	local beam = Beams.spawnKind(player, arg)
 	if not beam then
 		return "Suzme dogurulamadi -- karakterin yok mu?"
+	end
+
+	-- Maden: kaya dogar, adanin kazmasi gerekir
+	if maden then
+		local cfg = Ores.island(maden.island)
+		local kazma = if cfg then Ores.Pickaxes[cfg.pickaxe] else nil
+		return `{maden.displayName} kayasi dogdu -- {if kazma then kazma.displayName else "kazma"} gerekir`
 	end
 
 	local label = if Rarity.Info[arg]
@@ -706,6 +715,51 @@ function commands.vfxRaporu(player, data)
 	template:Destroy()
 
 	return `{total} nesne listelendi, {flagged} isaretli -- ayrinti Output icinde`
+end
+
+-- Kazma verir: tek bir kazma id'si ya da "all"
+function commands.givePickaxe(player, data, arg)
+	if arg == "all" then
+		for id in Ores.Pickaxes do
+			data.pickaxes[id] = true
+		end
+		return "Butun kazmalar verildi"
+	end
+
+	if type(arg) ~= "string" or not Ores.Pickaxes[arg] then
+		return nil
+	end
+
+	data.pickaxes[arg] = true
+	return `{Ores.Pickaxes[arg].displayName} verildi`
+end
+
+--[[
+	Maden verir (her tikta 10). arg bir maden id'si ise yalnizca o maden,
+	bir ada id'si ise ("sekerkum") o adanin uc madeni birden.
+]]
+local MADEN_ADEDI = 10
+
+function commands.giveOres(player, data, arg)
+	if type(arg) ~= "string" then
+		return nil
+	end
+
+	local cfg = Ores.island(arg)
+	if cfg then
+		for _, id in cfg.ores do
+			PlayerData.addOre(player, id, MADEN_ADEDI)
+		end
+		return `{cfg.name}: her madenden +{MADEN_ADEDI}`
+	end
+
+	local maden = Ores.get(arg)
+	if not maden then
+		return nil
+	end
+
+	local adet = PlayerData.addOre(player, maden.id, MADEN_ADEDI)
+	return `+{MADEN_ADEDI} {maden.displayName} (x{adet})`
 end
 
 function commands.setShovel(player, data, arg)
