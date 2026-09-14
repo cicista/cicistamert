@@ -11,8 +11,6 @@
 	Komutlar:
 	  giveAllTools   -- butun kurek ve dedektor seviyelerinin en ustunu verir
 	  giveRot        -- Config.Admin.rotGrant kadar Rot
-	  giveCoins      -- Config.Admin.coinGrant kadar Rot Coin
-	  giveAllSkins   -- butun skinleri acar
 	  revealAll      -- envanterdeki tum siyah brainrotlarin kimligini acar
 	  giveLuckyBlock -- secilen turden BIR Lucky Block verir (arg: tur id'si)
 	  luckyEvent     -- blok yagmuru etkinligini hemen baslatir
@@ -38,7 +36,6 @@ local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Rods = require(Shared:WaitForChild("Rods"))
-local Skins = require(Shared:WaitForChild("Skins"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
@@ -112,11 +109,6 @@ function commands.giveRot(player, data)
 	return `+{Format.short(A.rotGrant)} Rot`
 end
 
-function commands.giveCoins(player, data)
-	PlayerData.addRotCoins(player, A.coinGrant)
-	return `+{A.coinGrant} Rot Coin`
-end
-
 -- Etkinligi beklemeden tetikler (normalde saatte bir)
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()
@@ -133,17 +125,6 @@ function commands.giveLuckyBlock(player, data, arg)
 	Envanter.push(player)
 
 	return `+1 {tier.displayName}  (toplam {PlayerData.luckyBlockCount(player, tierId)})`
-end
-
-function commands.giveAllSkins(player, data)
-	local count = 0
-	for _, skin in Skins.List do
-		if not data.skins[skin.id] then
-			data.skins[skin.id] = true
-			count += 1
-		end
-	end
-	return `{count} yeni skin acildi`
 end
 
 --[[
@@ -311,7 +292,7 @@ end
 	yok. Amaci suzmelerin gorunumunu ve o kademedeki kazi zorlugunu istedigin
 	an sinayabilmek -- yoksa Divine'i gormek icin saatlerce kazmak gerekirdi.
 
-	arg: rarity kimligi ("Common".."Secret"), "RotCoin" ya da "LuckyBlock"
+	arg: rarity kimligi ("Common".."Secret"), maden kimligi ya da "LuckyBlock"
 ]]
 function commands.spawnBeam(player, data, arg)
 	if type(arg) ~= "string" then
@@ -319,7 +300,7 @@ function commands.spawnBeam(player, data, arg)
 	end
 
 	local maden = Ores.get(arg)
-	local valid = Rarity.Info[arg] ~= nil or arg == "RotCoin" or arg == "LuckyBlock" or maden ~= nil
+	local valid = Rarity.Info[arg] ~= nil or arg == "LuckyBlock" or maden ~= nil
 	if not valid then
 		return nil
 	end
@@ -336,10 +317,7 @@ function commands.spawnBeam(player, data, arg)
 		return `{maden.displayName} kayasi dogdu -- {if kazma then kazma.displayName else "kazma"} gerekir`
 	end
 
-	local label = if Rarity.Info[arg]
-		then Rarity.displayName(arg)
-		elseif arg == "RotCoin" then Rarity.RotCoin.displayName
-		else Rarity.LuckyBlock.displayName
+	local label = if Rarity.Info[arg] then Rarity.displayName(arg) else Rarity.LuckyBlock.displayName
 
 	return `{label} suzmesi dogdu -- kuregi eline al ve kaz`
 end
@@ -484,11 +462,8 @@ function commands.haritaRaporu(player, data)
 		Config.Detective.name,
 		Config.Seller.name,
 		Config.Seller.altName,
-		Config.SlotMachine.name,
 		Config.Fuse.machineName,
 		Config.Fuse.machineAltName,
-		Config.Fuse.openerName,
-		Config.Fuse.openerAltName,
 		-- VFX ayari Shared > Fuse'da, Config.Fuse'da degil
 		Fuse.VFX.name,
 	}
@@ -888,7 +863,6 @@ local function announce(player: Player)
 	AdminPanelAc:FireClient(player, {
 		allowed = isAdmin(player),
 		rotGrant = A.rotGrant,
-		coinGrant = A.coinGrant,
 		shovels = Shovels.Order,
 		detectors = Detectors.Order,
 		flyboards = Flyboard.Order,

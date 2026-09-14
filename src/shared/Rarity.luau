@@ -250,21 +250,6 @@ Rarity.LuckyBlock = {
 	beamChance = 0,
 }
 
---[[
-	Rot Coin bir brainrot degil, ayri bir suzme turu.
-	Binde bir cikar, isigi sari-siyah gecisli olur (bkz. Beam.luau).
-]]
-Rarity.RotCoin = {
-	id = "RotCoin",
-	displayName = "Rot Coin",
-	colorA = Color3.fromRGB(255, 214, 41),
-	colorB = Color3.fromRGB(20, 20, 20),
-	beamChance = 0.1,
-	-- Bir suzmeden cikan Rot Coin adedi
-	amountMin = 1,
-	amountMax = 3,
-}
-
 function Rarity.get(id: RarityId): RarityInfo
 	local info = Rarity.Info[id]
 	assert(info, `bilinmeyen rarity: {tostring(id)}`)
@@ -403,9 +388,9 @@ end
 --[[
 	SUZME TURLERI
 
-	Bir isik suzmesinin "kind" alani UC seyden biri olabilir:
+	Bir isik suzmesinin "kind" alani su seylerden biri olabilir:
 	    bir kademe kimligi ("Common".."Secret")
-	    "RotCoin"
+	    bir maden kimligi (bkz. Shared > Ores)
 	    "LuckyBlock"
 
 	Son ikisi Rarity.Info icinde YOKTUR. Bu yuzden suzme adini/rengini
@@ -415,13 +400,10 @@ end
 	kullanmali.
 ]]
 function Rarity.isBeamKind(kind: string): boolean
-	return Rarity.Info[kind :: RarityId] ~= nil or kind == "RotCoin" or kind == "LuckyBlock"
+	return Rarity.Info[kind :: RarityId] ~= nil or kind == "LuckyBlock"
 end
 
 function Rarity.beamName(kind: string): string
-	if kind == "RotCoin" then
-		return Rarity.RotCoin.displayName
-	end
 	if kind == "LuckyBlock" then
 		return Rarity.LuckyBlock.displayName
 	end
@@ -433,9 +415,6 @@ function Rarity.beamName(kind: string): string
 end
 
 function Rarity.beamColor(kind: string): Color3
-	if kind == "RotCoin" then
-		return Rarity.RotCoin.colorA
-	end
 	if kind == "LuckyBlock" then
 		return Rarity.LuckyBlock.colorA
 	end
@@ -448,7 +427,7 @@ end
 
 --[[
 	Kumda gezerken hangi suzmenin cikacagini secer.
-	Donen deger bir RarityId, "RotCoin" ya da "LuckyBlock".
+	Donen deger bir RarityId ya da "LuckyBlock".
 	Agirliklar toplanip oranlaniyor; toplamin tam 100 olmasi sart degil.
 
 	luckMultiplier: 1'den buyuk degerler yuksek kademelere kayma sagligi verir
@@ -456,8 +435,8 @@ end
 
 	izin (istege bagli): kademenin bu zeminde dogup dogamayacagini soyler.
 	Beams adaya gore veriyor; o adada (onceki adalar dahil) brainrotu
-	olmayan kademenin isini orada hic dogmaz. Rot Coin / Lucky Block
-	bundan etkilenmez.
+	olmayan kademenin isini orada hic dogmaz. Lucky Block bundan
+	etkilenmez.
 ]]
 function Rarity.rollBeam(rng: Random, luckMultiplier: number?, izin: ((string) -> boolean)?): string
 	local luck = luckMultiplier or 1
@@ -490,10 +469,6 @@ function Rarity.rollBeam(rng: Random, luckMultiplier: number?, izin: ((string) -
 		total += w
 		table.insert(weights, { id = id, w = w })
 	end
-
-	local coinWeight = Rarity.RotCoin.beamChance
-	total += coinWeight
-	table.insert(weights, { id = "RotCoin", w = coinWeight })
 
 	-- Lucky Block da sanstan etkilenir: iyi dedektor daha cok blok bulur
 	local luckyWeight = Rarity.LuckyBlock.beamChance * luck

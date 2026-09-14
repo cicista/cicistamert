@@ -239,7 +239,7 @@ end
 	calisir, acan tarafin bir sey yapmasi gerekmez.
 
 	Liste bu ModuleScript'te durdugu ve istemcide tek kopya oldugu icin kural
-	scriptler ARASINDA da gecerli: Fuse'un bozdurucusu acilinca Menuler'in
+	scriptler ARASINDA da gecerli: Fuse makinesinin penceresi acilinca Menuler'in
 	envanteri de kapanir.
 ]]
 local paneller: { Frame } = {}

@@ -43,6 +43,7 @@ local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
 local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
+local Seviye = require(Modules:WaitForChild("Seviye"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -103,7 +104,8 @@ local function luckFor(player: Player): number
 		Gecici sans carpani ve ARKADAS BUFFI da hesaba katilir: ayni sunucuda
 		Roblox arkadasi varsa x1.15 (bkz. Modules > Arkadaslar).
 	]]
-	return ground * detector.luck * PlayerData.luckBonus(player) * Arkadaslar.carpan(player)
+	-- Level bonusu da kalici carpan olarak eklenir (her level +%1, bkz. Shared > Seviye)
+	return ground * detector.luck * PlayerData.luckBonus(player) * Arkadaslar.carpan(player) * Seviye.carpan(player)
 end
 
 -- Oyuncunun dedektorune gore tarama ayarlari
@@ -274,17 +276,9 @@ local function finishDig(player: Player, won: boolean)
 	-- Maden: hesaba eklenir, brainrot akisina girmez
 	if maden then
 		local adet = PlayerData.addOre(player, maden.id, Ores.MineAmount)
+		Seviye.xpVer(player, Seviye.XP.ore)
 		Envanter.push(player)
 		Bildirim:FireClient(player, `+{Ores.MineAmount} {maden.displayName} (x{adet})`, maden.color)
-		return
-	end
-
-	-- Rot Coin suzmesi
-	if beam.kind == "RotCoin" then
-		local amount = rng:NextInteger(Rarity.RotCoin.amountMin, Rarity.RotCoin.amountMax)
-		PlayerData.addRotCoins(player, amount)
-		Envanter.push(player)
-		Bildirim:FireClient(player, `+{amount} Rot Coin!`, Rarity.RotCoin.colorA)
 		return
 	end
 
@@ -323,6 +317,8 @@ local function finishDig(player: Player, won: boolean)
 	-- Gorev panosu: hem "kaz" hem de kademe gorevleri bu kazidan sayar
 	GorevTakip.ilerlet(player, "dig", 1)
 	GorevTakip.ilerlet(player, "collect", 1, beam.kind)
+	-- Level: kazilan brainrotun kademesine gore XP
+	Seviye.xpVer(player, Seviye.rarityXp(beam.kind))
 end
 
 local function startDig(player: Player, beamId: string)
@@ -446,8 +442,8 @@ local function startDig(player: Player, beamId: string)
 		return
 	end
 
-	-- Rot Coin ve Lucky Block icin minigame yok, dogrudan kazanilir
-	if beam.kind == "RotCoin" or beam.kind == "LuckyBlock" then
+	-- Lucky Block icin minigame yok, dogrudan kazanilir
+	if beam.kind == "LuckyBlock" then
 		finishDig(player, true)
 		return
 	end

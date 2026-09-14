@@ -97,7 +97,7 @@ local beams: { { id: string, kind: string, position: Vector3 } } = {}
 local nearest: { id: string, distance: number }? = nil
 
 --[[
-	Suzme turu kademe OLMAYABILIR ("RotCoin", "LuckyBlock").
+	Suzme turu kademe OLMAYABILIR (maden, "LuckyBlock").
 
 	Onceden burada Rarity.get cagriliyordu; o bilinmeyen kimlikte assert
 	atiyor ve hata bu fonksiyondan cagiran GPSGuncelle isleyicisine kadar

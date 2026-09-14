@@ -22,16 +22,78 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rods = require(Shared:WaitForChild("Rods"))
+local Assets = require(Shared:WaitForChild("Assets"))
 
 local Olta = {}
 
 --[[
-	Oltanin gorunumu KODDA uretiliyor: sap, ince kamis, makara ve misinanin
-	ucunda kademe renginde bir samandira. Makara ile samandira kademenin
-	renginde, boylece elindeki oltanin seviyesi bir bakista anlasilir.
+	HAZIR OLTA MODELI  (Assets > Rods > Rod<level>)
+
+	Studio'da hazirlanan olta bir TOOL: Handle + Main (kamis) + Manifest
+	(gorunen parcalar), hepsi Handle'a kaynakli. Tool olarak kalirsa hotbara
+	girer; bu yuzden icindekiler bir Model'e tasinir, Handle modelin ana
+	parcasi olur ve ele o kaynaklanir.
+
+	Misinanin cikis noktasi (Rods.TipName): Main'in ustundeki "0" adli
+	Attachment varsa orasi (kavisli oltalarda uc oradadir), yoksa Main'in
+	tepesi.
+]]
+local function hazirOlta(level: number): Model?
+	local kaynak = Assets.rodTool(level)
+	if not kaynak then
+		return nil
+	end
+
+	Assets.stripScripts(kaynak)
+
+	local model = Instance.new("Model")
+	model.Name = Rods.ToolName
+	for _, child in kaynak:GetChildren() do
+		child.Parent = model
+	end
+	kaynak:Destroy()
+
+	local handle = model:FindFirstChild("Handle")
+	if not handle or not handle:IsA("BasePart") then
+		model:Destroy()
+		return nil
+	end
+	model.PrimaryPart = handle
+
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = false
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+		end
+	end
+
+	local main = model:FindFirstChild("Main")
+	local ucSahibi: BasePart = if main and main:IsA("BasePart") then main else handle
+	local hazirUc = ucSahibi:FindFirstChild("0")
+
+	local uc = Instance.new("Attachment")
+	uc.Name = Rods.TipName
+	uc.CFrame = if hazirUc and hazirUc:IsA("Attachment") then hazirUc.CFrame else CFrame.new(0, ucSahibi.Size.Y / 2, 0)
+	uc.Parent = ucSahibi
+
+	return model
+end
+
+--[[
+	Olta modeli. Assets > Rods'ta kademenin modeli varsa o; yoksa KODDA
+	uretilen yedek gorunum: sap, ince kamis, makara ve kademe renginde
+	samandira.
 ]]
 function Olta.build(rodId: string?): Model
 	local info = Rods.get(rodId) or Rods.Info[Rods.Order[1]]
+
+	local hazir = hazirOlta(info.level)
+	if hazir then
+		return hazir
+	end
 
 	local model = Instance.new("Model")
 	model.Name = Rods.ToolName
@@ -87,7 +149,10 @@ function Olta.attach(character: Model, model: Model): boolean
 		return false
 	end
 
-	model:PivotTo(hand.CFrame * CFrame.new(0, -0.4, -0.4) * CFrame.Angles(math.rad(-20), 0, 0))
+	-- Ele gore kayma ve donus: Shared > Assets > ToolGrips.rod
+	local ayar = Assets.ToolGrips.rod
+	local r = ayar.rotation
+	model:PivotTo(hand.CFrame * CFrame.new(ayar.position) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z)))
 	model.Parent = character
 
 	for _, part in model:GetDescendants() do

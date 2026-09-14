@@ -56,14 +56,17 @@ Net.Events = {
 	"ArkadasDurum",     -- server -> client: sunucudaki arkadaslar + buff yuzdesi
 	"ArkadasAc",        -- client -> server: durumumu soyle
 
-	-- Slot makinesi
-	"SlotMakinesiAc",   -- server -> client: makine arayuzu
-	"SlotMakinesiCevir",-- client -> server: cevir
-	"SlotMakinesiSonuc",-- server -> client: cikan skin
+	-- Rot Coin magazasi
+	"RotCoinMagazaAc",    -- client -> server: iksir durumumu soyle
+	"RotCoinMagazaAl",    -- client -> server: bu urunu al (id)
+	"RotCoinMagazaDurum", -- server -> client: aktif sans iksiri (carpan, kalan sure)
 
-	-- Skin / magaza
-	"SkinTak",          -- client -> server: bu skini tak
-	"SkinDongu",        -- client -> server: Z -- elindeki toolun skinini degistir
+	-- Level sistemi
+	"SeviyeDurum",      -- server -> client: level, xp, gereken xp, kazanilan xp
+	"SeviyeAtladi",     -- server -> client: level atlandi (yeni level, oduller)
+	"SeviyeAc",         -- client -> server: durumumu soyle
+
+	-- Magaza
 	"MagazaAc",         -- server -> client: kurek + gps magazasi
 	"KurekAl",          -- client -> server: kurek satin al
 	"GPSAl",            -- client -> server: dedektor satin al
@@ -74,16 +77,13 @@ Net.Events = {
 	"TumunuSat",        -- client -> server: envanteri sat (F)
 
 	-- Fuse makinesi
-	"FuseDurum",        -- server -> client: makine paneli (kademe, adet, boyut sanslari)
-	"FuseGeriAl",       -- client -> server: makinedeki esyalari envantere geri al
-	"FuseSonuc",        -- server -> client: birlesme gosterisi (ruhlar + cikan coin)
-	"FuseSecim",        -- server -> client: makine secim penceresini ac
-	"FuseEkle",         -- client -> server: bu esyayi makineye koy (uid)
-
-	-- Coin bozdurucu
-	"CoinAc",           -- server -> client: bozdurulabilir coin listesi
-	"CoinBozdur",       -- client -> server: bu coini bozdur
-	"CoinSonuc",        -- server -> client: cark verisi + kazanan brainrot
+	"FuseDurum",        -- server -> client: makine penceresi (slotlar, secilebilirler, sans)
+	"FuseGeriAl",       -- client -> server: makinedeki butun brainrotlari geri al
+	"FuseSonuc",        -- server -> client: birlesme gosterisi (basari + kazanilan brainrot)
+	"FuseSecim",        -- server -> client: makine penceresini ac
+	"FuseEkle",         -- client -> server: bu brainrotu makineye koy (uid)
+	"FuseCikar",        -- client -> server: bu slottaki brainrotu geri al (uid)
+	"FuseBaslat",       -- client -> server: FUSE dugmesi, birlestirmeyi baslat
 
 	-- Flyboard
 	"FlyboardAc",       -- server -> client: satici paneli (kademeler + fiyatlar)

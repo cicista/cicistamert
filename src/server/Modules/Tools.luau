@@ -18,7 +18,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
 local Rods = require(Shared:WaitForChild("Rods"))
-local Skins = require(Shared:WaitForChild("Skins"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
@@ -106,6 +105,139 @@ local function setHoldAnimation(tool: Tool, animationId: string?)
 end
 
 --[[
+	GEVSEK ARAC MODELI -> TOOL  (Assets > Shovels / Pickaxes)
+
+	Bu modellerde Handle yok, parcalar anchored ve birbirine kaynakli degil:
+	    Sopa   -- sap (en uzun parca, eksen buradan okunur)
+	    Kabza  -- tutma ucu
+	    Govde / Kenar -- bicak ya da kazma kafasi
+
+	Yapilan:
+	  1. Sapin ekseni ve KABZA YONU bulunur (Kabza parcalarinin ortalamasi).
+	  2. Kabzanin ucundan gripFromEnd kadar iceride gorunmez bir Handle konur;
+	     yukari yonu bladeDown'a gore kabzaya ya da bicaga bakar.
+	  3. Butun parcalar Handle'a kaynaklanir, anchored kalkar.
+	  4. Tool.Grip ayardaki ek kayma/donusle kurulur.
+
+	Model yapisi (klasorler) oldugu gibi tool'un icinde durur.
+]]
+local function eksenler(part: BasePart): { Vector3 }
+	local cf = part.CFrame
+	return { cf.RightVector, cf.UpVector, -cf.LookVector }
+end
+
+local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart?
+	Assets.stripScripts(model)
+
+	local parcalar: { BasePart } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			table.insert(parcalar, d)
+		end
+	end
+	if #parcalar == 0 then
+		model:Destroy()
+		return nil
+	end
+
+	-- Sap: "Sopa" adli parca, yoksa en uzun parca
+	local sopa = model:FindFirstChild("Sopa", true)
+	if not sopa or not sopa:IsA("BasePart") then
+		local enUzun = parcalar[1]
+		for _, p in parcalar do
+			if math.max(p.Size.X, p.Size.Y, p.Size.Z) > math.max(enUzun.Size.X, enUzun.Size.Y, enUzun.Size.Z) then
+				enUzun = p
+			end
+		end
+		sopa = enUzun
+	end
+	local sap = sopa :: BasePart
+
+	-- Sapin uzun ekseni
+	local boyutlar = { sap.Size.X, sap.Size.Y, sap.Size.Z }
+	local uzunIndex = 1
+	for i = 2, 3 do
+		if boyutlar[i] > boyutlar[uzunIndex] then
+			uzunIndex = i
+		end
+	end
+	local eksenListesi = eksenler(sap)
+	local eksen = eksenListesi[uzunIndex]
+	local merkez = sap.Position
+
+	-- Kabza yonu: Kabza klasorundeki parcalar eksenin hangi tarafinda
+	local kabza = model:FindFirstChild("Kabza", true)
+	local toplam = 0
+	if kabza then
+		for _, d in kabza:GetDescendants() do
+			if d:IsA("BasePart") then
+				toplam += (d.Position - merkez):Dot(eksen)
+			end
+		end
+	end
+	if toplam < 0 then
+		eksen = -eksen
+	end
+
+	-- Kabzanin ucu: eksen boyunca en uzaktaki parca
+	local uc = 0
+	for _, p in parcalar do
+		uc = math.max(uc, (p.Position - merkez):Dot(eksen))
+	end
+
+	local tutus = merkez + eksen * (uc - (ayar.gripFromEnd or 0.6))
+	local yukari = if ayar.bladeDown then eksen else -eksen
+
+	-- Yukari eksene en dik duran sap ekseni sag yon olur
+	local sag = eksenListesi[1]
+	local enDik = math.huge
+	for _, aday in eksenListesi do
+		local d = math.abs(aday:Dot(yukari))
+		if d < enDik then
+			enDik = d
+			sag = aday
+		end
+	end
+	sag = (sag - yukari * sag:Dot(yukari)).Unit
+
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.2, 0.2, 0.2)
+	handle.Transparency = 1
+	handle.CanCollide = false
+	handle.CanQuery = false
+	handle.CanTouch = false
+	handle.Massless = true
+	handle.CFrame = CFrame.fromMatrix(tutus, sag, yukari)
+	handle.Parent = tool
+
+	for _, p in parcalar do
+		-- Modelin icindeki "Handle" adli parcalar (aksesuar kalintisi) Roblox'u sasirtmasin
+		if p.Name == "Handle" then
+			p.Name = "HandleParca"
+		end
+		p.Anchored = false
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = handle
+		weld.Part1 = p
+		weld.Parent = handle
+	end
+
+	model.Parent = tool
+
+	local r = ayar.rotation or Vector3.zero
+	tool.Grip = CFrame.new(ayar.position or Vector3.zero)
+		* CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z))
+
+	return handle
+end
+
+--[[
 	Mutasyonsuz brainrotlardan gorsel efektleri kaldirir.
 
 	BrainrotPack modellerinin bazilarinda parcacik, iz ve isik efektleri
@@ -166,15 +298,16 @@ end
 ------------------------------------------------------------------
 -- KUREK
 ------------------------------------------------------------------
-function Tools.buildShovel(shovelId: string, skinId: string?): Tool
+function Tools.buildShovel(shovelId: string): Tool
 	local info = Shovels.get(shovelId :: any)
 
 	local tool = Instance.new("Tool")
 	tool.RequiresHandle = true
 
-	-- Assets > Shovels icinde model varsa o kullanilir
-	local model = Assets.shovelModel(info.id, skinId)
-	local handle = if model then attachModel(tool, model) else nil
+	-- Assets > Shovels > <ada> > <Ad><sira> modeli varsa o kullanilir
+	local model = Assets.shovelModel(info.id, info.level, info.island)
+	local handle = if model then serbestModeliBagla(tool, model, Assets.ToolGrips.shovel) else nil
+	local gercekModel = handle ~= nil
 
 	if not handle then
 		local body = Instance.new("Part")
@@ -205,15 +338,15 @@ function Tools.buildShovel(shovelId: string, skinId: string?): Tool
 	tool.ToolTip = `{info.displayName}  |  Lv.{info.level}`
 	tool:SetAttribute("ShovelId", info.id)
 
-	-- Model kendi gorunumunu getirmisse skin rengini zorlamayiz
-	if skinId and not model then
-		Skins.apply(tool, skinId)
-	end
-
 	setHoldAnimation(tool, Assets.Animations.shovelHold)
 
-	-- Seviye parlamasi skinden bagimsizdir; en sonda uygulanir
-	LevelGlow.apply(tool, info.level)
+	--[[
+		Seviye parlamasi yalnizca YEDEK (kodla uretilen) kurekte: gercek
+		modelin kendi renkleri ve efektleri var, Highlight onlari orterdi.
+	]]
+	if not gercekModel then
+		LevelGlow.apply(tool, info.level)
+	end
 
 	return tool
 end
@@ -222,8 +355,8 @@ end
 -- KAZMA  (maden kazmak icin; kurek gibi cantaya girmez, kazida ele verilir)
 ------------------------------------------------------------------
 --[[
-	Simdilik parcalardan kurulan basit bir kazma: tahta sap ve adanin
-	renginde bas. Assets'e model eklenince buraya baglanabilir.
+	Assets > Pickaxes > <kazma id> modeli varsa o kullanilir; yoksa
+	parcalardan kurulan basit kazma (tahta sap, adanin renginde bas).
 ]]
 function Tools.buildPickaxe(pickaxeId: string): Tool
 	local info = Ores.Pickaxes[pickaxeId]
@@ -231,6 +364,17 @@ function Tools.buildPickaxe(pickaxeId: string): Tool
 
 	local tool = Instance.new("Tool")
 	tool.RequiresHandle = true
+
+	local model = Assets.pickaxeModel(info.id)
+	local handle = if model then serbestModeliBagla(tool, model, Assets.ToolGrips.pickaxe) else nil
+	if handle then
+		tool.Name = Tools.PickaxeName
+		tool.CanBeDropped = false
+		tool.ToolTip = info.displayName
+		tool:SetAttribute("PickaxeId", info.id)
+		setHoldAnimation(tool, Assets.Animations.shovelHold)
+		return tool
+	end
 
 	local body = Instance.new("Part")
 	body.Name = "Handle"
@@ -268,13 +412,13 @@ end
 ------------------------------------------------------------------
 -- BRAINROT GPS (DEDEKTOR)
 ------------------------------------------------------------------
-function Tools.buildGPS(detectorId: string, skinId: string?): Tool
+function Tools.buildGPS(detectorId: string): Tool
 	local info = Detectors.get(detectorId :: any)
 
 	local tool = Instance.new("Tool")
 	tool.RequiresHandle = true
 
-	local model = Assets.detectorModel(info.id, skinId)
+	local model = Assets.detectorModel(info.id)
 	local handle = if model then attachModel(tool, model) else nil
 
 	--[[
@@ -322,18 +466,7 @@ function Tools.buildGPS(detectorId: string, skinId: string?): Tool
 	tool.ToolTip = `{info.displayName}  |  Lv.{info.level}  |  Luck x{info.luck}`
 	tool:SetAttribute("DetectorId", info.id)
 
-	if skinId and not model then
-		Skins.apply(tool, skinId)
-	end
-
-	--[[
-		TOP HER ZAMAN YANAR
-
-		Skins.apply butun parcalarin malzemesini skinin malzemesiyle
-		degistiriyor; topa dokunulsaydi anten ucu sonuk kalirdi. Skinin
-		RENGI korunur (istenen zaten sadece renk degisikligiydi), yalnizca
-		malzeme Neon'a geri alinir.
-	]]
+	-- Top her zaman yanar: paketten gelen modelde de anten ucu sonuk kalmasin
 	local ball = tool:FindFirstChild(GPSEfekt.BallName)
 	if ball and ball:IsA("BasePart") then
 		ball.Material = Enum.Material.Neon
@@ -712,73 +845,6 @@ function Tools.buildBrainrot(item: any): Tool
 	end
 
 	setHoldAnimation(tool, Assets.Animations.brainrotHold)
-
-	return tool
-end
-
-------------------------------------------------------------------
--- FUSE COIN
-------------------------------------------------------------------
-
---[[
-	Fuse makinesinden cikan coin.
-
-	Brainrot gibi cantada fiziksel bir Tool olarak durur: eline alip Fuse
-	makinesine koyabilir ya da bozdurucuya goturebilirsin.
-
-	Gorunumu tamamen koddan uretiliyor -- model paketine bagli degil:
-	kademe renginde parlayan yassi bir madeni para, uzerinde boyut kisaltmasi.
-]]
-function Tools.buildCoin(coin: any): Tool
-	local rarityInfo = Rarity.get(coin.rarity)
-	local conditionInfo = Condition.get(coin.condition)
-
-	local mutationInfo = Mutations.get(coin.mutation)
-	local special = Mutations.isSpecial(coin.mutation)
-
-	--[[
-		Coinin adi uc bilgiyi de tasir: "Gold Tiny Epic Coin".
-		Ipucunda yalnizca CARPANLAR var -- ne ise yaradigini anlatan bir
-		cumleye gerek yok, adi zaten her seyi soyluyor.
-	]]
-	local mutationTip = if special then `  |  {mutationInfo.displayName} {mutationInfo.multiplier}x` else ""
-
-	local tool = Instance.new("Tool")
-	tool.Name = Fuse.coinName(coin.rarity, coin.condition, coin.mutation)
-	tool.CanBeDropped = false
-	tool.RequiresHandle = true
-	tool.ToolTip = `{conditionInfo.shortName} {conditionInfo.multiplier}x{mutationTip}`
-	tool:SetAttribute("CoinUid", coin.uid)
-	tool:SetAttribute("Rarity", coin.rarity)
-	tool:SetAttribute("Condition", coin.condition)
-	tool:SetAttribute("Mutation", coin.mutation)
-
-	local body = Instance.new("Part")
-	body.Name = "Handle"
-	body.Shape = Enum.PartType.Cylinder
-	-- Yassi disk: X kalinlik, Y/Z cap
-	body.Size = Vector3.new(0.28, 2.2, 2.2)
-	body.Color = Fuse.coinColor(coin.rarity)
-	body.Material = Enum.Material.Neon
-	body.CanCollide = false
-	body.Massless = true
-	body.Parent = tool
-
-	--[[
-		Govde kademe renginde kalir (coinin kimligi odur), ISIK ise mutasyon
-		renginde yanar. Boylece Gold bir coin elde tasinirken uzaktan da
-		ayirt edilir, ama kademe rengi bozulmaz.
-	]]
-	local glow = Instance.new("PointLight")
-	glow.Name = "Parilti"
-	glow.Color = if special then mutationInfo.color else rarityInfo.color
-	glow.Range = 8
-	glow.Brightness = 2
-	glow.Parent = body
-
-	-- Divine coin sabit renk degil: sari <-> beyaz parildar
-	Divine.tagIf(body, coin.rarity)
-	Divine.tagIf(glow, coin.rarity)
 
 	return tool
 end

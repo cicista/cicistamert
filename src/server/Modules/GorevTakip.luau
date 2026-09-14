@@ -18,9 +18,9 @@
 	de dogru sayilir.
 
 	ODUL
-	Odul tamamen COIN: biten gorevin zorluguna gore bir coin cantaya girer
-	(Normal boy, mutasyonsuz). Coin Trader'da ayni kademeden bir brainrota
-	donusur.
+	Odul BRAINROT: biten gorevin zorluguna gore o kademeden kimligi ACIK bir
+	brainrot cantaya girer (Normal boy, mutasyonsuz, oyuncunun ulastigi
+	adaya gore). Coin sistemi kaldirildi.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,6 +29,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Gorevler = require(Shared:WaitForChild("Gorevler"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Condition = require(Shared:WaitForChild("Condition"))
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
@@ -108,15 +109,31 @@ function GorevTakip.gonder(player: Player): boolean
 	return true
 end
 
-local function odulVer(player: Player, def: Gorevler.QuestDef)
+local odulRng = Random.new()
+
+--[[
+	Gorev odulunu verir: kademesinden kimligi acik brainrot(lar).
+	Verilen brainrotlarin adlari doner (bildirim yazisi icin).
+]]
+function GorevTakip.odulVer(player: Player, def: Gorevler.QuestDef): { string }
 	local reward = Gorevler.reward(def)
+	local ada = PlayerData.reachedIsland(player)
+	local kademe = Brainrots.clampRarity(reward.rarity, ada)
+	local adlar: { string } = {}
 
 	for _ = 1, reward.count do
-		PlayerData.addCoin(player, reward.rarity, Condition.Default, "Normal")
+		local item = PlayerData.addBrainrot(player, kademe, Condition.Default, "Normal", ada)
+		if item then
+			local info = Brainrots.rollIsland(kademe :: any, ada, odulRng)
+			item.name = info.name
+			item.revealed = true
+			table.insert(adlar, info.name)
+		end
 	end
 
-	Envanter.syncCoins(player)
+	Envanter.syncBrainrots(player)
 	Envanter.push(player)
+	return adlar
 end
 
 --[[

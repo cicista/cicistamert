@@ -2,8 +2,7 @@
 --[[
 	IKI ASAMALI RULET  --  ortak cizim modulu
 
-	Hem Lucky Block carki hem Rot Slots ruleti bunu kullanir; ikisi de ayni
-	sekilde davransin diye mekanik tek yerde duruyor.
+	Lucky Block carki bunu kullanir; iki asamali cark mekanigi tek yerde duruyor.
 
 	AKIS
 	  1. ASAMA  Bolmelerde yalnizca "?" ve KADEME RENGI vardir. Ne cikacagi
@@ -76,9 +75,8 @@ export type Reel = {
 --[[
 	rarityCells nil ise 1. ASAMA ATLANIR ve dogrudan odul serdi doner.
 
-	Fuse coini boyle calisir: kademe coinin uzerinde zaten yaziyor, merak
-	edilen tek sey hangi brainrot oldugu. Kademeyi bir kez daha cevirmek
-	oyuncuyu bildigi bir seyi beklemeye zorlardi.
+	Kademesi onceden belli olan bir cark icin: kademeyi bir kez daha
+	cevirmek oyuncuyu bildigi bir seyi beklemeye zorlardi.
 ]]
 export type Plan = {
 	rarityCells: { string }?,

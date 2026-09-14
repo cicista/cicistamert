@@ -4,11 +4,8 @@
 
 	Tutulan veri:
 	  rot        -- ana para birimi (pasif gelirle artar)
-	  rotCoins   -- slot makinesi jetonu (kazida binde bir cikar)
 	  luckyBlocks -- acilmayi bekleyen Lucky Block'lar, TURE gore: { Normal = 2 }
 	  shovel     -- sahip olunan TEK kurek (yenisi alininca eskisi silinir)
-	  skins      -- acilmis skin id'leri
-	  equipped   -- { Shovel = skinId?, GPS = skinId? }
 	  inventory  -- envanterdeki brainrotlar (siyah veya acilmis)
 	  base       -- atanmis base indeksi (oturum boyunca)
 	  baseFloors -- base'te acilmis kat sayisi (1..3)
@@ -59,28 +56,6 @@ export type InventoryItem = {
 	island: string?,
 }
 
---[[
-	FUSE COIN
-
-	Fuse makinesinden cikan esya. Uc bilgisi var:
-	  rarity    -- bozdurulunca hangi kademeden brainrot cikacagi
-	  condition -- cikacak brainrot'un boyutu (coinin boyutu neyse o)
-	  mutation  -- cikacak brainrot'un mutasyonu; makineye konanlardan
-	               aktarilir (bkz. Shared > Fuse > Mutation)
-
-	Ucu de bozdurulunca AYNEN gecer: coin ne diyorsa brainrot o olur.
-
-	Brainrot gibi cantada fiziksel bir Tool olarak durur; makineye tekrar
-	konabilir (5 coin -> bir ust kademede 1 coin) ve o zaman kendi
-	mutasyonunu da aktarma sansi tasir.
-]]
-export type CoinItem = {
-	uid: string,
-	rarity: string,
-	condition: string,
-	mutation: string,
-}
-
 export type QuestState = {
 	cycle: number,
 	progress: { [string]: number },
@@ -89,9 +64,9 @@ export type QuestState = {
 
 export type Data = {
 	rot: number,
+	-- Ikinci para birimi (HUD'da Rot'un altinda)
 	rotCoins: number,
 	luckyBlocks: { [string]: number },
-	coins: { CoinItem },
 	--[[
 		KADEMELI ESYALAR
 
@@ -110,8 +85,6 @@ export type Data = {
 	-- Flyboard: kusanilan ve en yuksek (hic yoksa nil)
 	flyboard: string?,
 	flyboardMax: string?,
-	skins: { [string]: boolean },
-	equipped: { [string]: string? },
 	inventory: { InventoryItem },
 	base: number?,
 	-- Base gelisimi: kac kat acik ve toplam kac slot kullanilabilir
@@ -123,6 +96,9 @@ export type Data = {
 	rewardDay: number,
 	luckUntil: number,
 	luckBonus: number,
+	-- Level sistemi (bkz. Shared > Seviye)
+	level: number,
+	xp: number,
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
 	islands: number,
 	--[[
@@ -164,7 +140,6 @@ local function defaultData(): Data
 		rot = 0,
 		rotCoins = 0,
 		luckyBlocks = {},
-		coins = {},
 		shovel = Shovels.Default,
 		shovelMax = Shovels.Default,
 		detector = Detectors.Default,
@@ -173,8 +148,6 @@ local function defaultData(): Data
 		rodMax = nil,
 		flyboard = nil,
 		flyboardMax = nil,
-		skins = {},
-		equipped = {},
 		inventory = {},
 		base = nil,
 		-- 1. kat bedava gelir (bkz. Bases.Upgrade.startingSlots)
@@ -184,6 +157,8 @@ local function defaultData(): Data
 		rewardDay = 1,
 		luckUntil = 0,
 		luckBonus = 1,
+		level = 1,
+		xp = 0,
 		islands = 1,
 		reachedIsland = Brainrots.IslandOrder[1],
 		ores = {},
@@ -232,6 +207,7 @@ local function migrate(raw: any): Data
 	end
 
 	data.rot = tonumber(raw.rot) or 0
+	-- Eski kayitlardaki Rot Coin bakiyesi de geri gelir
 	data.rotCoins = tonumber(raw.rotCoins) or 0
 	--[[
 		Eski kayitlarda luckyBlocks tek bir SAYIYDI (tur ayrimi yoktu).
@@ -281,19 +257,41 @@ local function migrate(raw: any): Data
 	data.rewardDay = math.clamp(math.floor(tonumber(raw.rewardDay) or 1), 1, #Rewards.Days)
 	data.luckUntil = math.max(0, tonumber(raw.luckUntil) or 0)
 	data.luckBonus = math.max(1, tonumber(raw.luckBonus) or 1)
+	-- Level sisteminden onceki kayitlar Level 1'den baslar
+	data.level = math.clamp(math.floor(tonumber(raw.level) or 1), 1, 100)
+	data.xp = math.max(0, math.floor(tonumber(raw.xp) or 0))
 
 	-- Fuse coinleri (coin sisteminden onceki kayitlarda bu alan yok)
+	--[[
+		COIN SISTEMI KALDIRILDI  --  eski coinler brainrota cevrilir
+
+		Fuse makinesi ve gorevler artik coin degil brainrot veriyor, Coin
+		Trader da yok. Kayitta coin kalan oyuncu kaybetmesin: her coin,
+		kendi kademesinden (oyuncunun ulastigi adaya gore) kimligi ACIK bir
+		brainrota donusur; boyut ve mutasyon coinden aynen gecer.
+	]]
 	if type(raw.coins) == "table" then
 		for _, coin in raw.coins do
-			if type(coin) == "table" and type(coin.uid) == "string" and type(coin.rarity) == "string" then
-				table.insert(data.coins, {
-					uid = coin.uid,
-					rarity = coin.rarity,
-					condition = if type(coin.condition) == "string" then coin.condition else "Normal",
-					-- Mutasyon aktarimindan onceki coinler mutasyonsuz sayilir
-					mutation = if type(coin.mutation) == "string" then coin.mutation else "Normal",
-				})
+			if type(coin) ~= "table" or type(coin.rarity) ~= "string" then
+				continue
 			end
+
+			local kademe = Brainrots.clampRarity(coin.rarity, data.reachedIsland)
+			if #Brainrots.pool(kademe :: any) == 0 then
+				continue
+			end
+
+			local info = Brainrots.rollIsland(kademe :: any, data.reachedIsland, degistirmeRng)
+			table.insert(data.inventory, {
+				uid = if type(coin.uid) == "string" then coin.uid else PlayerData.newUid(),
+				rarity = kademe,
+				condition = if type(coin.condition) == "string" then coin.condition else "Normal",
+				mutation = if type(coin.mutation) == "string" then coin.mutation else "Normal",
+				name = info.name,
+				revealed = true,
+				slot = nil,
+				island = data.reachedIsland,
+			})
 		end
 	end
 
@@ -347,21 +345,7 @@ local function migrate(raw: any): Data
 		data.rodMax = data.rod
 	end
 
-	if type(raw.skins) == "table" then
-		for id, owned in raw.skins do
-			if type(id) == "string" and owned == true then
-				data.skins[id] = true
-			end
-		end
-	end
-
-	if type(raw.equipped) == "table" then
-		for tool, skinId in raw.equipped do
-			if type(tool) == "string" and type(skinId) == "string" then
-				data.equipped[tool] = skinId
-			end
-		end
-	end
+	-- Skin sistemi kaldirildi: eski kayitlardaki skins/equipped okunmuyor, sonraki kayitta duser
 
 	if type(raw.inventory) == "table" then
 		for _, item in raw.inventory do
@@ -633,51 +617,13 @@ function PlayerData.placedItems(player: Player): { InventoryItem }
 	return out
 end
 
-------------------------------------------------------------------
--- FUSE COINLERI
-------------------------------------------------------------------
-
-function PlayerData.addCoin(player: Player, rarity: string, condition: string, mutation: string?): CoinItem?
+-- Rot Coin ekler (eksi deger duser, sifirin altina inmez)
+function PlayerData.addRotCoins(player: Player, amount: number)
 	local data = cache[player]
 	if not data then
-		return nil
+		return
 	end
-
-	local coin: CoinItem = {
-		uid = PlayerData.newUid(),
-		rarity = rarity,
-		condition = condition,
-		mutation = mutation or "Normal",
-	}
-	table.insert(data.coins, coin)
-	return coin
-end
-
-function PlayerData.findCoin(player: Player, uid: string): CoinItem?
-	local data = cache[player]
-	if not data then
-		return nil
-	end
-	for _, coin in data.coins do
-		if coin.uid == uid then
-			return coin
-		end
-	end
-	return nil
-end
-
-function PlayerData.removeCoin(player: Player, uid: string): CoinItem?
-	local data = cache[player]
-	if not data then
-		return nil
-	end
-	for index, coin in data.coins do
-		if coin.uid == uid then
-			table.remove(data.coins, index)
-			return coin
-		end
-	end
-	return nil
+	data.rotCoins = math.max(0, data.rotCoins + amount)
 end
 
 function PlayerData.addRot(player: Player, amount: number)
@@ -733,14 +679,6 @@ function PlayerData.luckyBlockCount(player: Player, tierId: string): number
 		return 0
 	end
 	return data.luckyBlocks[tierId] or 0
-end
-
-function PlayerData.addRotCoins(player: Player, amount: number)
-	local data = cache[player]
-	if not data then
-		return
-	end
-	data.rotCoins = math.max(0, data.rotCoins + amount)
 end
 
 ------------------------------------------------------------------

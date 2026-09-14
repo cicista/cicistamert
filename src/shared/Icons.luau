@@ -69,7 +69,8 @@ export type IconEntry = { any }
 local Map: { [string]: IconEntry } = {
 	-- Para birimleri
 	rot = { "Cash", "CashIcon" },
-	rotCoin = { "Coins", "CoinIcon" },
+	-- Rot Coin: oyunun kendi ikonu (ReplicatedStorage > Assets > Icons > rotcoin_icon)
+	rotCoin = { "Assets", "rotcoin_icon" },
 
 	-- Mevcut sistemler
 	--[[
@@ -90,7 +91,6 @@ local Map: { [string]: IconEntry } = {
 	settings = { "Menus", "Settings" },
 	seller = { "Cash", "CashBag" },
 	detective = { "Misc", "Question" },
-	slotMachine = { "RNG", "Wheel" },
 	luckyBlock = { "RNG", "? Box" },
 	upgrade = { "Arrows", "GoldUpgrade" },
 	lockClosed = { "Misc", "LockClosed" },

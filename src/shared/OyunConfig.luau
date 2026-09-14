@@ -10,7 +10,6 @@
 	    Shared > Rarity        -- kademeler, isik rengi, saniyelik gelir
 	    Shared > Condition     -- boyut carpanlari (Tiny..Huge)
 	    Shared > Shovels       -- 5 kurek + minigame zorlugu
-	    Shared > Skins         -- slot makinesi skinleri
 	    Shared > Bases         -- base ve slot duzeni
 ]]
 
@@ -81,8 +80,6 @@ Config.Admin = {
 	keyCode = Enum.KeyCode.F2,
 	-- "Rot ver" butonunun verecegi miktar (1000 milyar = 1 trilyon)
 	rotGrant = 1_000_000_000_000,
-	-- "Rot Coin ver" butonunun verecegi miktar
-	coinGrant = 50,
 }
 
 ------------------------------------------------------------------
@@ -91,8 +88,7 @@ Config.Admin = {
 -- Ikisi de haritada elle konur; script yalnizca ad ile arar. Model
 -- bulunamazsa o noktaya basit bir tezgah kurulur (diger NPC'lerdeki gibi).
 --
---   Makine  : ayni kademeden 5 esya alir, bir ust kademede coin verir
---   Bozducu : coini alir, o kademede brainrot verir
+--   Makine  : 3 ayni brainrot alir, %25 ihtimalle bir ust kademe brainrot verir
 ------------------------------------------------------------------
 Config.Fuse = {
 	-- MAKINE
@@ -111,25 +107,6 @@ Config.Fuse = {
 		("Same Rarity Brainrot 0/5") tetiklemeden gorsun diye.
 	]]
 	machineRange = 18,
-
-	-- COIN BOZDURUCU
-	openerName = "CoinBozdurucu",
-	openerAltName = "CoinTrader",
-	openerPromptText = "Trade",
-	openerPromptSubText = "Coin Trader",
-	openerPromptDistance = 12,
-	openerSpawnPosition = Vector3.new(-44, 5, -56),
-}
-
-------------------------------------------------------------------
--- SLOT MAKINESI
-------------------------------------------------------------------
-Config.SlotMachine = {
-	name = "SlotMakinesi",
-	promptText = "Spin",
-	promptSubText = "Rot Slots",
-	promptDistance = 10,
-	spawnPosition = Vector3.new(-24, 5, -40),
 }
 
 ------------------------------------------------------------------
@@ -710,7 +687,6 @@ Config.WhirlVFX = {
 		Gizli = 2.3,
 		Infernal = 2.6,
 		Abyssal = 3.0,
-		RotCoin = 0.8,
 		LuckyBlock = 1,
 	},
 

@@ -68,10 +68,20 @@ local function ver(player: Player, day: number)
 		Envanter.syncLuckyBlocks(player)
 	end
 
-	-- Ekrandaki Rot gostergesi ve envanter bayat kalmasin
+	-- Bazi gunlerde ana odulun yaninda Rot Coin de var
+	local coin = odul.rotCoins or 0
+	if coin > 0 then
+		PlayerData.addRotCoins(player, coin)
+	end
+
+	-- Ekrandaki Rot/Rot Coin gostergesi ve envanter bayat kalmasin
 	Envanter.push(player)
 
-	Bildirim:FireClient(player, `Day {day} reward: {Rewards.label(day)}!`, Rewards.color(day))
+	local yazi = Rewards.label(day)
+	if coin > 0 then
+		yazi ..= ` + {coin} Rot Coin`
+	end
+	Bildirim:FireClient(player, `Day {day} reward: {yazi}!`, Rewards.color(day))
 end
 
 local function al(player: Player)

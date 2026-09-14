@@ -2,32 +2,26 @@
 	Fuse  (LocalScript)
 	Yeri: StarterPlayer > StarterPlayerScripts > Fuse
 
-	Uc ekran:
+	1. MAKINE PENCERESI
+	   Makinede E'ye basinca acilir:
 
-	1. MAKINE PANELI  (alt orta)
-	   Makineye yaklasinca kendiliginden gorunur. Oyuncu ne yapmasi
-	   gerektigini buradan okur:
+	       [ Fuse Machine                         X ]
+	         Bring 3 same Brainrots to Fuse
+	         25% chance for a better Brainrot!
+	       [ slot ]      [ slot ]      [ slot ]
+	           \____________ | ____________/
+	                  [ sonuc kutusu ]
+	          If it fails, all 3 brainrots are lost
+	              [ 2 Brainrot Left / FUSE! ]
 
-	       Same Rarity Brainrot   3/5
-	       Rare  ->  EPIC COIN
-	       %60 Tiny   %20 Large   %20 Huge
-	       %20 Gold   %10 Diamond
-	       E ile koy   |   F ile geri al   |   18sn
+	   Bos slotun "+" dugmesi secim listesini acar. Dolu slotta brainrotun
+	   resmi, adi, kademesi ve "Return" dugmesi durur. Kurallar ve oranlar
+	   sunucuda (bkz. ServerScriptService > Fuse, Shared > Fuse).
 
-	   Kademe, boyut ve mutasyon sanslari her esya konuldugunda tazelenir.
-	   Ekranda yazan oran cekilisin GERCEK orani: arayuz de sunucu da
-	   Shared > Fuse icindeki ayni fonksiyonlari kullaniyor.
-
-	2. BIRLESME GOSTERISI  (tam ekran)
-	   5. esya konuldugunda oynar: iceri konan esyalarin renginde ruhlar
-	   donerek merkeze kapanir, beyaz bir patlamada birlesir, yeni kademenin
-	   renginde yildizlar dagilir ve coinin adi okunur. Coin cantaya ancak
-	   gosteri bitince duser.
-
-	3. COIN BOZDURUCU  (orta panel)
-	   Coin listesi; birine tiklayinca tek asamali cark doner ve o kademeden
-	   cikan brainrot aciga cikar. Coinin boyutu neyse brainrot da o boyutta
-	   gelir, o yuzden cark yalnizca ISMI merak ettirir.
+	2. BIRLESME GOSTERISI
+	   FUSE'a basinca: ruhlar donerek merkeze kapanir ve parlar. Basarida
+	   yeni kademenin renginde patlama ve kazanilan brainrotun adi; basarisizlikta
+	   cekirdek sonup kaybolur.
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -49,16 +43,15 @@ local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
-local Rulet = require(script.Parent:WaitForChild("Rulet"))
+local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
 
 local FuseDurum = Net.event("FuseDurum")
 local FuseGeriAl = Net.event("FuseGeriAl")
 local FuseSonuc = Net.event("FuseSonuc")
-local CoinAc = Net.event("CoinAc")
-local CoinBozdur = Net.event("CoinBozdur")
-local CoinSonuc = Net.event("CoinSonuc")
 local FuseSecim = Net.event("FuseSecim")
 local FuseEkle = Net.event("FuseEkle")
+local FuseCikar = Net.event("FuseCikar")
+local FuseBaslat = Net.event("FuseBaslat")
 
 local TAKE_BACK = "FuseGeriAlEylemi"
 
@@ -69,266 +62,603 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
 ------------------------------------------------------------------
--- 1. MAKINE DURUM PANELI
---
--- Bu panel ARTIK EKRANDA TEK BASINA DURMUYOR: makine penceresinin SAG
--- SUTUNU olarak asagida yeniden konumlaniyor (bkz. MAKINE PENCERESI).
--- Yani makineye yaklasmak hicbir sey acmiyor; pencere ancak E ile
--- girilince cikiyor ve koydugun esyalar ile olasiliklari orada gorursun.
+-- RENKLER VE OLCULER
 ------------------------------------------------------------------
-local machinePanel = Instance.new("Frame")
-machinePanel.Name = "MakinePaneli"
-machinePanel.AnchorPoint = Vector2.new(0.5, 1)
-machinePanel.Position = UDim2.new(0.5, 0, 1, -150)
-machinePanel.Size = UDim2.fromOffset(460, 172)
-machinePanel.BackgroundColor3 = UI.Colors.panel
-machinePanel.BackgroundTransparency = 0.1
-machinePanel.BorderSizePixel = 0
-machinePanel.Visible = false
-machinePanel.Parent = screen
-UI.corner(machinePanel, 12)
+local W, H = 640, 548
+local BASLIK_BOY = 58
 
-local machineStroke = UI.stroke(machinePanel, UI.Colors.accent, 2)
+local MOR_A = Color3.fromRGB(150, 60, 230)
+local MOR_B = Color3.fromRGB(235, 70, 190)
+local GOVDE = Color3.fromRGB(44, 42, 66)
+local KART = Color3.fromRGB(58, 56, 84)
+local YESIL = Color3.fromRGB(70, 210, 80)
+local KIRMIZI = Color3.fromRGB(235, 60, 60)
+local SIYAH = Color3.fromRGB(0, 0, 0)
+local BORU_DOLU = Color3.fromRGB(232, 240, 196)
+local BORU_BOS = Color3.fromRGB(34, 36, 48)
 
-UI.text({
-	text = "FUSE MACHINE",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.accent,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 20),
-	position = UDim2.fromOffset(10, 8),
-	parent = machinePanel,
-})
+local SLOT_EN, SLOT_BOY = 180, 132
+local SLOT_Y = 128
+local SLOT_X = { 30, 230, 430 }
 
--- "Same Rarity Brainrot  3/5"
-local headline = UI.text({
-	text = "",
-	size = UI.Sizes.heading,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 30),
-	position = UDim2.fromOffset(10, 42),
-	parent = machinePanel,
-})
-
--- "Rare  ->  EPIC COIN"
-local resultLine = UI.text({
-	text = "",
-	size = UI.Sizes.body,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 48),
-	position = UDim2.fromOffset(10, 80),
-	parent = machinePanel,
-})
-
--- "%60 Tiny   %20 Large   %20 Huge"
-local sizeLine = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.fromOffset(10, 140),
-	parent = machinePanel,
-})
-
--- "%20 Gold   %10 Diamond" -- iceride mutasyonlu esya varsa
-local mutationLine = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.fromOffset(10, 168),
-	parent = machinePanel,
-})
-
-local hintLine = UI.text({
-	text = "",
-	size = UI.Sizes.tiny,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 20),
-	position = UDim2.fromOffset(10, 202),
-	parent = machinePanel,
-})
-
-local nearMachine = false
-
--- Birlesme gosterisi oynuyor mu. Alt panel gosteri sirasinda gizlenir;
--- FuseDurum isleyicisi bunu okudugu icin burada, ondan ONCE bildirilir.
-local merging = false
+local KUTU_EN, KUTU_BOY = 172, 116
+local KUTU_X = (W - KUTU_EN) / 2
+local KUTU_Y = 330
 
 ------------------------------------------------------------------
--- MAKINE PENCERESI  (esya secimi)
---
--- Esyayi ELDE TUTMAK yok: E'ye basinca bu pencere acilir ve makineye
--- konabilecek her sey listelenir. Tiklanan esya makineye girer.
---
--- Liste sunucudan geliyor (FuseDurum.items) ve her eklemeden sonra
--- tazeleniyor; makinede bir kademe varsa sunucu zaten yalnizca O kademeyi
--- yolluyor, yani kabul edilmeyecek satir listede gorunmez.
+-- PENCERE
 ------------------------------------------------------------------
-local konabilir: { any } = {}
+local pencere = UI.panel(screen, UDim2.fromOffset(W, H), "FuseMakinesi")
+pencere.BackgroundColor3 = GOVDE
+pencere.ClipsDescendants = true
+UI.stroke(pencere, SIYAH, 4)
 
-local secimPenceresi = UI.panel(screen, UDim2.fromOffset(880, 470), "MakineSecimi")
+-- Mor-pembe baslik seridi
+local baslik = Instance.new("Frame")
+baslik.Name = "Baslik"
+baslik.Size = UDim2.new(1, 0, 0, BASLIK_BOY)
+baslik.BackgroundColor3 = Color3.new(1, 1, 1)
+baslik.BorderSizePixel = 0
+baslik.Parent = pencere
+UI.corner(baslik, 14)
+
+local baslikGecis = Instance.new("UIGradient")
+baslikGecis.Color = ColorSequence.new(MOR_A, MOR_B)
+baslikGecis.Parent = baslik
+
+-- Baslik seridinin alt koselerini duz gostermek icin alt yariyi kapatan serit
+local baslikAlt = Instance.new("Frame")
+baslikAlt.Size = UDim2.new(1, 0, 0, 16)
+baslikAlt.Position = UDim2.new(0, 0, 1, -16)
+baslikAlt.BackgroundColor3 = Color3.new(1, 1, 1)
+baslikAlt.BorderSizePixel = 0
+baslikAlt.Parent = baslik
+local baslikAltGecis = baslikGecis:Clone()
+baslikAltGecis.Parent = baslikAlt
 
 UI.text({
 	text = "Fuse Machine",
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = secimPenceresi,
+	color = Color3.new(1, 1, 1),
+	frameSize = UDim2.new(1, -90, 1, 0),
+	position = UDim2.fromOffset(20, 0),
+	parent = baslik,
+	name = "Yazi",
 })
 
-local secimOzet = UI.text({
+UI.closeButton(pencere).MouseButton1Click:Connect(function()
+	pencere.Visible = false
+end)
+
+local yonerge = UI.text({
+	text = "",
+	size = UI.Sizes.heading,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -20, 0, 30),
+	position = UDim2.fromOffset(10, BASLIK_BOY + 10),
+	parent = pencere,
+	name = "Yonerge",
+})
+yonerge.RichText = true
+
+local sansYazi = UI.text({
+	text = "",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = YESIL,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -20, 0, 24),
+	position = UDim2.fromOffset(10, BASLIK_BOY + 40),
+	parent = pencere,
+	name = "Sans",
+})
+
+-- Slot resimleri ve sonuc kutusu siluetinin 3B onizlemeleri
+local onizleme = BrainrotOnizleme.seritPencere(pencere)
+
+------------------------------------------------------------------
+-- BORULAR  (slotlardan sonuc kutusuna)
+------------------------------------------------------------------
+type Boru = { parcalar: { Frame }, kapak: Frame }
+local borular: { Boru } = {}
+
+local function boruParca(x: number, y: number, en: number, boy: number): Frame
+	local p = Instance.new("Frame")
+	p.Position = UDim2.fromOffset(x, y)
+	p.Size = UDim2.fromOffset(en, boy)
+	p.BackgroundColor3 = BORU_BOS
+	p.BorderSizePixel = 0
+	p.Parent = pencere
+	UI.stroke(p, SIYAH, 3)
+	return p
+end
+
+do
+	local kalinlik = 20
+	local ustY = SLOT_Y + SLOT_BOY
+	local ortaY = KUTU_Y + KUTU_BOY / 2 - kalinlik / 2
+
+	for i = 1, 3 do
+		local merkezX = SLOT_X[i] + SLOT_EN / 2
+		local parcalar: { Frame } = {}
+
+		if i == 2 then
+			table.insert(parcalar, boruParca(merkezX - kalinlik / 2, ustY, kalinlik, KUTU_Y - ustY))
+		else
+			table.insert(parcalar, boruParca(merkezX - kalinlik / 2, ustY, kalinlik, ortaY - ustY + kalinlik))
+			local kutuKenar = if i == 1 then KUTU_X else KUTU_X + KUTU_EN
+			local solX = math.min(merkezX - kalinlik / 2, kutuKenar)
+			local sagX = math.max(merkezX + kalinlik / 2, kutuKenar)
+			table.insert(parcalar, boruParca(solX, ortaY, sagX - solX, kalinlik))
+		end
+
+		-- Slotun altindaki yesil baglanti kapagi
+		local kapak = Instance.new("Frame")
+		kapak.Position = UDim2.fromOffset(merkezX - 26, ustY - 4)
+		kapak.Size = UDim2.fromOffset(52, 10)
+		kapak.BackgroundColor3 = YESIL
+		kapak.BorderSizePixel = 0
+		kapak.ZIndex = 3
+		kapak.Parent = pencere
+		UI.corner(kapak, 4)
+		UI.stroke(kapak, SIYAH, 2)
+
+		borular[i] = { parcalar = parcalar, kapak = kapak }
+	end
+end
+
+------------------------------------------------------------------
+-- SONUC KUTUSU
+------------------------------------------------------------------
+local kutu = Instance.new("Frame")
+kutu.Name = "Sonuc"
+kutu.Position = UDim2.fromOffset(KUTU_X, KUTU_Y)
+kutu.Size = UDim2.fromOffset(KUTU_EN, KUTU_BOY)
+kutu.BackgroundColor3 = KART
+kutu.BorderSizePixel = 0
+kutu.ZIndex = 2
+kutu.Parent = pencere
+UI.corner(kutu, 8)
+local kutuKontur = UI.stroke(kutu, SIYAH, 3)
+
+-- Silueti tasiyan alan; ustune buyuk "?" biner
+local kutuResim = Instance.new("Frame")
+kutuResim.Name = "Resim"
+kutuResim.Position = UDim2.fromOffset(6, 6)
+kutuResim.Size = UDim2.new(1, -12, 1, -34)
+kutuResim.BackgroundTransparency = 1
+kutuResim.ZIndex = 2
+kutuResim.Parent = kutu
+
+local kutuSoru = UI.text({
+	text = "?",
+	size = UI.Sizes.huge,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, 0, 1, -28),
+	parent = kutu,
+	name = "Soru",
+})
+kutuSoru.ZIndex = 5
+
+local kutuYazi = UI.text({
 	text = "",
 	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 50),
-	parent = secimPenceresi,
+	font = UI.Fonts.bold,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -8, 0, 22),
+	position = UDim2.new(0, 4, 1, -26),
+	parent = kutu,
+	name = "Yazi",
+})
+kutuYazi.ZIndex = 5
+
+local uyari = UI.text({
+	text = "",
+	size = UI.Sizes.tiny,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(255, 120, 120),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -20, 0, 18),
+	position = UDim2.fromOffset(10, KUTU_Y + KUTU_BOY + 6),
+	parent = pencere,
+	name = "Uyari",
 })
 
-UI.closeButton(secimPenceresi).MouseButton1Click:Connect(function()
-	secimPenceresi.Visible = false
+------------------------------------------------------------------
+-- ALT DUGME  ("2 Brainrot Left" / "FUSE!")
+------------------------------------------------------------------
+local fuseDugme = Instance.new("TextButton")
+fuseDugme.Name = "Fuse"
+fuseDugme.AnchorPoint = Vector2.new(0.5, 1)
+fuseDugme.Position = UDim2.new(0.5, 0, 1, -16)
+fuseDugme.Size = UDim2.fromOffset(300, 58)
+fuseDugme.BackgroundColor3 = YESIL
+fuseDugme.AutoButtonColor = false
+fuseDugme.Text = ""
+fuseDugme.BorderSizePixel = 0
+fuseDugme.Parent = pencere
+UI.corner(fuseDugme, 8)
+UI.stroke(fuseDugme, SIYAH, 3)
+
+local fuseYazi = UI.text({
+	text = "",
+	size = UI.Sizes.title,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromScale(1, 1),
+	parent = fuseDugme,
+	name = "Yazi",
+})
+
+local fuseOlcek = Instance.new("UIScale")
+fuseOlcek.Parent = fuseDugme
+local fuseNabiz: Tween? = nil
+
+local makineDolu = false
+
+fuseDugme.MouseButton1Click:Connect(function()
+	if makineDolu then
+		FuseBaslat:FireServer()
+	end
+end)
+
+------------------------------------------------------------------
+-- SECIM LISTESI  ("+" ile acilir, pencerenin ustune biner)
+------------------------------------------------------------------
+local secim = Instance.new("Frame")
+secim.Name = "Secim"
+secim.Position = UDim2.fromOffset(0, BASLIK_BOY)
+secim.Size = UDim2.new(1, 0, 1, -BASLIK_BOY)
+secim.BackgroundColor3 = GOVDE
+secim.BorderSizePixel = 0
+secim.ZIndex = 20
+secim.Visible = false
+secim.Parent = pencere
+
+local secimBaslik = UI.text({
+	text = "Choose a Brainrot",
+	size = UI.Sizes.heading,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	frameSize = UDim2.new(1, -150, 0, 30),
+	position = UDim2.fromOffset(20, 12),
+	parent = secim,
+})
+secimBaslik.ZIndex = 21
+
+local geriDugme = UI.button(secim, "Back", UDim2.fromOffset(110, 36), KIRMIZI)
+geriDugme.Position = UDim2.new(1, -126, 0, 10)
+geriDugme.ZIndex = 21
+UI.stroke(geriDugme, SIYAH, 2)
+geriDugme.MouseButton1Click:Connect(function()
+	secim.Visible = false
 end)
 
 local secimListe = Instance.new("ScrollingFrame")
 secimListe.Name = "Liste"
--- SOL SUTUN: makineye konabilecek esyalar
-secimListe.Position = UDim2.fromOffset(14, 82)
-secimListe.Size = UDim2.new(0.5, -20, 1, -96)
+secimListe.Position = UDim2.fromOffset(16, 58)
+secimListe.Size = UDim2.new(1, -32, 1, -74)
 secimListe.BackgroundTransparency = 1
 secimListe.BorderSizePixel = 0
-secimListe.ScrollBarThickness = 5
-secimListe.ScrollBarImageColor3 = UI.Colors.panelLight
+secimListe.ScrollBarThickness = 6
 secimListe.CanvasSize = UDim2.new()
 secimListe.AutomaticCanvasSize = Enum.AutomaticSize.Y
-secimListe.Parent = secimPenceresi
+secimListe.ZIndex = 21
+secimListe.Parent = secim
 
 local secimDizilim = Instance.new("UIListLayout")
 secimDizilim.Padding = UDim.new(0, 8)
 secimDizilim.SortOrder = Enum.SortOrder.LayoutOrder
 secimDizilim.Parent = secimListe
 
---[[
-	SAG SUTUN: MAKINENIN DURUMU
+local secimOnizleme = BrainrotOnizleme.pencere(secimListe, secim)
 
-	Bu panel eskiden makineye yaklasinca ekranin ALTINDA kendiliginden
-	beliriyordu. Artik ayri bir pencere degil: ayni pencerenin sag yarisi.
-	Yani makineye girmeden hicbir sey acilmiyor, girince de koydugun
-	esyalari ve olasiliklari solda secim yaparken yaninda goruyorsun.
-]]
-machinePanel.AnchorPoint = Vector2.new(0, 0)
-machinePanel.Position = UDim2.new(0.5, 6, 0, 82)
-machinePanel.Size = UDim2.new(0.5, -20, 1, -96)
-machinePanel.BackgroundTransparency = 0
-machinePanel.BackgroundColor3 = UI.Colors.panelLight
-machinePanel.Visible = true
-machinePanel.Parent = secimPenceresi
+------------------------------------------------------------------
+-- DURUM
+------------------------------------------------------------------
+local durum: any = { slots = {}, items = {}, required = Fuse.Required, chance = Fuse.SuccessChance }
+local sonImza = ""
+local nearMachine = false
+local merging = false
 
--- Makinedekileri envantere geri al (F tusunun dugme karsiligi)
-local geriAlButon = UI.button(machinePanel, "Take Back", UDim2.new(1, -24, 0, 38), UI.Colors.panel)
-geriAlButon.AnchorPoint = Vector2.new(0.5, 1)
-geriAlButon.Position = UDim2.new(0.5, 0, 1, -12)
-UI.stroke(geriAlButon, Color3.fromRGB(0, 0, 0), 2)
+local function detayYazisi(entry: any): string
+	local parca = `{Condition.get(entry.condition).shortName}`
+	if Mutations.isSpecial(entry.mutation) then
+		parca ..= `  {Mutations.get(entry.mutation).displayName}`
+	end
+	return parca
+end
 
-geriAlButon.MouseButton1Click:Connect(function()
-	FuseGeriAl:FireServer()
-end)
+------------------------------------------------------------------
+-- SLOT KARTLARI
+------------------------------------------------------------------
+local slotKartlari: { Frame } = {}
 
-UI.hover(geriAlButon)
+local function slotKur(i: number, entry: any?)
+	local eski = slotKartlari[i]
+	if eski then
+		eski:Destroy()
+	end
 
-local function secimListesiniCiz()
+	local kart = Instance.new("Frame")
+	kart.Name = `Slot{i}`
+	kart.Position = UDim2.fromOffset(SLOT_X[i], SLOT_Y)
+	kart.Size = UDim2.fromOffset(SLOT_EN, SLOT_BOY)
+	kart.BackgroundColor3 = KART
+	kart.BorderSizePixel = 0
+	kart.ZIndex = 4
+	kart.Parent = pencere
+	UI.corner(kart, 8)
+	UI.stroke(kart, SIYAH, 3)
+	slotKartlari[i] = kart
+
+	local boru = borular[i]
+	for _, p in boru.parcalar do
+		p.BackgroundColor3 = if entry then BORU_DOLU else BORU_BOS
+	end
+
+	if entry then
+		local renk = Rarity.color(entry.rarity)
+
+		local ad = UI.text({
+			text = entry.name,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = Color3.new(1, 1, 1),
+			frameSize = UDim2.new(1, -12, 0, 20),
+			position = UDim2.fromOffset(8, 6),
+			parent = kart,
+		})
+		ad.TextTruncate = Enum.TextTruncate.AtEnd
+		ad.ZIndex = 6
+
+		local kademe = UI.text({
+			text = Rarity.displayName(entry.rarity),
+			size = UI.Sizes.tiny,
+			font = UI.Fonts.bold,
+			color = renk,
+			frameSize = UDim2.fromOffset(90, 16),
+			position = UDim2.fromOffset(8, 26),
+			parent = kart,
+		})
+		kademe.ZIndex = 6
+		UI.rarityStyle(kademe, entry.rarity)
+
+		local detay = UI.text({
+			text = detayYazisi(entry),
+			size = UI.Sizes.tiny,
+			color = UI.Colors.textDim,
+			frameSize = UDim2.fromOffset(90, 16),
+			position = UDim2.fromOffset(8, 44),
+			parent = kart,
+		})
+		detay.ZIndex = 6
+
+		local resim = Instance.new("Frame")
+		resim.Name = "Resim"
+		resim.Position = UDim2.fromOffset(84, 26)
+		resim.Size = UDim2.fromOffset(92, 100)
+		resim.BackgroundTransparency = 1
+		resim.ZIndex = 5
+		resim.Parent = kart
+		onizleme.ekle(resim, { name = entry.name, mutation = entry.mutation, revealed = true })
+
+		local geri = UI.button(kart, "Return", UDim2.fromOffset(84, 30), YESIL)
+		geri.Position = UDim2.fromOffset(8, SLOT_BOY - 38)
+		geri.ZIndex = 7
+		UI.stroke(geri, SIYAH, 2)
+		local geriYazi = geri:FindFirstChild("Label", true)
+		if geriYazi and geriYazi:IsA("TextLabel") then
+			geriYazi.ZIndex = 8
+		end
+		geri.MouseButton1Click:Connect(function()
+			FuseCikar:FireServer(entry.uid)
+		end)
+	else
+		local bos = UI.text({
+			text = "Empty",
+			size = UI.Sizes.heading,
+			font = UI.Fonts.bold,
+			color = Color3.new(1, 1, 1),
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, 0, 0, 30),
+			position = UDim2.fromOffset(0, 12),
+			parent = kart,
+		})
+		bos.ZIndex = 6
+
+		local ekle = UI.button(kart, "+", UDim2.fromOffset(120, 50), YESIL)
+		ekle.AnchorPoint = Vector2.new(0.5, 0)
+		ekle.Position = UDim2.new(0.5, 0, 0, 58)
+		ekle.ZIndex = 7
+		UI.stroke(ekle, SIYAH, 3)
+		local arti = ekle:FindFirstChild("Label", true)
+		if arti and arti:IsA("TextLabel") then
+			arti.TextSize = 40
+			arti.ZIndex = 8
+		end
+		ekle.MouseButton1Click:Connect(function()
+			secim.Visible = true
+		end)
+	end
+end
+
+------------------------------------------------------------------
+-- SECIM LISTESINI CIZ
+------------------------------------------------------------------
+local function secimCiz()
+	secimOnizleme.temizle()
 	for _, child in secimListe:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
 
-	if #konabilir == 0 then
-		UI.text({
-			text = "Nothing you can fuse right now.",
+	local items = durum.items or {}
+	secimBaslik.Text = if durum.name then `Add another {durum.name}` else "Choose a Brainrot"
+
+	if #items == 0 then
+		local yok = UI.text({
+			text = if durum.name
+				then `You have no more {durum.name} to add.`
+				else "No brainrots you can fuse. You need identified brainrots that are not on your base.",
 			size = UI.Sizes.small,
 			color = UI.Colors.textDim,
-			frameSize = UDim2.new(1, -6, 0, 40),
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, -10, 0, 44),
 			parent = secimListe,
+			wrapped = true,
 		})
+		yok.ZIndex = 22
 		return
 	end
 
-	for index, item in konabilir do
+	for index, item in items do
 		local renk = Rarity.color(item.rarity)
-		local ad = item.name or `Unidentified {Rarity.displayName(item.rarity)}`
-		local altYazi = `{Rarity.displayName(item.rarity)}  --  {Condition.get(item.condition).shortName}`
+		local yeter = (item.owned or 0) + #(durum.slots or {}) >= (durum.required or Fuse.Required)
 
-		if Mutations.isSpecial(item.mutation) then
-			altYazi ..= `  --  {Mutations.get(item.mutation).displayName}`
-		end
+		local satir = Instance.new("TextButton")
+		satir.Name = item.uid
+		satir.Text = ""
+		satir.AutoButtonColor = false
+		satir.Size = UDim2.new(1, -8, 0, 62)
+		satir.BackgroundColor3 = KART
+		satir.BorderSizePixel = 0
+		satir.LayoutOrder = index
+		satir.ZIndex = 22
+		satir.Parent = secimListe
+		UI.corner(satir, 8)
+		UI.stroke(satir, renk, 2)
 
-		local row = Instance.new("TextButton")
-		row.Name = item.uid
-		row.Text = ""
-		row.AutoButtonColor = false
-		row.Size = UDim2.new(1, -6, 0, 52)
-		row.BackgroundColor3 = UI.Colors.panelLight
-		row.BorderSizePixel = 0
-		row.LayoutOrder = index
-		row.Parent = secimListe
-		UI.corner(row, 10)
-		UI.stroke(row, renk, 1)
+		local resim = Instance.new("Frame")
+		resim.Position = UDim2.fromOffset(6, 6)
+		resim.Size = UDim2.fromOffset(50, 50)
+		resim.BackgroundColor3 = renk:Lerp(SIYAH, 0.5)
+		resim.BorderSizePixel = 0
+		resim.ClipsDescendants = true
+		resim.ZIndex = 22
+		resim.Parent = satir
+		UI.corner(resim, 6)
+		secimOnizleme.ekle(resim, { name = item.name, mutation = item.mutation, revealed = true })
 
-		UI.text({
-			text = ad,
+		local ad = UI.text({
+			text = item.name,
 			size = UI.Sizes.body,
 			font = UI.Fonts.bold,
-			color = renk,
-			frameSize = UDim2.new(1, -110, 0, 22),
-			position = UDim2.fromOffset(14, 6),
-			parent = row,
+			color = Color3.new(1, 1, 1),
+			frameSize = UDim2.new(1, -200, 0, 24),
+			position = UDim2.fromOffset(66, 8),
+			parent = satir,
 		})
+		ad.ZIndex = 23
 
-		UI.text({
-			text = altYazi,
-			size = UI.Sizes.tiny,
-			color = UI.Colors.textDim,
-			frameSize = UDim2.new(1, -110, 0, 18),
-			position = UDim2.fromOffset(14, 28),
-			parent = row,
-		})
-
-		-- Coin mi brainrot mu: makineye ikisi de girer, ayrimi yazi soyler
-		UI.text({
-			text = if item.kind == "coin" then "COIN" else "BRAINROT",
+		local alt = UI.text({
+			text = `{Rarity.displayName(item.rarity)}  -  {detayYazisi(item)}`,
 			size = UI.Sizes.tiny,
 			font = UI.Fonts.bold,
-			color = UI.Colors.textDim,
-			align = Enum.TextXAlignment.Right,
-			frameSize = UDim2.new(0, 96, 0, 52),
-			position = UDim2.new(1, -110, 0, 0),
-			parent = row,
+			color = renk,
+			frameSize = UDim2.new(1, -200, 0, 18),
+			position = UDim2.fromOffset(66, 34),
+			parent = satir,
 		})
+		alt.ZIndex = 23
 
-		row.MouseButton1Click:Connect(function()
+		-- Ayni isimden kac tane var: 3'e yetiyorsa yesil
+		local adet = UI.text({
+			text = `x{item.owned or 1}`,
+			size = UI.Sizes.heading,
+			font = UI.Fonts.bold,
+			color = if yeter then YESIL else UI.Colors.textDim,
+			align = Enum.TextXAlignment.Right,
+			frameSize = UDim2.fromOffset(110, 62),
+			position = UDim2.new(1, -126, 0, 0),
+			parent = satir,
+		})
+		adet.ZIndex = 23
+
+		satir.MouseButton1Click:Connect(function()
 			FuseEkle:FireServer(item.uid)
 		end)
-
-		UI.hover(row)
+		UI.hover(satir)
 	end
 end
 
-FuseSecim.OnClientEvent:Connect(function()
-	secimPenceresi.Visible = true
-	secimListesiniCiz()
-end)
+------------------------------------------------------------------
+-- PENCEREYI CIZ
+------------------------------------------------------------------
+local function pencereCiz()
+	local slots = durum.slots or {}
+	local gerekli = durum.required or Fuse.Required
+	local sayi = #slots
 
+	yonerge.Text = `Bring <font color="#FF4040">{gerekli}</font> same Brainrots to Fuse`
+	sansYazi.Text = `{durum.chance or Fuse.SuccessChance}% chance for a better Brainrot!`
 
+	onizleme.temizle()
+	for i = 1, gerekli do
+		slotKur(i, slots[i])
+	end
+
+	-- Sonuc kutusu
+	local sonraki = durum.nextRarity
+	if sonraki then
+		local renk = Rarity.color(sonraki)
+		kutu.BackgroundColor3 = renk:Lerp(SIYAH, 0.35)
+		kutuKontur.Color = renk
+		kutuYazi.Text = `{Rarity.displayName(sonraki)} Brainrot`
+		UI.rarityStyle(kutuYazi, sonraki)
+		kutuSoru.Visible = true
+		-- Siyah siluet: ne cikacagi belli degil
+		onizleme.ekle(kutuResim, { revealed = false })
+		uyari.Text = `If it fails, all {gerekli} brainrots are lost`
+	else
+		kutu.BackgroundColor3 = KART
+		kutuKontur.Color = SIYAH
+		kutuYazi.Text = "Result"
+		UI.plainStyle(kutuYazi, UI.Colors.textDim)
+		kutuSoru.Visible = true
+		uyari.Text = ""
+	end
+
+	-- Alt dugme
+	makineDolu = sayi >= gerekli
+	local eksik = gerekli - sayi
+
+	if fuseNabiz then
+		fuseNabiz:Cancel()
+		fuseNabiz = nil
+		fuseOlcek.Scale = 1
+	end
+
+	if makineDolu then
+		fuseYazi.Text = "FUSE!"
+		fuseDugme.BackgroundColor3 = Color3.fromRGB(255, 190, 40)
+		local nabiz = TweenService:Create(
+			fuseOlcek,
+			TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Scale = 1.06 }
+		)
+		nabiz:Play()
+		fuseNabiz = nabiz
+	else
+		fuseYazi.Text = `{eksik} Brainrot Left`
+		fuseDugme.BackgroundColor3 = YESIL
+	end
+
+	if secim.Visible then
+		secimCiz()
+	end
+end
+
+------------------------------------------------------------------
+-- F: makinedeki hepsini geri al
+------------------------------------------------------------------
 local function bindTakeBack()
 	ContextActionService:BindAction(TAKE_BACK, function(_, state)
 		if state == Enum.UserInputState.Begin then
@@ -342,45 +672,44 @@ local function unbindTakeBack()
 	ContextActionService:UnbindAction(TAKE_BACK)
 end
 
+FuseSecim.OnClientEvent:Connect(function()
+	if merging then
+		return
+	end
+	secim.Visible = false
+	pencere.Visible = true
+	pencereCiz()
+end)
+
+-- Pencere kapaninca secim listesi de kapansin, sahneler bosalsin
+pencere:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not pencere.Visible then
+		secim.Visible = false
+		onizleme.temizle()
+		sonImza = ""
+	end
+end)
+
+secim:GetPropertyChangedSignal("Visible"):Connect(function()
+	if secim.Visible then
+		secimCiz()
+	end
+end)
+
 --[[
-	Boyut sansi satiri: "%60 Tiny   %20 Large   %20 Huge"
-
-	Yalnizca ICERIDE BULUNAN boyutlar yazilir; hic esya yoksa satir bos
-	kalir, cunku heniz cekilecek bir sey yok.
+	Sunucu menzildeyken 0.4 saniyede bir durum yolluyor. Her pakette bastan
+	cizmek resimleri titretirdi; yalnizca ICERIK degistiyse cizilir.
 ]]
-local function sizeText(sizes: { any }?): string
-	if type(sizes) ~= "table" or #sizes == 0 then
-		return ""
+local function imzaOf(data: any): string
+	local parcalar = { tostring(data.name), tostring(data.chance), tostring(data.fusing) }
+	for _, s in data.slots or {} do
+		table.insert(parcalar, s.uid)
 	end
-
-	local parts = {}
-	for _, entry in sizes do
-		local info = Condition.get(entry.id)
-		table.insert(parts, `{math.floor(entry.chance + 0.5)}% {info.shortName}`)
+	table.insert(parcalar, "|")
+	for _, it in data.items or {} do
+		table.insert(parcalar, `{it.uid}:{it.owned}`)
 	end
-
-	return table.concat(parts, "   ")
-end
-
---[[
-	Mutasyon aktarim satiri: "%20 Gold   %10 Diamond"
-
-	Makineye konan her mutasyonlu esya kendi mutasyonunu gecirme sansi
-	katiyor. Iceride hic mutasyonlu esya yoksa satir bos kalir -- bos bir
-	"%0" yazmak yerine hic gostermemek daha temiz.
-]]
-local function mutationText(mutations: { any }?): string
-	if type(mutations) ~= "table" or #mutations == 0 then
-		return ""
-	end
-
-	local parts = {}
-	for _, entry in mutations do
-		local info = Mutations.get(entry.id)
-		table.insert(parts, `{math.floor(entry.chance + 0.5)}% {info.displayName}`)
-	end
-
-	return table.concat(parts, "   ")
+	return table.concat(parcalar, ",")
 end
 
 FuseDurum.OnClientEvent:Connect(function(data)
@@ -388,8 +717,7 @@ FuseDurum.OnClientEvent:Connect(function(data)
 		if nearMachine then
 			nearMachine = false
 			unbindTakeBack()
-			-- Makineden uzaklasinca secim penceresi de kapanir
-			secimPenceresi.Visible = false
+			pencere.Visible = false
 		end
 		return
 	end
@@ -399,113 +727,41 @@ FuseDurum.OnClientEvent:Connect(function(data)
 		bindTakeBack()
 	end
 
-	-- Birlesme gosterisi oynarken pencere kapali kalir
+	durum = data
+
 	if merging then
-		secimPenceresi.Visible = false
+		pencere.Visible = false
+		return
 	end
 
-	local count = tonumber(data.count) or 0
-	local rarityId = if type(data.rarity) == "string" then data.rarity else nil
-
-	------------------------------------------------------------------
-	-- Baslik: makine bosken ne yapmasi gerektigini soyler.
-	-- Metin Shared > Fuse'dan geliyor; sunucu ve istemci ayni cumleyi kurar.
-	------------------------------------------------------------------
-	headline.Text = Fuse.headline(rarityId, count)
-
-	if rarityId then
-		UI.rarityStyle(headline, rarityId)
-		machineStroke.Color = Rarity.color(rarityId)
-	else
-		UI.plainStyle(headline, UI.Colors.text)
-		machineStroke.Color = UI.Colors.accent
-	end
-
-	------------------------------------------------------------------
-	-- Ne cikacak
-	------------------------------------------------------------------
-	if rarityId and type(data.nextRarity) == "string" then
-		resultLine.Text = `{Rarity.displayName(rarityId)}  ->  {string.upper(Rarity.displayName(data.nextRarity))} COIN`
-		UI.rarityStyle(resultLine, data.nextRarity)
-	else
-		resultLine.Text = "Add 5 items of the same tier to get a coin one tier higher"
-		UI.plainStyle(resultLine, UI.Colors.textDim)
-	end
-
-	------------------------------------------------------------------
-	-- Boyut ve mutasyon sanslari
-	------------------------------------------------------------------
-	sizeLine.Text = sizeText(data.sizes)
-	mutationLine.Text = mutationText(data.mutations)
-
-	------------------------------------------------------------------
-	-- Ipucu + iade sayaci
-	------------------------------------------------------------------
-	local timeout = math.floor(tonumber(data.timeout) or 0)
-	hintLine.Text = if count > 0
-		then `Auto-return in {timeout}s`
-		else "Pick items on the left to fill the machine"
-
-	--[[
-		SECIM LISTESI
-
-		Her pakette tazelenir; pencere aciksa yeniden cizilir, boylece
-		makineye konan esya listeden hemen duser.
-	]]
-	konabilir = if type(data.items) == "table" then data.items else {}
-	secimOzet.Text = if rarityId
-		then `Machine holds {Rarity.displayName(rarityId)}  --  {count}/{data.required or 5}`
-		else `{#konabilir} items you can fuse`
-
-	if secimPenceresi.Visible then
-		secimListesiniCiz()
+	local imza = imzaOf(data)
+	if pencere.Visible and imza ~= sonImza then
+		sonImza = imza
+		pencereCiz()
 	end
 end)
 
 ------------------------------------------------------------------
 -- 2. BIRLESME GOSTERISI
---
--- 5. esya konuldugunda coin aninda envantere dusuyordu; oyuncu ne
--- kazandigini goremeden bitiyordu. Artik once bir gosteri oynuyor:
---
---   1) Iceri konan esyalarin renginde RUHLAR ekranda bir cember olusturur
---   2) Donerek merkeze kapanirlar ve beyaz bir patlamada birlesirler
---   3) Yeni kademenin renginde sok dalgasi ve yildizlar dagilir
---   4) Coinin adi okunur, sonra ekran soner
---
--- Sureler Shared > Fuse > Merge icinde; sunucu odulu tam bu sure sonunda
--- cantaya yaziyor, yani coin gosteri bitmeden envanterde belirmiyor.
 ------------------------------------------------------------------
 local M = Fuse.Merge
 
--- Ruhlarin baslangicta durdugu cemberin yaricapi (piksel)
 local SOUL_RADIUS = 130
-local SOUL_SIZE = 34
+local SOUL_SIZE = 38
 
 local mergeRoot = Instance.new("Frame")
 mergeRoot.Name = "BirlesmeGosterisi"
---[[
-	GOSTERI EKRANIN ORTASINDA DURMALI
-
-	Arayuz olcegi her ust duzey nesneye bir UIScale koyuyor ve UIScale
-	nesneyi ANCHORPOINT'INDEN buyutuyor. Bu kare ekran kadar buyuk oldugu
-	icin (0,0) ankoruyla %125 olcekte sag alta dogru kayiyordu -- ruhlar da
-	onunla birlikte kosede doniyordu.
-
-	Merkezden ankorlaninca olcek her yone esit acilir, sahne ortada kalir.
-]]
+-- Merkezden ankorlu: arayuz olcegi (UIScale) sahneyi kaydirmasin
 mergeRoot.AnchorPoint = Vector2.new(0.5, 0.5)
 mergeRoot.Position = UDim2.fromScale(0.5, 0.5)
 mergeRoot.Size = UDim2.fromScale(1, 1)
-mergeRoot.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mergeRoot.BackgroundColor3 = SIYAH
 mergeRoot.BackgroundTransparency = 1
 mergeRoot.BorderSizePixel = 0
 mergeRoot.Visible = false
--- Tiklamalari yutmasin: gosteri sirasinda oyuncu hareket edebilmeli
 mergeRoot.Active = false
 mergeRoot.Parent = screen
 
--- Ruhlarin ve parcaciklarin icinde yasadigi kare alan
 local stage = Instance.new("Frame")
 stage.Name = "Sahne"
 stage.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -516,12 +772,11 @@ stage.Parent = mergeRoot
 
 local mergeTitle = UI.text({
 	text = "FUSING",
-	size = UI.Sizes.small,
+	size = UI.Sizes.heading,
 	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, 0, 0, 22),
-	position = UDim2.new(0, 0, 0.5, -190),
+	frameSize = UDim2.new(1, 0, 0, 30),
+	position = UDim2.new(0, 0, 0.5, -200),
 	parent = mergeRoot,
 })
 
@@ -545,7 +800,6 @@ local mergeSub = UI.text({
 	parent = mergeRoot,
 })
 
--- Yuvarlak parlayan kure: hem ruhlar hem birlesme cekirdegi bundan
 local function makeOrb(color: Color3, size: number): Frame
 	local orb = Instance.new("Frame")
 	orb.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -574,12 +828,6 @@ local function clearStage()
 	end
 end
 
---[[
-	Dagilan yildizlar.
-
-	Kucuk kareler 45 derece dondurulunce elmas gibi duruyor; disari
-	firlarken kuculup soluyorlar. Hazir bir gorsel gerekmiyor.
-]]
 local function burstStars(color: Color3, count: number)
 	for index = 1, count do
 		local angle = (index - 1) / count * math.pi * 2 + math.random() * 0.4
@@ -608,7 +856,6 @@ local function burstStars(color: Color3, count: number)
 	end
 end
 
--- Merkezden disari acilan halka
 local function shockwave(color: Color3)
 	local ring = Instance.new("Frame")
 	ring.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -632,16 +879,7 @@ local function shockwave(color: Color3)
 	TweenService:Create(edge, info, { Transparency = 1, Thickness = 0 }):Play()
 end
 
---[[
-	EKRAN SARSINTISI
-
-	Kamerayi kisa sure boyunca rastgele oynatir; siddet sonuna dogru
-	sonerek biter.
-
-	RenderStep'e Camera onceliginden SONRA baglaniyor: Roblox kendi kamera
-	guncellemesini yaptiktan sonra uzerine sapma ekliyoruz. Once baglansa
-	varsayilan kamera her karede bizim degisikligimizi ezerdi.
-]]
+-- Kamera sarsintisi: Roblox'un kamera guncellemesinden SONRA uygulanir
 local SHAKE_NAME = "FuseSarsinti"
 local shaking = false
 
@@ -652,10 +890,8 @@ local function shakeCamera(duration: number, strength: number)
 	shaking = true
 
 	local elapsed = 0
-
 	RunService:BindToRenderStep(SHAKE_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
 		elapsed += dt
-
 		local alpha = elapsed / duration
 		if alpha >= 1 then
 			RunService:UnbindFromRenderStep(SHAKE_NAME)
@@ -668,49 +904,38 @@ local function shakeCamera(duration: number, strength: number)
 			return
 		end
 
-		-- Kare (1-alpha)^2 ile soner: bas sert, son yumusak
 		local power = strength * (1 - alpha) ^ 2
-
 		camera.CFrame = camera.CFrame
 			* CFrame.new((math.random() - 0.5) * power, (math.random() - 0.5) * power, 0)
 			* CFrame.Angles(0, 0, (math.random() - 0.5) * power * 0.03)
 	end)
 end
 
--- Ayni anda iki gosteri oynamasin
-
 local function playMerge(data: any)
 	if merging then
 		return
 	end
 	merging = true
-
-	--[[
-		Gosteri baslarken makine arayuzu kapanir: ruhlar donerken altta
-		panel, ustte secim penceresi durmasi gosterinin onune geciyordu.
-		Panel gosteri bitince FuseDurum ile kendiliginden geri gelir.
-	]]
-	secimPenceresi.Visible = false
+	pencere.Visible = false
 
 	local fromColor = Rarity.color(data.fromRarity)
-	local toColor = Rarity.color(data.toRarity)
+	local basari = data.success == true
+	local toColor = if basari and data.toRarity then Rarity.color(data.toRarity) else Color3.fromRGB(90, 90, 100)
 	local soulCount = math.clamp(tonumber(data.souls) or Fuse.Required, 2, 12)
 
 	clearStage()
 	mergeName.Text = ""
 	mergeSub.Text = ""
 	UI.plainStyle(mergeName, UI.Colors.text)
+	Mutations.untag(mergeSub)
 
-	-- Gosteriyi gorev odulu de kullaniyor; baslik pakette gelirse o yazilir
-	mergeTitle.Text = data.title or `FUSING {string.upper(Rarity.displayName(data.fromRarity))}`
-	mergeTitle.TextColor3 = fromColor
+	mergeTitle.Text = `FUSING {soulCount} {string.upper(tostring(data.fromName or ""))}`
+	UI.plainStyle(mergeTitle, fromColor)
 
 	mergeRoot.Visible = true
 	TweenService:Create(mergeRoot, TweenInfo.new(0.25), { BackgroundTransparency = 0.55 }):Play()
 
-	------------------------------------------------------------------
 	-- 1. ASAMA: ruhlar donerek merkeze kapanir
-	------------------------------------------------------------------
 	local souls: { Frame } = {}
 	for index = 1, soulCount do
 		souls[index] = makeOrb(fromColor, SOUL_SIZE)
@@ -718,29 +943,20 @@ local function playMerge(data: any)
 
 	local elapsed = 0
 	local spin: RBXScriptConnection
-
 	spin = RunService.RenderStepped:Connect(function(dt)
 		elapsed += dt
-
 		local alpha = math.min(elapsed / M.gatherTime, 1)
-		-- Yumusak giris ve cikis: basta yavas, ortada hizli, sonda yavas
 		local eased = alpha * alpha * (3 - 2 * alpha)
-
 		local radius = SOUL_RADIUS * (1 - eased)
 		local turn = eased * math.pi * 3
 
 		for index, soul in souls do
-			if not soul.Parent then
-				continue
+			if soul.Parent then
+				local angle = (index - 1) / soulCount * math.pi * 2 + turn
+				soul.Position = UDim2.new(0.5, math.cos(angle) * radius, 0.5, math.sin(angle) * radius)
+				local size = SOUL_SIZE * (1 - eased * 0.5)
+				soul.Size = UDim2.fromOffset(size, size)
 			end
-
-			local angle = (index - 1) / soulCount * math.pi * 2 + turn
-			soul.Position =
-				UDim2.new(0.5, math.cos(angle) * radius, 0.5, math.sin(angle) * radius)
-
-			-- Merkeze yaklastikca kuculurler
-			local size = SOUL_SIZE * (1 - eased * 0.5)
-			soul.Size = UDim2.fromOffset(size, size)
 		end
 
 		if alpha >= 1 then
@@ -749,18 +965,14 @@ local function playMerge(data: any)
 	end)
 
 	task.wait(M.gatherTime)
-
-	------------------------------------------------------------------
-	-- 2. ASAMA: beyaz patlama, ruhlar tek cekirdege doner
-	------------------------------------------------------------------
 	if spin.Connected then
 		spin:Disconnect()
 	end
-
 	for _, soul in souls do
 		soul:Destroy()
 	end
 
+	-- 2. ASAMA: parlama
 	local core = makeOrb(Color3.new(1, 1, 1), 24)
 	TweenService:Create(core, TweenInfo.new(M.flashTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = UDim2.fromOffset(120, 120),
@@ -769,53 +981,50 @@ local function playMerge(data: any)
 
 	task.wait(M.flashTime)
 
-	------------------------------------------------------------------
-	-- 3. ASAMA: PATLAMA -- sok dalgasi, yildizlar, sarsinti ve sonuc
-	--
-	-- Bu an Fuse.burstDelay()'e denk gelir; sunucu dunyadaki FuseVFX
-	-- patlamasini tam da simdi oynatiyor, yani ekran sarsintisi ile
-	-- efekt ayni karede.
-	------------------------------------------------------------------
-	shakeCamera(M.shakeTime, M.shakeStrength)
-	shockwave(toColor)
-	burstStars(toColor, 16)
+	-- 3. ASAMA: sonuc
+	if basari then
+		shakeCamera(M.shakeTime, M.shakeStrength)
+		shockwave(toColor)
+		burstStars(toColor, 18)
 
-	-- Cekirdek coin haline gelir: kucuk bir madeni para gibi kalir
-	TweenService:Create(core, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-		Size = UDim2.fromOffset(76, 76),
-	}):Play()
+		TweenService:Create(core, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+			Size = UDim2.fromOffset(84, 84),
+		}):Play()
 
-	mergeTitle.Text = data.endTitle or "FUSED"
-	mergeTitle.TextColor3 = toColor
+		mergeTitle.Text = "FUSE SUCCESS!"
+		UI.plainStyle(mergeTitle, YESIL)
 
-	mergeName.Text = data.coinName or ""
-	UI.rarityStyle(mergeName, data.toRarity)
+		local mutationInfo = Mutations.get(data.mutation)
+		mergeName.Text = mutationInfo.prefix .. tostring(data.name or "")
+		UI.rarityStyle(mergeName, data.toRarity)
 
-	--[[
-		Alt satir: mutasyon aktarildiysa ONU yazar (satirin konusu odur,
-		rengi de mutasyonun rengi olur). Aktarilmadiysa boyut rengiyle
-		sade bir onay yazisi kalir.
-	]]
-	local mutationInfo = Mutations.get(data.mutation)
-
-	-- Onceki gosterinin canli renk etiketi kalmasin
-	Mutations.untag(mergeSub)
-
-	if Mutations.isSpecial(data.mutation) then
-		mergeSub.Text = `{mutationInfo.displayName} ({mutationInfo.multiplier}x) added to your inventory`
-		mergeSub.TextColor3 = mutationInfo.color
-		-- Galaxy ve Hacker: renk sabit degil, istemci her karede degistirir
-		Mutations.tagIf(mergeSub, data.mutation)
+		local boyut = Condition.get(data.condition)
+		mergeSub.Text =
+			`{Rarity.displayName(data.toRarity)}  -  {boyut.shortName}  -  {Format.perSecond(tonumber(data.income) or 0)}  -  added to your inventory`
+		mergeSub.TextColor3 = boyut.color
+		if Mutations.isSpecial(data.mutation) then
+			mergeSub.TextColor3 = mutationInfo.color
+			Mutations.tagIf(mergeSub, data.mutation)
+		end
 	else
-		mergeSub.Text = "added to your inventory"
-		mergeSub.TextColor3 = Condition.get(data.condition).color
+		-- Basarisizlik: cekirdek sonup kuculur, kirmizi yazi
+		shakeCamera(0.3, 0.8)
+		TweenService:Create(core, TweenInfo.new(M.burstTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Size = UDim2.fromOffset(0, 0),
+			BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+			BackgroundTransparency = 0.6,
+		}):Play()
+
+		mergeTitle.Text = "FUSE FAILED"
+		UI.plainStyle(mergeTitle, KIRMIZI)
+		mergeName.Text = "Better luck next time!"
+		UI.plainStyle(mergeName, Color3.new(1, 1, 1))
+		mergeSub.Text = `All {soulCount} {tostring(data.fromName or "brainrots")} were lost`
+		mergeSub.TextColor3 = Color3.fromRGB(255, 120, 120)
 	end
 
 	task.wait(M.burstTime + M.holdTime)
 
-	------------------------------------------------------------------
-	-- Kapanis
-	------------------------------------------------------------------
 	local fade = TweenService:Create(mergeRoot, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
 	fade:Play()
 	fade.Completed:Wait()
@@ -824,272 +1033,17 @@ local function playMerge(data: any)
 	mergeRoot.Visible = false
 	merging = false
 
+	-- Oyuncu hala makinedeyse pencere geri acilir
+	if nearMachine then
+		pencere.Visible = true
+		sonImza = ""
+		pencereCiz()
+	end
 end
 
 FuseSonuc.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" or type(data.toRarity) ~= "string" then
+	if type(data) ~= "table" or type(data.fromRarity) ~= "string" then
 		return
 	end
 	task.spawn(playMerge, data)
-end)
-
-------------------------------------------------------------------
--- 3. COIN BOZDURUCU
-------------------------------------------------------------------
-local coinPanel = UI.panel(screen, UDim2.fromOffset(470, 440), "CoinBozdurucu")
-
-UI.text({
-	text = "Coin Trader",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = UI.Colors.gold,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = coinPanel,
-})
-
-local coinSubtitle = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 48),
-	parent = coinPanel,
-})
-
-UI.closeButton(coinPanel).MouseButton1Click:Connect(function()
-	coinPanel.Visible = false
-end)
-
---[[
-	Coin listesi ile cark AYNI PANELDE, ust uste durur.
-	Cark donerken liste gizlenir; bitince geri gelir.
-]]
-local coinList = Instance.new("ScrollingFrame")
-coinList.Name = "Liste"
-coinList.Position = UDim2.fromOffset(14, 78)
-coinList.Size = UDim2.new(1, -28, 1, -92)
-coinList.BackgroundTransparency = 1
-coinList.BorderSizePixel = 0
-coinList.ScrollBarThickness = 5
-coinList.ScrollBarImageColor3 = UI.Colors.panelLight
-coinList.CanvasSize = UDim2.new()
-coinList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-coinList.Parent = coinPanel
-
-local coinLayout = Instance.new("UIListLayout")
-coinLayout.Padding = UDim.new(0, 8)
-coinLayout.SortOrder = Enum.SortOrder.LayoutOrder
-coinLayout.Parent = coinList
-
-local spinArea = Instance.new("Frame")
-spinArea.Name = "CarkAlani"
-spinArea.Position = UDim2.fromOffset(14, 78)
-spinArea.Size = UDim2.new(1, -28, 1, -92)
-spinArea.BackgroundTransparency = 1
-spinArea.Visible = false
-spinArea.Parent = coinPanel
-
-local coinReel = Rulet.new(spinArea, {
-	position = UDim2.new(0.5, 0, 0, 40),
-	width = 408,
-	height = 96,
-	color = UI.Colors.gold,
-	name = "Cark",
-})
-
-local coinResult = UI.text({
-	text = "",
-	size = UI.Sizes.label,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 26),
-	position = UDim2.fromOffset(10, 150),
-	parent = spinArea,
-})
-
-local coinDetail = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.fromOffset(10, 178),
-	parent = spinArea,
-})
-
--- Coin satiri: renk kademeden, boyut solda rozet olarak
-local function coinRow(coin: any, order: number): TextButton
-	local rarityColor = Rarity.color(coin.rarity)
-	local conditionInfo = Condition.get(coin.condition)
-
-	--[[
-		Satirda aciklama yok: coinin adi ("Gold Tiny Epic Coin") zaten
-		kademeyi, boyutu ve mutasyonu soyluyor. Sagda yalnizca CARPANLAR
-		duruyor -- ad onlari tasimiyor.
-	]]
-	local row = Instance.new("TextButton")
-	row.Size = UDim2.new(1, -6, 0, 48)
-	row.BackgroundColor3 = UI.Colors.panelLight
-	row.BorderSizePixel = 0
-	-- Fare etkisi tiklanabilir satirda veriliyor (UI.hover)
-	row.AutoButtonColor = false
-	row.Text = ""
-	row.LayoutOrder = order
-	row.Parent = coinList
-	UI.corner(row, 10)
-	UI.stroke(row, rarityColor, 1)
-
-	-- Madeni para ikonu
-	local icon = Instance.new("Frame")
-	icon.Size = UDim2.fromOffset(32, 32)
-	icon.Position = UDim2.fromOffset(10, 8)
-	icon.BackgroundColor3 = rarityColor
-	icon.BorderSizePixel = 0
-	icon.Parent = row
-	UI.corner(icon, 16)
-
-	UI.rarityStyle(
-		UI.text({
-			text = Fuse.coinName(coin.rarity, coin.condition, coin.mutation),
-			size = UI.Sizes.body,
-			font = UI.Fonts.bold,
-			color = rarityColor,
-			frameSize = UDim2.new(1, -170, 0, 24),
-			position = UDim2.fromOffset(52, 12),
-			parent = row,
-		}),
-		coin.rarity
-	)
-
-	-- Carpanlar: boyut her zaman, mutasyon varsa yaninda kendi renginde
-	local mutationInfo = Mutations.get(coin.mutation)
-	local special = Mutations.isSpecial(coin.mutation)
-
-	UI.text({
-		text = if special
-			then `{conditionInfo.multiplier}x  {mutationInfo.multiplier}x`
-			else `{conditionInfo.multiplier}x`,
-		size = UI.Sizes.small,
-		font = UI.Fonts.bold,
-		-- Boyut carpani her zaman boyut renginde; mutasyon rengini ele gecirmez
-		color = if special then mutationInfo.color else conditionInfo.color,
-		align = Enum.TextXAlignment.Right,
-		frameSize = UDim2.fromOffset(100, 24),
-		position = UDim2.new(1, -112, 0, 12),
-		parent = row,
-	})
-
-	return row
-end
-
-CoinAc.OnClientEvent:Connect(function(coins)
-	if type(coins) ~= "table" then
-		return
-	end
-
-	for _, child in coinList:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-
-	coinSubtitle.Text = `{#coins} coins  -  click the one you want to trade`
-
-	if #coins == 0 then
-		UI.text({
-			text = "You have no coins. Put 5 brainrots of the same tier into the Fuse Machine.",
-			size = UI.Sizes.small,
-			color = UI.Colors.textDim,
-			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, 0, 0, 40),
-			parent = coinList,
-			wrapped = true,
-		})
-	else
-		for index, coin in coins do
-			local row = coinRow(coin, index)
-			row.MouseButton1Click:Connect(function()
-				CoinBozdur:FireServer(coin.uid)
-			end)
-
-			UI.hover(row)
-		end
-	end
-
-	spinArea.Visible = false
-	coinList.Visible = true
-	coinPanel.Visible = true
-end)
-
-CoinSonuc.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" or type(data.cells) ~= "table" then
-		return
-	end
-
-	--[[
-		Bolmeler: hepsi coinin kademesinden. Kademe zaten belli oldugu icin
-		rarityCells verilmiyor -- Rulet tek asamali doner.
-
-		COININ MUTASYONU SERIDE YANSIR: coin Gold ise hangi brainrot cikarsa
-		ciksin Gold olacak, bu yuzden butun serit Gold renginde doner. Isme
-		"Gold" yazmiyoruz -- 30 bolmede tekrarlanmasi gurultu olurdu; renk
-		ayni bilgiyi tek bakista veriyor.
-	]]
-	local coinMutation = if type(data.winner) == "table" then data.winner.mutation else nil
-	local wheelMutated = Mutations.isSpecial(coinMutation)
-	local wheelColor = Mutations.get(coinMutation).color
-
-	local cells: { Rulet.Cell } = {}
-	for _, entry in data.cells do
-		table.insert(cells, {
-			text = entry.name,
-			color = if wheelMutated then wheelColor else Rarity.color(entry.rarity),
-		})
-	end
-
-	local started = Rulet.run(coinReel, {
-		cells = cells,
-		winner = tonumber(data.winnerIndex) or Fuse.Wheel.winnerIndex,
-		time = tonumber(data.spinTime) or Fuse.Wheel.spinTime,
-
-		onFinish = function()
-			local winner = data.winner
-			if type(winner) ~= "table" then
-				return
-			end
-
-			Rulet.shake(coinPanel)
-
-			local mutationInfo = Mutations.get(winner.mutation)
-			local special = Mutations.isSpecial(winner.mutation)
-			local conditionInfo = Condition.get(winner.condition)
-
-			-- Isim kademe renginde; Epic+ parlar, Divine parildar
-			coinResult.Text = winner.name
-			UI.rarityStyle(coinResult, winner.rarity)
-
-			-- Boyut satiri her zaman boyut renginde
-			local tag = if special then `  {mutationInfo.displayName} ({mutationInfo.multiplier}x)` else ""
-			coinDetail.Text =
-				`{Rarity.displayName(winner.rarity)}  -  {conditionInfo.shortName}{tag}  -  {Format.perSecond(winner.income or 0)}`
-			coinDetail.TextColor3 = conditionInfo.color
-		end,
-	})
-
-	if not started then
-		return
-	end
-
-	coinList.Visible = false
-	spinArea.Visible = true
-	coinPanel.Visible = true
-
-	coinSubtitle.Text = if type(data.coinName) == "string" then data.coinName else ""
-	coinResult.Text = "..."
-	UI.plainStyle(coinResult, UI.Colors.text)
-	coinDetail.Text = ""
-
-	-- Cerceve de mutasyonun renginde: mutasyonlu coin ilk bakista belli olsun
-	Rulet.tint(coinReel, if wheelMutated then wheelColor else UI.Colors.gold)
 end)

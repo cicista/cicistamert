@@ -24,7 +24,7 @@
 	  easy   -> 1 Rare Coin
 	  normal -> 1 Epic Coin
 	  hard   -> 1 Legendary Coin
-	Coin, Coin Trader'da ayni kademeden bir brainrota donusur.
+	(Oduller artik coin degil, o kademeden kimligi acik bir brainrot.)
 ]]
 
 local Rarity = require(script.Parent.Rarity)
@@ -235,14 +235,13 @@ function Gorevler.reward(def: QuestDef): Reward
 end
 
 --[[
-	Odulun yazisi: "Epic Coin".
+	Odulun yazisi: "Epic Brainrot".
 
-	TEK adette sayi YAZILMAZ -- "1 Epic Coin" hem gereksiz hem de rakam
-	kelimeye yapisik duruyordu. Birden fazlaysa "2x Epic Coin".
+	TEK adette sayi YAZILMAZ; birden fazlaysa "2x Epic Brainrot".
 ]]
 function Gorevler.rewardText(def: QuestDef): string
 	local reward = Gorevler.reward(def)
-	local ad = `{Rarity.displayName(reward.rarity)} Coin`
+	local ad = `{Rarity.displayName(reward.rarity)} Brainrot`
 	return if reward.count > 1 then `{reward.count}x {ad}` else ad
 end
 

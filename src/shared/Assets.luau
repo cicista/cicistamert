@@ -11,7 +11,6 @@
 	    ReplicatedStorage > Assets > Brainrots
 	    ReplicatedStorage > Assets > Shovels
 	    ReplicatedStorage > Assets > Detectors
-	    ReplicatedStorage > Assets > Skins
 	    ReplicatedStorage > Assets > VFX
 	    ReplicatedStorage > Assets > Sounds
 
@@ -21,11 +20,12 @@
 	              mutasyonlu surum:            "Gold Tralalero Tralala"
 	  LuckyBlocks: kazidan cikan blok modeli   (klasordeki ILK model kullanilir,
 	              yani adi ne olursa olsun surukleyip birakman yeterli)
-	  Shovels   :  kurek id'si                 (Wooden, Iron, Golden, Diamond, Celestial)
-	              skinli varyant icin:         "Golden_shovel_gold"  (kurekId_skinId)
+	  Shovels   :  ADA KLASORU > "<Ad><sira>"  (Main > Main1..Main5, Candy > Candy1..5,
+	              Snow > Frosty1..5, Volcano > Volcano1..5). Sira = kuregin
+	              adadaki sirasi; ornek Candy1 = Lv6 kurek. Bkz. Assets.ShovelIslandFolders
+	  Pickaxes  :  kazma id'si                 (CandyPickaxe, FrostyPickaxe, PhoenixPickaxe)
+	  Rods      :  "Rod<level>" Tool'u         (Rod1 = Bamboo ... Rod5 = Leviathan)
 	  Detectors :  dedektor id'si              (Basic, Pro, Quantum, Cosmic, Divine)
-	              skinli varyant icin:         "Pro_gps_neon"        (dedektorId_skinId)
-	  Skins     :  skin id'si                  ("shovel_void") -- tool modeli yoksa yedek
 
 	Model bulunamazsa oyun otomatik olusturulan basit gorunumu kullanir,
 	yani klasorleri bos birakabilirsin.
@@ -81,10 +81,6 @@ Assets.Sounds = {
 	placeBrainrot = "",
 	-- Satis yapildiginda
 	sell = "",
-	-- Slot makinesi cevirirken
-	slotSpin = "",
-	-- Rot Coin bulundugunda
-	rotCoin = "",
 }
 
 ------------------------------------------------------------------
@@ -136,8 +132,9 @@ Assets.Categories = {
 	brainrots = "Brainrots",
 	luckyBlocks = "LuckyBlocks",
 	shovels = "Shovels",
+	pickaxes = "Pickaxes",
+	rods = "Rods",
 	detectors = "Detectors",
-	skins = "Skins",
 	vfx = "VFX",
 	sounds = "Sounds",
 }
@@ -406,42 +403,112 @@ function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 end
 
 --[[
-	Kurek modeli.
-	Once "kurekId_skinId" aranir (skine ozel model), yoksa duz "kurekId".
-	Boylece her kurek levelinin ve her skinin ayri modeli olabilir.
+	KUREK MODELLERI  --  adaya gore klasorlenmis
+
+	    Assets > Shovels > Main    > Main1 .. Main5        (Lv 1-5)
+	    Assets > Shovels > Candy   > Candy1 .. Candy5      (Lv 6-10)
+	    Assets > Shovels > Snow    > Frosty1 .. Frosty5    (Lv 11-15)
+	    Assets > Shovels > Volcano > Volcano1 .. Volcano5  (Lv 16-20)
+
+	Modelin ADI onemli degil, SONUNDAKI SAYI onemli: kuregin adadaki sirasi.
+	Yani Frosty3 = Snow adasinin 3. kuregi = Lv13.
 ]]
-function Assets.shovelModel(shovelId: string, skinId: string?): Model?
-	if skinId then
-		local skinned = findModel(Assets.Categories.shovels, `{shovelId}_{skinId}`)
-		if skinned then
-			return skinned
+Assets.ShovelIslandFolders = {
+	kum = "Main",
+	sekerkum = "Candy",
+	snowkum = "Snow",
+	alevkum = "Volcano",
+} :: { [string]: string }
+
+-- Klasorde adi "<herhangi><sira>" olan ilk Model/Tool (Main3, Frosty3, Rod3)
+local function siraliModel(folder: Instance, sira: number): Instance?
+	for _, child in folder:GetChildren() do
+		if child:IsA("Model") or child:IsA("Tool") then
+			if tonumber(string.match(child.Name, "(%d+)$")) == sira then
+				return child
+			end
 		end
 	end
-
-	local plain = findModel(Assets.Categories.shovels, shovelId)
-	if plain then
-		return plain
-	end
-
-	-- Kurek modeli yoksa skin klasorunde ara
-	return findModel(Assets.Categories.skins, skinId)
+	return nil
 end
 
+--[[
+	Kurek modelinin KOPYASI.
+	Once eski usul (kurek id'siyle ayni adli model), yoksa ada klasoru + sira.
+]]
+function Assets.shovelModel(shovelId: string, level: number?, island: string?): Model?
+	local dogrudan = findModel(Assets.Categories.shovels, shovelId)
+	if dogrudan or not level then
+		return dogrudan
+	end
+
+	local kok = categoryFolder(Assets.Categories.shovels)
+	local klasorAdi = Assets.ShovelIslandFolders[island or "kum"]
+	local klasor = if kok and klasorAdi then kok:FindFirstChild(klasorAdi) else nil
+	if not klasor then
+		return nil
+	end
+
+	local bulunan = siraliModel(klasor, ((level - 1) % 5) + 1)
+	return if bulunan and bulunan:IsA("Model") then bulunan:Clone() else nil
+end
+
+-- Kazma modeli: Assets > Pickaxes icinde kazma id'siyle ayni adli model
+function Assets.pickaxeModel(pickaxeId: string): Model?
+	return findModel(Assets.Categories.pickaxes, pickaxeId)
+end
+
+--[[
+	Olta: Assets > Rods > Rod<level>. Hazir bir TOOL (Handle + Main + Manifest,
+	parcalar Handle'a kaynakli). KOPYASI doner; Olta modulu onu ele kaynaklanan
+	bir modele cevirir.
+]]
+function Assets.rodTool(level: number): Instance?
+	local kok = categoryFolder(Assets.Categories.rods)
+	if not kok then
+		return nil
+	end
+	local bulunan = kok:FindFirstChild(`Rod{level}`) or siraliModel(kok, level)
+	return if bulunan then bulunan:Clone() else nil
+end
+
+--[[
+	ELDE TUTUS AYARLARI  --  kurek, kazma, olta
+
+	Kurek ve kazma modelleri gevsek parcalardan olusuyor (Sopa + Kabza/Kenar/
+	Govde klasorleri). Kod her birine gorunmez bir Handle ekler:
+
+	    gripFromEnd -- el, KABZANIN UCUNDAN kac stud iceride tutsun
+	    bladeDown   -- true: bicak/kafa elin ALTINDA, false: USTUNDE
+	    position    -- ele gore ek kayma (stud)
+	    rotation    -- ek donus (derece). Bicagin duz yuzu yanlis yone
+	                   bakiyorsa Y'ye 90 / 180 ver.
+
+	Olta (Rod) hazir Tool; kendi Handle'indan sag ele kaynaklanir:
+	    position / rotation -- ele gore kayma ve donus
+]]
+Assets.ToolGrips = {
+	shovel = {
+		gripFromEnd = 0.6,
+		bladeDown = true,
+		position = Vector3.new(0, 0, 0),
+		rotation = Vector3.new(0, 0, 0),
+	},
+	pickaxe = {
+		gripFromEnd = 0.6,
+		bladeDown = false,
+		position = Vector3.new(0, 0, 0),
+		rotation = Vector3.new(0, 0, 0),
+	},
+	rod = {
+		position = Vector3.new(0, -0.4, -0.4),
+		rotation = Vector3.new(-20, 0, 0),
+	},
+}
+
 -- Dedektor (GPS) modeli; kurekle ayni mantik
-function Assets.detectorModel(detectorId: string, skinId: string?): Model?
-	if skinId then
-		local skinned = findModel(Assets.Categories.detectors, `{detectorId}_{skinId}`)
-		if skinned then
-			return skinned
-		end
-	end
-
-	local plain = findModel(Assets.Categories.detectors, detectorId)
-	if plain then
-		return plain
-	end
-
-	return findModel(Assets.Categories.skins, skinId)
+function Assets.detectorModel(detectorId: string): Model?
+	return findModel(Assets.Categories.detectors, detectorId)
 end
 
 ------------------------------------------------------------------

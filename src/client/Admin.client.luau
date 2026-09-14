@@ -206,7 +206,6 @@ local function buildPanel(info: any)
 	section("HIZLI")
 	actionButton("Butun toollari ver (en ust seviye)", "giveAllTools", nil, UI.Colors.good)
 	actionButton(`Rot ver  (+{Format.short(info.rotGrant or 0)})`, "giveRot", nil, UI.Colors.gold)
-	actionButton(`Rot Coin ver  (+{info.coinGrant or 0})`, "giveCoins", nil, UI.Colors.gold)
 	actionButton(
 		`Blok yagmuru baslat  ({LuckyBlock.Event.count} blok)`,
 		"luckyEvent",
@@ -218,7 +217,6 @@ local function buildPanel(info: any)
 	for _, tier in LuckyBlock.Tiers do
 		actionButton(`{tier.displayName} ver  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end
-	actionButton("Butun skinleri ac", "giveAllSkins", nil, UI.Colors.accent)
 	actionButton("Envanterdeki brainrotlarin kimligini ac", "revealAll", nil, UI.Colors.accent)
 	actionButton("Mutasyon cekilisini test et (1000 kez, Output'a yazar)", "testMutation", nil, UI.Colors.textDim)
 	actionButton("Harita raporu (ada/base/NPC konumlari, Output'a yazar)", "haritaRaporu", nil, UI.Colors.textDim)
@@ -419,12 +417,6 @@ local function buildPanel(info: any)
 
 	-- Kademe disi suzme turleri
 	chipRow({
-		{
-			label = "Coin",
-			command = "spawnBeam",
-			arg = "RotCoin",
-			color = Rarity.RotCoin.colorA,
-		},
 		{
 			label = "Lucky",
 			command = "spawnBeam",

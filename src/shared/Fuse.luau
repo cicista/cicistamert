@@ -1,35 +1,28 @@
 --!strict
 --[[
-	FUSE  --  brainrot birlestirme ve coin sistemi
+	FUSE  --  brainrot birlestirme
 
-	IKI NPC
-	  1. FUSE MAKINESI    Ayni kademeden 5 esya alir, BIR UST kademede bir
-	                      coin verir.
-	  2. COIN BOZDURUCU   Coini alir, o kademeden bir brainrot cikarir.
+	FUSE MAKINESI
+	  3 AYNI brainrotu alir (ayni isim, kimligi acilmis). Oyuncu "FUSE"a
+	  basinca birlestirme yapilir:
+
+	    %SuccessChance ihtimalle  -> BIR UST kademeden acilmis bir brainrot
+	    kalan ihtimalle           -> HICBIR SEY; konan 3 brainrot gider
 
 	MAKINE KURALLARI
-	  - Icine konan butun esyalar AYNI KADEMEDEN olmali. Farkli kademe
-	    reddedilir.
-	  - Brainrot da coin de konabilir; coin kendi kademesi ve boyutuyla
-	    islenir. Yani 5 Epic coin -> 1 Legendary coin.
-	  - Cikan coinin BOYUTU, iceri konan esyalarin boyutlarindan agirlikli
-	    cekilir: 3 Tiny + 1 Large + 1 Huge -> %60 Tiny, %20 Large, %20 Huge.
-	  - Cikan coinin MUTASYONU da iceridekilerden aktarilir: her mutasyonlu
-	    esya %10 katar. 2 Gold + 1 Diamond -> %20 Gold, %10 Diamond,
-	    %70 mutasyonsuz.
-	  - En ust kademe (Divine) birlestirilemez; ustu yok.
-	  - Makineye konan esyalar oyuncunun envanterinden CIKAR ama kaybolmaz:
-	    Fuse.Timeout saniye boyunca yeni esya konmazsa hepsi geri verilir.
+	  - Icine konan butun brainrotlar AYNI ISIMDE olmali (orn. 3 Tim Cheese).
+	  - Kimligi acilmamis (siyah) brainrot konamaz: adi bilinmiyor.
+	  - Base slotundaki brainrot konamaz.
+	  - En ust kademe birlestirilemez; ustu yok.
+	  - Ust kademede oyuncunun ulastigi adada hic brainrot yoksa konamaz
+	    (yoksa sonraki adalarin brainrotu erken alinirdi).
+	  - Kazanilan brainrotun BOYUTU konanlardan birinin boyutudur (rastgele),
+	    MUTASYONU da konanlardan aktarilabilir (bkz. Fuse.Mutation).
+	  - Konan brainrotlar envanterden CIKAR ama kaybolmaz: FUSE'a basilmadan
+	    Fuse.Timeout saniye islem yapilmazsa hepsi geri verilir. Her slotun
+	    "Return" dugmesi de tek tek geri alir.
 
-	COIN
-	  Coinin uc bilgisi var: kademe, boyut ve mutasyon. Bozdurulunca o
-	  kademeden rastgele bir brainrot cikar; BOYUT ve MUTASYON coinden
-	  aynen gecer, yeniden cekilmez. Yani Huge/Gold bir coin her zaman
-	  Huge/Gold bir brainrot verir.
-
-	  Coinin adi kademe ve boyuttan turer ("Tiny Epic Coin"), rengi de
-	  kademenin rengidir. Mutasyon isme EKLENMEZ -- ipucunda, bozdurucu
-	  listesinde ve coinin isiginda gorunur.
+	(Coin sistemi ve Coin Trader oyundan kaldirildi.)
 ]]
 
 local Condition = require(script.Parent.Condition)
@@ -38,54 +31,34 @@ local Rarity = require(script.Parent.Rarity)
 
 local Fuse = {}
 
--- Bir coin uretmek icin kac esya gerekir
-Fuse.Required = 5
+-- Makineye kac ayni brainrot konur
+Fuse.Required = 3
 
--- Makineye kac saniye yeni esya konmazsa icindekiler geri verilir
-Fuse.Timeout = 30
+-- Bir ust kademe brainrot cikma ihtimali (yuzde). Tutmazsa hicbir sey cikmaz.
+Fuse.SuccessChance = 25
 
---[[
-	COIN CARKI
-
-	Bozdurucunun ruleti tek asamalidir: kademe zaten coinin uzerinde yaziyor,
-	merak edilen hangi brainrot oldugu. Bu yuzden dogrudan brainrot serdi
-	dondurulur (bkz. StarterPlayerScripts > Rulet).
-]]
-Fuse.Wheel = {
-	cellCount = 30,
-	winnerIndex = 24,
-	spinTime = 2.8,
-	-- Cark durduktan sonra odulun cantaya girmesi icin beklenen ek sure
-	settle = 0.4,
-}
-
-function Fuse.totalSpinTime(): number
-	return Fuse.Wheel.spinTime + Fuse.Wheel.settle
-end
+-- Makinede kac saniye islem yapilmazsa icindekiler geri verilir
+Fuse.Timeout = 60
 
 --[[
 	BIRLESME GOSTERISI
 
-	5. esya konuldugu anda coin dogrudan envantere dusuyordu; o kadar hizli
-	oluyordu ki oyuncu ne kazandigini gormuyordu. Artik once bir gosteri
-	oynuyor:
-
-	    gather -> iceri konan esyalarin renginde RUHLAR ekranda bir cember
+	    gather -> konan brainrotlarin renginde RUHLAR ekranda bir cember
 	              olusturur, donerek merkeze dogru kapanir
-	    flash  -> merkezde birlesip beyaza patlar
-	    burst  -> yeni kademenin renginde bir sok dalgasi ve yildizlar dagilir,
-	              coinin adi okunur
-	    hold   -> okunacak kadar ekranda kalir
+	    flash  -> merkezde birlesip parlar
+	    burst  -> BASARIDA yeni kademenin renginde sok dalgasi ve yildizlar;
+	              BASARISIZLIKTA cekirdek sonup kaybolur
+	    hold   -> sonuc okunacak kadar ekranda kalir
 
-	Coin VERIYE hemen yazilir (gosteri sirasinda oyuncu cikarsa kaybolmasin)
-	ama cantaya ve envanter ekranina ancak gosteri bitince yansitilir. Bu
-	yuzden sureler burada: sunucu da istemci de ayni kaynagi okur.
+	Brainrot VERIYE hemen yazilir (gosteri sirasinda oyuncu cikarsa
+	kaybolmasin) ama cantaya ancak gosteri bitince yansitilir. Sureler
+	burada: sunucu da istemci de ayni kaynagi okur.
 ]]
 Fuse.Merge = {
 	gatherTime = 1.4,
 	flashTime = 0.35,
 	burstTime = 1.1,
-	holdTime = 0.9,
+	holdTime = 1.1,
 
 	-- Patlama anindaki ekran sarsintisi
 	shakeTime = 0.65,
@@ -98,13 +71,7 @@ function Fuse.mergeTime(): number
 	return M.gatherTime + M.flashTime + M.burstTime + M.holdTime
 end
 
---[[
-	PATLAMA ANI  --  gosteri baslangicindan kac saniye sonra.
-
-	Ruhlar merkeze kapanir (gather), beyaz parlamada birlesir (flash) ve
-	ISTE O AN patlar. Dunyadaki VFX ile ekran sarsintisi tam bu ana
-	kilitlenir; sunucu da istemci de ayni degeri okur.
-]]
+-- Patlama ani: gosteri baslangicindan kac saniye sonra (VFX ve sarsinti buna kilitli)
 function Fuse.burstDelay(): number
 	return Fuse.Merge.gatherTime + Fuse.Merge.flashTime
 end
@@ -112,70 +79,35 @@ end
 --[[
 	PATLAMA EFEKTI (VFX)
 
-	Workspace'te -- ya da duzenli yeri olan ReplicatedStorage > Assets > VFX
-	icinde -- bu isimde bir Part aranir. Icindeki butun ParticleEmitter,
-	PointLight, Beam ve Trail'lerin RENGI cikan coinin kademesine cevrilir.
+	Workspace'te -- ya da ReplicatedStorage > Assets > VFX icinde -- bu
+	isimde bir Part aranir. Rengi kazanilan brainrotun kademesine cevrilir,
+	patlama birlestiren oyuncunun karakterinde olur. Yalnizca BASARIDA oynar.
 
-	Patlama BIRLESTIREN OYUNCUNUN KARAKTERINDE olur ve ona kaynaklanir --
-	yani oyuncu yururse efekt uzerinde kalir. Sunucu urettigi icin
-	haritadaki herkes gorur, yalnizca birlestiren degil.
-
-	Efekt bulunamazsa gosteri sessizce VFX'siz oynar; oyun calismaya devam
-	eder, Output'a bir kez uyari duser.
+	Efekt bulunamazsa gosteri VFX'siz oynar; Output'a bir kez uyari duser.
 ]]
 Fuse.VFX = {
 	name = "FuseVFX",
-	-- Patlama karakterin govde hizasindan kac stud YUKARIDA olussun
 	height = 3,
-	-- Efekt kac saniye sonra temizlenir (parcaciklarin omru bitsin diye)
 	lifetime = 3,
-	-- Tek seferlik patlamada her yayicinin attigi parcacik sayisi
 	burst = 60,
-	-- Akmaya devam eden yayicilar kac saniye sonra susturulur
 	stopAfter = 0.6,
-	--[[
-		KADEMEYE GORE PATLAMA BUYUKLUGU
-
-		Parcacik boyu, hizi ve isik menzili bu carpanla olceklenir; yani
-		patlamanin CAPI buyur. Yazilmayan kademe 1 (normal) sayilir.
-
-		Divine'in kimligi hala "Secret" -- gorunen adi degisti, veri
-		uyumlulugu icin kimlik korundu (bkz. Shared > Rarity).
-	]]
+	-- Kademeye gore patlama capi; yazilmayan kademe 1 sayilir
 	scaleByRarity = {
 		Secret = 1.6,
 	},
 
 	--[[
-		SESLER
-
-		Studio'ya elle konulmus Sound nesnelerinin adlari. Efektle ayni
-		yerlerde aranir: Workspace ya da ReplicatedStorage > Assets > Sounds.
-
-		Her alan bir ADAY LISTESI; ilk bulunan calinir. Boylece Studio'da
-		ad yanlis yazilmis olsa da tutar (NPC'lerdeki altName mantiginin
-		aynisi). Hicbiri bulunamazsa gosteri sessizce sessiz oynar.
-
+		SESLER (Workspace ya da Assets > Sounds icindeki Sound adlari)
 		charge    -> ruhlar toplanmaya baslarken
-		explosion -> tam patlama aninda, efektle ayni karede
+		explosion -> basari patlamasi aninda
 	]]
 	charge = { "FuseCharge", "FuseCarge" },
 	explosion = { "FuseExplosion" },
-	--[[
-		Renklendirme bicimi.
-
-		true  : parcaciklarin KENDI parlaklik ve doygunluk yapisi korunur,
-		        yalnizca renk TONU degisir. Beyaz cekirdek beyaz kalir,
-		        renkli uclar hedef renge doner -- paketin tasarimi bozulmaz.
-		false : her sey duz tek renk olur.
-	]]
+	-- true: parcaciklarin parlaklik yapisi korunur, yalnizca renk tonu degisir
 	preserveShading = true,
 }
 
---[[
-	Bir kademenin BIR USTU. En ust kademede nil doner.
-	Makine buna gore hangi coini verecegini bulur.
-]]
+-- Bir kademenin BIR USTU. En ust kademede nil doner.
 function Fuse.nextRarity(rarityId: string): string?
 	local info = Rarity.Info[rarityId :: Rarity.RarityId]
 	if not info then
@@ -191,46 +123,13 @@ function Fuse.nextRarity(rarityId: string): string?
 	return nil
 end
 
---[[
-	Ekranda gorunen coin adi.
-
-	    (Epic, Tiny, Normal)  ->  "Tiny Epic Coin"
-	    (Epic, Tiny, Gold)    ->  "Gold Tiny Epic Coin"
-
-	Coinde mutasyon ISME yazilir -- brainrotlardan farkli olarak. Sebep:
-	brainrotun mutasyonu zaten altindaki carpan satirinda gorunuyor, coinde
-	ise coinin tamami bu uc bilgiden ibaret; isim disinda yazacak yer yok.
-]]
-function Fuse.coinName(rarityId: string, conditionId: string, mutationId: string?): string
-	local base = `{Condition.get(conditionId).shortName} {Rarity.displayName(rarityId)} Coin`
-
-	if Mutations.isSpecial(mutationId) then
-		return `{Mutations.get(mutationId).displayName} {base}`
-	end
-
-	return base
-end
-
--- Coinin rengi kademesinin rengidir
-function Fuse.coinColor(rarityId: string): Color3
-	return Rarity.color(rarityId)
-end
-
 export type SizeChance = {
 	id: string,
 	count: number,
 	chance: number,
 }
 
---[[
-	Iceri konan esyalarin BOYUT DAGILIMI.
-
-	entries: { { condition = "Tiny" }, ... }
-	Donen: Condition.Order sirasinda, yalnizca iceride BULUNAN boyutlar.
-
-	Arayuz bunu oldugu gibi yaziyor ("%60 Tiny  %20 Large  %20 Huge"), cekilis
-	de ayni tabloyu kullaniyor -- yani oyuncunun gordugu oran gercek oran.
-]]
+-- Konanlarin BOYUT DAGILIMI (Condition.Order sirasinda, yalnizca bulunanlar)
 function Fuse.sizeChances(entries: { any }): { SizeChance }
 	local total = #entries
 	if total == 0 then
@@ -247,11 +146,7 @@ function Fuse.sizeChances(entries: { any }): { SizeChance }
 	for _, id in Condition.Order do
 		local count = counts[id]
 		if count then
-			table.insert(out, {
-				id = id,
-				count = count,
-				chance = count / total * 100,
-			})
+			table.insert(out, { id = id, count = count, chance = count / total * 100 })
 		end
 	end
 
@@ -261,20 +156,9 @@ end
 --[[
 	MUTASYON AKTARIMI
 
-	Makineye konan HER esya, kendi mutasyonunu cikan coine gecirme sansi
-	tasir. Sans esya basina chancePerItem kadardir ve ayni mutasyondan
-	birden fazla esya varsa TOPLANIR:
-
-	    2 Gold + 1 Diamond + 2 mutasyonsuz
-	        ->  %20 Gold,  %10 Diamond,  %70 mutasyonsuz
-
-	Mutasyonsuz esyalar hicbir sey katmaz. En fazla Fuse.Required esya
-	konabildigi icin toplam sans %50'yi gecemez.
-
-	Coin de mutasyon tasir: Gold bir coin makineye konursa o da Gold katar.
-
-	Cekilis TEK SEFERDIR -- coin ya bir mutasyon alir ya da hic almaz,
-	ikisi birden olmaz.
+	Konan HER mutasyonlu brainrot, kendi mutasyonunu kazanilan brainrota
+	gecirme sansi tasir (esya basina chancePerItem). Ayni mutasyondan birden
+	fazla varsa TOPLANIR. Cekilis tek seferdir.
 ]]
 Fuse.Mutation = {
 	chancePerItem = 10,
@@ -286,15 +170,6 @@ export type MutationChance = {
 	chance: number,
 }
 
---[[
-	Iceri konanlarin MUTASYON DAGILIMI.
-
-	entries: { { mutation = "Gold" }, ... }
-	Donen: Mutations.Order sirasinda, yalnizca iceride BULUNAN mutasyonlar.
-
-	Arayuz bunu oldugu gibi yaziyor, cekilis de ayni tabloyu kullaniyor --
-	yani oyuncunun gordugu oran gercek oran.
-]]
 function Fuse.mutationChances(entries: { any }): { MutationChance }
 	local counts: { [string]: number } = {}
 
@@ -309,23 +184,13 @@ function Fuse.mutationChances(entries: { any }): { MutationChance }
 	for _, id in Mutations.Order do
 		local count = counts[id]
 		if count then
-			table.insert(out, {
-				id = id,
-				count = count,
-				chance = count * Fuse.Mutation.chancePerItem,
-			})
+			table.insert(out, { id = id, count = count, chance = count * Fuse.Mutation.chancePerItem })
 		end
 	end
 
 	return out
 end
 
---[[
-	Cikacak coinin mutasyonu.
-
-	Siralanan sanslar toplanir; cekilen sayi hangi araliga duserse o
-	mutasyon kazanir. Hicbirine dusmezse coin mutasyonsuz cikar.
-]]
 function Fuse.rollMutation(entries: { any }, rng: Random): string
 	local roll = rng:NextNumber() * 100
 	local cursor = 0
@@ -340,14 +205,7 @@ function Fuse.rollMutation(entries: { any }, rng: Random): string
 	return Mutations.Default
 end
 
---[[
-	Cikacak coinin boyutunu ceker.
-
-	Cekilis dogrudan esya listesinden yapiliyor: rastgele bir esya secilip
-	onun boyutu aliniyor. Bu, sizeChances'in verdigi oranin tam karsiligi --
-	iki yer ayri ayri hesaplasaydi ekranda yazan oranla gercek oran zamanla
-	ayrisabilirdi.
-]]
+-- Kazanilan brainrotun boyutu: konanlardan rastgele birinin boyutu
 function Fuse.rollSize(entries: { any }, rng: Random): string
 	if #entries == 0 then
 		return Condition.Default
@@ -357,15 +215,9 @@ function Fuse.rollSize(entries: { any }, rng: Random): string
 	return Condition.get(picked.condition).id
 end
 
---[[
-	Makinenin onunde yazan yonerge.
-	Oyuncu ne yapmasi gerektigini panele bakarak anlasin diye.
-]]
-function Fuse.headline(rarityId: string?, count: number): string
-	if not rarityId then
-		return `Same Rarity Brainrot  {count}/{Fuse.Required}`
-	end
-	return `{Rarity.displayName(rarityId)} Brainrot  {count}/{Fuse.Required}`
+-- Birlestirme tuttu mu (sabit Fuse.SuccessChance)
+function Fuse.rollSuccess(rng: Random): boolean
+	return rng:NextNumber() * 100 < Fuse.SuccessChance
 end
 
 return Fuse

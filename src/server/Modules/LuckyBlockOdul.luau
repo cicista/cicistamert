@@ -37,6 +37,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
 local GorevTakip = require(script.Parent:WaitForChild("GorevTakip"))
+local Seviye = require(script.Parent:WaitForChild("Seviye"))
 local Tools = require(script.Parent:WaitForChild("Tools"))
 local Sand = require(script.Parent:WaitForChild("Sand"))
 
@@ -546,6 +547,7 @@ local function openBlock(player: Player, tierId: string)
 	-- Gorev panosu: blok acildi, icinden de bir brainrot cikti
 	GorevTakip.ilerlet(player, "lucky", 1)
 	GorevTakip.ilerlet(player, "collect", 1, rarityId)
+	Seviye.xpVer(player, Seviye.XP.luckyBlock)
 
 	--[[
 		Odul VERIYE hemen yaziliyor (cark donerken oyuncu cikarsa kaybolmasin)

@@ -65,75 +65,11 @@ function Envanter.push(player: Player)
 		-- Envanter ekrani dedektor satirini bundan ciziyor; eksik olursa
 		-- oyuncu Divine tasisa bile ekranda Basic gorunur
 		detector = data.detector,
-		skins = data.skins,
-		equipped = data.equipped,
 		inventory = data.inventory,
-		-- Fuse coinleri (bozdurucu ekrani ve envanter ozeti bunu kullanir)
-		coins = data.coins,
 		-- Madenler ve kazmalar (ada saticilari ve ileride envanter ekrani)
 		ores = data.ores,
 		pickaxes = data.pickaxes,
 	})
-end
-
---[[
-	Fuse coinlerini cantayla esitler.
-
-	Brainrotlarla ayni mantik: veri tek dogruluk kaynagi, canta ona gore
-	duzeltilir. Her coin AYRI bir Tool -- Lucky Block gibi tek Tool'da
-	yigilamaz, cunku her coinin kendi kademesi ve boyutu var.
-]]
-function Envanter.syncCoins(player: Player)
-	local data = PlayerData.get(player)
-	if not data then
-		return
-	end
-
-	local backpack = player:FindFirstChildOfClass("Backpack")
-	if not backpack then
-		backpack = player:WaitForChild("Backpack", 5) :: Backpack?
-	end
-	if not backpack then
-		return
-	end
-
-	-- Cantada/elde bulunan coin tool'lari
-	local present: { [string]: Tool } = {}
-
-	for _, place in { backpack :: Instance, player.Character } do
-		if place then
-			for _, item in place:GetChildren() do
-				if item:IsA("Tool") then
-					local uid = item:GetAttribute("CoinUid")
-					if type(uid) == "string" then
-						present[uid] = item
-					end
-				end
-			end
-		end
-	end
-
-	local expected: { [string]: boolean } = {}
-
-	for _, coin in data.coins do
-		expected[coin.uid] = true
-
-		if not present[coin.uid] then
-			local ok, err = pcall(function()
-				Tools.buildCoin(coin).Parent = backpack
-			end)
-			if not ok then
-				warn(`[Envanter] {player.Name}: coin tool'u uretilemedi -- {tostring(err)}`)
-			end
-		end
-	end
-
-	-- Veride olmayan (bozdurulmus / makineye konmus) coinleri temizle
-	for uid, tool in present do
-		if not expected[uid] then
-			tool:Destroy()
-		end
-	end
 end
 
 ------------------------------------------------------------------
@@ -208,7 +144,7 @@ function Envanter.equipShovel(player: Player)
 	Tools.remove(player, Tools.GPSName)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.PickaxeName)
-	Tools.buildShovel(data.shovel, data.equipped.Shovel).Parent = character
+	Tools.buildShovel(data.shovel).Parent = character
 end
 
 --[[
@@ -255,7 +191,7 @@ function Envanter.equipGPS(player: Player)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.GPSName)
 	Tools.remove(player, Tools.PickaxeName)
-	Tools.buildGPS(data.detector, data.equipped.GPS).Parent = character
+	Tools.buildGPS(data.detector).Parent = character
 end
 
 --[[
@@ -551,7 +487,6 @@ end
 function Envanter.refresh(player: Player)
 	Envanter.syncBrainrots(player)
 	Envanter.syncLuckyBlocks(player)
-	Envanter.syncCoins(player)
 	Envanter.push(player)
 end
 

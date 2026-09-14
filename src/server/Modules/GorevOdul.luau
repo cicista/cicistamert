@@ -13,7 +13,7 @@
 	GOSTERI
 	Ruh toplama ve charge sesi YOK: Collect anindan itibaren dogrudan
 	Workspace'teki FuseVFX patlar ve FuseExplosion sesi calar (bkz.
-	Modules > Patlama). Efektin rengi ve buyuklugu odul coininin
+	Modules > Patlama). Efektin rengi ve buyuklugu odulun
 	kademesinden gelir -- Fuse makinesindeki patlamanin aynisi.
 ]]
 
@@ -22,13 +22,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Gorevler = require(Shared:WaitForChild("Gorevler"))
 local Condition = require(Shared:WaitForChild("Condition"))
-local Fuse = require(Shared:WaitForChild("Fuse"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
 local GorevTakip = require(script.Parent:WaitForChild("GorevTakip"))
+local Seviye = require(script.Parent:WaitForChild("Seviye"))
 local Patlama = require(script.Parent:WaitForChild("Patlama"))
 
 local Bildirim = Net.event("Bildirim")
@@ -75,25 +75,22 @@ function GorevOdul.topla(player: Player, id: string): boolean
 	durum.done[def.id] = true
 
 	local reward = Gorevler.reward(def)
-	for _ = 1, reward.count do
-		PlayerData.addCoin(player, reward.rarity, Condition.Default, "Normal")
-	end
-
-	Envanter.syncCoins(player)
-	Envanter.push(player)
+	-- Odul: o kademeden kimligi acik brainrot (bkz. GorevTakip.odulVer)
+	local adlar = GorevTakip.odulVer(player, def)
+	Seviye.xpVer(player, Seviye.XP.quest)
 
 	--[[
 		RUH GOSTERISI YOK.
 
 		Gorev odulunde ruhlarin toplanmasi ve charge sesi oynamiyor: Collect
 		anindan itibaren dogrudan Workspace'teki FuseVFX patliyor ve
-		FuseExplosion sesi caliyor. Renk odul coininin kademesinden gelir.
+		FuseExplosion sesi caliyor. Renk odulun kademesinden gelir.
 	]]
 	Patlama.oynat(player, reward.rarity)
 
 	Bildirim:FireClient(
 		player,
-		`Quest Reward: {Fuse.coinName(reward.rarity, Condition.Default, "Normal")}`,
+		`Quest Reward: {if #adlar > 0 then table.concat(adlar, ", ") else Gorevler.rewardText(def)}`,
 		Rarity.color(reward.rarity)
 	)
 

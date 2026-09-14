@@ -2,32 +2,24 @@
 	Fuse  (Script)
 	Yeri: ServerScriptService > Fuse
 
-	ILK ADADAKI IKI NPC.
+	ILK ADADAKI FUSE MAKINESI  (Config.Fuse.machineName)
 
-	1. FUSE MAKINESI  (Config.Fuse.machineName)
-	   Ayni kademeden 5 esya alir, BIR UST kademede bir coin verir.
+	   3 AYNI brainrot (ayni isim) konur, oyuncu FUSE'a basar:
+	     %Fuse.SuccessChance  -> bir ust kademeden acilmis brainrot
+	     kalani               -> hicbir sey, konan 3 brainrot gider
 
-	   Esyayi ELINE ALIP makinede E'ye BASILI TUT: esya envanterden cikar,
-	   makinenin icinde birikir. Makinede farkli kademeden esya bulunamaz.
-	   Coin de konabilir -- kendi kademesi ve boyutuyla islenir, yani
-	   5 Epic coin -> 1 Legendary coin.
+	   Kurallar ve oranlar Shared > Fuse'ta. Hepsi SUNUCUDA dogrulanir:
+	   istemci yalnizca "su uid'yi koy / su uid'yi geri al / baslat" der.
 
-	   Cikan coinin BOYUTU ve MUTASYONU iceri konanlardan cekilir:
-	   3 Tiny + 1 Large + 1 Huge -> %60 Tiny, %20 Large, %20 Huge.
-	   2 Gold + 1 Diamond       -> %20 Gold, %10 Diamond, %70 mutasyonsuz.
+	   Konan brainrotlar envanterden CIKAR, makinede bekler. Oyuncu
+	   Fuse.Timeout saniye islem yapmazsa, oyundan cikarsa ya da "Return"a
+	   basarsa geri verilir -- hicbir yolda kaybolmaz.
 
-	   Makineye Fuse.Timeout saniye boyunca yeni esya konmazsa icindekiler
-	   sahibine geri verilir -- kimse esyasini makinede unutup kaybetmesin.
+	ARAYUZ (bkz. StarterPlayerScripts > Fuse)
+	  Makinede E'ye basinca pencere acilir: 3 slot, "+" ile brainrot secimi,
+	  slotlarda Return, altta FUSE dugmesi.
 
-	2. COIN BOZDURUCU  (Config.Fuse.openerName)
-	   Coini alir, coinin kademesinden rastgele bir brainrot verir. Cikan
-	   brainrot'un boyutu COININ BOYUTUDUR; yani Huge coin her zaman Huge
-	   brainrot verir. Cark yalnizca gosterim, sonuc once belirlenir.
-
-	ARAYUZ
-	  Makinenin paneli yaklasinca kendiliginden gorunur (prompt beklemez):
-	  oyuncu ne yapmasi gerektigini -- "Same Rarity Brainrot 0/5" -- ve
-	  koydukca degisen kademe/boyut sanslarini oradan okur.
+	(Coin sistemi ve Coin Trader oyundan kaldirildi.)
 ]]
 
 local Players = game:GetService("Players")
@@ -50,6 +42,7 @@ local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
+local Seviye = require(Modules:WaitForChild("Seviye"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
 
 local Bildirim = Net.event("Bildirim")
@@ -57,42 +50,40 @@ local FuseDurum = Net.event("FuseDurum")
 local FuseGeriAl = Net.event("FuseGeriAl")
 local FuseSecim = Net.event("FuseSecim")
 local FuseEkle = Net.event("FuseEkle")
+local FuseCikar = Net.event("FuseCikar")
+local FuseBaslat = Net.event("FuseBaslat")
 local FuseSonuc = Net.event("FuseSonuc")
-local CoinAc = Net.event("CoinAc")
-local CoinBozdur = Net.event("CoinBozdur")
-local CoinSonuc = Net.event("CoinSonuc")
 
 local F = Config.Fuse
 local rng = Random.new()
 
+local UYARI = Color3.fromRGB(255, 200, 90)
+local RED = Color3.fromRGB(255, 120, 120)
+
 --[[
 	Makinenin icindekiler -- oyuncu basina ayri.
 
-	entries: { { kind = "brainrot" | "coin", item = <veri kopyasi> } }
-	Esyalar PlayerData'dan CIKARILIP buraya alinir; iade edilince geri konur.
-	Boylece "hem envanterde hem makinede" gibi bir ara durum olusmaz.
+	name    : makinedeki brainrotlarin ortak adi (ilk konan belirler)
+	rarity  : o brainrotun kademesi
+	entries : { { condition, mutation, item } } -- item veriden cikarilmis kayit
 ]]
 type Pending = {
+	name: string,
 	rarity: string,
-	-- { kind, condition, item } -- condition disariya duzlestirilmis hali
 	entries: { any },
 	lastAt: number,
 }
 
 local pending: { [Player]: Pending } = {}
 
--- Bozdurma carki donerken ikinci bir coin acilmasin
-local opening: { [Player]: boolean } = {}
+-- Birlestirme gosterisi suruyor: bu sirada yeni esya konmasin / baslatilmasin
+local fusing: { [Player]: boolean } = {}
 
 ------------------------------------------------------------------
 -- NPC KURULUMU
 ------------------------------------------------------------------
 
---[[
-	Haritada model yoksa o noktaya basit bir tezgah kurar.
-	Diger NPC'lerdeki (Detective, Satici, SlotMakinesi) mantigin aynisi:
-	oyun model olmadan da calisir, model eklenince kod degismez.
-]]
+-- Haritada model yoksa o noktaya basit bir tezgah kurar
 local function buildStand(name: string, position: Vector3, label: string, color: Color3): Model
 	local model = Instance.new("Model")
 	model.Name = name
@@ -117,17 +108,10 @@ local function buildStand(name: string, position: Vector3, label: string, color:
 	panel.Material = Enum.Material.Neon
 	panel.Parent = model
 
-	local light = Instance.new("PointLight")
-	light.Color = color
-	light.Range = 18
-	light.Brightness = 2
-	light.Parent = panel
-
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "Tabela"
 	sign.Size = UDim2.fromOffset(230, 44)
 	sign.StudsOffset = Vector3.new(0, 5, 0)
-	sign.AlwaysOnTop = false
 	sign.MaxDistance = 120
 	sign.Parent = body
 
@@ -137,7 +121,6 @@ local function buildStand(name: string, position: Vector3, label: string, color:
 	text.Text = label
 	text.TextColor3 = color
 	text.TextSize = 22
-	text.TextScaled = false
 	Fonts.apply(text)
 	text.Parent = sign
 
@@ -145,18 +128,12 @@ local function buildStand(name: string, position: Vector3, label: string, color:
 	return model
 end
 
--- Adiyla (ya da yedek adiyla) haritada arar
 --[[
-	NPC ARAMA
-
-	Modeller MAIN ISLAND gibi baska bir modelin icinde durabiliyor, o yuzden
-	butun Workspace taranir. Ad karsilastirmasi BUYUK/KUCUK HARF ve bosluk
-	gozetmez: "FuseMachine", "Fuse Machine" ve "FUSEMACHINE" ayni sayilir.
-
-	Bulunamazsa yedek tezgah kurulur; Output'taki uyaridan anlasilir.
+	NPC ARAMA: butun Workspace taranir, ad karsilastirmasi buyuk/kucuk harf
+	ve bosluk gozetmez ("FuseMachine" = "Fuse Machine").
 ]]
 local function adEsit(a: string, b: string): boolean
-	return string.lower(string.gsub(a, "%s", "")) == string.lower(string.gsub(b, "%s", ""))
+	return string.lower((string.gsub(a, "%s", ""))) == string.lower((string.gsub(b, "%s", "")))
 end
 
 local function findNPC(name: string, altName: string?): Model?
@@ -164,22 +141,16 @@ local function findNPC(name: string, altName: string?): Model?
 		if not candidate then
 			continue
 		end
-
 		for _, node in Workspace:GetDescendants() do
 			if node:IsA("Model") and adEsit(node.Name, candidate) then
 				return node
 			end
 		end
 	end
-
 	return nil
 end
 
---[[
-	Modelin tutunma parcasi. Parcalar alt modellerin icinde olabilir, bu
-	yuzden arama DERIN: yalnizca dogrudan cocuklara bakan surum bazi
-	NPC'lerde bos donuyordu.
-]]
+-- Modelin tutunma parcasi (derin arama: parcalar alt modellerde olabilir)
 local function anchorOf(model: Model): BasePart?
 	local primary = model.PrimaryPart
 	if primary then
@@ -195,61 +166,66 @@ local function anchorOf(model: Model): BasePart?
 end
 
 local bulunanMakine = findNPC(F.machineName, F.machineAltName)
-local bulunanBozdurucu = findNPC(F.openerName, F.openerAltName)
 
 local machine: Model = bulunanMakine
 	or buildStand(F.machineName, F.machineSpawnPosition, "FUSE MACHINE", Color3.fromRGB(120, 200, 255))
 
-local opener: Model = bulunanBozdurucu
-	or buildStand(F.openerName, F.openerSpawnPosition, "COIN TRADER", Color3.fromRGB(255, 200, 90))
-
--- Hangisinin haritadan geldigi, hangisinin yedek oldugu Output'tan gorulsun
 if not bulunanMakine then
 	warn(`[Fuse] "{F.machineName}" / "{F.machineAltName}" bulunamadi -- yedek tezgah kuruldu`)
-end
-if not bulunanBozdurucu then
-	warn(`[Fuse] "{F.openerName}" / "{F.openerAltName}" bulunamadi -- yedek tezgah kuruldu`)
 end
 
 ------------------------------------------------------------------
 -- DURUM YAYINI
 ------------------------------------------------------------------
 
-local function machinePosition(): Vector3?
-	if not machine or not machine.Parent then
-		return nil
-	end
-	local anchor = anchorOf(machine)
-	return if anchor then anchor.Position else nil
-end
-
 local function inMachineRange(player: Player): boolean
-	local position = machinePosition()
+	local anchor = if machine and machine.Parent then anchorOf(machine) else nil
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 
-	if not position or not root or not root:IsA("BasePart") then
+	if not anchor or not root or not root:IsA("BasePart") then
 		return false
 	end
 
-	return (root.Position - position).Magnitude <= F.machineRange
+	return (root.Position - anchor.Position).Magnitude <= F.machineRange
 end
 
 --[[
-	Makine panelini tazeler.
-
-	Makine bosken bile gonderilir: oyuncu yaklasinca ne yapmasi gerektigini
-	("Same Rarity Brainrot 0/5") gormeli.
+	Bir brainrot makineye KONABILIR MI? Konamazsa sebebi doner.
+	Hem liste (eligibleItems) hem koyma (insertItem) ayni kurali kullanir;
+	listede gorunen her sey gercekten konabilir.
 ]]
+local function uygunsuzluk(player: Player, item: any): string?
+	if item.slot then
+		return "A brainrot on your base cannot be fused."
+	end
+	if not item.revealed or type(item.name) ~= "string" then
+		return "Unidentified brainrots cannot be fused. Take it to the Detective first."
+	end
+
+	local next = Fuse.nextRarity(item.rarity)
+	if not next then
+		return `{Rarity.displayName(item.rarity)} cannot be fused, it is the top tier.`
+	end
+
+	if not Brainrots.availableOn(next, PlayerData.reachedIsland(player)) then
+		return `{Rarity.displayName(next)} brainrots unlock on a later island.`
+	end
+
+	local slot = pending[player]
+	if slot and slot.name ~= item.name then
+		return `The machine holds {slot.name}, add the same brainrot.`
+	end
+
+	return nil
+end
+
 --[[
-	MAKINEYE KONABILECEK ESYALAR
+	MAKINEYE KONABILECEK BRAINROTLAR (secim listesi)
 
-	Oyuncu artik esyayi elinde tutmuyor, makine penceresinden seciyor.
-	Listeye giren: base slotunda OLMAYAN brainrotlar ve butun coinler --
-	yalnizca ust kademesi olanlar (en ust kademe birlestirilemez).
-
-	Makinede zaten bir kademe varsa yalnizca O kademe listelenir; oyuncu
-	kabul edilmeyecek bir esyaya tiklamak zorunda kalmasin.
+	Makinede bir brainrot varsa yalnizca AYNI ISIMDEKILER listelenir.
+	Ayni isimden toplam kac tane oldugu da gider: oyuncu 3'e yetip
+	yetmeyecegini listeden gorsun.
 ]]
 local function eligibleItems(player: Player): { any }
 	local data = PlayerData.get(player)
@@ -257,66 +233,65 @@ local function eligibleItems(player: Player): { any }
 		return {}
 	end
 
-	local slot = pending[player]
-	local istenen = if slot then slot.rarity else nil
-
 	local out = {}
+	local sayac: { [string]: number } = {}
 
 	for _, item in data.inventory do
-		if item.slot or not Fuse.nextRarity(item.rarity) then
+		if uygunsuzluk(player, item) then
 			continue
 		end
-		if istenen and item.rarity ~= istenen then
-			continue
-		end
-
+		sayac[item.name] = (sayac[item.name] or 0) + 1
 		table.insert(out, {
 			uid = item.uid,
-			kind = "brainrot",
+			name = item.name,
 			rarity = item.rarity,
 			condition = item.condition,
 			mutation = item.mutation,
-			name = if item.revealed and item.name then item.name else nil,
 		})
 	end
 
-	for _, coin in data.coins do
-		if not Fuse.nextRarity(coin.rarity) then
-			continue
-		end
-		if istenen and coin.rarity ~= istenen then
-			continue
-		end
-
-		table.insert(out, {
-			uid = coin.uid,
-			kind = "coin",
-			rarity = coin.rarity,
-			condition = coin.condition,
-			mutation = coin.mutation,
-			name = Fuse.coinName(coin.rarity, coin.condition, coin.mutation),
-		})
+	for _, entry in out do
+		entry.owned = sayac[entry.name] or 0
 	end
+
+	-- Once cok olan (3'e yetenler ustte), sonra ada gore
+	table.sort(out, function(a, b)
+		if a.owned ~= b.owned then
+			return a.owned > b.owned
+		end
+		return a.name < b.name
+	end)
 
 	return out
 end
 
 local function pushStatus(player: Player)
 	local slot = pending[player]
-	local entries = if slot then slot.entries else {}
-	local rarityId = if slot then slot.rarity else nil
+	local slots = {}
+
+	if slot then
+		for _, entry in slot.entries do
+			table.insert(slots, {
+				uid = entry.item.uid,
+				name = entry.item.name,
+				rarity = entry.item.rarity,
+				condition = entry.condition,
+				mutation = entry.mutation,
+			})
+		end
+	end
 
 	FuseDurum:FireClient(player, {
 		near = true,
-		rarity = rarityId,
-		count = #entries,
+		fusing = fusing[player] == true,
+		name = if slot then slot.name else nil,
+		rarity = if slot then slot.rarity else nil,
+		nextRarity = if slot then Fuse.nextRarity(slot.rarity) else nil,
 		required = Fuse.Required,
-		nextRarity = if rarityId then Fuse.nextRarity(rarityId) else nil,
-		sizes = Fuse.sizeChances(entries),
-		mutations = Fuse.mutationChances(entries),
-		-- Iadeye kalan sure (makine bosken anlamsiz)
+		chance = Fuse.SuccessChance,
+		slots = slots,
+		mutations = if slot then Fuse.mutationChances(slot.entries) else {},
 		timeout = if slot then math.max(0, Fuse.Timeout - (os.clock() - slot.lastAt)) else 0,
-		-- Makine penceresinde listelenecek esyalar
 		items = eligibleItems(player),
 	})
 end
@@ -329,13 +304,7 @@ end
 -- IADE
 ------------------------------------------------------------------
 
---[[
-	Makinedeki esyalari sahibine geri verir.
-
-	Esyalar veriden cikarilmis oldugu icin buraya dokunmadan birakilirsa
-	gercekten kaybolurlar; her cikis yolu (zaman asimi, oyuncunun ayrilmasi,
-	elle geri alma) bu fonksiyondan gecer.
-]]
+-- Makinedeki BUTUN brainrotlari sahibine geri verir (her cikis yolu buradan)
 local function returnItems(player: Player, reason: string?)
 	local slot = pending[player]
 	if not slot then
@@ -350,266 +319,86 @@ local function returnItems(player: Player, reason: string?)
 
 	local count = #slot.entries
 	for _, entry in slot.entries do
-		if entry.kind == "coin" then
-			table.insert(data.coins, entry.item)
-		else
-			table.insert(data.inventory, entry.item)
-		end
+		table.insert(data.inventory, entry.item)
 	end
 
 	Envanter.syncBrainrots(player)
-	Envanter.syncCoins(player)
 	Envanter.push(player)
 
 	if count > 0 and reason then
-		Bildirim:FireClient(player, `{count} item(s) returned from the machine ({reason})`, Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, `{count} brainrot(s) returned from the machine ({reason})`, UYARI)
 	end
 end
 
-------------------------------------------------------------------
--- PATLAMA EFEKTI
-------------------------------------------------------------------
-
---[[
-	Birlesme patlamasini BIRLESTIREN OYUNCUNUN UZERINDE oynatir.
-
-	Efektin rengi CIKAN COININ kademesine cevrilir: 5 mavi brainrot birlesip
-	sari bir coin verdiyse patlama da sari olur. Renklendirme parcaciklarin
-	kendi parlaklik yapisini korur (bkz. Assets.tintEffects). Ust kademelerde
-	patlamanin capi da buyur (Fuse.VFX.scaleByRarity).
-
-	Efekt karakterin govdesine KAYNAKLANIR, sabit bir noktaya konmaz: oyuncu
-	patlama sirasinda yururse efekt uzerinde kalir. Sunucu urettigi icin
-	haritadaki herkes gorur, yalnizca birlestiren degil.
-]]
--- Oyuncunun govdesi: sesler ve efekt buraya baglanir
-local function bodyOf(player: Player): BasePart?
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	return if root and root:IsA("BasePart") then root else nil
-end
-
---[[
-	Fuse sesini oyuncunun uzerinde calar.
-	3B oldugu icin yakindaki herkes duyar, kaynagi da dogru yerde olur.
-]]
-local function playFuseSound(player: Player, names: { string }): Sound?
-	local body = bodyOf(player)
-	if not body then
-		return nil
-	end
-	return Assets.playSoundAt(names, body)
-end
-
---[[
-	Patlama Modules > Patlama icinde: gorev odulu (Quests > Collect) da tam
-	ayni efekti kullaniyor, kod iki yerde durmasin.
-]]
-local function playBurstVFX(player: Player, rarityId: string)
-	Patlama.oynat(player, rarityId)
-end
-
-------------------------------------------------------------------
--- BIRLESTIRME
-------------------------------------------------------------------
-
---[[
-	5'e ulasildiginda: icerideki esyalar yok olur, bir ust kademede
-	coin uretilir. Coinin boyutu iceridekilerden cekilir.
-]]
-local function completeFuse(player: Player)
+-- Tek slotu geri verir ("Return" dugmesi)
+local function returnOne(player: Player, uid: string)
 	local slot = pending[player]
-	if not slot then
+	if not slot or fusing[player] then
 		return
 	end
 
-	local nextRarity = Fuse.nextRarity(slot.rarity)
-	if not nextRarity then
-		-- Buraya gelinmemeli (koyarken engelleniyor) ama esya kaybolmasin
-		returnItems(player, "bu kademenin ustu yok")
-		return
-	end
-
-	--[[
-		Boyut ve mutasyon iceridekilerden cekilir; ikisi de panelde yazan
-		oranin aynisi (arayuz de cekilis de Shared > Fuse'daki ayni
-		fonksiyonlari kullaniyor).
-	]]
-	local condition = Fuse.rollSize(slot.entries, rng)
-	local mutation = Fuse.rollMutation(slot.entries, rng)
-
-	--[[
-		Coin ONCE uretilir, makine ANCAK ondan sonra bosaltilir.
-		Ters sirada olsaydi ve coin uretilemeseydi (veri yuklenmemis olsa
-		mesela) icerideki 5 esya hicbir sey vermeden yok olurdu.
-	]]
-	local coin = PlayerData.addCoin(player, nextRarity, condition, mutation)
-	if not coin then
-		return
-	end
-
-	-- Gorev panosu: makinede coin uretildi
-	GorevTakip.ilerlet(player, "fuse", 1, nextRarity)
-
-	-- Gosteride kac ruh donecek: iceri konan esya sayisi
-	local fromRarity = slot.rarity
-	local souls = #slot.entries
-
-	pending[player] = nil
-	pushStatus(player)
-
-	FuseSonuc:FireClient(player, {
-		fromRarity = fromRarity,
-		toRarity = nextRarity,
-		condition = condition,
-		mutation = mutation,
-		coinName = Fuse.coinName(nextRarity, condition, mutation),
-		souls = souls,
-	})
-
-	-- Ruhlar toplanmaya baslarken yukleniyor sesi
-	local charge = playFuseSound(player, Fuse.VFX.charge)
-
-	--[[
-		Oyuncunun uzerindeki patlama efekti, gosterinin PATLAMA anina
-		kilitlenir: ruhlar merkeze kapanip beyaz parlamada birlestigi an.
-		Sure Fuse.burstDelay()'den geliyor, istemcideki gosteri de ayni
-		degeri okuyor -- ekran sarsintisi ile efekt ayni karede oluyor.
-	]]
-	task.delay(Fuse.burstDelay(), function()
-		--[[
-			Yukleniyor sesi patlamayla birlikte kesilir. Uzun bir ses
-			kullanilirsa patlamadan sonra kuyruk birakip gerilimi
-			bozuyordu; burada bitmesi gerekiyor.
-		]]
-		if charge and charge.Parent then
-			charge:Stop()
-			charge:Destroy()
-		end
-
-		playBurstVFX(player, nextRarity)
-	end)
-
-	--[[
-		Coin VERIYE yukarida hemen yazildi -- gosteri oynarken oyuncu
-		cikarsa kaybolmasin. Ama CANTAYA ve envanter ekranina gosteri
-		bitince yansitiliyor: yoksa coin daha ruhlar birlesmeden envanterde
-		beliriyor ve surpriz kaliyor.
-	]]
-	task.delay(Fuse.mergeTime(), function()
-		if not player.Parent then
-			return
-		end
-
-		Envanter.syncCoins(player)
-		Envanter.push(player)
-
-		Bildirim:FireClient(
-			player,
-			`{Fuse.coinName(nextRarity, condition, mutation)} created! Take it to the Coin Trader.`,
-			Rarity.color(nextRarity)
-		)
-	end)
-end
-
---[[
-	Elde tutulan esyayi makineye koyar.
-
-	Kabul edilenler: brainrot (acilmis ya da acilmamis) ve coin. Ikisinde de
-	kademe ve boyut bellidir, makinenin ihtiyaci olan tek sey bu.
-]]
-local function insertItem(player: Player, uid: string)
 	local data = PlayerData.get(player)
 	if not data then
 		return
 	end
 
-	--[[
-		UID ILE GELIR, ELDE TUTMA YOK.
-
-		Oyuncu makine penceresinde envanterindeki esyayi seciyor. Ayni uid
-		hem coin hem brainrot olamaz; once coinlere, sonra brainrotlara
-		bakiliyor.
-	]]
-	local heldCoinUid: string? = if PlayerData.findCoin(player, uid) then uid else nil
-	local heldBrainrotUid: string? = if not heldCoinUid and PlayerData.findItem(player, uid) then uid else nil
-
-	if not heldCoinUid and not heldBrainrotUid then
-		Bildirim:FireClient(player, "That item is no longer in your inventory.", Color3.fromRGB(255, 200, 90))
-		return
+	for index, entry in slot.entries do
+		if entry.item.uid == uid then
+			table.remove(slot.entries, index)
+			table.insert(data.inventory, entry.item)
+			break
+		end
 	end
 
-	------------------------------------------------------------------
-	-- Esyayi coz: kademe, boyut ve veri kaydi
-	------------------------------------------------------------------
-	local kind: string
-	local record: any
-
-	if heldCoinUid then
-		kind = "coin"
-		record = PlayerData.findCoin(player, heldCoinUid)
+	if #slot.entries == 0 then
+		pending[player] = nil
 	else
-		kind = "brainrot"
-		record = PlayerData.findItem(player, heldBrainrotUid :: string)
+		slot.lastAt = os.clock()
 	end
 
-	if not record then
+	Envanter.syncBrainrots(player)
+	Envanter.push(player)
+	pushStatus(player)
+end
+
+------------------------------------------------------------------
+-- KOYMA
+------------------------------------------------------------------
+local function insertItem(player: Player, uid: string)
+	if fusing[player] then
 		return
 	end
 
-	if kind == "brainrot" and record.slot then
-		Bildirim:FireClient(player, "A brainrot on your base cannot be fused.", Color3.fromRGB(255, 200, 90))
+	local item = PlayerData.findItem(player, uid)
+	if not item then
+		Bildirim:FireClient(player, "That brainrot is no longer in your inventory.", UYARI)
 		return
 	end
 
-	------------------------------------------------------------------
-	-- Kurallar
-	------------------------------------------------------------------
-	if not Fuse.nextRarity(record.rarity) then
-		Bildirim:FireClient(
-			player,
-			`{Rarity.displayName(record.rarity)} cannot be fused, it is the top tier.`,
-			Color3.fromRGB(255, 120, 120)
-		)
+	local sebep = uygunsuzluk(player, item)
+	if sebep then
+		Bildirim:FireClient(player, sebep, RED)
 		return
 	end
 
 	local slot = pending[player]
-
-	if slot and slot.rarity ~= record.rarity then
-		Bildirim:FireClient(
-			player,
-			`The machine holds {Rarity.displayName(slot.rarity)}, add the same tier.`,
-			Color3.fromRGB(255, 120, 120)
-		)
+	if slot and #slot.entries >= Fuse.Required then
+		Bildirim:FireClient(player, `The machine is full ({Fuse.Required}/{Fuse.Required}). Press FUSE!`, UYARI)
 		return
 	end
 
-	------------------------------------------------------------------
-	-- Esyayi veriden al, makineye koy
-	------------------------------------------------------------------
-	local taken = if kind == "coin"
-		then PlayerData.removeCoin(player, heldCoinUid :: string)
-		else PlayerData.removeItem(player, heldBrainrotUid :: string)
-
+	local taken = PlayerData.removeItem(player, uid)
 	if not taken then
 		return
 	end
 
 	if not slot then
-		slot = { rarity = record.rarity, entries = {}, lastAt = os.clock() }
+		slot = { name = taken.name, rarity = taken.rarity, entries = {}, lastAt = os.clock() }
 		pending[player] = slot
 	end
 
-	--[[
-		condition esyanin ICINDEN cikarilip girdinin uzerine yaziliyor.
-		Fuse.sizeChances ve Fuse.rollSize girdinin dogrudan .condition
-		alanini okuyor; ic ice item.condition'a bakmak zorunda kalmasinlar
-		diye burada duzlestiriliyor.
-	]]
 	local active = slot :: Pending
 	table.insert(active.entries, {
-		kind = kind,
 		condition = taken.condition,
 		mutation = taken.mutation,
 		item = taken,
@@ -617,114 +406,110 @@ local function insertItem(player: Player, uid: string)
 	active.lastAt = os.clock()
 
 	Envanter.syncBrainrots(player)
-	Envanter.syncCoins(player)
 	Envanter.push(player)
-
-	if #active.entries >= Fuse.Required then
-		completeFuse(player)
-	else
-		pushStatus(player)
-	end
+	pushStatus(player)
 end
 
 ------------------------------------------------------------------
--- COIN BOZDURMA
+-- BIRLESTIRME
 ------------------------------------------------------------------
-
---[[
-	Carkin bolmeleri: hepsi coinin kademesinden, biri gercek odul.
-	Kademe zaten belli oldugu icin tek asamali doner (bkz. Rulet).
-]]
-local function buildCells(rarityId: string, winnerIndex: number, winnerName: string, ada: string): { { name: string, rarity: string } }
-	local cells = {}
-
-	for index = 1, Fuse.Wheel.cellCount do
-		if index == winnerIndex then
-			table.insert(cells, { name = winnerName, rarity = rarityId })
-		else
-			table.insert(cells, { name = Brainrots.rollIsland(rarityId :: any, ada, rng).name, rarity = rarityId })
-		end
-	end
-
-	return cells
+local function bodyOf(player: Player): BasePart?
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return if root and root:IsA("BasePart") then root else nil
 end
 
-local function openCoin(player: Player, uid: string)
-	if opening[player] then
+local function playFuseSound(player: Player, names: { string }): Sound?
+	local body = bodyOf(player)
+	return if body then Assets.playSoundAt(names, body) else nil
+end
+
+local function completeFuse(player: Player)
+	local slot = pending[player]
+	if not slot or fusing[player] then
 		return
 	end
 
-	local coin = PlayerData.findCoin(player, uid)
-	if not coin then
+	if #slot.entries < Fuse.Required then
+		Bildirim:FireClient(player, `You need {Fuse.Required} of the same brainrot to fuse.`, UYARI)
 		return
 	end
 
-	--[[
-		ADA KISITI: coinin kademesinden oyuncunun ulastigi adaya kadar hic
-		brainrot yoksa coin ACILMAZ (kaybolmaz, cantada bekler). Yoksa main
-		island'da Cosmic coin bozdurup baska adanin brainrotu alinirdi.
-	]]
+	local nextRarity = Fuse.nextRarity(slot.rarity)
 	local ada = PlayerData.reachedIsland(player)
-	if not Brainrots.availableOn(coin.rarity, ada) then
-		local gerekli = Brainrots.firstIslandOf(coin.rarity)
-		local adaAdi = if gerekli then Brainrots.IslandNames[gerekli] or gerekli else "a later island"
-		Bildirim:FireClient(
-			player,
-			`{Rarity.get(coin.rarity :: any).displayName} coins open after you dig on {adaAdi}.`,
-			Color3.fromRGB(255, 200, 90)
-		)
+
+	if not nextRarity or not Brainrots.availableOn(nextRarity, ada) then
+		-- Koyarken engelleniyor; yine de brainrotlar kaybolmasin
+		returnItems(player, "cannot fuse this brainrot")
+		pushStatus(player)
 		return
 	end
 
-	opening[player] = true
+	local basari = Fuse.rollSuccess(rng)
 
 	--[[
-		Odul burada belirlenir; cark yalnizca gosterim.
-
-		BOYUT ve MUTASYON coinden AYNEN gecer -- yeniden cekilmez. Huge bir
-		coin her zaman Huge, Gold bir coin her zaman Gold brainrot verir.
-		Cekilis zaten makinede yapildi; burada tekrar cekmek oyuncunun
-		makinede gordugu orani anlamsiz kilardi.
+		ODUL ONCE veriye yazilir, makine ANCAK ondan sonra bosaltilir. Brainrot
+		uretilemezse (veri yuklenmemis olsa mesela) konanlar iade edilir.
 	]]
-	local info = Brainrots.rollIsland(coin.rarity :: any, ada, rng)
-	local condition = Condition.get(coin.condition).id
-	local mutation = Mutations.get(coin.mutation).id
+	local kazanilan: any = nil
+	local condition = Fuse.rollSize(slot.entries, rng)
+	local mutation = Fuse.rollMutation(slot.entries, rng)
 
-	PlayerData.removeCoin(player, uid)
-	Envanter.syncCoins(player)
+	if basari then
+		local info = Brainrots.rollIsland(nextRarity :: any, ada, rng)
+		kazanilan = PlayerData.addBrainrot(player, nextRarity, condition, mutation, ada)
+		if not kazanilan then
+			returnItems(player, "try again")
+			pushStatus(player)
+			return
+		end
 
-	local item = PlayerData.addBrainrot(player, coin.rarity, condition, mutation)
-	if not item then
-		opening[player] = nil
-		return
+		-- Makineden cikan brainrot ACIK gelir: Detective'e gitmeye gerek yok
+		kazanilan.name = info.name
+		kazanilan.revealed = true
+		GorevTakip.ilerlet(player, "collect", 1, nextRarity)
 	end
 
-	-- Coinden cikan brainrot da kademe gorevlerine sayilir
-	GorevTakip.ilerlet(player, "collect", 1, coin.rarity)
+	-- Gorev panosu: makinede bir birlestirme yapildi (tutsa da tutmasa da)
+	GorevTakip.ilerlet(player, "fuse", 1, nextRarity)
+	-- Level: her deneme XP verir; tutarsa cikan kademenin XP'si de eklenir
+	Seviye.xpVer(player, Seviye.XP.fuse + (if basari then Seviye.rarityXp(nextRarity) else 0))
 
-	-- Coinden cikan brainrot ACIK gelir: Detective'e gitmeye gerek yok
-	item.name = info.name
-	item.revealed = true
+	local fromName = slot.name
+	local fromRarity = slot.rarity
+	local souls = #slot.entries
 
-	local income = Brainrots.income(info.name, condition :: any, mutation :: any)
+	pending[player] = nil
+	fusing[player] = true
+	pushStatus(player)
 
-	CoinSonuc:FireClient(player, {
-		cells = buildCells(coin.rarity, Fuse.Wheel.winnerIndex, info.name, ada),
-		winnerIndex = Fuse.Wheel.winnerIndex,
-		spinTime = Fuse.Wheel.spinTime,
-		coinName = Fuse.coinName(coin.rarity, coin.condition, coin.mutation),
-		winner = {
-			name = info.name,
-			rarity = coin.rarity,
-			condition = condition,
-			mutation = mutation,
-			income = income,
-		},
+	FuseSonuc:FireClient(player, {
+		success = basari,
+		fromName = fromName,
+		fromRarity = fromRarity,
+		toRarity = nextRarity,
+		name = if kazanilan then kazanilan.name else nil,
+		condition = condition,
+		mutation = mutation,
+		income = if kazanilan then Brainrots.income(kazanilan.name, condition :: any, mutation :: any) else 0,
+		souls = souls,
 	})
 
-	-- Cark durunca odul cantaya girer ve bildirim cikar
-	task.delay(Fuse.totalSpinTime(), function()
-		opening[player] = nil
+	local charge = playFuseSound(player, Fuse.VFX.charge)
+
+	task.delay(Fuse.burstDelay(), function()
+		if charge and charge.Parent then
+			charge:Stop()
+			charge:Destroy()
+		end
+		-- Patlama yalnizca basarida; basarisizlikta gosteri sessizce soner
+		if basari and player.Parent then
+			Patlama.oynat(player, nextRarity :: string)
+		end
+	end)
+
+	task.delay(Fuse.mergeTime(), function()
+		fusing[player] = nil
 		if not player.Parent then
 			return
 		end
@@ -732,36 +517,23 @@ local function openCoin(player: Player, uid: string)
 		Envanter.syncBrainrots(player)
 		Envanter.push(player)
 
-		Bildirim:FireClient(
-			player,
-			`{info.name} {Condition.get(condition).shortName} ({Format.perSecond(income)})`,
-			Rarity.color(coin.rarity)
-		)
+		if kazanilan then
+			local tam = Mutations.get(mutation).prefix .. kazanilan.name
+			Bildirim:FireClient(
+				player,
+				`FUSE SUCCESS! {tam} {Condition.get(condition).shortName} ({Format.perSecond(Brainrots.income(kazanilan.name, condition :: any, mutation :: any))})`,
+				Rarity.color(nextRarity :: string)
+			)
+		else
+			Bildirim:FireClient(player, `Fuse failed... your {souls} {fromName} were lost.`, RED)
+		end
+
+		pushStatus(player)
 	end)
 end
 
--- Bozdurucunun ekranina gonderilen coin listesi
-local function pushCoins(player: Player)
-	local data = PlayerData.get(player)
-	if not data then
-		return
-	end
-
-	local list = {}
-	for _, coin in data.coins do
-		table.insert(list, {
-			uid = coin.uid,
-			rarity = coin.rarity,
-			condition = coin.condition,
-			mutation = coin.mutation,
-		})
-	end
-
-	CoinAc:FireClient(player, list)
-end
-
 ------------------------------------------------------------------
--- PROMPTLAR
+-- PROMPT
 ------------------------------------------------------------------
 local function attachMachinePrompt()
 	local anchor = anchorOf(machine)
@@ -785,10 +557,7 @@ local function attachMachinePrompt()
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.Parent = anchor
 
-	--[[
-		Prompt artik esya KOYMUYOR, PENCEREYI ACIYOR.
-		Oyuncu envanterinden hangisini koyacagini orada seciyor.
-	]]
+	-- Prompt pencereyi acar; brainrotlar orada secilir
 	prompt.Triggered:Connect(function(player: Player)
 		pushStatus(player)
 		FuseSecim:FireClient(player)
@@ -797,77 +566,47 @@ local function attachMachinePrompt()
 	print(`[Fuse] Makine promptu kuruldu: {anchor:GetFullName()}`)
 end
 
-local function attachOpenerPrompt()
-	local anchor = anchorOf(opener)
-	if not anchor then
-		warn("[Fuse] Bozdurucuda tutunulacak bir Part bulunamadi")
-		return
-	end
-
-	local existing = anchor:FindFirstChild("CoinPrompt")
-	if existing then
-		existing:Destroy()
-	end
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "CoinPrompt"
-	prompt.ActionText = F.openerPromptText
-	prompt.ObjectText = F.openerPromptSubText
-	prompt.HoldDuration = 0.2
-	prompt.MaxActivationDistance = F.openerPromptDistance
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = anchor
-
-	prompt.Triggered:Connect(pushCoins)
-
-	print(`[Fuse] Bozdurucu promptu kuruldu: {anchor:GetFullName()}`)
-end
-
 task.spawn(attachMachinePrompt)
-task.spawn(attachOpenerPrompt)
 
 ------------------------------------------------------------------
 -- REMOTE BAGLANTILARI
 ------------------------------------------------------------------
 FuseEkle.OnServerEvent:Connect(function(player, uid)
-	if type(uid) ~= "string" then
-		return
+	if type(uid) == "string" then
+		insertItem(player, uid)
 	end
-	insertItem(player, uid)
+end)
+
+FuseCikar.OnServerEvent:Connect(function(player, uid)
+	if type(uid) == "string" then
+		returnOne(player, uid)
+	end
+end)
+
+FuseBaslat.OnServerEvent:Connect(function(player)
+	completeFuse(player)
 end)
 
 FuseGeriAl.OnServerEvent:Connect(function(player)
-	returnItems(player, "geri aldin")
-	pushStatus(player)
-end)
-
-CoinBozdur.OnServerEvent:Connect(function(player, uid)
-	if type(uid) ~= "string" then
+	if fusing[player] then
 		return
 	end
-	openCoin(player, uid)
+	returnItems(player, "taken back")
+	pushStatus(player)
 end)
 
 ------------------------------------------------------------------
 -- DONGULER
 ------------------------------------------------------------------
-
---[[
-	Makine paneli ve zaman asimi.
-
-	Panel PROMPT BEKLEMEDEN gorunur: oyuncu makineye yaklasinca ne yapmasi
-	gerektigini okumali. Menzilden cikanin paneli kapanir.
-]]
 local nearby: { [Player]: boolean } = {}
 
+-- Menzildekine durum yayini; menzilden cikanin penceresi kapanir
 task.spawn(function()
 	while true do
 		task.wait(0.4)
 
 		for _, player in Players:GetPlayers() do
-			local near = inMachineRange(player)
-
-			if near then
+			if inMachineRange(player) then
 				nearby[player] = true
 				pushStatus(player)
 			elseif nearby[player] then
@@ -878,7 +617,7 @@ task.spawn(function()
 	end
 end)
 
--- Zaman asimi: unutulan esyalar sahibine doner
+-- Zaman asimi: unutulan brainrotlar sahibine doner
 task.spawn(function()
 	while true do
 		task.wait(1)
@@ -891,7 +630,7 @@ task.spawn(function()
 			end
 
 			if now - slot.lastAt >= Fuse.Timeout then
-				returnItems(player, `{Fuse.Timeout} saniye yeni esya konmadi`)
+				returnItems(player, `no action for {Fuse.Timeout}s`)
 				if nearby[player] then
 					pushStatus(player)
 				end
@@ -901,13 +640,8 @@ task.spawn(function()
 end)
 
 --[[
-	Oyuncu ayrilirken makinedeki esyalar verisine GERI YAZILIR.
-
-	Bunu PlayerRemoving'e baglamiyoruz: PlayerData da ayni sinyale bagli ve
-	Roblox baglanti sirasini garanti etmiyor -- once o calisirsa cache
-	silinir, makinedeki esyalar kaydedilmeden yok olurdu. PlayerData'nin
-	ayrilma oncesi kancasi ise cache HALA DOLUYKEN calisiyor, yani iade her
-	zaman kayda giriyor.
+	Oyuncu ayrilirken makinedeki brainrotlar verisine GERI YAZILIR.
+	PlayerData'nin ayrilma oncesi kancasi cache hala doluyken calisir.
 ]]
 PlayerData.onBeforeRelease(function(player: Player)
 	returnItems(player, nil)
@@ -915,6 +649,6 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	pending[player] = nil
-	opening[player] = nil
 	nearby[player] = nil
+	fusing[player] = nil
 end)

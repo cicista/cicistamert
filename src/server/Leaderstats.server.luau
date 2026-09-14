@@ -48,6 +48,8 @@ Icons.report()
 require(Modules:WaitForChild("Odul"))
 -- Arkadas buffi: oyuncular girerken arkadasliklari hemen olculsun
 require(Modules:WaitForChild("Arkadaslar"))
+-- Level sistemi: bas ustu yazisi ve XP bari baglantilari
+require(Modules:WaitForChild("Seviye"))
 
 local function setupStats(player: Player)
 	local data = PlayerData.load(player)
@@ -61,15 +63,16 @@ local function setupStats(player: Player)
 	rot.Value = data.rot
 	rot.Parent = stats
 
-	local coins = Instance.new("IntValue")
-	coins.Name = "Rot Coin"
-	coins.Value = data.rotCoins
-	coins.Parent = stats
-
 	local brainrot = Instance.new("IntValue")
 	brainrot.Name = "Brainrot"
 	brainrot.Value = #data.inventory
 	brainrot.Parent = stats
+
+	-- Rot ilk sutun kalir (liste Rot'a gore siralanir)
+	local level = Instance.new("IntValue")
+	level.Name = "Level"
+	level.Value = data.level
+	level.Parent = stats
 
 	stats.Parent = player
 
@@ -79,8 +82,8 @@ local function setupStats(player: Player)
 			local current = PlayerData.get(player)
 			if current then
 				rot.Value = current.rot
-				coins.Value = current.rotCoins
 				brainrot.Value = #current.inventory
+				level.Value = current.level
 			end
 			task.wait(0.5)
 		end

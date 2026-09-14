@@ -30,15 +30,15 @@ local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
-local Skins = require(Shared:WaitForChild("Skins"))
 local Format = require(Shared:WaitForChild("Format"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Net = require(Shared:WaitForChild("Net"))
 local Icons = require(Shared:WaitForChild("Icons"))
 local Rewards = require(Shared:WaitForChild("Rewards"))
+local RotCoinMagaza = require(Shared:WaitForChild("RotCoinMagaza"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
--- Iki asamali rulet (Rot Slots + Lucky Block ayni mekanigi kullanir)
+-- Iki asamali rulet (Lucky Block carki)
 local Rulet = require(script.Parent:WaitForChild("Rulet"))
 -- Brainrot kesif defteri (mavi kitap dugmesi)
 local Index = require(script.Parent:WaitForChild("Index"))
@@ -59,11 +59,9 @@ local OdulDurum = Net.event("OdulDurum")
 local OdulSonuc = Net.event("OdulSonuc")
 local ArkadasDurum = Net.event("ArkadasDurum")
 local ArkadasAc = Net.event("ArkadasAc")
-local SlotMakinesiAc = Net.event("SlotMakinesiAc")
-local SlotMakinesiCevir = Net.event("SlotMakinesiCevir")
-local SlotMakinesiSonuc = Net.event("SlotMakinesiSonuc")
-local SkinTak = Net.event("SkinTak")
-local SkinDongu = Net.event("SkinDongu")
+local RotCoinMagazaAc = Net.event("RotCoinMagazaAc")
+local RotCoinMagazaAl = Net.event("RotCoinMagazaAl")
+local RotCoinMagazaDurum = Net.event("RotCoinMagazaDurum")
 local MagazaAc = Net.event("MagazaAc")
 local KurekAl = Net.event("KurekAl")
 local GPSAl = Net.event("GPSAl")
@@ -85,8 +83,6 @@ local inventory = {
 	rotCoins = 0,
 	shovel = "Wooden",
 	detector = "Basic",
-	skins = {},
-	equipped = {},
 	inventory = {},
 }
 
@@ -296,16 +292,6 @@ local envanterOzet = UI.text({
 	parent = envanter,
 })
 
--- Brainrot sayilarinin altinda Rot Coin bakiyesi
-local envanterCoin = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.gold,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 68),
-	parent = envanter,
-})
 
 UI.closeButton(envanter).MouseButton1Click:Connect(function()
 	envanter.Visible = false
@@ -356,11 +342,6 @@ local function refreshEnvanter()
 
 	envanterOzet.Text = `{#items} brainrots  -  {hidden} unidentified  -  {placed} on base`
 
-	-- Fuse coinleri de burada gorunsun; bozdurucuya gitmeden once bilsin
-	local fuseCoins = #(inventory.coins or {})
-	envanterCoin.Text = if fuseCoins > 0
-		then `{inventory.rotCoins or 0} Rot Coin  -  {fuseCoins} Fuse Coin`
-		else `{inventory.rotCoins or 0} Rot Coin`
 
 	------------------------------------------------------------------
 	-- BRAINROTLAR
@@ -457,8 +438,10 @@ rotKutu.AnchorPoint = Vector2.new(0, 1)
 -- Envanter butonunun hemen ustunde
 -- Zemin, cerceve ve ikon yok: ekranda yalnizca beyaz rakam durur
 rotKutu.Position = UDim2.new(0, 16, 1, -16)
--- Tek satir (Rot); yazi 3 katina cikarildigi icin kutu da buyudu
-rotKutu.Size = UDim2.fromOffset(460, 96)
+-- Ustte Rot (96), hemen altinda ikonlu Rot Coin satiri (44)
+local ROT_SATIR = 96
+local COIN_SATIR = 44
+rotKutu.Size = UDim2.fromOffset(460, ROT_SATIR + COIN_SATIR)
 rotKutu.BackgroundTransparency = 1
 rotKutu.BorderSizePixel = 0
 rotKutu.Parent = screen
@@ -483,7 +466,7 @@ local function paraSatiri(yaziBoyu: number): TextLabel
 			rakam 3 katina cikinca kontur de asiri kalinlasiyordu.
 		]]
 		outline = false,
-		frameSize = UDim2.fromScale(1, 1),
+		frameSize = UDim2.new(1, 0, 0, ROT_SATIR),
 		parent = rotKutu,
 	})
 
@@ -497,12 +480,27 @@ end
 -- 60px: eski olcunun (20) 3 kati
 local rotYazi = paraSatiri(UI.Sizes.label * 3)
 
--- Rot Coin bakiyesi HUD.tan kaldirildi; yalnizca ana para (Rot) gorunuyor
-local function refreshRot(rot: number?)
+-- ROT COIN  --  Rot'un hemen altinda, sade sari yazi: "1.2K Rot Coin"
+local coinYazi = UI.text({
+	text = "0 Rot Coin",
+	size = math.floor(UI.Sizes.label * 1.6),
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(255, 215, 40),
+	align = Enum.TextXAlignment.Left,
+	outline = false,
+	frameSize = UDim2.new(1, 0, 0, COIN_SATIR),
+	position = UDim2.fromOffset(0, ROT_SATIR),
+	parent = rotKutu,
+	name = "RotCoinYazi",
+})
+UI.stroke(coinYazi, Color3.fromRGB(0, 0, 0), 2.5)
+
+local function refreshRot(rot: number?, rotCoins: number?)
 	rotYazi.Text = `{Format.short(rot or 0)} Rot`
+	coinYazi.Text = `{Format.short(rotCoins or 0)} Rot Coin`
 end
 
-refreshRot(inventory.rot)
+refreshRot(inventory.rot, inventory.rotCoins)
 
 --[[
 	ARKADAS BUFFI YAZISI  --  Rot'un hemen ustunde
@@ -526,6 +524,24 @@ local arkadasBuff = UI.text({
 arkadasBuff.Visible = false
 
 --[[
+	SANS IKSIRI YAZISI  --  arkadas buffinin ustunde (o yoksa Rot'un ustunde)
+	Rot Coin magazasindan alinan iksir aktifken gorunur, suresi geri sayar.
+]]
+local iksirBuff = UI.text({
+	text = "",
+	size = UI.Sizes.label,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(90, 220, 255),
+	align = Enum.TextXAlignment.Left,
+	frameSize = UDim2.fromOffset(360, 28),
+	anchor = Vector2.new(0, 1),
+	position = UDim2.new(0, 20, 1, -140),
+	parent = screen,
+	name = "IksirBuffu",
+})
+iksirBuff.Visible = false
+
+--[[
 	Ayri bir baglanti: gelen veriyi DOGRUDAN okuyor, yukaridaki envanter
 	baglantisinin once calismasina guvenmiyor. Roblox ayni sinyaldeki
 	baglantilarin sirasini garanti etmez.
@@ -534,21 +550,8 @@ EnvanterGuncelle.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" then
 		return
 	end
-	refreshRot(data.rot)
+	refreshRot(data.rot, data.rotCoins)
 end)
-
-------------------------------------------------------------------
--- SKIN DONGUSU (Z)
--- Elde tutulan tool'un gorunumunu sirayla degistirir:
---   varsayilan -> sahip olunan 1. skin -> 2. skin -> ... -> varsayilan
--- Seviye parlamasi degismez; sadece govde gorunumu doner.
-------------------------------------------------------------------
-ContextActionService:BindAction("SkinDongusu", function(_, state)
-	if state == Enum.UserInputState.Begin then
-		SkinDongu:FireServer()
-	end
-	return Enum.ContextActionResult.Pass
-end, false, Enum.KeyCode.Z)
 
 ------------------------------------------------------------------
 -- DETECTIVE
@@ -634,200 +637,6 @@ BaseGuncelle.OnClientEvent:Connect(function(data)
 	if envanter.Visible then
 		refreshEnvanter()
 	end
-end)
-
-------------------------------------------------------------------
--- SLOT MAKINESI  --  IKI ASAMALI RULET
---
--- 1. ASAMA  Bolmelerde yalnizca "?" ve KADEME RENGI doner. Rulet durunca
---           hangi kademenin ciktigi belli olur, hangi skin oldugu degil.
--- 2. ASAMA  Serit yeniden kurulur; bu kez SADECE o kademeden cikabilecek
---           skinler adiyla doner ve odul aciga cikar.
---
--- Sunucu yalnizca kazanan skini gonderir; seridi burasi kurar (Skins
--- katalogu paylasimli). Sureler Skins.Wheel'den geldigi icin sunucunun
--- odulu verdigi an ile ruletin durdugu an her zaman ayni kalir.
-------------------------------------------------------------------
-local slotPanel = UI.panel(screen, UDim2.fromOffset(470, 400), "SlotMakinesi")
-
-UI.text({
-	text = "Rot Slots",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = UI.Colors.gold,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = slotPanel,
-})
-
-local slotCoinLabel = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 48),
-	parent = slotPanel,
-})
-
-UI.closeButton(slotPanel).MouseButton1Click:Connect(function()
-	slotPanel.Visible = false
-end)
-
-local slotReel = Rulet.new(slotPanel, {
-	position = UDim2.new(0.5, 0, 0, 86),
-	width = 408,
-	height = 96,
-	color = UI.Colors.gold,
-	name = "Rulet",
-})
-
-local slotRng = Random.new()
-
---[[
-	1. ASAMA bolmeleri: katalogdan cekilmis rastgele skinlerin KADEMELERI.
-
-	Cekilis gercek agirliklarla yapiliyor (Skins.roll), boylece serit oyunun
-	gercek dagilimina benzer gorunur: cok Common, arada bir Legendary.
-	winnerRarity verilirse kazanan bolmeye o konur; verilmezse serit yalnizca
-	bekleme halindedir.
-]]
-local function slotRarityCells(winnerRarity: string?): { string }
-	local W = Skins.Wheel
-	local cells: { string } = {}
-
-	for index = 1, W.cellCount do
-		if winnerRarity and index == W.winnerIndex then
-			table.insert(cells, winnerRarity)
-		else
-			table.insert(cells, Skins.roll(slotRng).rarity)
-		end
-	end
-
-	return cells
-end
-
---[[
-	2. ASAMA bolmeleri: SADECE kazanan kademedeki skinler, adiyla.
-
-	O kademede tek skin varsa butun bolmeler ayni gorunur -- dogru davranis,
-	cunku gercekten baska ihtimal yoktur.
-]]
-local function slotSkinCells(winnerRarity: string, winnerId: string): { Rulet.Cell }
-	local W = Skins.Wheel
-	local pool = Skins.byRarity(winnerRarity)
-	local color = Rarity.color(winnerRarity)
-	local winner = Skins.get(winnerId)
-
-	local cells: { Rulet.Cell } = {}
-
-	for index = 1, W.revealCellCount do
-		local pick = if index == W.revealWinnerIndex
-			then winner
-			elseif #pool > 0 then pool[slotRng:NextInteger(1, #pool)]
-			else nil
-
-		table.insert(cells, {
-			text = if pick then pick.displayName else "?",
-			color = color,
-		})
-	end
-
-	return cells
-end
-
-local reelName = UI.text({
-	text = "Spin!",
-	size = UI.Sizes.label,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 26),
-	position = UDim2.new(0, 10, 0, 194),
-	parent = slotPanel,
-})
-
-local reelDetail = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.new(0, 10, 0, 222),
-	parent = slotPanel,
-})
-
-local spinButton = UI.button(slotPanel, "SPIN (1 Rot Coin)", UDim2.new(1, -36, 0, 46), UI.Colors.gold)
-spinButton.AnchorPoint = Vector2.new(0.5, 1)
-spinButton.Position = UDim2.new(0.5, 0, 1, -18)
-local spinLabel = spinButton:FindFirstChild("Label") :: TextLabel
-spinLabel.TextColor3 = Color3.fromRGB(28, 24, 10)
-
-spinButton.MouseButton1Click:Connect(function()
-	SlotMakinesiCevir:FireServer()
-end)
-
-SlotMakinesiAc.OnClientEvent:Connect(function(data)
-	slotCoinLabel.Text = `{data.rotCoins} Rot Coins  -  {data.cost} coin per spin`
-
-	-- Panel ilk acildiginda serit bos durmasin: "?" bolmelerle beklesin
-	Rulet.reset(slotReel, slotRarityCells(nil))
-
-	slotPanel.Visible = true
-end)
-
-SlotMakinesiSonuc.OnClientEvent:Connect(function(result)
-	if type(result) ~= "table" or type(result.id) ~= "string" then
-		return
-	end
-
-	local W = Skins.Wheel
-
-	local started = Rulet.run(slotReel, {
-		rarityCells = slotRarityCells(result.rarity),
-		rarityWinner = W.winnerIndex,
-		rarityTime = W.spinTime,
-		pause = W.pause,
-		cells = slotSkinCells(result.rarity, result.id),
-		winner = W.revealWinnerIndex,
-		time = W.revealSpinTime,
-
-		-- 1. cark durdu: yalnizca kademe aciklanir
-		onRarity = function(rarityId: string)
-			reelName.Text = string.upper(Rarity.displayName(rarityId))
-			UI.rarityStyle(reelName, rarityId)
-			reelDetail.Text = "Tier locked in, now which skin?"
-			reelDetail.TextColor3 = UI.Colors.textDim
-		end,
-
-		-- 2. cark durdu: odul aciga cikar
-		onFinish = function()
-			spinButton.Active = true
-			Rulet.shake(slotPanel)
-
-			reelName.Text = result.displayName
-			UI.rarityStyle(reelName, result.rarity)
-
-			local rarityLabel = Rarity.displayName(result.rarity)
-			local toolLabel = if result.tool == "Shovel" then "Shovel" else "GPS"
-			reelDetail.Text = if result.duplicate
-				then `{toolLabel} {rarityLabel} (already owned)`
-				else `{toolLabel} {rarityLabel} (NEW!)`
-			reelDetail.TextColor3 = if result.duplicate then UI.Colors.textDim else UI.Colors.good
-
-			if not result.duplicate then
-				SkinTak:FireServer(result.id)
-			end
-		end,
-	})
-
-	if not started then
-		return
-	end
-
-	spinButton.Active = false
-	reelName.Text = "..."
-	UI.plainStyle(reelName, UI.Colors.text)
-	reelDetail.Text = ""
-	Rulet.tint(slotReel, UI.Colors.gold)
 end)
 
 ------------------------------------------------------------------
@@ -1172,9 +981,11 @@ end)
 local sayacKutu = Instance.new("Frame")
 sayacKutu.Name = "EtkinlikSayaci"
 sayacKutu.AnchorPoint = Vector2.new(0.5, 0)
--- Ekranin en ustune yakin: Roblox'un ust barinin ikonlari kenarlarda,
--- orta kisim bos oldugu icin cakisma olmuyor
-sayacKutu.Position = UDim2.new(0.5, 0, 0, 6)
+-- Ust ortada, LEVEL barinin hemen altinda. Bar ust cubugun icinde (ekranin
+-- 8..56 pikseli, bkz. StarterPlayerScripts > SeviyeArayuz); bu ekran ust
+-- cubugun ALTINDAN olculuyor; cubuk 36 ya da 58 piksel olabildigi icin 24
+-- pikselle ikisinde de barin altinda kaliyor
+sayacKutu.Position = UDim2.new(0.5, 0, 0, 24)
 sayacKutu.Size = UDim2.fromOffset(260, 54)
 -- Kutu degil: bildirimler gibi bu da yalnizca yazi. Cerceve ve zemin yok,
 -- okunurlugu yazilarin kendi siyah konturu sagliyor
@@ -1279,6 +1090,8 @@ local arkadasPaneliniAc: () -> ()
 local ayarPaneliniAc: () -> ()
 -- Gorev panosu da oyle
 local gorevPaneliniAc: () -> ()
+-- Rot Coin magazasi da dosyanin sonunda kuruluyor
+local rotCoinMagazaAc: () -> ()
 
 local MENU_BOYU = 52
 
@@ -1359,6 +1172,12 @@ local function solSutunuYerlestir()
 	]]
 	arkadasBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi))
 	local buffYuksekligi = if arkadasBuff.Visible then arkadasBuff.Size.Y.Offset * carpan else 0
+
+	-- Sans iksiri yazisi arkadas buffinin ustunde; gorunurken menu onun kadar da yukari
+	iksirBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi + buffYuksekligi))
+	if iksirBuff.Visible then
+		buffYuksekligi += iksirBuff.Size.Y.Offset * carpan
+	end
 
 	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + SUTUN_BOSLUK))
 end
@@ -1603,7 +1422,7 @@ end
 ]]
 local MenuRenk = {
 	inventory = Color3.fromRGB(90, 180, 255), -- mavi
-	pets = Color3.fromRGB(120, 226, 150), -- yesil
+	rotcoin = Color3.fromRGB(120, 226, 150), -- yesil (eski Pets butonunun rengi)
 	quests = Color3.fromRGB(255, 150, 70), -- turuncu
 	rewards = Color3.fromRGB(255, 214, 41), -- altin
 	index = Color3.fromRGB(186, 120, 255), -- mor
@@ -1613,7 +1432,10 @@ local MenuRenk = {
 
 -- SOL: oyunun kendi sistemleri
 menuButonu(solSutun, "inventory", "Inventory", MenuRenk.inventory, toggleEnvanter)
-menuButonu(solSutun, "pets", "Pets", MenuRenk.pets)
+-- Pet sistemi iptal edildi; yerinde Rot Coin magazasi
+menuButonu(solSutun, "rotCoin", "Rot Coin Shop", MenuRenk.rotcoin, function()
+	rotCoinMagazaAc()
+end)
 menuButonu(solSutun, "quests", "Quests", MenuRenk.quests, function()
 	gorevPaneliniAc()
 end)
@@ -1753,12 +1575,32 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 
 	local odul = Rewards.get(gun)
 
+	-- Ana odulun yaninda Rot Coin varsa basligin altinda sari yazi: "+1 Rot Coin"
+	local coinVar = (odul.rotCoins or 0) > 0
+	if coinVar then
+		local coinYazisi = UI.text({
+			text = `+{odul.rotCoins} Rot Coin`,
+			size = UI.Sizes.tiny,
+			font = UI.Fonts.bold,
+			color = Color3.fromRGB(255, 215, 40),
+			align = Enum.TextXAlignment.Center,
+			outline = false,
+			frameSize = UDim2.new(1, 0, 0, 16),
+			position = UDim2.fromOffset(0, 31),
+			parent = kart,
+			name = "RotCoinOdulu",
+		})
+		UI.stroke(coinYazisi, Color3.fromRGB(0, 0, 0), 2)
+	end
+
 	-- Odulun ikonu: Rot icin para, Lucky Block icin blok (ikon paketi)
 	local ikon = Instance.new("ImageLabel")
 	ikon.Name = "Ikon"
 	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
-	ikon.Position = UDim2.new(0.5, 0, 0.5, -10)
-	ikon.Size = UDim2.fromOffset(if buyuk then 120 else 62, if buyuk then 120 else 62)
+	-- Rot Coin yazisi olan kartta ikon biraz kucuk ve asagida: yaziyla cakismasin
+	local ikonBoy = if buyuk then 120 elseif coinVar then 48 else 62
+	ikon.Position = UDim2.new(0.5, 0, 0.5, if coinVar then 0 else -10)
+	ikon.Size = UDim2.fromOffset(ikonBoy, ikonBoy)
 	ikon.BackgroundTransparency = 1
 	ikon.ScaleType = Enum.ScaleType.Fit
 	ikon.Parent = kart
@@ -2173,6 +2015,186 @@ end
 
 
 ------------------------------------------------------------------
+-- ROTCOIN MAGAZASI  (sol menude eski Pets butonunun yeri)
+--
+-- Urunler ve fiyatlar Shared > RotCoinMagaza'da; satin alma sunucuda
+-- dogrulanir. Panel yalnizca listeyi cizer ve id yollar.
+------------------------------------------------------------------
+local RC_SARI = Color3.fromRGB(255, 215, 40)
+
+local rcPanel = UI.panel(screen, UDim2.fromOffset(500, 500), "RotCoinMagaza")
+
+UI.text({
+	text = "Rot Coin Shop",
+	size = UI.Sizes.title,
+	font = UI.Fonts.bold,
+	color = RC_SARI,
+	frameSize = UDim2.new(1, -80, 0, 34),
+	position = UDim2.fromOffset(18, 14),
+	parent = rcPanel,
+})
+
+UI.closeButton(rcPanel).MouseButton1Click:Connect(function()
+	rcPanel.Visible = false
+end)
+
+local rcBakiyeYazi = UI.text({
+	text = "",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = RC_SARI,
+	frameSize = UDim2.new(1, -36, 0, 24),
+	position = UDim2.fromOffset(18, 50),
+	parent = rcPanel,
+})
+
+local rcIksirYazi = UI.text({
+	text = "",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = UI.Colors.textDim,
+	frameSize = UDim2.new(1, -36, 0, 20),
+	position = UDim2.fromOffset(18, 76),
+	parent = rcPanel,
+})
+
+local rcListe = makeScroll(rcPanel, UDim2.fromOffset(14, 104), UDim2.new(1, -28, 1, -118))
+
+-- Sunucudan gelen son durum
+local rcBakiye = inventory.rotCoins or 0
+local iksirCarpan = 1
+-- Iksirin bitecegi an (os.clock); istemci kendi sayar, sunucu her alista duzeltir
+local iksirBitis = 0
+
+local function iksirKalan(): number
+	return if iksirCarpan > 1 then math.max(0, iksirBitis - os.clock()) else 0
+end
+
+local function iksirYazilariniGuncelle()
+	local kalan = iksirKalan()
+	local aktif = kalan > 0
+
+	if aktif then
+		local yazi = `{RotCoinMagaza.carpanYazisi(iksirCarpan)} Luck ({RotCoinMagaza.sureYazisi(kalan)})`
+		iksirBuff.Text = `Luck Potion: {yazi}`
+		rcIksirYazi.Text = `Active potion: {yazi}`
+		rcIksirYazi.TextColor3 = Color3.fromRGB(90, 220, 255)
+	else
+		rcIksirYazi.Text = "No luck potion active"
+		rcIksirYazi.TextColor3 = UI.Colors.textDim
+	end
+
+	if iksirBuff.Visible ~= aktif then
+		iksirBuff.Visible = aktif
+		solSutunuYerlestir()
+	end
+end
+
+local function rcCiz()
+	rcBakiyeYazi.Text = `You have {Format.short(rcBakiye)} Rot Coin`
+	iksirYazilariniGuncelle()
+
+	clearRows(rcListe)
+
+	for sira, urun in RotCoinMagaza.Urunler do
+		local yeter = rcBakiye >= urun.price
+
+		local satir = Instance.new("Frame")
+		satir.Name = urun.id
+		satir.Size = UDim2.new(1, -6, 0, 72)
+		satir.BackgroundColor3 = UI.Colors.panelLight
+		satir.BorderSizePixel = 0
+		satir.LayoutOrder = sira
+		satir.Parent = rcListe
+		UI.corner(satir, 10)
+		UI.stroke(satir, urun.color, 1)
+
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "Ikon"
+		ikon.Position = UDim2.fromOffset(8, 8)
+		ikon.Size = UDim2.fromOffset(56, 56)
+		ikon.BackgroundTransparency = 1
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.Parent = satir
+		Icons.bind(ikon, urun.icon)
+		if urun.tint then
+			ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
+		end
+
+		UI.text({
+			text = urun.name,
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			color = urun.color,
+			frameSize = UDim2.new(1, -214, 0, 24),
+			position = UDim2.fromOffset(74, 10),
+			parent = satir,
+		})
+
+		UI.text({
+			text = urun.desc,
+			size = UI.Sizes.tiny,
+			color = UI.Colors.textDim,
+			frameSize = UDim2.new(1, -214, 0, 30),
+			position = UDim2.fromOffset(74, 34),
+			parent = satir,
+			wrapped = true,
+		})
+
+		local buton = UI.button(
+			satir,
+			`{urun.price} Rot Coin`,
+			UDim2.fromOffset(124, 44),
+			if yeter then UI.Colors.good else UI.Colors.panel
+		)
+		buton.AnchorPoint = Vector2.new(1, 0.5)
+		buton.Position = UDim2.new(1, -10, 0.5, 0)
+		UI.stroke(buton, Color3.fromRGB(0, 0, 0), 2)
+		buton.MouseButton1Click:Connect(function()
+			RotCoinMagazaAl:FireServer(urun.id)
+		end)
+	end
+end
+
+function rotCoinMagazaAc()
+	rcPanel.Visible = not rcPanel.Visible
+	if rcPanel.Visible then
+		rcCiz()
+		RotCoinMagazaAc:FireServer()
+	end
+end
+
+-- Bakiye degisince (odul, satin alma) acik panel tazelensin
+EnvanterGuncelle.OnClientEvent:Connect(function(data)
+	if type(data) ~= "table" or type(data.rotCoins) ~= "number" then
+		return
+	end
+	rcBakiye = data.rotCoins
+	if rcPanel.Visible then
+		rcCiz()
+	end
+end)
+
+RotCoinMagazaDurum.OnClientEvent:Connect(function(data)
+	if type(data) ~= "table" then
+		return
+	end
+	iksirCarpan = tonumber(data.carpan) or 1
+	iksirBitis = os.clock() + (tonumber(data.kalan) or 0)
+	iksirYazilariniGuncelle()
+end)
+
+-- Geri sayim: saniyede bir yazilar guncellenir, sure bitince yazi kalkar
+task.spawn(function()
+	while true do
+		task.wait(1)
+		iksirYazilariniGuncelle()
+	end
+end)
+
+RotCoinMagazaAc:FireServer()
+
+------------------------------------------------------------------
 -- AYARLAR PANELI  (Settings)
 --
 -- Panelin butun metinleri INGILIZCE -- oyuncunun gordugu her yer oyle.
@@ -2411,7 +2433,7 @@ local function gorevSatiri(parent: Instance, quest: any, order: number)
 		parent = row,
 	})
 
-	-- Odul her zaman coin; rengi coinin kademesinden gelir
+	-- Odul her zaman brainrot; rengi odulun kademesinden gelir
 	UI.text({
 		text = quest.reward,
 		size = UI.Sizes.small,

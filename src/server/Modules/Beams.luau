@@ -38,7 +38,7 @@ local W = Config.WhirlVFX
 export type Beam = {
 	id: string,
 	owner: Player,
-	kind: string,        -- RarityId, "RotCoin" ya da "LuckyBlock"
+	kind: string,        -- RarityId, maden kimligi ya da "LuckyBlock"
 	position: Vector3,
 	model: Model,
 	bornAt: number,
@@ -69,13 +69,10 @@ end
 -- YEDEK GORUNUM: VFX yoksa kullanilan basit isik sutunu
 local function buildFallbackModel(kind: string, position: Vector3): Model
 	--[[
-		Ozel suzme turlerinin (Rot Coin, Lucky Block) kendi iki renkli gecisi
+		Ozel suzme turunun (Lucky Block) kendi iki renkli gecisi
 		var; kademe suzmeleri tek renk.
 	]]
-	local special = if kind == "RotCoin"
-		then Rarity.RotCoin
-		elseif kind == "LuckyBlock" then Rarity.LuckyBlock
-		else nil
+	local special = if kind == "LuckyBlock" then Rarity.LuckyBlock else nil
 
 	local colorA = if special then special.colorA else Rarity.color(kind)
 	local colorB = if special then special.colorB else colorA
@@ -612,10 +609,7 @@ end
 ]]
 local function buildFallbackWhirl(kind: string, position: Vector3): Model
 	-- Ozel turlerin iki renkli gecisi var; kademe girdaplari tek renk
-	local special = if kind == "RotCoin"
-		then Rarity.RotCoin
-		elseif kind == "LuckyBlock" then Rarity.LuckyBlock
-		else nil
+	local special = if kind == "LuckyBlock" then Rarity.LuckyBlock else nil
 
 	local colorA = if special then special.colorA else Rarity.color(kind)
 	local colorB = if special then special.colorB else colorA

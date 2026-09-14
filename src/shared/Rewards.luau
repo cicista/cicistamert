@@ -5,13 +5,13 @@
 	Her 24 saatte bir o gunun odulu alinir; alinan her odul takvimi bir
 	sonraki gune gecirir. 7. gunden sonra takvim 1. gune doner.
 
-	    Gun 1   5K Rot
-	    Gun 2   50K Rot
-	    Gun 3   100K Rot
-	    Gun 4   1 x en ucuz Lucky Block
-	    Gun 5   2 x en ucuz Lucky Block
-	    Gun 6   3 x en ucuz Lucky Block
-	    Gun 7   1 x en pahali Lucky Block
+	    Gun 1   5K Rot                              + 1 Rot Coin
+	    Gun 2   50K Rot                             + 1 Rot Coin
+	    Gun 3   100K Rot                            + 1 Rot Coin
+	    Gun 4   1 x en ucuz Lucky Block             + 1 Rot Coin
+	    Gun 5   2 x en ucuz Lucky Block             + 2 Rot Coin
+	    Gun 6   3 x en ucuz Lucky Block             + 1 Rot Coin
+	    Gun 7   1 x en pahali Lucky Block           + 1 Rot Coin
 
 	EN UCUZ / EN PAHALI Lucky Block adla yazilmiyor; LuckyBlock.Tiers
 	icindeki SIRADAN (order) bulunuyor. Yeni bir tur eklenirse 7. gun
@@ -59,6 +59,8 @@ export type Day = {
 	amount: number,
 	-- Yalnizca luckyblock odullerinde: hangi tur
 	tier: string?,
+	-- Ana odulun YANINDA verilen Rot Coin (yoksa nil)
+	rotCoins: number?,
 }
 
 --[[
@@ -66,13 +68,14 @@ export type Day = {
 	bildirim ve sunucu hepsini buradan okuyor.
 ]]
 Rewards.Days = {
-	{ day = 1, kind = "rot", amount = 5000 },
-	{ day = 2, kind = "rot", amount = 50000 },
-	{ day = 3, kind = "rot", amount = 100000 },
-	{ day = 4, kind = "luckyblock", amount = 1, tier = EN_UCUZ },
-	{ day = 5, kind = "luckyblock", amount = 2, tier = EN_UCUZ },
-	{ day = 6, kind = "luckyblock", amount = 3, tier = EN_UCUZ },
-	{ day = 7, kind = "luckyblock", amount = 1, tier = EN_PAHALI },
+	{ day = 1, kind = "rot", amount = 5000, rotCoins = 1 },
+	{ day = 2, kind = "rot", amount = 50000, rotCoins = 1 },
+	{ day = 3, kind = "rot", amount = 100000, rotCoins = 1 },
+	{ day = 4, kind = "luckyblock", amount = 1, tier = EN_UCUZ, rotCoins = 1 },
+	-- 5. gun: onceden verilen 1 Rot Coin + her gunun ekstra 1'i
+	{ day = 5, kind = "luckyblock", amount = 2, tier = EN_UCUZ, rotCoins = 2 },
+	{ day = 6, kind = "luckyblock", amount = 3, tier = EN_UCUZ, rotCoins = 1 },
+	{ day = 7, kind = "luckyblock", amount = 1, tier = EN_PAHALI, rotCoins = 1 },
 } :: { Day }
 
 function Rewards.get(day: number): Day

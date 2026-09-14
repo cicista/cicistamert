@@ -27,8 +27,8 @@ local GPSEfekt = {}
 GPSEfekt.BallName = "Anten"
 
 --[[
-	Sinyalin rengi. Skin degistirse bile bu renk DEGISMEZ: skin gps'in
-	govdesini boyar, arama sinyali her zaman yesil kalir.
+	Sinyalin rengi. Dedektor seviyesi degisse de arama sinyali her zaman
+	yesil kalir.
 ]]
 GPSEfekt.color = Color3.fromRGB(60, 220, 90)
 
