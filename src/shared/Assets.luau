@@ -483,7 +483,7 @@ end
 	Govde klasorleri). Kod her birine gorunmez bir Handle ekler:
 
 	    gripOn      -- "sopa": el sopanin uzerinde, kabzanin hemen ustunde
-	    gripIntoShaft -- gripOn = "sopa" iken kabzadan kac stud yukaridan tutsun
+	    gripRatio   -- gripOn = "sopa" iken: 0 = sapin tam ortasi, 1 = sapin alt ucu
 	    gripFromEnd -- gripOn yoksa: el, KABZANIN UCUNDAN kac stud iceride
 	    bladeDown   -- false: kafa elin USTUNDE (dik tutus), true: altinda
 	    spread      -- kafanin yonu: "forward" genis yon one, "right" yanlara,
@@ -506,9 +506,9 @@ Assets.ToolGrips = {
 		spread = "inward",
 		-- Kodun yonu yine ters buldugu modeller: { Main2 = true, Frosty4 = true }
 		flip = {},
-		-- El sopanin uzerinde, kabzanin 0.5 stud ustunde
+		-- El sopanin uzerinde: sapin ortasi ile alt ucunun tam arasi
 		gripOn = "sopa",
-		gripIntoShaft = 0.5,
+		gripRatio = 0.5,
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},

@@ -140,18 +140,50 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 		return nil
 	end
 
-	-- Sap: "Sopa" adli parca, yoksa en uzun parca
-	local sopa = model:FindFirstChild("Sopa", true)
-	if not sopa or not sopa:IsA("BasePart") then
-		local enUzun = parcalar[1]
-		for _, p in parcalar do
-			if math.max(p.Size.X, p.Size.Y, p.Size.Z) > math.max(enUzun.Size.X, enUzun.Size.Y, enUzun.Size.Z) then
-				enUzun = p
+	--[[
+		SAP (Sopa)
+
+		"Sopa" tek bir parca YA DA parcalardan olusan bir klasor/model
+		olabilir. Klasorse icindeki butun parcalar sapin parcasidir: eksen en
+		uzun olanindan okunur, sapin boyu ve ortasi hepsinin eksen boyunca
+		kapladigi alandan olculur. "Sopa" hic yoksa en uzun parca sap sayilir.
+
+		Eskiden yalnizca Sopa adli PARCA araniyordu; Sopa bir klasor olunca
+		modelin en uzun parcasi (kafanin bir parcasi olabiliyordu) sap
+		saniliyor ve el kafaya gidiyordu.
+	]]
+	local function enUzunu(liste: { BasePart }): BasePart
+		local secilen = liste[1]
+		for _, p in liste do
+			if math.max(p.Size.X, p.Size.Y, p.Size.Z) > math.max(secilen.Size.X, secilen.Size.Y, secilen.Size.Z) then
+				secilen = p
 			end
 		end
-		sopa = enUzun
+		return secilen
 	end
-	local sap = sopa :: BasePart
+
+	local sopaParcalari: { BasePart } = {}
+	local sopaKok = model:FindFirstChild("Sopa", true)
+	if sopaKok then
+		if sopaKok:IsA("BasePart") then
+			table.insert(sopaParcalari, sopaKok)
+		end
+		for _, d in sopaKok:GetDescendants() do
+			if d:IsA("BasePart") then
+				table.insert(sopaParcalari, d)
+			end
+		end
+	end
+	if #sopaParcalari == 0 then
+		table.insert(sopaParcalari, enUzunu(parcalar))
+	end
+
+	local sopaSet: { [BasePart]: boolean } = {}
+	for _, p in sopaParcalari do
+		sopaSet[p] = true
+	end
+
+	local sap = enUzunu(sopaParcalari)
 
 	-- Sapin uzun ekseni
 	local boyutlar = { sap.Size.X, sap.Size.Y, sap.Size.Z }
@@ -163,15 +195,47 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 	end
 	local eksenListesi = eksenler(sap)
 	local eksen = eksenListesi[uzunIndex]
-	local merkez = sap.Position
 
-	-- Kabza yonu: Kabza klasorundeki parcalar eksenin hangi tarafinda
+	-- Bir parcanin sap ekseni boyunca yari uzunlugu
+	local function eksenYarisi(p: BasePart): number
+		local cf = p.CFrame
+		return (
+			math.abs(cf.RightVector:Dot(eksen)) * p.Size.X
+			+ math.abs(cf.UpVector:Dot(eksen)) * p.Size.Y
+			+ math.abs(cf.LookVector:Dot(eksen)) * p.Size.Z
+		) / 2
+	end
+
+	-- Sapin eksen boyunca kapladigi alan: ortasi ve yari boyu
+	local sopaAz, sopaCok = math.huge, -math.huge
+	for _, p in sopaParcalari do
+		local konum = (p.Position - sap.Position):Dot(eksen)
+		local yari = eksenYarisi(p)
+		sopaAz = math.min(sopaAz, konum - yari)
+		sopaCok = math.max(sopaCok, konum + yari)
+	end
+	local merkez = sap.Position + eksen * ((sopaAz + sopaCok) / 2)
+	local sopaYari = (sopaCok - sopaAz) / 2
+
+	--[[
+		Kabza yonu: Kabza parcalari eksenin hangi tarafindaysa orasi.
+		Kabza yoksa kafa parcalarinin (sap disindaki her sey) TERSI.
+	]]
 	local kabza = model:FindFirstChild("Kabza", true)
 	local toplam = 0
 	if kabza then
-		for _, d in kabza:GetDescendants() do
-			if d:IsA("BasePart") then
+		local liste = kabza:GetDescendants()
+		table.insert(liste, kabza)
+		for _, d in liste do
+			if d:IsA("BasePart") and not sopaSet[d] then
 				toplam += (d.Position - merkez):Dot(eksen)
+			end
+		end
+	end
+	if toplam == 0 then
+		for _, p in parcalar do
+			if not sopaSet[p] then
+				toplam -= (p.Position - merkez):Dot(eksen)
 			end
 		end
 	end
@@ -191,51 +255,17 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 		Tool.Grip sifirken Roblox Handle'i elin RightGripAttachment'ina
 		oturtur ve Handle'in Y ekseni YUKARI bakar (default tutma
 		animasyonunda araclarin elde dik durmasi bundan). Handle bu kurala
-		gore kuruluyor:
+		gore kuruluyor: Y (yukari) sap boyunca KABZADAN KAFAYA, kafa elin
+		USTUNDE. Butun kurek ve kazmalar elde ayni sekilde dik durur.
 
-		    Y (yukari) -- sap boyunca KABZADAN KAFAYA: kafa elin USTUNDE
-		    el         -- kabzanin ucundan gripFromEnd kadar iceride
-
-		Boylece butun kurek ve kazmalar elde ayni sekilde dik durur; tutma
-		animasyonlari bu duruma gore yapilabilir.
-	]]
-	--[[
 		TUTUS NOKTASI
-
-		gripOn = "sopa": el SOPANIN uzerinde, kabzanin hemen ustunde. Kabza
-		parcalarinin kafaya bakan ic siniri bulunur, oradan gripIntoShaft
-		kadar kafaya dogru ilerlenir. Kabza yoksa sopanin kabza tarafindaki
-		ucu esas alinir.
-
+		gripOn = "sopa": el SOPANIN uzerinde, sapin tam ortasi ile kabza
+		tarafindaki ucu arasinda. gripRatio: 0 = sapin ortasi, 1 = alt ucu.
 		Aksi halde: kabzanin UCUNDAN gripFromEnd kadar iceride.
 	]]
-	local function eksenYarisi(p: BasePart): number
-		local cf = p.CFrame
-		return (
-			math.abs(cf.RightVector:Dot(eksen)) * p.Size.X
-			+ math.abs(cf.UpVector:Dot(eksen)) * p.Size.Y
-			+ math.abs(cf.LookVector:Dot(eksen)) * p.Size.Z
-		) / 2
-	end
-
 	local tutus: Vector3
 	if ayar.gripOn == "sopa" then
-		local sopaUcu = eksenYarisi(sap)
-		local sinir = sopaUcu
-
-		if kabza then
-			local liste = kabza:GetDescendants()
-			table.insert(liste, kabza)
-			for _, d in liste do
-				if d:IsA("BasePart") and d ~= sap then
-					sinir = math.min(sinir, (d.Position - merkez):Dot(eksen) - eksenYarisi(d))
-				end
-			end
-		end
-
-		-- Sopanin disina tasmasin
-		sinir = math.clamp(sinir, -sopaUcu, sopaUcu)
-		tutus = merkez + eksen * (sinir - (ayar.gripIntoShaft or 0.5))
+		tutus = merkez + eksen * (sopaYari * math.clamp(ayar.gripRatio or 0.5, 0, 1))
 	else
 		tutus = merkez + eksen * (uc - (ayar.gripFromEnd or 0.6))
 	end
@@ -256,7 +286,7 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 	]]
 	local kafaParcalari: { BasePart } = {}
 	for _, p in parcalar do
-		if p ~= sap and not (kabza and p:IsDescendantOf(kabza)) then
+		if not sopaSet[p] and not (kabza and p:IsDescendantOf(kabza)) then
 			table.insert(kafaParcalari, p)
 		end
 	end
