@@ -544,19 +544,19 @@ Assets.ToolGrips = {
 ]]
 Assets.BodyItems = {
 	shovel = {
-		position = Vector3.new(0, -0.3, 0.7),
-		positionR6 = Vector3.new(0, -0.3, 0.7),
+		position = Vector3.new(0, -0.3, 0.4),
+		positionR6 = Vector3.new(0, -0.3, 0.4),
 		-- 45 derece capraz: arkadan bakinca kafa SAG omuzda, sap ucu SOL kalcada;
 		-- kurek kafasinin ici DISARI bakar
 		rotation = Vector3.new(0, 0, -45),
 		scale = 0.6,
 	},
 	gps = {
-		-- SOL kalcada, bel hizasinda, biraz arkada (arkadan bakinca sol alt)
-		position = Vector3.new(-1.1, 0.2, 0.3),
-		positionR6 = Vector3.new(-1.1, -0.7, 0.3),
-		-- 20 derece egik (sol tarafa gore)
-		rotation = Vector3.new(0, 0, -20),
+		-- SOL kalcanin yaninda, sarkan elin hizasinda
+		position = Vector3.new(-1.1, 0, -0.1),
+		positionR6 = Vector3.new(-1.1, -0.9, -0.1),
+		-- Yandan bakinca capraz: basi one-yukari, sapi arkaya-asagi
+		rotation = Vector3.new(-40, 0, 0),
 		scale = 0.6,
 	},
 }
