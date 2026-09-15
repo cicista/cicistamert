@@ -482,7 +482,9 @@ end
 	Kurek ve kazma modelleri gevsek parcalardan olusuyor (Sopa + Kabza/Kenar/
 	Govde klasorleri). Kod her birine gorunmez bir Handle ekler:
 
-	    gripFromEnd -- el, KABZANIN UCUNDAN kac stud iceride tutsun
+	    gripOn      -- "sopa": el sopanin uzerinde, kabzanin hemen ustunde
+	    gripIntoShaft -- gripOn = "sopa" iken kabzadan kac stud yukaridan tutsun
+	    gripFromEnd -- gripOn yoksa: el, KABZANIN UCUNDAN kac stud iceride
 	    bladeDown   -- false: kafa elin USTUNDE (dik tutus), true: altinda
 	    spread      -- kafanin yonu: "forward" genis yon one, "right" yanlara,
 	                   "inward" kurek kafasinin OYUK tarafi karaktere baksin
@@ -504,6 +506,9 @@ Assets.ToolGrips = {
 		spread = "inward",
 		-- Kodun yonu yine ters buldugu modeller: { Main2 = true, Frosty4 = true }
 		flip = {},
+		-- El sopanin uzerinde, kabzanin 0.5 stud ustunde
+		gripOn = "sopa",
+		gripIntoShaft = 0.5,
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},

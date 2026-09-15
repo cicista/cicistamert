@@ -199,7 +199,46 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 		Boylece butun kurek ve kazmalar elde ayni sekilde dik durur; tutma
 		animasyonlari bu duruma gore yapilabilir.
 	]]
-	local tutus = merkez + eksen * (uc - (ayar.gripFromEnd or 0.6))
+	--[[
+		TUTUS NOKTASI
+
+		gripOn = "sopa": el SOPANIN uzerinde, kabzanin hemen ustunde. Kabza
+		parcalarinin kafaya bakan ic siniri bulunur, oradan gripIntoShaft
+		kadar kafaya dogru ilerlenir. Kabza yoksa sopanin kabza tarafindaki
+		ucu esas alinir.
+
+		Aksi halde: kabzanin UCUNDAN gripFromEnd kadar iceride.
+	]]
+	local function eksenYarisi(p: BasePart): number
+		local cf = p.CFrame
+		return (
+			math.abs(cf.RightVector:Dot(eksen)) * p.Size.X
+			+ math.abs(cf.UpVector:Dot(eksen)) * p.Size.Y
+			+ math.abs(cf.LookVector:Dot(eksen)) * p.Size.Z
+		) / 2
+	end
+
+	local tutus: Vector3
+	if ayar.gripOn == "sopa" then
+		local sopaUcu = eksenYarisi(sap)
+		local sinir = sopaUcu
+
+		if kabza then
+			local liste = kabza:GetDescendants()
+			table.insert(liste, kabza)
+			for _, d in liste do
+				if d:IsA("BasePart") and d ~= sap then
+					sinir = math.min(sinir, (d.Position - merkez):Dot(eksen) - eksenYarisi(d))
+				end
+			end
+		end
+
+		-- Sopanin disina tasmasin
+		sinir = math.clamp(sinir, -sopaUcu, sopaUcu)
+		tutus = merkez + eksen * (sinir - (ayar.gripIntoShaft or 0.5))
+	else
+		tutus = merkez + eksen * (uc - (ayar.gripFromEnd or 0.6))
+	end
 	local yukari = if ayar.bladeDown then eksen else -eksen
 
 	--[[
