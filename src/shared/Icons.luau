@@ -69,8 +69,13 @@ export type IconEntry = { any }
 local Map: { [string]: IconEntry } = {
 	-- Para birimleri
 	rot = { "Cash", "CashIcon" },
-	-- Rot Coin: oyunun kendi ikonu (ReplicatedStorage > Assets > Icons > rotcoin_icon)
-	rotCoin = { "Assets", "rotcoin_icon" },
+	--[[
+		Rot Coin (sol menudeki Rot Coin Shop butonu): paketteki altin coin
+		(Coins > CoinIcon). Pakette aranmiyor, resim kimligi dogrudan
+		yaziliyor: paket Workspace'te ve streaming yuzunden istemciye
+		gelmeyince buton yalnizca "ROT" yazisi gosteriyordu.
+	]]
+	rotCoin = { "Id", "rbxassetid://17368060122" },
 
 	-- Mevcut sistemler
 	--[[
@@ -182,6 +187,15 @@ function Icons.get(category: string, name: string): string?
 	-- Oyunun kendi ikonlari paketten degil Assets > Icons klasorunden okunur
 	if category == ASSET_KATEGORI then
 		return Icons.asset(name)
+	end
+
+	--[[
+		"Id" kategorisi: isim DOGRUDAN resim kimligidir ("rbxassetid://...").
+		Paket Workspace'te duruyor ve StreamingEnabled acikken istemciye hic
+		gelmeyebiliyor; mutlaka gorunmesi gereken ikonlar bu yolla verilir.
+	]]
+	if category == "Id" then
+		return name
 	end
 
 	local key = `{category}/{name}`

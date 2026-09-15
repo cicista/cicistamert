@@ -6,10 +6,12 @@
 	hangi kurekle gezdigini gostermek icin:
 
 	    SIRTTA KUREK  -- kusandigi kurek, 45 derece capraz
+	    SIRTTA KAZMA  -- sahip oldugu en iyi kazma, kuregin diger caprazinda (X)
 	    BELDE GPS     -- kusandigi dedektor, 20 derece egik, 0.8 boyunda
 
 	NE ZAMAN GIZLENIR
 	    kurek -- ELDEYKEN (kazi sirasinda kurek ele gelir)
+	    kazma -- ELDEYKEN (madende kazma ele gelir)
 	    GPS   -- ELDEYKEN ya da oyuncu KESIFTEYKEN (kumun ustunde arama,
 	             kazi, denizde olta). Yani kumdan cikinca bele geri doner.
 	    ikisi -- flyboardla DENIZDEYKEN
@@ -25,6 +27,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
+local Ores = require(Shared:WaitForChild("Ores"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -40,6 +43,7 @@ local FLYBOARD_NITELIGI = "Flyboarding"
 
 local KUREK_ADI = "SirtKuregi"
 local GPS_ADI = "BelGPS"
+local KAZMA_ADI = "SirtKazmasi"
 
 type Esya = {
 	model: Model?,
@@ -54,6 +58,7 @@ type Esya = {
 type Durum = {
 	character: Model,
 	kurek: Esya,
+	kazma: Esya,
 	gps: Esya,
 	baglantilar: { RBXScriptConnection },
 }
@@ -173,6 +178,16 @@ local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
 		local ofset = model.PrimaryPart.CFrame:PointToObjectSpace(kutu.Position)
 		weld.C1 = CFrame.new(ofset)
 	end
+
+	--[[
+		spin: esya KENDI SAPI etrafinda doner (derece), capraz acisi bozulmaz.
+		Handle'in Y ekseni sap boyunca uzanir; C1'e eklenen Y donusu modeli
+		ortasindan, sap ekseninde cevirir. Kazmanin kafasi sirta paralel
+		yatsin (kurek gibi) diye kullaniliyor.
+	]]
+	if ayar.spin then
+		weld.C1 = weld.C1 * CFrame.Angles(0, math.rad(ayar.spin), 0)
+	end
 	weld.Parent = model.PrimaryPart
 end
 
@@ -239,6 +254,26 @@ end
 ------------------------------------------------------------------
 -- DURUM
 ------------------------------------------------------------------
+--[[
+	Sahip olunan EN IYI kazma: adalar sondan (en ileri ada) basa taranir,
+	ilk sahip olunan kazma doner. Kayitta { [kazmaId] = true } olarak durur
+	(bkz. PlayerData.pickaxes).
+]]
+local function enIyiKazma(data: any): string?
+	local sahip = data.pickaxes
+	if type(sahip) ~= "table" then
+		return nil
+	end
+	for i = #Ores.IslandOrder, 1, -1 do
+		local ada = Ores.Islands[Ores.IslandOrder[i]]
+		local id = ada and ada.pickaxe
+		if id and sahip[id] == true then
+			return id
+		end
+	end
+	return nil
+end
+
 -- Elde bu nitelige sahip bir Tool var mi (ShovelId / DetectorId)
 local function eldeMi(character: Model, nitelik: string): boolean
 	for _, child in character:GetChildren() do
@@ -258,6 +293,7 @@ local function temizle(player: Player)
 		baglanti:Disconnect()
 	end
 	esyayiSil(durum.kurek)
+	esyayiSil(durum.kazma)
 	esyayiSil(durum.gps)
 	durumlar[player] = nil
 end
@@ -297,6 +333,7 @@ local function durumAl(player: Player, character: Model): Durum
 	local yeni: Durum = {
 		character = character,
 		kurek = {},
+		kazma = {},
 		gps = {},
 		baglantilar = {},
 	}
@@ -334,6 +371,10 @@ function guncelle(player: Player)
 	-- SIRTTA KUREK: elde degilse gorunur
 	kur(durum.kurek, character, data.shovel, { "UpperTorso", "Torso" }, Tools.buildShovel, KUREK_ADI, AYAR.shovel)
 	goster(durum.kurek, character, not denizde and not eldeMi(character, "ShovelId"))
+
+	-- SIRTTA KAZMA (kuregin diger caprazi): elde degilse gorunur
+	kur(durum.kazma, character, enIyiKazma(data), { "UpperTorso", "Torso" }, Tools.buildPickaxe, KAZMA_ADI, AYAR.pickaxe)
+	goster(durum.kazma, character, not denizde and not eldeMi(character, "PickaxeId"))
 
 	-- BELDE GPS: elde degilse VE kesifte degilse gorunur
 	kur(durum.gps, character, data.detector, { "LowerTorso", "Torso" }, Tools.buildGPS, GPS_ADI, AYAR.gps)

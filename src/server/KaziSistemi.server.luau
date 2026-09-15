@@ -234,6 +234,9 @@ local function finishDig(player: Player, won: boolean)
 	local karakter = player.Character
 	if karakter then
 		Olta.reel(karakter)
+		-- Kazma hareketi durur
+		karakter:SetAttribute("Kaziyor", nil)
+		karakter:SetAttribute("KaziHedef", nil)
 	end
 
 	local beam = Beams.get(session.beamId)
@@ -361,21 +364,37 @@ local function startDig(player: Player, beamId: string)
 	end
 
 	--[[
-		MADEN YALNIZCA ADANIN KAZMASIYLA KAZILIR
+		MADEN, ADANIN KAZMASI YA DA DAHA ILERI BIR ADANIN KAZMASIYLA KAZILIR
 
-		Kazmasi yoksa maden yerinde kalir (claimed olmaz), oyuncuya hangi
-		kazmayi alacagi yazilir.
+		Ust kademe kazma alt adalarin madenlerini de kirar: madenin adasindan
+		son adaya kadar (Ores.IslandOrder) oyuncunun sahip oldugu EN ILERI
+		kazma secilir ve ele o verilir. Maden zorlugu kazmadan degil madenin
+		sabit hizindan gelir (bkz. KaziMinigame), yani iyi kazma zorlugu bozmaz.
+
+		Uygun kazmasi yoksa maden yerinde kalir (claimed olmaz), oyuncuya
+		hangi kazmayi alacagi yazilir.
 	]]
 	local maden = Ores.get(beam.kind)
 	local pickaxeId: string? = nil
 	if maden then
-		local madenAdasi = Ores.island(maden.island)
-		pickaxeId = if madenAdasi then madenAdasi.pickaxe else nil
+		local gerekenSira = table.find(Ores.IslandOrder, maden.island)
+		local gerekenAda = Ores.island(maden.island)
 
-		if not PlayerData.hasPickaxe(player, pickaxeId) then
-			local kazma = if pickaxeId then Ores.Pickaxes[pickaxeId] else nil
-			local kazmaAdi = if kazma then kazma.displayName else "the right pickaxe"
-			Bildirim:FireClient(player, `You need the {kazmaAdi} to mine {maden.displayName}!`, maden.color)
+		if gerekenSira then
+			for i = #Ores.IslandOrder, gerekenSira, -1 do
+				local ada = Ores.island(Ores.IslandOrder[i])
+				local aday = if ada then ada.pickaxe else nil
+				if aday and PlayerData.hasPickaxe(player, aday) then
+					pickaxeId = aday
+					break
+				end
+			end
+		end
+
+		if not pickaxeId then
+			local gereken = if gerekenAda then Ores.Pickaxes[gerekenAda.pickaxe] else nil
+			local kazmaAdi = if gereken then gereken.displayName else "the right pickaxe"
+			Bildirim:FireClient(player, `You need the {kazmaAdi} (or a better one) to mine {maden.displayName}!`, maden.color)
 			return
 		end
 	end
@@ -434,6 +453,17 @@ local function startDig(player: Player, beamId: string)
 		-- Maden kazisinda elde tutulacak kazma (otomatik ekipman buna bakar)
 		pickaxeId = pickaxeId,
 	}
+
+	--[[
+		KAZMA HAREKETI: karakter "Kaziyor" niteligini tasidigi surece istemciler
+		kolu kaldirip kuregi yere vurduruyor (bkz. StarterPlayerScripts >
+		KaziHareketi). Denizde olta savruluyor, orada yazilmaz.
+	]]
+	if not beam.sea and player.Character then
+		player.Character:SetAttribute("Kaziyor", true)
+		-- Kazilan nokta: karakter kazi boyunca buraya donuk durur
+		player.Character:SetAttribute("KaziHedef", beam.position)
+	end
 
 	task.wait(prepare)
 

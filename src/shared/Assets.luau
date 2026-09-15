@@ -531,7 +531,7 @@ Assets.ToolGrips = {
 }
 
 --[[
-	GOVDE ESYALARI  --  sirtta kurek, belde GPS
+	GOVDE ESYALARI  --  sirtta kurek ve kazma (X), belde GPS
 	(bkz. ServerScriptService > SirtEsyalari)
 
 	Esyanin tutus noktasi (Handle) govde parcasina gore bu konuma oturur:
@@ -542,6 +542,7 @@ Assets.ToolGrips = {
 	    rotation   -- derece. Y 180: esya disa baksin; Z: govde duzleminde egim
 	    scale      -- model boyu carpani
 	    anchor     -- "center": tutus noktasi yerine MODELIN ORTASI konuma oturur
+	    spin       -- derece: esya KENDI SAPI etrafinda doner (capraz acisi bozulmaz)
 	                  (farkli boydaki kurekler ayni yerde durur)
 ]]
 Assets.BodyItems = {
@@ -568,6 +569,23 @@ Assets.BodyItems = {
 		-- 45 derece capraz: arkadan bakinca kafa SAG omuzda, sap ucu SOL kalcada;
 		-- kurek kafasinin ici DISARI bakar
 		rotation = Vector3.new(0, 0, -45),
+		scale = 0.6,
+	},
+	--[[
+		SIRTTA KAZMA  --  kuregin DIGER CAPRAZI (ikisi sirtta X yapar)
+
+		Kurekle ayni nokta ve boy; yalnizca aci ayna: arkadan bakinca kafa
+		SOL omuzda, sap ucu SAG kalcada. Z biraz daha disarida (0.62) ki
+		iki model ortada birbirinin icine girmesin.
+		Oyuncunun sahip oldugu EN IYI kazma gorunur (Ores.IslandOrder sirasi).
+	]]
+	pickaxe = {
+		anchor = "center",
+		position = Vector3.new(0, 0.1, 0.62),
+		positionR6 = Vector3.new(0, 0.1, 0.62),
+		rotation = Vector3.new(0, 0, 45),
+		-- Kafa sirta paralel yatsin, kurek gibi duz gorunsun (tutmazsa 0 / 180 / 270 dene)
+		spin = 90,
 		scale = 0.6,
 	},
 	gps = {

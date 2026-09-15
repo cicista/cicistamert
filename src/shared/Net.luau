@@ -66,6 +66,13 @@ Net.Events = {
 	"SeviyeAtladi",     -- server -> client: level atlandi (yeni level, oduller)
 	"SeviyeAc",         -- client -> server: durumumu soyle
 
+	-- Rewards paneli: Playtime + Social Rewards sekmeleri
+	"EkOdulAc",         -- client -> server: playtime/social durumumu soyle
+	"EkOdulAl",         -- client -> server: odulu al ("group" | "like" | "playtime", index)
+	"EkOdulDurum",      -- server -> client: oturum suresi, alinanlar
+	"KodKullan",        -- client -> server: kodu kullan (metin)
+	"KodSonuc",         -- server -> client: kod sonucu (ok, message)
+
 	-- Magaza
 	"MagazaAc",         -- server -> client: kurek + gps magazasi
 	"KurekAl",          -- client -> server: kurek satin al

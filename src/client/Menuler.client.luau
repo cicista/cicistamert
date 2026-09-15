@@ -19,6 +19,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 -- Friends sekmesindeki "Invite Friends" dugmesi
 local SocialService = game:GetService("SocialService")
+-- Rewards > Social: "Like And Favorite" favori penceresi
+local AvatarEditorService = game:GetService("AvatarEditorService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -1470,7 +1472,8 @@ end)
 ------------------------------------------------------------------
 local ODUL_KART = 150
 local ODUL_BOSLUK = 10
-local ODUL_UST = 64
+-- Baslik (ust) + sekme dugmeleri (58..100) ve altinda sayfa icerigi
+local ODUL_UST = 112
 -- 7. gun karti daha genis ve iki satir boyu
 local ODUL_BUYUK_EN = ODUL_KART + 20
 
@@ -1495,7 +1498,7 @@ local odulPanel = UI.panel(
 )
 
 UI.text({
-	text = "DAILY REWARD",
+	text = "Rewards",
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	color = UI.Colors.gold,
@@ -1507,6 +1510,82 @@ UI.text({
 UI.closeButton(odulPanel).MouseButton1Click:Connect(function()
 	odulPanel.Visible = false
 end)
+
+--[[
+	SEKMELER  --  Playtime / Daily / Social Rewards
+
+	Her sekmenin kendi sayfasi var (panel boyunda seffaf bir Frame). Daily
+	sayfasi eski 7 gunluk takvimin aynisi; kartlar ona kuruluyor. Panel
+	acilinca son secilen sekme kalir, ilk acilista Daily.
+]]
+local odulSayfalari: { [string]: Frame } = {}
+local odulSekmeDugmeleri: { [string]: TextButton } = {}
+
+local ODUL_SEKMELER = {
+	{ id = "playtime", ad = "Playtime", renk = Color3.fromRGB(70, 200, 240) },
+	{ id = "daily", ad = "Daily", renk = Color3.fromRGB(215, 80, 230) },
+	{ id = "social", ad = "Social Rewards", renk = Color3.fromRGB(245, 205, 45) },
+}
+
+local function odulSekmeSec(id: string)
+	for sekme, sayfa in odulSayfalari do
+		sayfa.Visible = sekme == id
+	end
+	for sekme, dugme in odulSekmeDugmeleri do
+		local secili = sekme == id
+		dugme.BackgroundTransparency = if secili then 0 else 0.5
+		local cizgi = dugme:FindFirstChild("SekmeKontur")
+		if cizgi and cizgi:IsA("UIStroke") then
+			cizgi.Color = if secili then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(0, 0, 0)
+		end
+	end
+end
+
+do
+	local sekmeEn = (odulPanel.Size.X.Offset - 20 - 2 * 10) / 3
+	for i, sekme in ODUL_SEKMELER do
+		local sayfa = Instance.new("Frame")
+		sayfa.Name = `Sayfa_{sekme.id}`
+		sayfa.Size = UDim2.fromScale(1, 1)
+		sayfa.BackgroundTransparency = 1
+		sayfa.Parent = odulPanel
+		odulSayfalari[sekme.id] = sayfa
+
+		local dugme = Instance.new("TextButton")
+		dugme.Name = `Sekme_{sekme.id}`
+		dugme.Size = UDim2.fromOffset(sekmeEn, 40)
+		dugme.Position = UDim2.fromOffset(10 + (i - 1) * (sekmeEn + 10), 58)
+		dugme.BackgroundColor3 = sekme.renk
+		dugme.AutoButtonColor = false
+		dugme.BorderSizePixel = 0
+		dugme.Text = ""
+		dugme.Parent = odulPanel
+		UI.corner(dugme, 10)
+
+		local kontur = Instance.new("UIStroke")
+		kontur.Name = "SekmeKontur"
+		kontur.Thickness = 3
+		kontur.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		kontur.Parent = dugme
+
+		UI.text({
+			text = sekme.ad,
+			size = UI.Sizes.heading,
+			font = UI.Fonts.bold,
+			color = Color3.fromRGB(255, 255, 255),
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromScale(1, 1),
+			parent = dugme,
+			name = "Label",
+		})
+
+		odulSekmeDugmeleri[sekme.id] = dugme
+		dugme.MouseButton1Click:Connect(function()
+			odulSekmeSec(sekme.id)
+		end)
+	end
+	odulSekmeSec("daily")
+end
 
 type OdulKart = {
 	gun: number,
@@ -1534,7 +1613,7 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	kart.Size = UDim2.fromOffset(en, boy)
 	kart.BackgroundColor3 = ODUL_RENK[gun] or UI.Colors.accent
 	kart.BorderSizePixel = 0
-	kart.Parent = odulPanel
+	kart.Parent = odulSayfalari.daily
 	UI.corner(kart, 10)
 	UI.stroke(kart, Color3.fromRGB(0, 0, 0), 3)
 
@@ -1820,12 +1899,461 @@ task.spawn(function()
 	end
 end)
 
+------------------------------------------------------------------
+-- REWARDS > PLAYTIME ve SOCIAL REWARDS SAYFALARI
+--
+-- Ayarlar Shared > SosyalOdul, dogrulama ServerScriptService > SosyalOdul.
+-- Durumu degisen dugmeler UI.button ile kurulmuyor: UI.hover ilk uzerine
+-- gelmede rengi hafizaya aliyor ve Claim -> Claimed renk degisimini geri
+-- ceviriyordu. Asagidaki dugmeler hover'siz.
+------------------------------------------------------------------
+--
+-- BEKLEME MENUYU KILITLEMESIN: yeni modul (Shared > SosyalOdul) ve remote'lar
+-- WaitForChild ile aliniyor. Scriptin basinda beklenseydi, biri Studio'da
+-- henuz yokken butun sol menu ve paneller hic kurulmuyordu. Bu bolum kendi
+-- is parcaciginda kuruluyor; eksik olursa yalnizca bu iki sekme bos kalir.
+------------------------------------------------------------------
+local EkOdulAc: RemoteEvent? = nil
+
 function odulPaneliniAc()
 	odulPanel.Visible = not odulPanel.Visible
 	if odulPanel.Visible then
 		OdulAc:FireServer()
+		if EkOdulAc then
+			EkOdulAc:FireServer()
+		end
 	end
 end
+
+task.spawn(function()
+	local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
+	local ekAc = Net.event("EkOdulAc")
+	local EkOdulAl = Net.event("EkOdulAl")
+	local EkOdulDurum = Net.event("EkOdulDurum")
+	local KodKullan = Net.event("KodKullan")
+	local KodSonuc = Net.event("KodSonuc")
+	local ODUL_W = odulPanel.Size.X.Offset
+	local ODUL_H = odulPanel.Size.Y.Offset
+	local SIYAH = Color3.fromRGB(0, 0, 0)
+	local BEYAZ = Color3.fromRGB(255, 255, 255)
+	local ALTIN = Color3.fromRGB(255, 215, 40)
+	local GRI = Color3.fromRGB(95, 95, 110)
+
+	local function durumDugmesi(parent: Instance, size: UDim2, renk: Color3): (TextButton, TextLabel)
+		local dugme = Instance.new("TextButton")
+		dugme.Size = size
+		dugme.BackgroundColor3 = renk
+		dugme.AutoButtonColor = false
+		dugme.BorderSizePixel = 0
+		dugme.Text = ""
+		dugme.Parent = parent
+		UI.corner(dugme, 8)
+		UI.stroke(dugme, SIYAH, 2)
+
+		local yazi = UI.text({
+			text = "",
+			size = UI.Sizes.label,
+			font = UI.Fonts.bold,
+			color = BEYAZ,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromScale(1, 1),
+			parent = dugme,
+			name = "Label",
+		})
+		return dugme, yazi
+	end
+
+	local function kutu(parent: Instance, pos: UDim2, size: UDim2, cerceve: Color3): Frame
+		local f = Instance.new("Frame")
+		f.Position = pos
+		f.Size = size
+		f.BackgroundColor3 = Color3.fromRGB(34, 30, 44)
+		f.BorderSizePixel = 0
+		f.Parent = parent
+		UI.corner(f, 12)
+		UI.stroke(f, cerceve, 3)
+		return f
+	end
+
+	-- Sunucudan gelen son durum
+	local ekDurum: any = nil
+	-- Oturumun istemcideki baslangici: sure her saniye burada ilerliyor
+	local ptBaslangic = os.clock()
+
+	------------------------------------------------------------------
+	-- PLAYTIME
+	------------------------------------------------------------------
+	local ptSayfa = odulSayfalari.playtime
+
+	UI.text({
+		text = "Stay in the game to earn rewards!",
+		size = UI.Sizes.heading,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 30),
+		position = UDim2.fromOffset(10, ODUL_UST),
+		parent = ptSayfa,
+	})
+
+	local ptSureYazi = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(120, 220, 255),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 24),
+		position = UDim2.fromOffset(10, ODUL_UST + 32),
+		parent = ptSayfa,
+	})
+
+	type PtKart = { dugme: TextButton, yazi: TextLabel }
+	local ptKartlari: { PtKart } = {}
+
+	do
+		local adet = #SosyalOdul.Playtime
+		local en = (ODUL_W - 10 * (adet + 1)) / adet
+		local y = ODUL_UST + 66
+		local boy = ODUL_H - y - 12
+		local renkler = {
+			Color3.fromRGB(40, 170, 255),
+			Color3.fromRGB(255, 160, 30),
+			Color3.fromRGB(220, 60, 230),
+			Color3.fromRGB(30, 200, 220),
+			Color3.fromRGB(255, 190, 40),
+		}
+
+		for i, odul in SosyalOdul.Playtime do
+			local kart = Instance.new("Frame")
+			kart.Name = `Playtime{i}`
+			kart.Position = UDim2.fromOffset(10 + (i - 1) * (en + 10), y)
+			kart.Size = UDim2.fromOffset(en, boy)
+			kart.BackgroundColor3 = renkler[(i - 1) % #renkler + 1]
+			kart.BorderSizePixel = 0
+			kart.Parent = ptSayfa
+			UI.corner(kart, 10)
+			UI.stroke(kart, SIYAH, 3)
+
+			local gecis = Instance.new("UIGradient")
+			gecis.Rotation = 90
+			gecis.Color = ColorSequence.new(BEYAZ, Color3.fromRGB(175, 175, 175))
+			gecis.Parent = kart
+
+			UI.text({
+				text = `{odul.minutes} min`,
+				size = UI.Sizes.heading,
+				font = UI.Fonts.bold,
+				color = BEYAZ,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, 0, 0, 30),
+				position = UDim2.fromOffset(0, 8),
+				parent = kart,
+			})
+
+			local ikon = Instance.new("ImageLabel")
+			ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+			ikon.Position = UDim2.new(0.5, 0, 0.5, -12)
+			ikon.Size = UDim2.fromOffset(64, 64)
+			ikon.BackgroundTransparency = 1
+			ikon.ScaleType = Enum.ScaleType.Fit
+			ikon.Parent = kart
+			Icons.bind(ikon, SosyalOdul.ikon(odul))
+
+			UI.text({
+				text = SosyalOdul.etiket(odul),
+				size = UI.Sizes.small,
+				font = UI.Fonts.bold,
+				color = BEYAZ,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -6, 0, 20),
+				position = UDim2.new(0, 3, 1, -70),
+				parent = kart,
+			})
+
+			local dugme, yazi = durumDugmesi(kart, UDim2.new(1, -16, 0, 38), UI.Colors.gold)
+			dugme.AnchorPoint = Vector2.new(0.5, 1)
+			dugme.Position = UDim2.new(0.5, 0, 1, -8)
+			dugme.MouseButton1Click:Connect(function()
+				EkOdulAl:FireServer("playtime", i)
+			end)
+
+			ptKartlari[i] = { dugme = dugme, yazi = yazi }
+		end
+	end
+
+	local function playtimeCiz()
+		local gecen = os.clock() - ptBaslangic
+		ptSureYazi.Text = `Time played: {SosyalOdul.sure(gecen)}`
+
+		for i, odul in SosyalOdul.Playtime do
+			local kart = ptKartlari[i]
+			local bilgi = if ekDurum and ekDurum.playtime then ekDurum.playtime[i] else nil
+			local kalan = odul.minutes * 60 - gecen
+
+			if bilgi and bilgi.claimed then
+				kart.dugme.BackgroundColor3 = GRI
+				kart.yazi.Text = "Claimed"
+			elseif kalan <= 0 then
+				kart.dugme.BackgroundColor3 = UI.Colors.good
+				kart.yazi.Text = "Claim"
+			else
+				kart.dugme.BackgroundColor3 = UI.Colors.warn
+				kart.yazi.Text = SosyalOdul.sure(kalan)
+			end
+		end
+	end
+
+	------------------------------------------------------------------
+	-- SOCIAL REWARDS
+	------------------------------------------------------------------
+	local soSayfa = odulSayfalari.social
+	local KART_EN = (ODUL_W - 30) / 2
+	local KART_BOY = 176
+
+	-- Grup karti
+	local grupKart = kutu(soSayfa, UDim2.fromOffset(10, ODUL_UST), UDim2.fromOffset(KART_EN, KART_BOY), ALTIN)
+
+	local grupBaslik = UI.text({
+		text = "",
+		size = UI.Sizes.label,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 52),
+		position = UDim2.fromOffset(10, 8),
+		parent = grupKart,
+		wrapped = true,
+	})
+	grupBaslik.RichText = true
+	local grupAdi = if SosyalOdul.GroupName ~= "" then `"{SosyalOdul.GroupName}"` else "our Group"
+	grupBaslik.Text = `Join <font color="#FFD728">{grupAdi}</font> for free Rot Coin!`
+
+	local grupIkon = Instance.new("ImageLabel")
+	grupIkon.AnchorPoint = Vector2.new(0.5, 0.5)
+	grupIkon.Position = UDim2.new(0.5, 0, 0, 84)
+	grupIkon.Size = UDim2.fromOffset(56, 56)
+	grupIkon.BackgroundTransparency = 1
+	grupIkon.ScaleType = Enum.ScaleType.Fit
+	grupIkon.Parent = grupKart
+	Icons.bind(grupIkon, "rotCoin")
+
+	UI.text({
+		text = `+{SosyalOdul.GroupReward} Rot Coin`,
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = ALTIN,
+		align = Enum.TextXAlignment.Left,
+		frameSize = UDim2.fromOffset(120, 24),
+		position = UDim2.new(0.5, 34, 0, 72),
+		parent = grupKart,
+	})
+
+	local grupDugme, grupYazi = durumDugmesi(grupKart, UDim2.fromOffset(170, 40), UI.Colors.good)
+	grupDugme.AnchorPoint = Vector2.new(0.5, 1)
+	grupDugme.Position = UDim2.new(0.5, 0, 1, -12)
+	grupDugme.MouseButton1Click:Connect(function()
+		EkOdulAl:FireServer("group")
+	end)
+
+	-- Like + Favorite karti
+	local likeKart = kutu(
+		soSayfa,
+		UDim2.fromOffset(20 + KART_EN, ODUL_UST),
+		UDim2.fromOffset(KART_EN, KART_BOY),
+		Color3.fromRGB(90, 220, 110)
+	)
+
+	UI.text({
+		text = "Like And Favorite!",
+		size = UI.Sizes.heading,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 30),
+		position = UDim2.fromOffset(10, 8),
+		parent = likeKart,
+	})
+
+	local favoriSatir = UI.text({
+		text = `<font color="#FFD728">Favorite</font> the game!`,
+		size = UI.Sizes.label,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 26),
+		position = UDim2.fromOffset(10, 44),
+		parent = likeKart,
+	})
+	favoriSatir.RichText = true
+
+	local likeSatir = UI.text({
+		text = `<font color="#78FF96">Like</font> the game!  (+{SosyalOdul.LikeReward} Rot Coin)`,
+		size = UI.Sizes.label,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 26),
+		position = UDim2.fromOffset(10, 74),
+		parent = likeKart,
+	})
+	likeSatir.RichText = true
+
+	local likeDugme, likeYazi = durumDugmesi(likeKart, UDim2.fromOffset(170, 40), UI.Colors.good)
+	likeDugme.AnchorPoint = Vector2.new(0.5, 1)
+	likeDugme.Position = UDim2.new(0.5, 0, 1, -12)
+	likeDugme.MouseButton1Click:Connect(function()
+		if ekDurum and ekDurum.like and ekDurum.like.claimed then
+			return
+		end
+		-- Roblox'un favori penceresi; begeni dogrulanamadigi icin odul bir kez verilir
+		pcall(function()
+			AvatarEditorService:PromptSetFavorite(game.PlaceId, Enum.AvatarItemType.Asset, true)
+		end)
+		EkOdulAl:FireServer("like")
+	end)
+
+	-- Kod kutusu
+	local KOD_Y = ODUL_UST + KART_BOY + 10
+	local kodKart = kutu(
+		soSayfa,
+		UDim2.fromOffset(10, KOD_Y),
+		UDim2.fromOffset(ODUL_W - 20, ODUL_H - KOD_Y - 12),
+		Color3.fromRGB(170, 90, 230)
+	)
+
+	UI.text({
+		text = "Redeem Codes for Rewards!",
+		size = UI.Sizes.heading,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 28),
+		position = UDim2.fromOffset(10, 6),
+		parent = kodKart,
+	})
+
+	UI.text({
+		text = "Like the game for codes! Find them in the description & on our socials!",
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 18),
+		position = UDim2.fromOffset(10, 34),
+		parent = kodKart,
+	})
+
+	local kodKutusu = Instance.new("TextBox")
+	kodKutusu.Name = "KodKutusu"
+	kodKutusu.AnchorPoint = Vector2.new(1, 0)
+	kodKutusu.Position = UDim2.new(0.5, -6, 0, 58)
+	kodKutusu.Size = UDim2.fromOffset(260, 46)
+	kodKutusu.BackgroundColor3 = Color3.fromRGB(20, 18, 26)
+	kodKutusu.BorderSizePixel = 0
+	kodKutusu.ClearTextOnFocus = false
+	kodKutusu.Text = ""
+	kodKutusu.PlaceholderText = "Enter Code"
+	kodKutusu.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
+	kodKutusu.TextColor3 = BEYAZ
+	kodKutusu.FontFace = UI.Fonts.bold
+	kodKutusu.TextSize = UI.Sizes.heading
+	kodKutusu.Parent = kodKart
+	UI.corner(kodKutusu, 8)
+	UI.stroke(kodKutusu, Color3.fromRGB(70, 60, 90), 2)
+
+	local kodDugme, kodDugmeYazi = durumDugmesi(kodKart, UDim2.fromOffset(180, 46), Color3.fromRGB(70, 160, 230))
+	kodDugme.Position = UDim2.new(0.5, 6, 0, 58)
+	kodDugmeYazi.Text = "Redeem"
+	kodDugmeYazi.TextSize = UI.Sizes.heading
+
+	local kodSonucYazi = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -20, 0, 20),
+		position = UDim2.new(0, 10, 1, -24),
+		parent = kodKart,
+	})
+
+	local function koduGonder()
+		local kod = kodKutusu.Text
+		if string.gsub(kod, "%s", "") == "" then
+			return
+		end
+		KodKullan:FireServer(kod)
+	end
+	kodDugme.MouseButton1Click:Connect(koduGonder)
+	kodKutusu.FocusLost:Connect(function(enter)
+		if enter then
+			koduGonder()
+		end
+	end)
+
+	KodSonuc.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then
+			return
+		end
+		kodSonucYazi.Text = tostring(data.message or "")
+		kodSonucYazi.TextColor3 = if data.ok then Color3.fromRGB(120, 255, 150) else Color3.fromRGB(255, 120, 120)
+		if data.ok then
+			kodKutusu.Text = ""
+		end
+	end)
+
+	local function socialCiz()
+		local grup = ekDurum and ekDurum.group
+		if grup and grup.claimed then
+			grupDugme.BackgroundColor3 = GRI
+			grupYazi.Text = "Claimed"
+		elseif SosyalOdul.GroupId == 0 then
+			grupDugme.BackgroundColor3 = GRI
+			grupYazi.Text = "Coming Soon"
+		else
+			grupDugme.BackgroundColor3 = UI.Colors.good
+			grupYazi.Text = "Claim"
+		end
+
+		local like = ekDurum and ekDurum.like
+		if like and like.claimed then
+			likeDugme.BackgroundColor3 = GRI
+			likeYazi.Text = "Claimed"
+		else
+			likeDugme.BackgroundColor3 = UI.Colors.good
+			likeYazi.Text = "Claim"
+		end
+	end
+
+	EkOdulDurum.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then
+			return
+		end
+		ekDurum = data
+		ptBaslangic = os.clock() - (tonumber(data.elapsed) or 0)
+		playtimeCiz()
+		socialCiz()
+	end)
+
+	playtimeCiz()
+	socialCiz()
+
+	-- Playtime geri sayimi; panel kapaliyken bosuna cizilmez
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			if odulPanel.Visible and odulSayfalari.playtime.Visible then
+				playtimeCiz()
+			end
+		end
+	end)
+
+	-- Artik hazir: panel acilinca durum istenir; acik ise hemen iste
+	EkOdulAc = ekAc
+	if odulPanel.Visible then
+		ekAc:FireServer()
+	end
+end)
 
 
 ------------------------------------------------------------------

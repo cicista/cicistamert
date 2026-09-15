@@ -99,6 +99,9 @@ export type Data = {
 	-- Level sistemi (bkz. Shared > Seviye)
 	level: number,
 	xp: number,
+	-- Rewards > Social: alinan tek seferlik oduller ("group", "like") ve kullanilan kodlar
+	socialClaimed: { [string]: boolean },
+	redeemedCodes: { [string]: boolean },
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
 	islands: number,
 	--[[
@@ -159,6 +162,8 @@ local function defaultData(): Data
 		luckBonus = 1,
 		level = 1,
 		xp = 0,
+		socialClaimed = {},
+		redeemedCodes = {},
 		islands = 1,
 		reachedIsland = Brainrots.IslandOrder[1],
 		ores = {},
@@ -260,6 +265,18 @@ local function migrate(raw: any): Data
 	-- Level sisteminden onceki kayitlar Level 1'den baslar
 	data.level = math.clamp(math.floor(tonumber(raw.level) or 1), 1, 100)
 	data.xp = math.max(0, math.floor(tonumber(raw.xp) or 0))
+	-- Social Rewards (onceki kayitlarda yok: hic alinmamis sayilir)
+	data.socialClaimed = {}
+	data.redeemedCodes = {}
+	for alan, hedef in { socialClaimed = data.socialClaimed, redeemedCodes = data.redeemedCodes } do
+		if type(raw[alan]) == "table" then
+			for anahtar, deger in raw[alan] do
+				if type(anahtar) == "string" and deger == true then
+					hedef[anahtar] = true
+				end
+			end
+		end
+	end
 
 	-- Fuse coinleri (coin sisteminden onceki kayitlarda bu alan yok)
 	--[[
