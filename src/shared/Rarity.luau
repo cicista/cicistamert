@@ -28,6 +28,8 @@ export type RarityInfo = {
 	color: Color3,
 	-- Kumda gezerken bu kademede bir isik suzmesi cikma sansi (yuzde)
 	beamChance: number,
+	-- Sans ussu: agirlik = beamChance * sans ^ luckExp (eksi = sans arttikca azalir)
+	luckExp: number?,
 	-- Base'e yerlestirildiginde saniyelik gelir araligi (condition carpani haric)
 	incomeMin: number,
 	incomeMax: number,
@@ -84,6 +86,7 @@ Rarity.Info = {
 		order = 1,
 		color = Color3.fromRGB(200, 200, 200),
 		beamChance = 62,
+		luckExp = -0.6,
 		incomeMin = 10,
 		incomeMax = 50,
 		escapeDifficulty = 0.4,
@@ -96,6 +99,7 @@ Rarity.Info = {
 		order = 2,
 		color = Color3.fromRGB(80, 160, 255),
 		beamChance = 25,
+		luckExp = -0.3,
 		incomeMin = 250,
 		incomeMax = 1_250,
 		escapeDifficulty = 1,
@@ -108,6 +112,7 @@ Rarity.Info = {
 		order = 3,
 		color = Color3.fromRGB(180, 100, 255),
 		beamChance = 9,
+		luckExp = 0.4,
 		incomeMin = 7_000,
 		incomeMax = 35_000,
 		escapeDifficulty = 2,
@@ -120,6 +125,7 @@ Rarity.Info = {
 		order = 4,
 		color = Color3.fromRGB(255, 240, 150),
 		beamChance = 3,
+		luckExp = 0.7,
 		incomeMin = 200_000,
 		incomeMax = 1_000_000,
 		escapeDifficulty = 3.2,
@@ -132,6 +138,7 @@ Rarity.Info = {
 		order = 5,
 		color = Color3.fromRGB(255, 70, 90),
 		beamChance = 0.75,
+		luckExp = 1.0,
 		incomeMin = 3_000_000,
 		incomeMax = 15_000_000,
 		escapeDifficulty = 4.5,
@@ -155,6 +162,7 @@ Rarity.Info = {
 		order = 6,
 		color = Color3.fromRGB(255, 190, 60),
 		beamChance = 0.2,
+		luckExp = 1.2,
 		incomeMin = 35_000_000,
 		incomeMax = 165_000_000,
 		escapeDifficulty = 6,
@@ -178,7 +186,8 @@ Rarity.Info = {
 		displayName = "Cosmic",
 		order = 7,
 		color = Color3.fromRGB(138, 43, 226),
-		beamChance = 0.08,
+		beamChance = 0.0168,
+		luckExp = 1.4,
 		incomeMin = 180_000_000,
 		incomeMax = 850_000_000,
 		escapeDifficulty = 7.5,
@@ -197,7 +206,8 @@ Rarity.Info = {
 		displayName = "Secret",
 		order = 8,
 		color = Color3.fromRGB(24, 24, 28),
-		beamChance = 0.04,
+		beamChance = 0.0044,
+		luckExp = 1.6,
 		incomeMin = 900_000_000,
 		incomeMax = 4_200_000_000,
 		escapeDifficulty = 9,
@@ -210,7 +220,8 @@ Rarity.Info = {
 		displayName = "Infernal",
 		order = 9,
 		color = Color3.fromRGB(255, 102, 20),
-		beamChance = 0.02,
+		beamChance = 0.00103,
+		luckExp = 1.8,
 		incomeMin = 4_500_000_000,
 		incomeMax = 21_000_000_000,
 		escapeDifficulty = 11,
@@ -223,7 +234,8 @@ Rarity.Info = {
 		displayName = "Abyssal",
 		order = 10,
 		color = Color3.fromRGB(12, 62, 140),
-		beamChance = 0.01,
+		beamChance = 0.0000494,
+		luckExp = 2.0,
 		incomeMin = 22_000_000_000,
 		incomeMax = 105_000_000_000,
 		escapeDifficulty = 13,
@@ -455,16 +467,20 @@ function Rarity.rollBeam(rng: Random, luckMultiplier: number?, izin: ((string) -
 		local w = info.beamChance
 
 		--[[
-			Epic ve ustu sanstan etkilenir. Mythic ve Secret ise USTEL olarak
-			etkilenir (luck^1.5): boylece en ust kurulum (Lv5 dedektor + volkan
-			kumu) Secret.i gercekten bulunabilir kilar, dusuk sansta ise ikisi
-			de nadir kalir.
+			HER KADEMENIN KENDI SANS USSU  (luckExp)
+
+			    agirlik = beamChance * sans ^ luckExp
+
+			Common (-0.6) ve Rare (-0.3) sans arttikca AZALIR; Epic (0.4)'ten
+			Abyssal (2.0)'a kadar usler buyudukce ust kademeler hizla artar.
+			Sans = zemin (ada) * GPS * level * arkadas; denizde olta * deniz.
+
+			DENGE HEDEFI (level 5 GPS / olta, kazmadan gezen, isin omru 30 sn):
+			yeni acilan kademe kendi adasinda saatte ~2 -- Candy'de Cosmic,
+			Snow'da Secret, Volcano'da Infernal; denizde Abyssal saatte ~1.
+			Sans 1 iken (Main Island, Basic GPS) oranlar eskisiyle ayni.
 		]]
-		if info.order >= 5 then
-			w *= luck ^ 1.5
-		elseif info.order >= 3 then
-			w *= luck
-		end
+		w *= luck ^ (info.luckExp or 0)
 
 		total += w
 		table.insert(weights, { id = id, w = w })

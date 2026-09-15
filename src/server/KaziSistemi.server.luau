@@ -683,7 +683,7 @@ task.spawn(function()
 				local sonGirdap = lastWhirl[player] or 0
 
 				if simdi - sonGirdap >= GIRDAP_ARASI and rng:NextNumber() * 100 <= rod.spawnChance then
-					if Beams.trySpawnSea(player, rod.luck, rng, rod.maxWhirls, rod.scanRadius) then
+					if Beams.trySpawnSea(player, rod.luck * (G.seaLuck or 1), rng, rod.maxWhirls, rod.scanRadius) then
 						lastWhirl[player] = simdi
 						girdapBildirildi = true
 					elseif not girdapBildirildi then

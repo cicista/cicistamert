@@ -122,7 +122,7 @@ Config.Fuse = {
 Config.Islands = {
 	{
 		name = "Main Island",
-		desc = "Starter island. Lots of sand, few brainrots.",
+		desc = "Starter island. Luck x1.",
 		spawnPartName = "Spawn_AnaAda",
 		position = Vector3.new(-1879, 22.9, 107),
 		price = 0,
@@ -132,30 +132,30 @@ Config.Islands = {
 	-- Sira brainrot adalariyla ayni: kum > sekerkum > snowkum > alevkum
 	{
 		name = "Candy Island",
-		desc = "Sticky pink sands. Sweet brainrots await.",
+		desc = "Sticky pink sands. Luck x2. Cosmic brainrots appear here.",
 		spawnPartName = "Spawn_Sakiz",
 		position = Vector3.new(-990.1, 28.6, -747.5),
 		-- Ana adada Epic/Legendary base ile ~1 saat farm
 		price = 20_000_000_000,
-		luck = 3,
+		luck = 2,
 		color = Color3.fromRGB(255, 130, 200),
 	},
 	{
 		name = "Snow Island",
-		desc = "Frozen sands. Cold but rewarding.",
+		desc = "Frozen sands. Luck x4. Secret brainrots appear here.",
 		spawnPartName = "Spawn_Buz",
 		position = Vector3.new(-262.8, 30.5, 709.7),
 		price = 120_000_000_000,
-		luck = 4.5,
+		luck = 4,
 		color = Color3.fromRGB(140, 220, 245),
 	},
 	{
 		name = "Volcano Island",
-		desc = "Scorching sands. High chance of rare brainrots.",
+		desc = "Scorching sands. Luck x8. Infernal brainrots appear here.",
 		spawnPartName = "Spawn_Volkan",
 		position = Vector3.new(620.3, 16.3, -34.5),
 		price = 1_200_000_000_000,
-		luck = 6,
+		luck = 8,
 		color = Color3.fromRGB(230, 110, 70),
 	},
 	{
@@ -191,12 +191,16 @@ Config.Sand = {
 		Yeni bir ada zemini eklemek icin buraya bir satir yazman yeterli.
 	]]
 	luckByName = {
-		buzkum = 3,
-		sakizkum = 4.5,
-		-- Ayni ada: zemini SekerKum diye adlandirdiysan da calisir
-		sekerkum = 4.5,
-		volkankum = 6,
-		alevkum = 10,
+		-- Main Island (kum) listede yok: x1
+		-- Candy Island x2
+		sekerkum = 2,
+		sakizkum = 2,
+		-- Snow Island x4
+		snowkum = 4,
+		buzkum = 4,
+		-- Volcano Island x8
+		alevkum = 8,
+		volkankum = 8,
 	},
 }
 
@@ -208,18 +212,21 @@ Config.GPS = {
 	-- Kac saniyede bir tarama yapilir
 	scanInterval = 1.5,
 	-- Oyuncunun etrafinda suzme aranan yaricap (stud)
-	scanRadius = 60,
+	scanRadius = 75,
 	-- Bir taramada suzme cikma sansi (yuzde)
 	spawnChance = 35,
 	-- Ayni anda bir oyuncunun etrafinda en fazla kac suzme durabilir
 	maxBeamsPerPlayer = 4,
-	-- Suzme kac saniye sonra kendiliginden kaybolur
-	beamLifetime = 45,
+	-- Suzme / girdap kac saniye sonra kendiliginden kaybolur
+	beamLifetime = 30,
+	-- Denizin sans carpani: girdap sansi = olta sansi * bu (kaptandaki adalar gibi)
+	seaLuck = 16,
 	-- Suzmenin oyuncudan en az/en cok kac stud uzakta dogacagi
 	minSpawnDistance = 18,
 	maxSpawnDistance = 55,
-	-- Kazmak icin suzmeye kac stud yaklasmak gerekir
-	digDistance = 10,
+	-- Kazmak icin suzmeye / madene kac stud yaklasmak gerekir.
+	-- Kisa tutuldu: uzaktan tiklayinca kazi animasyonu havaya vuruyordu.
+	digDistance = 6,
 	--[[
 		GIRDABA OLTA ATMA MESAFESI
 
