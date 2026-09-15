@@ -530,6 +530,36 @@ Assets.ToolGrips = {
 	},
 }
 
+--[[
+	GOVDE ESYALARI  --  sirtta kurek, belde GPS
+	(bkz. ServerScriptService > SirtEsyalari)
+
+	Esyanin tutus noktasi (Handle) govde parcasina gore bu konuma oturur:
+	kurek UpperTorso'ya, GPS LowerTorso'ya (R6'da ikisi de Torso'ya).
+
+	    position   -- R15 icin kayma (stud). X sag, Y yukari, Z ARKA
+	    positionR6 -- R6 (Torso) icin kayma
+	    rotation   -- derece. Y 180: esya disa baksin; Z: govde duzleminde egim
+	    scale      -- model boyu carpani
+]]
+Assets.BodyItems = {
+	shovel = {
+		position = Vector3.new(0, -0.3, 0.7),
+		positionR6 = Vector3.new(0, -0.3, 0.7),
+		-- 45 derece capraz
+		rotation = Vector3.new(0, 180, 45),
+		scale = 1,
+	},
+	gps = {
+		-- Sag kalca yani, cep hizasi
+		position = Vector3.new(1.05, 0, 0),
+		positionR6 = Vector3.new(1.05, -0.8, 0),
+		-- 20 derece egik
+		rotation = Vector3.new(0, 0, 20),
+		scale = 0.8,
+	},
+}
+
 -- Dedektor (GPS) modeli; kurekle ayni mantik
 function Assets.detectorModel(detectorId: string): Model?
 	return findModel(Assets.Categories.detectors, detectorId)
