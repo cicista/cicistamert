@@ -70,8 +70,11 @@ local SOL_EL_SAPTA = 1.5
 	KUREK POZLARI  --  t = turun neresinde (0..1)
 
 	HAREKETI VUCUT YAPAR. Alet elin UZANTISIDIR: kolun yonunde durur, elde
-	yalnizca bilek kadar (birkac on derece) oynar. Kurek ileri geri gidiyorsa
-	bunu KOL, BEL ve BACAKLAR yapar -- kurek kendi basina donmez.
+	yalnizca bilek kadar oynar. Kurek ileri geri gidiyorsa bunu KOL, BEL ve
+	BACAKLAR yapar -- kurek kendi basina donmez.
+
+	Kurek HEP ZEMINE DOGRU calisir: saplarken de toprak atarken de kafa yere
+	bakar, kol asagida kalir. Havaya savurma yok.
 
 	  bilek      derece: aletin kola gore egimi. 0 = kolun tam uzantisi,
 	             + = elin onune dogru (asagi), - = elin arkasina (yukari)
@@ -84,110 +87,112 @@ local SOL_EL_SAPTA = 1.5
 	  belDon     +  -> govde sola doner, - -> saga-geri
 	  alcal      -  -> kalca asagi iner (stud)
 
-	    1. HAZIR     kol one-asagi, kurek onde yere yakin
-	    2. GERI AT   KOL ARKAYA savrulur, govde saga-geri doner, arkaya
-	                 yaslanir; agirlik arka bacakta
-	    3. SAPLA     kol alcaktan ILERI gelir, govde one hamle yapar, dizler
-	                 bukulur: kurek yataya yakin topraga girer
-	    4. ITTIR     govde biraz daha one, kisa itis
-	    5. AT        kol yukari, govde dogrulup sola doner: toprak atilir
+	    1. HAZIR     kol one-asagi, kurek kafasi yerde
+	    2. GERI AT   KOL ARKAYA savrulur, govde saga-geri doner; agirlik arkada
+	    3. SAPLA     kol alcaktan ileri-ASAGI gelir, govde one egilip iner:
+	                 kurek topraga girer
+	    4. ITTIR     govde daha da iner, kafa topragin icine
+	    5. AT        kol hala asagida, govde sola doner: toprak YERE atilir
 ]]
 local POZLAR = {
 	{
 		-- HAZIR
 		t = 0,
-		bilek = 25,
-		bel = -10, belDon = 0, kok = 0, alcal = 0,
-		sagOmuz = -30, sagDirsek = 10,
+		bilek = 35,
+		bel = -12, belDon = 0, kok = 0, alcal = 0,
+		sagOmuz = -40, sagDirsek = 10,
 		sagKalca = 0, solKalca = 0, sagDiz = 0, solDiz = 0,
 	},
 	{
 		-- GERI AT: kol arkaya, govde saga-geri, agirlik arkada
 		t = 0.28,
-		bilek = 20,
-		bel = 10, belDon = -32, kok = 3, alcal = -0.1,
+		bilek = 30,
+		bel = 8, belDon = -32, kok = 3, alcal = -0.1,
 		sagOmuz = -130, sagDirsek = 25,
 		sagKalca = -10, solKalca = 16, sagDiz = -14, solDiz = -20,
 	},
 	{
-		-- SAPLA: kol alcaktan ileri, govde one hamle
+		-- SAPLA: kol ileri-asagi, govde one egilip iner
 		t = 0.5,
-		bilek = 30,
-		bel = -32, belDon = 14, kok = -5, alcal = -0.35,
-		sagOmuz = -20, sagDirsek = 5,
-		sagKalca = 28, solKalca = 4, sagDiz = -34, solDiz = -10,
+		bilek = 45,
+		bel = -36, belDon = 14, kok = -5, alcal = -0.4,
+		sagOmuz = -50, sagDirsek = 5,
+		sagKalca = 28, solKalca = 4, sagDiz = -36, solDiz = -12,
 	},
 	{
-		-- ITTIR
+		-- ITTIR: kafa topragin icine
 		t = 0.62,
-		bilek = 35,
-		bel = -36, belDon = 16, kok = -6, alcal = -0.38,
-		sagOmuz = -12, sagDirsek = 4,
-		sagKalca = 30, solKalca = 4, sagDiz = -36, solDiz = -10,
+		bilek = 50,
+		bel = -38, belDon = 16, kok = -6, alcal = -0.42,
+		sagOmuz = -45, sagDirsek = 4,
+		sagKalca = 30, solKalca = 4, sagDiz = -38, solDiz = -12,
 	},
 	{
-		-- AT: kol yukari, govde dogrulup sola doner
+		-- AT: kol asagida, govde sola doner, toprak yere
 		t = 0.82,
-		bilek = -10,
-		bel = -6, belDon = 34, kok = 0, alcal = -0.1,
-		sagOmuz = 15, sagDirsek = 35,
-		sagKalca = 8, solKalca = 4, sagDiz = -10, solDiz = -6,
+		bilek = 30,
+		bel = -18, belDon = 30, kok = -2, alcal = -0.2,
+		sagOmuz = -20, sagDirsek = 15,
+		sagKalca = 10, solKalca = 4, sagDiz = -14, solDiz = -6,
 	},
 }
 
 --[[
-	KAZMA POZLARI  --  madende cevher kirma, butun vucutla
+	KAZMA POZLARI  --  madende cevher kirma (kurekten AYRI bir hareket)
 
-	Ayni kural: kazma kolun uzantisi. Basin arkasina kalkmasini KOL yapar
-	(omuz basin ustune, dirsek bukuk), vurusu da kol + bel + dizler birlikte.
+	Kazma BASIN ARKASINA savrulup one vurulur:
 
-	    1. TOPARLAN  kol one-asagi
-	    2. KALDIR    kol BASIN USTUNDEN ARKAYA, dirsek bukuk, govde geriye
-	                 yaslanir ve hafif doner: kazma basin arkasinda
+	    1. TOPARLAN  kol one-asagi, kazma onde
+	    2. KALDIR    ust kol yukari kalkar ama DIRSEK BASIN BIRAZ ONUNDE
+	                 kalir; on kol geriye bukulur ve kazma basin ARKASINA
+	                 savrulur. Govde geriye yaslanir: guc toplanir.
 	    3. TEPE      en arkada kisa bekleme
-	    4. VUR       kol hizla one-asagi, govde one egilir, kalca iner,
-	                 dizler bukulur: butun agirlik darbeye biner
+	    4. VUR       dirsek acilir, kol hizla one-asagi iner; bel, kalca ve
+	                 dizler birlikte: butun agirlik darbeye biner
 	    5. CARPMA    darbe aninda kisa duraksama
+
+	bilek burada kazma kafasinin kola gore egimi: eksi degerler kafayi elin
+	arkasina, yani savururken basin arkasina yatirir.
 ]]
 local KAZMA_POZLARI = {
 	{
 		-- TOPARLAN
 		t = 0,
-		bilek = 15,
-		bel = -10, belDon = 0, kok = 0, alcal = 0,
-		sagOmuz = -30, sagDirsek = 10,
+		bilek = 20,
+		bel = -12, belDon = 0, kok = 0, alcal = 0,
+		sagOmuz = -40, sagDirsek = 10,
 		sagKalca = 0, solKalca = 0, sagDiz = 0, solDiz = 0,
 	},
 	{
-		-- KALDIR: kol basin ustunden arkaya
+		-- KALDIR: dirsek basin onunde, kazma basin arkasina savrulur
 		t = 0.4,
-		bilek = -15,
-		bel = 14, belDon = -8, kok = 4, alcal = 0,
-		sagOmuz = 120, sagDirsek = 55,
+		bilek = -45,
+		bel = 12, belDon = -6, kok = 4, alcal = 0,
+		sagOmuz = 75, sagDirsek = 110,
 		sagKalca = -6, solKalca = 10, sagDiz = -4, solDiz = -10,
 	},
 	{
 		-- TEPE: en arkada kisa bekleme
 		t = 0.5,
-		bilek = -20,
-		bel = 16, belDon = -10, kok = 4, alcal = 0,
-		sagOmuz = 130, sagDirsek = 65,
+		bilek = -50,
+		bel = 14, belDon = -8, kok = 4, alcal = 0,
+		sagOmuz = 80, sagDirsek = 120,
 		sagKalca = -6, solKalca = 10, sagDiz = -4, solDiz = -10,
 	},
 	{
-		-- VUR: butun vucutla one-asagi
+		-- VUR: dirsek acilir, butun vucutla one-asagi
 		t = 0.62,
 		bilek = 25,
-		bel = -35, belDon = 6, kok = -6, alcal = -0.3,
-		sagOmuz = -45, sagDirsek = 5,
+		bel = -38, belDon = 6, kok = -6, alcal = -0.32,
+		sagOmuz = -55, sagDirsek = 0,
 		sagKalca = 24, solKalca = 12, sagDiz = -30, solDiz = -20,
 	},
 	{
 		-- CARPMA: darbe aninda duraksama
 		t = 0.76,
-		bilek = 23,
-		bel = -33, belDon = 5, kok = -6, alcal = -0.3,
-		sagOmuz = -42, sagDirsek = 8,
+		bilek = 22,
+		bel = -36, belDon = 5, kok = -6, alcal = -0.32,
+		sagOmuz = -52, sagDirsek = 3,
 		sagKalca = 24, solKalca = 12, sagDiz = -30, solDiz = -20,
 	},
 }
@@ -201,6 +206,14 @@ local POZ_SETLERI = {
 	kurek = { periyot = PERIYOT, solEl = SOL_EL_SAPTA, pozlar = POZLAR },
 	kazma = { periyot = 1.1, solEl = 0.9, pozlar = KAZMA_POZLARI },
 }
+
+-- Eldeki araca gore hareket seti: kazma (PickaxeId niteligi ya da adi "Pickaxe"), yoksa kurek
+local function setSec(arac: Tool?): any
+	if arac and (arac:GetAttribute("PickaxeId") ~= nil or arac.Name == "Pickaxe") then
+		return POZ_SETLERI.kazma
+	end
+	return POZ_SETLERI.kurek
+end
 
 -- rol -> hangi parca, hangi eklem (R15). Sol kol IKControl'e birakildi.
 local R15_EKLEMLER = {
@@ -608,9 +621,7 @@ RunService.RenderStepped:Connect(function()
 					basla = simdi,
 					arac = arac,
 					-- Madende kazma: yukaridan asagi cevher kirma; digeri kurek kazisi
-					set = if arac and arac:GetAttribute("PickaxeId") ~= nil
-						then POZ_SETLERI.kazma
-						else POZ_SETLERI.kurek,
+					set = setSec(arac),
 					bicakYonu = if arac then bicakYonuBul(arac) else nil,
 				}
 				oynayanlar[character] = yeni
@@ -624,6 +635,12 @@ RunService.RenderStepped:Connect(function()
 
 			-- Arac kazi sirasinda degistiyse (kurek sonradan ele geldi) yeniden bagla
 			if kazmaAraci(character) ~= oynayan.arac then
+				birak(character)
+				continue
+			end
+
+			-- Kazmada kurek hareketi oynamasin: set her karede aracla dogrulanir
+			if setSec(oynayan.arac) ~= oynayan.set then
 				birak(character)
 				continue
 			end
