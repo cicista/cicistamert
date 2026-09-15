@@ -138,7 +138,7 @@ Config.Islands = {
 		spawnPartName = "Spawn_Sakiz",
 		position = Vector3.new(-990.1, 28.6, -747.5),
 		-- Ana adada Epic/Legendary base ile ~1 saat farm
-		price = 20_000_000_000,
+		price = 4_500_000_000,
 		luck = 2,
 		color = Color3.fromRGB(255, 130, 200),
 	},
@@ -147,7 +147,7 @@ Config.Islands = {
 		desc = "Frozen sands. Luck x4. Secret brainrots appear here.",
 		spawnPartName = "Spawn_Buz",
 		position = Vector3.new(-262.8, 30.5, 709.7),
-		price = 120_000_000_000,
+		price = 240_000_000_000,
 		luck = 4,
 		color = Color3.fromRGB(140, 220, 245),
 	},
