@@ -149,10 +149,21 @@ function Olta.attach(character: Model, model: Model): boolean
 		return false
 	end
 
-	-- Ele gore kayma ve donus: Shared > Assets > ToolGrips.rod
+	--[[
+		ROBLOX'UN TOOL TUTUSU
+
+		Olta bir Tool degil ama bir Tool gibi tutulur: sapi elin tutus
+		noktasina (RightGripAttachment) oturur, Grip sifirken Roblox'un
+		yaptigi gibi. Boylece kurek ve kazmayla ayni sekilde elde dik durur;
+		tutma animasyonlari bu duruma gore yapilabilir.
+
+		Ek kayma ve donus: Shared > Assets > ToolGrips.rod
+	]]
 	local ayar = Assets.ToolGrips.rod
 	local r = ayar.rotation
-	model:PivotTo(hand.CFrame * CFrame.new(ayar.position) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z)))
+	local tutus = hand:FindFirstChild("RightGripAttachment")
+	local taban = if tutus and tutus:IsA("Attachment") then tutus.WorldCFrame else hand.CFrame
+	model:PivotTo(taban * CFrame.new(ayar.position) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z)))
 	model.Parent = character
 
 	for _, part in model:GetDescendants() do

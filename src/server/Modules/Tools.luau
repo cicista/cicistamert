@@ -185,20 +185,75 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 		uc = math.max(uc, (p.Position - merkez):Dot(eksen))
 	end
 
+	--[[
+		DIK TUTUS  --  Roblox'un varsayilan tutusu
+
+		Tool.Grip sifirken Roblox Handle'i elin RightGripAttachment'ina
+		oturtur ve Handle'in Y ekseni YUKARI bakar (default tutma
+		animasyonunda araclarin elde dik durmasi bundan). Handle bu kurala
+		gore kuruluyor:
+
+		    Y (yukari) -- sap boyunca KABZADAN KAFAYA: kafa elin USTUNDE
+		    el         -- kabzanin ucundan gripFromEnd kadar iceride
+
+		Boylece butun kurek ve kazmalar elde ayni sekilde dik durur; tutma
+		animasyonlari bu duruma gore yapilabilir.
+	]]
 	local tutus = merkez + eksen * (uc - (ayar.gripFromEnd or 0.6))
 	local yukari = if ayar.bladeDown then eksen else -eksen
 
-	-- Yukari eksene en dik duran sap ekseni sag yon olur
-	local sag = eksenListesi[1]
-	local enDik = math.huge
-	for _, aday in eksenListesi do
-		local d = math.abs(aday:Dot(yukari))
-		if d < enDik then
-			enDik = d
-			sag = aday
+	--[[
+		KAFANIN YONU
+
+		Sap kendi ekseninde simetrik; kafanin (bicak / kazma basi) hangi
+		yone bakacagini sap soylemez. Kafa parcalarinin yatayda EN GENIS
+		yayildigi yon aranir (10 derecelik adimlarla):
+
+		    spread = "forward" -- o yon ONE bakar (kazma basi ileri uzanir)
+		    spread = "right"   -- o yon SAGA bakar (kurek bicaginin eni yanlara,
+		                          duz yuzu one)
+
+		Ters gelirse Assets.ToolGrips'te rotation Y'ye 180 ver.
+	]]
+	local kafaParcalari: { BasePart } = {}
+	for _, p in parcalar do
+		if p ~= sap and not (kabza and p:IsDescendantOf(kabza)) then
+			table.insert(kafaParcalari, p)
 		end
 	end
-	sag = (sag - yukari * sag:Dot(yukari)).Unit
+
+	local referans = eksenListesi[1]
+	if math.abs(referans:Dot(yukari)) > 0.9 then
+		referans = eksenListesi[2]
+	end
+	local taban1 = (referans - yukari * referans:Dot(yukari)).Unit
+	local taban2 = yukari:Cross(taban1)
+
+	local enGenis = -1
+	local yayilma = taban1
+	for adim = 0, 17 do
+		local aci = math.rad(adim * 10)
+		local yon = taban1 * math.cos(aci) + taban2 * math.sin(aci)
+
+		local genislik = 0
+		for _, p in kafaParcalari do
+			local cf = p.CFrame
+			local yari = (
+				math.abs(cf.RightVector:Dot(yon)) * p.Size.X
+				+ math.abs(cf.UpVector:Dot(yon)) * p.Size.Y
+				+ math.abs(cf.LookVector:Dot(yon)) * p.Size.Z
+			) / 2
+			genislik = math.max(genislik, math.abs((p.Position - tutus):Dot(yon)) + yari)
+		end
+
+		if genislik > enGenis then
+			enGenis = genislik
+			yayilma = yon
+		end
+	end
+
+	-- fromMatrix(sag, yukari): one bakis = yukari x sag
+	local sag = if ayar.spread == "forward" then yayilma:Cross(yukari).Unit else yayilma
 
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"

@@ -475,34 +475,42 @@ end
 --[[
 	ELDE TUTUS AYARLARI  --  kurek, kazma, olta
 
+	HEPSI ROBLOX'UN VARSAYILAN TUTUSUNDA: elde DIK, kafa/bicak YUKARIDA,
+	el sapin alt ucunda. Tutma animasyonlari bu duruma gore yapilacak;
+	position / rotation SIFIR kaldikca arac tam o sekilde durur.
+
 	Kurek ve kazma modelleri gevsek parcalardan olusuyor (Sopa + Kabza/Kenar/
 	Govde klasorleri). Kod her birine gorunmez bir Handle ekler:
 
 	    gripFromEnd -- el, KABZANIN UCUNDAN kac stud iceride tutsun
-	    bladeDown   -- true: bicak/kafa elin ALTINDA, false: USTUNDE
+	    bladeDown   -- false: kafa elin USTUNDE (dik tutus), true: altinda
+	    spread      -- kafanin genis yonu: "forward" one, "right" yanlara
 	    position    -- ele gore ek kayma (stud)
-	    rotation    -- ek donus (derece). Bicagin duz yuzu yanlis yone
-	                   bakiyorsa Y'ye 90 / 180 ver.
+	    rotation    -- ek donus (derece). Bicagin duz yuzu ters bakiyorsa
+	                   Y'ye 180 ver.
 
-	Olta (Rod) hazir Tool; kendi Handle'indan sag ele kaynaklanir:
-	    position / rotation -- ele gore kayma ve donus
+	Olta (Rod) hazir Tool; Handle'i elin tutus noktasina (RightGripAttachment)
+	Roblox'un bir Tool'u tuttugu gibi oturtulur:
+	    position / rotation -- o noktaya gore ek kayma ve donus
 ]]
 Assets.ToolGrips = {
 	shovel = {
 		gripFromEnd = 0.6,
-		bladeDown = true,
+		bladeDown = false,
+		spread = "right",
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},
 	pickaxe = {
 		gripFromEnd = 0.6,
 		bladeDown = false,
+		spread = "forward",
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},
 	rod = {
-		position = Vector3.new(0, -0.4, -0.4),
-		rotation = Vector3.new(-20, 0, 0),
+		position = Vector3.new(0, 0, 0),
+		rotation = Vector3.new(0, 0, 0),
 	},
 }
 
