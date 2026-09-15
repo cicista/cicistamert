@@ -59,10 +59,12 @@ Config.Seller = {
 	range = 14,
 	spawnPosition = Vector3.new(0, 5, -64),
 	-- Satis degeri = brainrot.un saniyelik getirisi * bu carpan
-	valueMultiplier = 25,
+	-- 5 dakikalik getiri (300 saniye)
+	valueMultiplier = 300,
 	-- Kimligi belirlenmemis (siyah) brainrot: rarity.sindeki EN DUSUK gelirli
 	-- brainrotun getirisi * bu carpan. Riskli oldugu icin daha dusuk.
-	unknownMultiplier = 20,
+	-- Kimligi acilmamis: kademenin en dusuk getirisiyle 5 dakika
+	unknownMultiplier = 300,
 }
 
 ------------------------------------------------------------------
