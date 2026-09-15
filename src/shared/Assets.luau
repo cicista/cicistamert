@@ -132,6 +132,14 @@ Assets.Animations = {
 		(bkz. ServerScriptService > KarakterAnimasyonlari).
 	]]
 	idle = "rbxassetid://97769694813645",
+
+	-- DENIZ (flyboard ustunde; bkz. StarterPlayerScripts > DenizAnimasyonlari)
+	-- Tahtadayken surekli durus
+	flyboardIdle = "rbxassetid://98909993111524",
+	-- Olta savurma (1.733 sn); misina bitiminde birakilir (Rods.CastRelease)
+	rodCast = "rbxassetid://130735035595565",
+	-- Balik tutma minigame'i boyunca
+	fishing = "rbxassetid://122968362803524",
 }
 
 ------------------------------------------------------------------

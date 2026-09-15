@@ -333,6 +333,14 @@ type Ride = {
 local rides: { [Player]: Ride } = {}
 
 --[[
+	SALINIM: tahta havada suzuluyormus gibi yavasca yukari asagi gider.
+	Genlik stud cinsinden; her oyuncunun dalgasi farkli yerden baslar ki
+	yan yana gezenler ayni anda inip kalkmasin.
+]]
+local SALINIM_GENLIK = 0.1
+local SALINIM_HIZI = 2.4
+
+--[[
 	HIZ
 
 	TABAN HIZ HUMANOID'IN UZERINDE SAKLANIR.
@@ -703,7 +711,8 @@ RunService.Heartbeat:Connect(function(dt)
 		------------------------------------------------------------------
 		-- YUKSEKLIK
 		------------------------------------------------------------------
-		local hedefY = surface + P.hoverHeight + ride.rise + P.boardOffset
+		local salinim = math.sin(os.clock() * SALINIM_HIZI + (player.UserId % 7)) * SALINIM_GENLIK
+		local hedefY = surface + P.hoverHeight + ride.rise + P.boardOffset + salinim
 		ride.hold.Position = Vector3.new(root.Position.X, hedefY, root.Position.Z)
 
 		------------------------------------------------------------------

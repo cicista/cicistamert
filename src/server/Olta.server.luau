@@ -97,8 +97,11 @@ RodAl.OnServerEvent:Connect(function(player, id)
 			Denizdeyse elindeki olta hemen yenisiyle degissin: equipRod
 			eldekini birakip yeni kademeyi kuruyor.
 		]]
-		Envanter.removeRod(player)
-		Envanter.equipRod(player)
+		-- Yalnizca flyboardla denizdeyse ele gelir; karada olta elde durmaz
+		if player:GetAttribute("Flyboarding") == true then
+			Envanter.removeRod(player)
+			Envanter.equipRod(player)
+		end
 		return
 	end
 
@@ -125,9 +128,11 @@ RodAl.OnServerEvent:Connect(function(player, id)
 
 	Bildirim:FireClient(player, `{info.displayName} purchased!`, Rarity.color(info.rarity))
 
-	-- Denizdeyse yeni olta hemen ele gelsin
-	Envanter.removeRod(player)
-	Envanter.equipRod(player)
+	-- Denizdeyse yeni olta hemen ele gelsin; karadayken ele HIC gelmez
+	if player:GetAttribute("Flyboarding") == true then
+		Envanter.removeRod(player)
+		Envanter.equipRod(player)
+	end
 end)
 
 ------------------------------------------------------------------

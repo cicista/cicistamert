@@ -185,8 +185,8 @@ Rods.LineName = "OltaMisinasi"
 	yani olta kademesi bu sureyi degistirmez.
 ]]
 
--- Savurma animasyonunun suresi; misina tam bitiminde birakilir
-Rods.CastRelease = 1.75
+-- Savurma animasyonunun (RodCast) suresi; misina tam bitiminde birakilir
+Rods.CastRelease = 1.733
 
 -- Misinanin havada gecirdigi sure: oltanin ucundan girdabin ortasina
 Rods.CastFlight = 0.5

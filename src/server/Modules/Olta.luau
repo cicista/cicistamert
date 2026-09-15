@@ -343,6 +343,9 @@ end
 function Olta.cast(character: Model, target: Vector3): BasePart?
 	Olta.reel(character)
 
+	-- Istemciler RodCast animasyonunu bu isaretin degismesiyle oynatir (bkz. DenizAnimasyonlari)
+	character:SetAttribute("OltaAtis", os.clock())
+
 	local rod = character:FindFirstChild(Rods.ToolName)
 	local tip = rod and rod:FindFirstChild(Rods.TipName, true)
 	if not rod or not tip or not tip:IsA("Attachment") then

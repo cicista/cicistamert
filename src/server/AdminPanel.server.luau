@@ -761,9 +761,11 @@ function commands.setRod(player, data, arg)
 		data.rodMax = arg
 	end
 
-	-- Denizdeyse elindeki olta hemen yenilensin
-	Envanter.removeRod(player)
-	Envanter.equipRod(player)
+	-- Yalnizca flyboardla denizdeyse ele gelir; karada olta elde durmaz
+	if player:GetAttribute("Flyboarding") == true then
+		Envanter.removeRod(player)
+		Envanter.equipRod(player)
+	end
 
 	local info = Rods.get(arg)
 	return `Olta: {if info then info.displayName else arg}`
