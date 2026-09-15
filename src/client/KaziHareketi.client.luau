@@ -67,102 +67,124 @@ local GIRIS_SURESI = 0.3
 local SOL_EL_SAPTA = 1.5
 
 --[[
-	POZLAR  --  t = turun neresinde (0..1)
+	KUREK POZLARI  --  t = turun neresinde (0..1)
 
-	  bicakAci   derece: bicak yataydan kac derece ASAGI baksin
-	             (90 = dik yere, 0 = duz ileri, eksi = yukari kalkik)
+	Hareket YATAY agirlikli: once kurek ARKAYA atilir, oradan guc alinip
+	alcaktan ileri saplanir; yukaridan asagi vurus yok.
+
+	  bicakAci   derece: kurek KAFASININ dunyada baktigi yon
+	             0 = duz ileri, 90 = dik asagi, 90'dan buyuk = arkaya-asagi,
+	             eksi = yukari kalkik
 	  omuz / dirsek / kalca  +  -> ileri
 	  diz                    -  -> bukum
 	  bel / kok (egim)       -  -> one egilme
-	  belDon                 +  -> govde yana doner (topragi atma)
+	  belDon                 +  -> govde sola doner (topragi atma), - saga-geri
 	  alcal                  -  -> kalca asagi iner (stud)
+
+	    1. HAZIR     kafa one-asagi hafif egik
+	    2. GERI AT   kurek arkaya savrulur: kafa arka-asagi, kol geride,
+	                 govde saga-geri doner, agirlik arka bacakta
+	    3. SAPLA     sarkac gibi alcaktan gecip ILERI saplanir: kafa neredeyse
+	                 yatay, kol onde, govde one hamle, dizler bukuk
+	    4. ITTIR     ayni pozda kisa itis (toprak yukleniyor)
+	    5. AT        dogrul, kafa kalkar, govde sola donup topragi atar
 ]]
 local POZLAR = {
 	{
 		-- HAZIR
 		t = 0,
-		bicakAci = 30,
+		bicakAci = 25,
 		bel = -8, belDon = 0, kok = 0, alcal = 0,
-		sagOmuz = 0, sagDirsek = 10,
+		sagOmuz = 25, sagDirsek = 20,
 		sagKalca = 0, solKalca = 0, sagDiz = 0, solDiz = 0,
 	},
 	{
-		-- SAPLAMA: bicak dik bicimde topraga
-		t = 0.3,
-		bicakAci = 72,
-		bel = -30, belDon = 0, kok = -5, alcal = -0.3,
-		sagOmuz = -20, sagDirsek = 15,
-		sagKalca = 26, solKalca = 16, sagDiz = -36, solDiz = -26,
+		-- GERI AT: kurek arkaya savrulur, guc toplanir
+		t = 0.28,
+		bicakAci = 130,
+		bel = 6, belDon = -22, kok = 2, alcal = -0.1,
+		sagOmuz = -40, sagDirsek = 30,
+		sagKalca = -8, solKalca = 14, sagDiz = -12, solDiz = -18,
 	},
 	{
-		-- KALDIRAC: sapi geri cek
+		-- SAPLA: alcaktan ileri, neredeyse yatay
 		t = 0.5,
-		bicakAci = 40,
-		bel = -24, belDon = -6, kok = -4, alcal = -0.3,
-		sagOmuz = -30, sagDirsek = 30,
-		sagKalca = 26, solKalca = 16, sagDiz = -36, solDiz = -26,
+		bicakAci = 18,
+		bel = -28, belDon = 12, kok = -4, alcal = -0.3,
+		sagOmuz = 60, sagDirsek = 10,
+		sagKalca = 24, solKalca = 6, sagDiz = -30, solDiz = -10,
 	},
 	{
-		-- ATIS: bicak kalkik, govde yana doner
-		t = 0.75,
-		bicakAci = -15,
-		bel = -6, belDon = 30, kok = 0, alcal = -0.1,
-		sagOmuz = 15, sagDirsek = 25,
-		sagKalca = 6, solKalca = 4, sagDiz = -10, solDiz = -6,
+		-- ITTIR: toprak yukleniyor
+		t = 0.62,
+		bicakAci = 22,
+		bel = -30, belDon = 14, kok = -5, alcal = -0.32,
+		sagOmuz = 62, sagDirsek = 8,
+		sagKalca = 24, solKalca = 6, sagDiz = -30, solDiz = -10,
+	},
+	{
+		-- AT: dogrul, govde sola donup topragi atar
+		t = 0.82,
+		bicakAci = -10,
+		bel = -8, belDon = 28, kok = 0, alcal = -0.1,
+		sagOmuz = 45, sagDirsek = 25,
+		sagKalca = 8, solKalca = 4, sagDiz = -10, solDiz = -6,
 	},
 }
 
 --[[
-	KAZMA POZLARI  --  madende cevher kirma: yukaridan asagi vurus
+	KAZMA POZLARI  --  madende cevher kirma
 
 	bicakAci burada kazma KAFASININ yonu: -90 dik yukari, -90'dan kucuk
 	degerler basin ustunden ARKAYA gecer, arti degerler one-asagi (cevhere).
 
-	    1. KALDIR   kafa basin ustune ve arkaya kalkar, govde hafif geri
-	    2. TEPE     kisa bekleme
-	    3. VUR      hizla asagi, cevhere; govde one egilir, dizler bukulur
-	    4. CARPMA   darbe aninda kisa duraksama
-	    5. TOPARLAN
+	    1. TOPARLAN  kafa onde, kol onde-asagi
+	    2. KALDIR    kazma BASIN ARKASINA kadar kalkar: kol basin ustunde,
+	                 dirsek bukuk, govde hafif geride
+	    3. TEPE      kisa bekleme, en arkada
+	    4. VUR       hizla one-asagi, cevhere: kol one uzanir, govde one
+	                 egilir, dizler bukulur
+	    5. CARPMA    darbe aninda kisa duraksama
 ]]
 local KAZMA_POZLARI = {
 	{
-		-- Toparlanmis / kaldirmaya baslama
+		-- TOPARLAN
 		t = 0,
-		bicakAci = 10,
-		bel = -6, belDon = 0, kok = 0, alcal = 0,
-		sagOmuz = 0, sagDirsek = 15,
+		bicakAci = 20,
+		bel = -8, belDon = 0, kok = 0, alcal = 0,
+		sagOmuz = 40, sagDirsek = 20,
 		sagKalca = 0, solKalca = 0, sagDiz = 0, solDiz = 0,
 	},
 	{
-		-- KALDIR: kafa basin ustunde, arkada
-		t = 0.42,
-		bicakAci = -130,
-		bel = 8, belDon = 0, kok = 2, alcal = 0,
-		sagOmuz = 75, sagDirsek = 40,
-		sagKalca = -4, solKalca = 6, sagDiz = -4, solDiz = -8,
+		-- KALDIR: kafa basin arkasinda
+		t = 0.4,
+		bicakAci = -165,
+		bel = 12, belDon = 0, kok = 3, alcal = 0,
+		sagOmuz = 165, sagDirsek = 70,
+		sagKalca = -4, solKalca = 8, sagDiz = -4, solDiz = -8,
 	},
 	{
-		-- TEPE: kisa bekleme
-		t = 0.52,
-		bicakAci = -135,
-		bel = 10, belDon = 0, kok = 2, alcal = 0,
-		sagOmuz = 80, sagDirsek = 42,
-		sagKalca = -4, solKalca = 6, sagDiz = -4, solDiz = -8,
+		-- TEPE: en arkada kisa bekleme
+		t = 0.5,
+		bicakAci = -170,
+		bel = 14, belDon = 0, kok = 3, alcal = 0,
+		sagOmuz = 170, sagDirsek = 75,
+		sagKalca = -4, solKalca = 8, sagDiz = -4, solDiz = -8,
 	},
 	{
-		-- VUR: hizla asagi, cevhere
-		t = 0.64,
-		bicakAci = 50,
-		bel = -30, belDon = 0, kok = -5, alcal = -0.2,
-		sagOmuz = -25, sagDirsek = 10,
+		-- VUR: hizla one-asagi, cevhere
+		t = 0.62,
+		bicakAci = 60,
+		bel = -32, belDon = 0, kok = -5, alcal = -0.25,
+		sagOmuz = 45, sagDirsek = 10,
 		sagKalca = 22, solKalca = 12, sagDiz = -26, solDiz = -18,
 	},
 	{
 		-- CARPMA: darbe aninda duraksama
-		t = 0.78,
-		bicakAci = 48,
-		bel = -28, belDon = 0, kok = -5, alcal = -0.2,
-		sagOmuz = -22, sagDirsek = 12,
+		t = 0.76,
+		bicakAci = 58,
+		bel = -30, belDon = 0, kok = -5, alcal = -0.25,
+		sagOmuz = 42, sagDirsek = 12,
 		sagKalca = 22, solKalca = 12, sagDiz = -26, solDiz = -18,
 	},
 }
@@ -174,7 +196,7 @@ local KAZMA_POZLARI = {
 ]]
 local POZ_SETLERI = {
 	kurek = { periyot = PERIYOT, solEl = SOL_EL_SAPTA, pozlar = POZLAR },
-	kazma = { periyot = 1.0, solEl = 0.9, pozlar = KAZMA_POZLARI },
+	kazma = { periyot = 1.1, solEl = 0.9, pozlar = KAZMA_POZLARI },
 }
 
 -- rol -> hangi parca, hangi eklem (R15). Sol kol IKControl'e birakildi.
