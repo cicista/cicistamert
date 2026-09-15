@@ -555,7 +555,11 @@ Assets.BodyItems = {
 		Bos (nil) kalirsa oranlama yapilmaz ve oyuncu girince govde boylari
 		Output'a buraya yapistirilacak sekilde yazilir.
 	]]
-	reference = nil :: { [string]: Vector3 }?,
+	-- LetCicistaCook karakteri (konumlar bu karakterde ayarlandi)
+	reference = {
+		UpperTorso = Vector3.new(1.246, 1.166, 1.086),
+		LowerTorso = Vector3.new(0.864, 0.759, 0.672),
+	} :: { [string]: Vector3 }?,
 	shovel = {
 		-- Modelin ORTASI bu noktaya oturur (anchor): butun kurekler ayni yerde
 		anchor = "center",
@@ -568,8 +572,8 @@ Assets.BodyItems = {
 	},
 	gps = {
 		-- SOL kalcanin yaninda, sarkan elin hizasinda
-		position = Vector3.new(-0.5, -0.3, -0.1),
-		positionR6 = Vector3.new(-0.5, -1.2, -0.1),
+		position = Vector3.new(-0.6, -0.3, -0.1),
+		positionR6 = Vector3.new(-0.6, -1.2, -0.1),
 		-- Yandan bakinca capraz: basi one-yukari, sapi arkaya-asagi
 		rotation = Vector3.new(-40, 0, 0),
 		scale = 0.6,
