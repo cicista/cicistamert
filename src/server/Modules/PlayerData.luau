@@ -132,7 +132,8 @@ export type Data = {
 
 local PlayerData = {}
 
-local STORE_NAME = "BrainrotDig_v1"
+-- Ekip testi icin sifirlandi (v1 kayitlari silinmedi, kullanilmiyor)
+local STORE_NAME = "BrainrotDig_v2"
 local store = if RunService:IsStudio() then nil else DataStoreService:GetDataStore(STORE_NAME)
 
 local cache: { [Player]: Data } = {}
