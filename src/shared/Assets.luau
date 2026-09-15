@@ -563,8 +563,8 @@ Assets.BodyItems = {
 	shovel = {
 		-- Modelin ORTASI bu noktaya oturur (anchor): butun kurekler ayni yerde
 		anchor = "center",
-		position = Vector3.new(0, 0.1, 0.4),
-		positionR6 = Vector3.new(0, 0.1, 0.4),
+		position = Vector3.new(0, 0.1, 0.55),
+		positionR6 = Vector3.new(0, 0.1, 0.55),
 		-- 45 derece capraz: arkadan bakinca kafa SAG omuzda, sap ucu SOL kalcada;
 		-- kurek kafasinin ici DISARI bakar
 		rotation = Vector3.new(0, 0, -45),
