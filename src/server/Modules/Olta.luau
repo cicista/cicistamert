@@ -156,6 +156,20 @@ local function hazirOlta(level: number): Model?
 		eksen = -eksen
 	end
 
+	--[[
+		TERS DURAN MODELLER: ToolGrips.rod.flip[seviye] = true
+
+		Modelin misina ucu yanlis yerdeyse olta bas asagi durur. Boyle
+		seviyelerde eksen cevrilir ve misinanin cikis noktasi oltanin YENI
+		ust ucuna tasinir; yoksa misina elden cikardi.
+	]]
+	local terslik = Assets.ToolGrips.rod.flip
+	if terslik and terslik[level] then
+		eksen = -eksen
+		local _, ustUc = kapsam(eksen)
+		uc.WorldPosition = sap.Position + eksen * ustUc
+	end
+
 	local oran = math.clamp(Assets.ToolGrips.rod.gripRatio or 0.6, 0, 1)
 	local tutus: Vector3
 	if eksen:Dot(eksenListesi[uzun]) > 0.99 or eksen:Dot(eksenListesi[uzun]) < -0.99 then

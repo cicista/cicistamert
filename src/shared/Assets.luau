@@ -523,6 +523,8 @@ Assets.ToolGrips = {
 	rod = {
 		-- El oltanin sapinda: 0 = sapin ortasi, 1 = alt ucu
 		gripRatio = 0.6,
+		-- Bas asagi duran olta seviyeleri: cevrilir, misina ucu ustte kalir
+		flip = { [3] = true },
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},
