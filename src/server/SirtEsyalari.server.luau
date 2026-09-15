@@ -47,6 +47,8 @@ type Esya = {
 	id: string?,
 	-- Kurulamayan kimlik: her turda tekrar denenip Output'u doldurmasin
 	hataliId: string?,
+	-- Kuruldugu andaki govde parcasi boyu; degisirse (avatar olcegi gec yuklendi) yeniden kurulur
+	parcaBoyu: Vector3?,
 }
 
 type Durum = {
@@ -108,8 +110,21 @@ end
 
 -- Modeli govde parcasina kaynaklar (ayar: Assets.BodyItems.shovel / gps)
 local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
-	local olcek = ayar.scale or 1
-	if olcek ~= 1 then
+	--[[
+		GOVDE BOYUNA GORE ORAN
+
+		Assets.BodyItems.reference doluysa bu oyuncunun govde parcasi
+		referansa bolunur. Konum eksen eksen bu oranla, esya boyu da uc
+		eksenin ortalamasiyla carpilir. Referans yoksa oran 1.
+	]]
+	local referans = if AYAR.reference then AYAR.reference[parca.Name] else nil
+	local boyOrani = Vector3.one
+	if typeof(referans) == "Vector3" and referans.X > 0 and referans.Y > 0 and referans.Z > 0 then
+		boyOrani = parca.Size / referans
+	end
+
+	local olcek = (ayar.scale or 1) * ((boyOrani.X + boyOrani.Y + boyOrani.Z) / 3)
+	if math.abs(olcek - 1) > 1e-3 then
 		pcall(function()
 			model:ScaleTo(olcek)
 		end)
@@ -117,6 +132,7 @@ local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
 
 	-- R6'da tek govde parcasi var (Torso); konum ona gore ayri
 	local konum = if parca.Name == "Torso" then (ayar.positionR6 or ayar.position) else ayar.position
+	konum = (konum or Vector3.zero) * boyOrani
 	local r = ayar.rotation or Vector3.zero
 
 	local weld = Instance.new("Weld")
@@ -151,7 +167,10 @@ end
 	Parca (govde) henuz yoksa bir sonraki turda tekrar denenir.
 ]]
 local function kur(esya: Esya, character: Model, id: string?, parcaAdlari: { string }, kurucu: (string) -> Tool, ad: string, ayar: any)
-	if esya.id == id and (esya.model or not id) then
+	local parca = govdeParcasi(character, parcaAdlari)
+	local boyAyni = parca == nil or esya.parcaBoyu == nil or (esya.parcaBoyu - parca.Size).Magnitude < 0.01
+
+	if esya.id == id and (esya.model or not id) and boyAyni then
 		return
 	end
 	if id and esya.hataliId == id then
@@ -163,7 +182,6 @@ local function kur(esya: Esya, character: Model, id: string?, parcaAdlari: { str
 		return
 	end
 
-	local parca = govdeParcasi(character, parcaAdlari)
 	if not parca then
 		return
 	end
@@ -180,6 +198,7 @@ local function kur(esya: Esya, character: Model, id: string?, parcaAdlari: { str
 	govdeyeTak(model, parca, ayar)
 	esya.model = model
 	esya.id = id
+	esya.parcaBoyu = parca.Size
 	esya.hataliId = nil
 end
 
@@ -230,6 +249,28 @@ local function durumAl(player: Player, character: Model): Durum
 	end
 
 	temizle(player)
+
+	--[[
+		REFERANS RAPORU: Assets.BodyItems.reference bos ise govde boylari
+		Output'a yapistirilacak sekilde yazilir. Avatar olcegi gec yuklendigi
+		icin birkac saniye beklenir.
+	]]
+	if not AYAR.reference then
+		task.delay(3, function()
+			if not character.Parent then
+				return
+			end
+			print(`[SirtEsyalari] {player.Name} govde boylari -- Assets.BodyItems.reference icin:`)
+			print("	reference = {")
+			for _, ad in { "UpperTorso", "LowerTorso", "Torso" } do
+				local p = character:FindFirstChild(ad)
+				if p and p:IsA("BasePart") then
+					print(string.format("		%s = Vector3.new(%.3f, %.3f, %.3f),", ad, p.Size.X, p.Size.Y, p.Size.Z))
+				end
+			end
+			print("	},")
+		end)
+	end
 
 	local yeni: Durum = {
 		character = character,

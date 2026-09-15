@@ -545,6 +545,17 @@ Assets.ToolGrips = {
 	                  (farkli boydaki kurekler ayni yerde durur)
 ]]
 Assets.BodyItems = {
+	--[[
+		REFERANS GOVDE  --  konumlarin ayarlandigi karakterin govde boylari
+
+		Doluyken her oyuncuda konum ve esya boyu, o oyuncunun govde
+		parcasinin buna ORANIYLA carpilir: genis govdede esyalar disari,
+		dar govdede iceri kayar, iri karakterde esya da buyur.
+
+		Bos (nil) kalirsa oranlama yapilmaz ve oyuncu girince govde boylari
+		Output'a buraya yapistirilacak sekilde yazilir.
+	]]
+	reference = nil :: { [string]: Vector3 }?,
 	shovel = {
 		-- Modelin ORTASI bu noktaya oturur (anchor): butun kurekler ayni yerde
 		anchor = "center",
