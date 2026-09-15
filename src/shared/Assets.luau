@@ -508,9 +508,9 @@ Assets.ToolGrips = {
 		flip = {},
 		-- El sopanin uzerinde, ortanin biraz altinda (0 = orta, 1 = alt uc)
 		gripOn = "sopa",
-		gripRatio = 0.575,
+		gripRatio = 0.5,
 		-- Sap bilege degil AVUCA otursun: ele gore ileri (parmaklara dogru) kayma
-		position = Vector3.new(0, 0, 0.4),
+		position = Vector3.new(0, 0, 0.2),
 		rotation = Vector3.new(0, 0, 0),
 	},
 	pickaxe = {
