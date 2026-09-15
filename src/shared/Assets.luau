@@ -577,6 +577,8 @@ Assets.BodyItems = {
 		-- Yandan bakinca capraz: basi one-yukari, sapi arkaya-asagi
 		rotation = Vector3.new(-40, 0, 0),
 		scale = 0.6,
+		-- Cepteyken isik ve efekt yok (parlama, parcacik)
+		lights = false,
 	},
 }
 

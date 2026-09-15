@@ -108,8 +108,30 @@ local function toolModele(tool: Tool, ad: string): Model?
 	return model
 end
 
+--[[
+	Isik ve efektler: ayar.lights = false ise kaldirilir. Cepteki GPS'in
+	seviye parlamasi (PointLight / Highlight) ve modelin gomulu efektleri
+	belde durmadan isik saciyordu.
+]]
+local EFEKT_SINIFLARI = { "Light", "Highlight", "ParticleEmitter", "Beam", "Trail", "Sparkles", "Fire", "Smoke" }
+
+local function efektleriKaldir(model: Model)
+	for _, d in model:GetDescendants() do
+		for _, sinif in EFEKT_SINIFLARI do
+			if d:IsA(sinif) then
+				d:Destroy()
+				break
+			end
+		end
+	end
+end
+
 -- Modeli govde parcasina kaynaklar (ayar: Assets.BodyItems.shovel / gps)
 local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
+	if ayar.lights == false then
+		efektleriKaldir(model)
+	end
+
 	--[[
 		GOVDE BOYUNA GORE ORAN
 
