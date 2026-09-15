@@ -552,11 +552,11 @@ Assets.BodyItems = {
 		scale = 0.6,
 	},
 	gps = {
-		-- Sag yanda, bel hizasinda: sallanan el ile belin arasi
-		position = Vector3.new(1.2, 0.3, 0),
-		positionR6 = Vector3.new(1.2, -0.6, 0),
-		-- 20 derece egik
-		rotation = Vector3.new(0, 0, 20),
+		-- SOL kalcada, bel hizasinda, biraz arkada (arkadan bakinca sol alt)
+		position = Vector3.new(-1.1, 0.2, 0.3),
+		positionR6 = Vector3.new(-1.1, -0.7, 0.3),
+		-- 20 derece egik (sol tarafa gore)
+		rotation = Vector3.new(0, 0, -20),
 		scale = 0.6,
 	},
 }
