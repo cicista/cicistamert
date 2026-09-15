@@ -37,7 +37,6 @@ local MODULES: { [string]: string } = {
 	["src/shared/Net.luau"] = "Net",
 	["src/shared/Rarity.luau"] = "Rarity",
 	["src/shared/Shovels.luau"] = "Shovels",
-	["src/shared/Skins.luau"] = "Skins",
 	["src/server/Modules/PlayerData.luau"] = "PlayerData",
 	["src/server/Modules/Envanter.luau"] = "Envanter",
 	["src/server/Modules/Tools.luau"] = "Tools",
