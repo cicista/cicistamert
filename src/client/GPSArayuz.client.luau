@@ -129,7 +129,8 @@ local function makeLabel(beam: { id: string, kind: string, position: Vector3 }):
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = `GPSLabel_{beam.id}`
 	billboard.Adornee = anchor
-	billboard.Size = UDim2.fromOffset(200, 56)
+	-- Yalnizca kademe yazisi var (mesafe kaldirildi): pencere kucuk
+	billboard.Size = UDim2.fromOffset(130, 34)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = G.scanRadius + 20
 	billboard.Parent = labelFolder
@@ -158,8 +159,8 @@ local function makeLabel(beam: { id: string, kind: string, position: Vector3 }):
 		font = UI.Fonts.bold,
 		color = color,
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, 0, 0, 24),
-		position = UDim2.fromOffset(0, 5),
+		alignY = Enum.TextYAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
 		parent = card,
 		name = "Kind",
 	})
@@ -172,17 +173,6 @@ local function makeLabel(beam: { id: string, kind: string, position: Vector3 }):
 	if Rarity.Info[beam.kind] then
 		UI.rarityStyle(kindLabel, beam.kind)
 	end
-
-	UI.text({
-		text = "",
-		size = UI.Sizes.small,
-		color = UI.Colors.textDim,
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, 0, 0, 20),
-		position = UDim2.fromOffset(0, 29),
-		parent = card,
-		name = "Mesafe",
-	})
 
 	return billboard
 end
@@ -252,7 +242,7 @@ GPSGuncelle.OnClientEvent:Connect(function(list)
 
 end)
 
--- Mesafeleri her karede degil, saniyede birkac kez guncelle
+-- En yakin suzmeyi (kazi ipucu icin) her karede degil, saniyede birkac kez bul
 task.spawn(function()
 	while true do
 		task.wait(0.15)
@@ -269,15 +259,6 @@ task.spawn(function()
 
 		for _, beam in beams do
 			local distance = (beam.position - root.Position).Magnitude
-
-			local billboard = labels[beam.id]
-			if billboard then
-				local card = billboard:FindFirstChildWhichIsA("Frame")
-				local distanceLabel = card and card:FindFirstChild("Mesafe")
-				if distanceLabel and distanceLabel:IsA("TextLabel") then
-					distanceLabel.Text = `{math.floor(distance)} studs`
-				end
-			end
 
 			if not best or distance < best.distance then
 				best = { id = beam.id, distance = distance, kind = beam.kind, sea = beam.sea == true }
