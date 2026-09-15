@@ -104,13 +104,67 @@ local function hazirOlta(level: number): Model?
 		end
 	end
 
-	local eksen = eksenListesi[uzun]
+	--[[
+		OLTANIN EKSENI
+
+		Main'in uzun ekseni cogu oltada oltanin boyudur. Ama bazi modellerde
+		(Level 3) Main kisa bir parca ve uzun ekseni oltanin boyuna dik; olta
+		o yuzden yan yatiyordu. Aday eksenler (Main'in ve Handle'in eksenleri)
+		arasindan OLTANIN TAMAMININ en uzun yayildigi secilir.
+
+		Secilen eksen Main'in kendi uzun ekseniyse tutus eskisi gibi Main'in
+		boyuna gore; degilse butun oltanin kapladigi boya gore hesaplanir.
+	]]
+	local parcalar: { BasePart } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			table.insert(parcalar, d)
+		end
+	end
+
+	local function kapsam(yon: Vector3): (number, number)
+		local enAz, enCok = math.huge, -math.huge
+		for _, p in parcalar do
+			local pcf = p.CFrame
+			local yari = (
+				math.abs(pcf.RightVector:Dot(yon)) * p.Size.X
+				+ math.abs(pcf.UpVector:Dot(yon)) * p.Size.Y
+				+ math.abs(pcf.LookVector:Dot(yon)) * p.Size.Z
+			) / 2
+			local konum = (p.Position - sap.Position):Dot(yon)
+			enAz = math.min(enAz, konum - yari)
+			enCok = math.max(enCok, konum + yari)
+		end
+		return enAz, enCok
+	end
+
+	local hcf = handle.CFrame
+	local adaylar = { eksenListesi[uzun], cf.RightVector, cf.UpVector, cf.LookVector, hcf.RightVector, hcf.UpVector, hcf.LookVector }
+	local eksen = adaylar[1]
+	local enUzunBoy = -1
+	for i, aday in adaylar do
+		local az, cok = kapsam(aday)
+		-- Main'in kendi ekseni esitlikte kazanir: dogru oltalar hic degismesin
+		local boy = (cok - az) + (if i == 1 then 0.05 else 0)
+		if boy > enUzunBoy then
+			enUzunBoy = boy
+			eksen = aday
+		end
+	end
+
 	if (uc.WorldPosition - sap.Position):Dot(eksen) < 0 then
 		eksen = -eksen
 	end
 
 	local oran = math.clamp(Assets.ToolGrips.rod.gripRatio or 0.6, 0, 1)
-	local tutus = sap.Position - eksen * (boylar[uzun] / 2 * oran)
+	local tutus: Vector3
+	if eksen:Dot(eksenListesi[uzun]) > 0.99 or eksen:Dot(eksenListesi[uzun]) < -0.99 then
+		tutus = sap.Position - eksen * (boylar[uzun] / 2 * oran)
+	else
+		local az, cok = kapsam(eksen)
+		local orta = sap.Position + eksen * ((az + cok) / 2)
+		tutus = orta - eksen * ((cok - az) / 2 * oran)
+	end
 
 	local ileri = handle.CFrame.LookVector - eksen * handle.CFrame.LookVector:Dot(eksen)
 	if ileri.Magnitude < 1e-3 then
