@@ -32,6 +32,24 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local OtoTiklayici = require(Shared:WaitForChild("OtoTiklayici"))
 local Assets = require(Shared:WaitForChild("Assets"))
+
+-- Kazi animasyonlari onceden yuklenir: ilk kazida animasyon gecikip alet bir an duz tutulmasin
+task.spawn(function()
+	local liste = {}
+	for _, ham in { Assets.Animations.shovelDig, Assets.Animations.pickaxeDig } do
+		local gercek = Assets.id(ham)
+		if gercek then
+			local animasyon = Instance.new("Animation")
+			animasyon.AnimationId = gercek
+			table.insert(liste, animasyon)
+		end
+	end
+	if #liste > 0 then
+		pcall(function()
+			game:GetService("ContentProvider"):PreloadAsync(liste)
+		end)
+	end
+end)
 local Ores = require(Shared:WaitForChild("Ores"))
 -- Maden kazisindaki kazma resmi Assets > Icons klasorunden okunuyor
 local Icons = require(Shared:WaitForChild("Icons"))
@@ -700,15 +718,25 @@ local function startDigAnimation()
 		(shovelDig). Ikisi de Shared > Assets > Animations'ta.
 	]]
 	local id: string? = nil
-	for _, item in character:GetChildren() do
-		if item:IsA("Tool") then
-			if item:GetAttribute("PickaxeId") then
-				id = Assets.id(Assets.Animations.pickaxeDig)
-				break
-			elseif item:GetAttribute("ShovelId") then
-				id = Assets.id(Assets.Animations.shovelDig)
-				break
+	-- Alet sunucudan bir kare gec gelebilir: 0.5 saniyeye kadar beklenir
+	for deneme = 1, 10 do
+		for _, item in character:GetChildren() do
+			if item:IsA("Tool") then
+				if item:GetAttribute("PickaxeId") then
+					id = Assets.id(Assets.Animations.pickaxeDig)
+					break
+				elseif item:GetAttribute("ShovelId") then
+					id = Assets.id(Assets.Animations.shovelDig)
+					break
+				end
 			end
+		end
+		if id or deneme == 10 then
+			break
+		end
+		task.wait(0.05)
+		if not calisiyor() then
+			return
 		end
 	end
 
@@ -1067,7 +1095,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	everLeft = false
 	perfectLabel.Visible = false
 	throttleUntil = 0
-	startDigAnimation()
+	task.spawn(startDigAnimation)
 
 	if mod == "sand" then
 		------------------------------------------------------------------

@@ -220,6 +220,42 @@ local function otoEkipman(player: Player)
 end
 
 ------------------------------------------------------------------
+-- KAZIDA KARAKTER SABIT
+--
+-- Kumda kurekle, madende kazmayla ve denizde oltayla kazi boyunca oyuncu
+-- yerinden kipirdayamaz: kok parcasi (HumanoidRootPart) sabitlenir, kazi
+-- bitince birakilir. Kumda ve madende karakter once kazilan noktaya doner.
+-- Sabitlemeyi sunucu yapar; animasyonlar sabit kokte de oynar.
+------------------------------------------------------------------
+local sabitlenen: { [Player]: BasePart } = {}
+
+local function sabitle(player: Player, root: BasePart, hedef: Vector3?)
+	if sabitlenen[player] then
+		return
+	end
+
+	if hedef then
+		local bakis = Vector3.new(hedef.X, root.Position.Y, hedef.Z)
+		if (bakis - root.Position).Magnitude > 0.5 then
+			root.CFrame = CFrame.lookAt(root.Position, bakis)
+		end
+	end
+
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
+	root.Anchored = true
+	sabitlenen[player] = root
+end
+
+local function serbestBirak(player: Player)
+	local root = sabitlenen[player]
+	sabitlenen[player] = nil
+	if root and root.Parent then
+		root.Anchored = false
+	end
+end
+
+------------------------------------------------------------------
 -- KAZI
 ------------------------------------------------------------------
 local function finishDig(player: Player, won: boolean)
@@ -229,6 +265,9 @@ local function finishDig(player: Player, won: boolean)
 	end
 	digging[player] = nil
 	lastDig[player] = os.clock()
+
+	-- Karakter yeniden hareket edebilir
+	serbestBirak(player)
 
 	-- Atilan misina toplanir (girdap kazisiysa zaten vardir)
 	local karakter = player.Character
@@ -401,6 +440,9 @@ local function startDig(player: Player, beamId: string)
 
 	beam.claimed = true
 
+	-- Kazi boyunca karakter yerinde sabit (denizde de); kumda ve madende kazilan noktaya doner
+	sabitle(player, root :: BasePart, if beam.sea then nil else beam.position)
+
 	--[[
 		Kurek oyuncunun elinde DEGILDIR -- cantada da durmuyor. Suzmeye
 		tiklamak zaten "kazmak istiyorum" demek oldugu icin kuregi burada
@@ -440,7 +482,13 @@ local function startDig(player: Player, beamId: string)
 		ve olta kademesi onu degistirmez; yoksa iyi oltada pencere
 		animasyonun ortasinda acilirdi.
 	]]
-	local prepare = if beam.sea then Rods.CastTime else D.prepareTime * gear.digSpeed
+	--[[
+		KARADA BEKLEME YOK: alet ele gelir gelmez kazi animasyonu baslar.
+		Eskiden burada yarim saniye bekleniyordu ve karakter o sure boyunca
+		kuregi animasyonsuz, duz tutuyordu.
+	]]
+	local prepare = if beam.sea then Rods.CastTime else 0
+	local _ = gear
 
 	digging[player] = {
 		beamId = beamId,
@@ -756,6 +804,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	digging[player] = nil
+	sabitlenen[player] = nil
 	lastDig[player] = nil
 	lastOnSand[player] = nil
 end)

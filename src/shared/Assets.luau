@@ -124,7 +124,14 @@ Assets.Animations = {
 		Brainrot tasinirken donen idle animasyonu.
 		Iki kol yukarida, kafanin ustundeki brainrotu tutuyormus gibi.
 	]]
-	brainrotHold = "rbxassetid://81667374734076",
+	brainrotHold = "rbxassetid://97748738133693",
+
+	--[[
+		KARAKTER DURURKEN (idle): zeminde hicbir sey yapmiyorken oynar.
+		Roblox'un Animate scriptindeki idle animasyonlarinin yerine gecer
+		(bkz. ServerScriptService > KarakterAnimasyonlari).
+	]]
+	idle = "rbxassetid://97769694813645",
 }
 
 ------------------------------------------------------------------
@@ -142,29 +149,42 @@ Assets.Animations = {
 --   speedMin/Max  -- parcacik hizi
 ------------------------------------------------------------------
 Assets.DigEffects = {
-	color1 = Color3.fromRGB(170, 165, 155),
-	color2 = Color3.fromRGB(105, 100, 95),
-	size = 0.35,
-	lifetimeMin = 0.3,
-	lifetimeMax = 0.6,
+	-- Toz / tas parcalari
+	color1 = Color3.fromRGB(190, 185, 175),
+	color2 = Color3.fromRGB(120, 115, 108),
+	size = 0.8,
+	lifetimeMin = 0.4,
+	lifetimeMax = 0.8,
 	gravity = 30,
+
+	-- Kivilcim: kucuk, parlak beyaz, hizli ve kisa omurlu
+	sparkColor = Color3.fromRGB(255, 255, 255),
+	sparkSize = 0.2,
+	sparkLifetimeMin = 0.15,
+	sparkLifetimeMax = 0.35,
 
 	shovel = {
 		animation = "shovelDig",
 		particleTime = 0.25,
-		count = 16,
-		spread = 35,
-		speedMin = 8,
-		speedMax = 14,
+		count = 40,
+		spread = 40,
+		speedMin = 10,
+		speedMax = 18,
+		sparkCount = 10,
+		sparkSpeedMin = 14,
+		sparkSpeedMax = 24,
 	},
 
 	pickaxe = {
 		animation = "pickaxeDig",
 		particleTime = 0.15,
-		count = 14,
+		count = 35,
 		spread = 180,
-		speedMin = 5,
-		speedMax = 11,
+		speedMin = 7,
+		speedMax = 14,
+		sparkCount = 16,
+		sparkSpeedMin = 16,
+		sparkSpeedMax = 28,
 	},
 }
 

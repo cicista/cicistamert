@@ -83,11 +83,53 @@ local function ucNoktasi(arac: Tool): Vector3?
 	return nokta
 end
 
--- Aletin Handle'inda bir kez kurulan yayici (kapali; yalnizca Emit ile patlar)
-local function yayici(arac: Tool): (Attachment?, ParticleEmitter?)
+-- Kapali bir yayici kurar; yalnizca Emit ile patlar
+local function yayiciKur(
+	ad: string,
+	parent: Instance,
+	renk1: Color3,
+	renk2: Color3,
+	boy: number,
+	omurMin: number,
+	omurMax: number,
+	isik: number,
+	yercekimi: number
+): ParticleEmitter
+	local pe = Instance.new("ParticleEmitter")
+	pe.Name = ad
+	pe.Enabled = false
+	pe.Rate = 0
+	pe.Color = ColorSequence.new(renk1, renk2)
+	pe.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, boy),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	pe.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.7, 0.2),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	pe.Lifetime = NumberRange.new(omurMin, omurMax)
+	pe.Acceleration = Vector3.new(0, -yercekimi, 0)
+	pe.Drag = 2
+	pe.Rotation = NumberRange.new(0, 360)
+	pe.RotSpeed = NumberRange.new(-200, 200)
+	pe.LightEmission = isik
+	-- Isik etkisi dusuk: golgede de gorunsun (kivilcim hic etkilenmez)
+	pe.LightInfluence = if isik > 0 then 0 else 0.3
+	-- Zeminin/aletin icinde kaybolmasin
+	pe.ZOffset = 1
+	-- Parcaciklar alete yapismaz, cikti yerde kalir
+	pe.LockedToPart = false
+	pe.Parent = parent
+	return pe
+end
+
+-- Aletin Handle'inda bir kez kurulan nokta + iki yayici: toz ve kivilcim
+local function yayici(arac: Tool): (Attachment?, ParticleEmitter?, ParticleEmitter?)
 	local handle = arac:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then
-		return nil, nil
+		return nil, nil, nil
 	end
 
 	local nokta = handle:FindFirstChild(NOKTA_ADI)
@@ -95,39 +137,30 @@ local function yayici(arac: Tool): (Attachment?, ParticleEmitter?)
 		local yeni = Instance.new("Attachment")
 		yeni.Name = NOKTA_ADI
 		yeni.Parent = handle
-
-		local pe = Instance.new("ParticleEmitter")
-		pe.Name = "KaziParcacik"
-		pe.Enabled = false
-		pe.Rate = 0
-		pe.Color = ColorSequence.new(E.color1, E.color2)
-		pe.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, E.size),
-			NumberSequenceKeypoint.new(1, 0),
-		})
-		pe.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.05),
-			NumberSequenceKeypoint.new(0.7, 0.3),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		pe.Lifetime = NumberRange.new(E.lifetimeMin, E.lifetimeMax)
-		pe.Acceleration = Vector3.new(0, -E.gravity, 0)
-		pe.Drag = 2
-		pe.Rotation = NumberRange.new(0, 360)
-		pe.RotSpeed = NumberRange.new(-200, 200)
-		pe.LightEmission = 0
-		pe.LightInfluence = 1
-		-- Parcaciklar alete yapismaz, cikti yerde kalir
-		pe.LockedToPart = false
-		pe.Parent = yeni
-
+		yayiciKur("KaziParcacik", yeni, E.color1, E.color2, E.size, E.lifetimeMin, E.lifetimeMax, 0, E.gravity)
+		yayiciKur(
+			"KaziKivilcim",
+			yeni,
+			E.sparkColor,
+			E.sparkColor,
+			E.sparkSize,
+			E.sparkLifetimeMin,
+			E.sparkLifetimeMax,
+			1,
+			E.gravity * 0.5
+		)
 		nokta = yeni
 	end
 
 	if not nokta:IsA("Attachment") then
-		return nil, nil
+		return nil, nil, nil
 	end
-	return nokta, nokta:FindFirstChildOfClass("ParticleEmitter")
+
+	local toz = nokta:FindFirstChild("KaziParcacik")
+	local kivilcim = nokta:FindFirstChild("KaziKivilcim")
+	return nokta,
+		if toz and toz:IsA("ParticleEmitter") then toz else nil,
+		if kivilcim and kivilcim:IsA("ParticleEmitter") then kivilcim else nil
 end
 
 local function patlat(character: Model, cfg: any)
@@ -137,16 +170,25 @@ local function patlat(character: Model, cfg: any)
 		return
 	end
 
-	local nokta, pe = yayici(arac)
-	if not nokta or not pe then
+	local nokta, toz, kivilcim = yayici(arac)
+	if not nokta then
 		return
 	end
 
 	-- Dunya eksenleriyle: yayilma yonu (Top) her zaman YUKARI
 	nokta.WorldCFrame = CFrame.new(uc)
-	pe.SpreadAngle = Vector2.new(cfg.spread, cfg.spread)
-	pe.Speed = NumberRange.new(cfg.speedMin, cfg.speedMax)
-	pe:Emit(cfg.count)
+
+	if toz then
+		toz.SpreadAngle = Vector2.new(cfg.spread, cfg.spread)
+		toz.Speed = NumberRange.new(cfg.speedMin, cfg.speedMax)
+		toz:Emit(cfg.count)
+	end
+
+	if kivilcim and (cfg.sparkCount or 0) > 0 then
+		kivilcim.SpreadAngle = Vector2.new(cfg.spread, cfg.spread)
+		kivilcim.Speed = NumberRange.new(cfg.sparkSpeedMin, cfg.sparkSpeedMax)
+		kivilcim:Emit(cfg.sparkCount)
+	end
 end
 
 RunService.RenderStepped:Connect(function()
