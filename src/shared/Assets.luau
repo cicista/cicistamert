@@ -506,9 +506,9 @@ Assets.ToolGrips = {
 		spread = "inward",
 		-- Kodun yonu yine ters buldugu modeller: { Main2 = true, Frosty4 = true }
 		flip = {},
-		-- El sopanin uzerinde: sapin ortasi ile alt ucunun tam arasi
+		-- El sopanin uzerinde, ortanin biraz altinda (0 = orta, 1 = alt uc)
 		gripOn = "sopa",
-		gripRatio = 0.5,
+		gripRatio = 0.65,
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},
