@@ -29,11 +29,11 @@
 	  3. VUCUT    Bel, kalca kok, sag omuz/dirsek, kalcalar ve dizler kurege
 	              eslik eder. SOL EL IKControl ile sapin ortasina uzanir.
 
-	BIR KAZI TURU (anahtar pozlar, aralari yumusak gecis)
-	    1. HAZIR     bicak one-asagi hafif egik
-	    2. SAPLAMA   one egil, dizleri buk, bicak dik bicimde topraga
-	    3. KALDIRAC  sapi geri cek, bicak yataya yaklasir
-	    4. ATIS      dogrul, bicak kalkar, govde yana donup topragi atar
+	BIR TUR (anahtar pozlar, aralari yumusak gecis)
+	    KUREK  hazir -> kurek ARKAYA atilir -> alcaktan YATAY ileri saplanir
+	           -> itis -> dogrulup topragi yana atar
+	    KAZMA  toparlan -> kazma BASIN ARKASINA kalkar -> hizla one-asagi
+	           cevhere vurur -> darbe duraksamasi
 
 	AYAR: POZLAR tablosu (bicakAci ve eklem dereceleri), PERIYOT, SOL_EL_SAPTA.
 
