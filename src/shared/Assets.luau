@@ -541,11 +541,15 @@ Assets.ToolGrips = {
 	    positionR6 -- R6 (Torso) icin kayma
 	    rotation   -- derece. Y 180: esya disa baksin; Z: govde duzleminde egim
 	    scale      -- model boyu carpani
+	    anchor     -- "center": tutus noktasi yerine MODELIN ORTASI konuma oturur
+	                  (farkli boydaki kurekler ayni yerde durur)
 ]]
 Assets.BodyItems = {
 	shovel = {
-		position = Vector3.new(0, -0.3, 0.4),
-		positionR6 = Vector3.new(0, -0.3, 0.4),
+		-- Modelin ORTASI bu noktaya oturur (anchor): butun kurekler ayni yerde
+		anchor = "center",
+		position = Vector3.new(0, 0.1, 0.4),
+		positionR6 = Vector3.new(0, 0.1, 0.4),
 		-- 45 derece capraz: arkadan bakinca kafa SAG omuzda, sap ucu SOL kalcada;
 		-- kurek kafasinin ici DISARI bakar
 		rotation = Vector3.new(0, 0, -45),
@@ -553,8 +557,8 @@ Assets.BodyItems = {
 	},
 	gps = {
 		-- SOL kalcanin yaninda, sarkan elin hizasinda
-		position = Vector3.new(-1.1, 0, -0.1),
-		positionR6 = Vector3.new(-1.1, -0.9, -0.1),
+		position = Vector3.new(-0.1, 0, -0.1),
+		positionR6 = Vector3.new(-0.1, -0.9, -0.1),
 		-- Yandan bakinca capraz: basi one-yukari, sapi arkaya-asagi
 		rotation = Vector3.new(-40, 0, 0),
 		scale = 0.6,

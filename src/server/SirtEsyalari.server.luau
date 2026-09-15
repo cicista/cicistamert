@@ -124,6 +124,17 @@ local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
 	weld.Part0 = parca
 	weld.Part1 = model.PrimaryPart
 	weld.C0 = CFrame.new(konum or Vector3.zero) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z))
+
+	--[[
+		anchor = "center": govdeye tutus noktasi (Handle) degil MODELIN ORTASI
+		oturur. Kureklerin sap boylari farkli oldugu icin Handle her modelde
+		baska yerde kaliyor ve bazilari sirtta daha yukarida duruyordu.
+	]]
+	if ayar.anchor == "center" then
+		local kutu = model:GetBoundingBox()
+		local ofset = model.PrimaryPart.CFrame:PointToObjectSpace(kutu.Position)
+		weld.C1 = CFrame.new(ofset)
+	end
 	weld.Parent = model.PrimaryPart
 end
 
