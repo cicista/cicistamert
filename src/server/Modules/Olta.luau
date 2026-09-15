@@ -79,6 +79,48 @@ local function hazirOlta(level: number): Model?
 	uc.CFrame = if hazirUc and hazirUc:IsA("Attachment") then hazirUc.CFrame else CFrame.new(0, ucSahibi.Size.Y / 2, 0)
 	uc.Parent = ucSahibi
 
+	--[[
+		TUTUS: EL OLTANIN SAPINDA
+
+		Hazir oltanin Handle'i sapin uzerinde olmayabilir; ele Handle
+		oturtulunca olta elin disinda duruyordu. Kurekteki gibi sap bulunur:
+
+		  sap    -- Main (kamis), yoksa Handle; uzun ekseni oltanin ekseni
+		  yukari -- sap boyunca misinanin cikis ucuna dogru
+		  el     -- sapin ortasi ile alt ucu arasi (ToolGrips.rod.gripRatio:
+		            0 = orta, 1 = alt uc)
+
+		Bulunan tutus noktasi Handle'a gore kaydedilir (OltaGrip); attach
+		oltayi bu noktadan ele oturtur -- Roblox'un Tool.Grip'i gibi.
+	]]
+	local sap: BasePart = ucSahibi
+	local cf = sap.CFrame
+	local eksenListesi = { cf.RightVector, cf.UpVector, -cf.LookVector }
+	local boylar = { sap.Size.X, sap.Size.Y, sap.Size.Z }
+	local uzun = 1
+	for i = 2, 3 do
+		if boylar[i] > boylar[uzun] then
+			uzun = i
+		end
+	end
+
+	local eksen = eksenListesi[uzun]
+	if (uc.WorldPosition - sap.Position):Dot(eksen) < 0 then
+		eksen = -eksen
+	end
+
+	local oran = math.clamp(Assets.ToolGrips.rod.gripRatio or 0.6, 0, 1)
+	local tutus = sap.Position - eksen * (boylar[uzun] / 2 * oran)
+
+	local ileri = handle.CFrame.LookVector - eksen * handle.CFrame.LookVector:Dot(eksen)
+	if ileri.Magnitude < 1e-3 then
+		ileri = handle.CFrame.RightVector - eksen * handle.CFrame.RightVector:Dot(eksen)
+	end
+	ileri = ileri.Unit
+
+	local tutusCF = CFrame.fromMatrix(tutus, ileri:Cross(eksen).Unit, eksen)
+	model:SetAttribute("OltaGrip", handle.CFrame:ToObjectSpace(tutusCF))
+
 	return model
 end
 
@@ -163,7 +205,15 @@ function Olta.attach(character: Model, model: Model): boolean
 	local r = ayar.rotation
 	local tutus = hand:FindFirstChild("RightGripAttachment")
 	local taban = if tutus and tutus:IsA("Attachment") then tutus.WorldCFrame else hand.CFrame
-	model:PivotTo(taban * CFrame.new(ayar.position) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z)))
+	-- Hazir oltada el sapin tutus noktasina oturur (hazirOlta > OltaGrip)
+	local grip = model:GetAttribute("OltaGrip")
+	local tutusOfseti = if typeof(grip) == "CFrame" then grip else CFrame.identity
+	model:PivotTo(
+		taban
+			* CFrame.new(ayar.position)
+			* CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z))
+			* tutusOfseti:Inverse()
+	)
 	model.Parent = character
 
 	for _, part in model:GetDescendants() do
