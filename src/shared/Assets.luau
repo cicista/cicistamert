@@ -484,7 +484,10 @@ end
 
 	    gripFromEnd -- el, KABZANIN UCUNDAN kac stud iceride tutsun
 	    bladeDown   -- false: kafa elin USTUNDE (dik tutus), true: altinda
-	    spread      -- kafanin genis yonu: "forward" one, "right" yanlara
+	    spread      -- kafanin yonu: "forward" genis yon one, "right" yanlara,
+	                   "inward" kurek kafasinin OYUK tarafi karaktere baksin
+	    flip        -- { [model adi] = true }: o model yine ters duruyorsa
+	                   180 derece cevrilir (orn. { Candy3 = true })
 	    position    -- ele gore ek kayma (stud)
 	    rotation    -- ek donus (derece). Bicagin duz yuzu ters bakiyorsa
 	                   Y'ye 180 ver.
@@ -497,7 +500,10 @@ Assets.ToolGrips = {
 	shovel = {
 		gripFromEnd = 0.6,
 		bladeDown = false,
-		spread = "right",
+		-- Kafanin oyuk tarafi karaktere bakar; butun kurekler ayni yone
+		spread = "inward",
+		-- Kodun yonu yine ters buldugu modeller: { Main2 = true, Frosty4 = true }
+		flip = {},
 		position = Vector3.new(0, 0, 0),
 		rotation = Vector3.new(0, 0, 0),
 	},

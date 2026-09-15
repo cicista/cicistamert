@@ -229,13 +229,19 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 	local taban1 = (referans - yukari * referans:Dot(yukari)).Unit
 	local taban2 = yukari:Cross(taban1)
 
-	local enGenis = -1
-	local yayilma = taban1
-	for adim = 0, 17 do
-		local aci = math.rad(adim * 10)
-		local yon = taban1 * math.cos(aci) + taban2 * math.sin(aci)
+	-- Kafa parcalarinin agirlik merkezi (hacme gore)
+	local kafaMerkezi = Vector3.zero
+	local toplamHacim = 0
+	for _, p in kafaParcalari do
+		local hacim = p.Size.X * p.Size.Y * p.Size.Z
+		kafaMerkezi += p.Position * hacim
+		toplamHacim += hacim
+	end
+	kafaMerkezi = if toplamHacim > 0 then kafaMerkezi / toplamHacim else tutus
 
-		local genislik = 0
+	-- Kafanin verilen yatay yondeki toplam genisligi
+	local function genislikOf(yon: Vector3): number
+		local enAz, enCok = math.huge, -math.huge
 		for _, p in kafaParcalari do
 			local cf = p.CFrame
 			local yari = (
@@ -243,17 +249,87 @@ local function serbestModeliBagla(tool: Tool, model: Model, ayar: any): BasePart
 				+ math.abs(cf.UpVector:Dot(yon)) * p.Size.Y
 				+ math.abs(cf.LookVector:Dot(yon)) * p.Size.Z
 			) / 2
-			genislik = math.max(genislik, math.abs((p.Position - tutus):Dot(yon)) + yari)
+			local konum = (p.Position - kafaMerkezi):Dot(yon)
+			enAz = math.min(enAz, konum - yari)
+			enCok = math.max(enCok, konum + yari)
 		end
+		return if enCok >= enAz then enCok - enAz else 0
+	end
+
+	local enGenis, enDar = -1, math.huge
+	local yayilma, ince = taban1, taban2
+	for adim = 0, 35 do
+		local aci = math.rad(adim * 5)
+		local yon = taban1 * math.cos(aci) + taban2 * math.sin(aci)
+		local genislik = genislikOf(yon)
 
 		if genislik > enGenis then
 			enGenis = genislik
 			yayilma = yon
 		end
+		if genislik < enDar then
+			enDar = genislik
+			ince = yon
+		end
 	end
 
-	-- fromMatrix(sag, yukari): one bakis = yukari x sag
-	local sag = if ayar.spread == "forward" then yayilma:Cross(yukari).Unit else yayilma
+	-- fromMatrix(sag, yukari): one bakis = yukari x sag, yani sag = ileri x yukari
+	local sag: Vector3
+	if ayar.spread == "inward" then
+		--[[
+			KUREK: KAFANIN IC (OYUK) TARAFI KARAKTERE BAKAR
+
+			Kafanin yuzune dik dogrultu, kafanin EN INCE oldugu yon. Bu
+			dogrultunun HANGI UCU oyuk taraf:
+
+			  1. Kenar parcalari Govde'ye gore hangi yana kivrilmissa orasi
+			     (kurek agzinin kenarlari oyuk tarafa dogru kalkar).
+			  2. Kenar/Govde yoksa: sap kafanin ARKASINA baglanir, oyuk taraf
+			     sapin tersi.
+
+			Tool'un one bakisi karakterden DISARI; oyuk tarafin karaktere
+			bakmasi icin one bakis oyuk tarafin tersi olur. Yon her model icin
+			ayni kuraldan geldigi icin butun kurekler ayni yone bakar.
+		]]
+		local function merkezi(ad: string): Vector3?
+			local kok = model:FindFirstChild(ad, true)
+			if not kok then
+				return nil
+			end
+			local liste = kok:GetDescendants()
+			table.insert(liste, kok)
+			local toplamKonum, hacimler = Vector3.zero, 0
+			for _, d in liste do
+				if d:IsA("BasePart") then
+					local hacim = d.Size.X * d.Size.Y * d.Size.Z
+					toplamKonum += d.Position * hacim
+					hacimler += hacim
+				end
+			end
+			return if hacimler > 0 then toplamKonum / hacimler else nil
+		end
+
+		local govde = merkezi("Govde")
+		local kenar = merkezi("Kenar")
+		local isaret = if govde and kenar then (kenar - govde):Dot(ince) else 0
+
+		if math.abs(isaret) < 0.02 then
+			local sapNoktasi = merkez + eksen * (kafaMerkezi - merkez):Dot(eksen)
+			isaret = (kafaMerkezi - sapNoktasi):Dot(ince)
+		end
+
+		local oyuk = if isaret < 0 then -ince else ince
+		sag = (-oyuk):Cross(yukari).Unit
+	elseif ayar.spread == "forward" then
+		sag = yayilma:Cross(yukari).Unit
+	else
+		sag = yayilma
+	end
+
+	-- Kod yonu yine ters bulduysa: ayar.flip[model adi] = true -> 180 derece
+	if ayar.flip and ayar.flip[model.Name] then
+		sag = -sag
+	end
 
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
