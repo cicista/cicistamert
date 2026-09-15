@@ -31,6 +31,7 @@ local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local OtoTiklayici = require(Shared:WaitForChild("OtoTiklayici"))
+local Assets = require(Shared:WaitForChild("Assets"))
 local Ores = require(Shared:WaitForChild("Ores"))
 -- Maden kazisindaki kazma resmi Assets > Icons klasorunden okunuyor
 local Icons = require(Shared:WaitForChild("Icons"))
@@ -666,12 +667,22 @@ end
 ]]
 local digTrack: AnimationTrack? = nil
 
+-- Kazi basinda kapatilan otomatik donme; kazi bitince eski haline doner
+local donusHumanoid: Humanoid? = nil
+local donusEski: boolean? = nil
+
 local function stopDigAnimation()
 	if digTrack then
 		digTrack:Stop(0.15)
 		digTrack:Destroy()
 		digTrack = nil
 	end
+
+	if donusHumanoid and donusEski ~= nil and donusHumanoid.Parent then
+		donusHumanoid.AutoRotate = donusEski
+	end
+	donusHumanoid = nil
+	donusEski = nil
 end
 
 local function startDigAnimation()
@@ -684,12 +695,20 @@ local function startDigAnimation()
 		return
 	end
 
-	-- Elde kurek var mi, uzerinde kazma animasyonu tanimli mi
+	--[[
+		Elde KAZMA varsa madenin animasyonu (pickaxeDig), KUREK varsa kazinin
+		(shovelDig). Ikisi de Shared > Assets > Animations'ta.
+	]]
 	local id: string? = nil
 	for _, item in character:GetChildren() do
-		if item:IsA("Tool") and (item:GetAttribute("ShovelId") or item:GetAttribute("PickaxeId")) then
-			id = item:GetAttribute("DigAnimation") :: string?
-			break
+		if item:IsA("Tool") then
+			if item:GetAttribute("PickaxeId") then
+				id = Assets.id(Assets.Animations.pickaxeDig)
+				break
+			elseif item:GetAttribute("ShovelId") then
+				id = Assets.id(Assets.Animations.shovelDig)
+				break
+			end
 		end
 	end
 
@@ -713,6 +732,25 @@ local function startDigAnimation()
 	track.Looped = true
 	track:Play(0.1)
 	digTrack = track
+
+	--[[
+		KAZILAN NOKTAYA DON
+		Sunucu kazi basinda karaktere KaziHedef niteligini yaziyor. Karakter o
+		noktaya doner ve kazi boyunca kendiliginden donmez; kazi bitince
+		(stopDigAnimation) donme eski haline gelir.
+	]]
+	local humanoidDon = character:FindFirstChildOfClass("Humanoid")
+	local kok = character:FindFirstChild("HumanoidRootPart")
+	local hedef = character:GetAttribute("KaziHedef")
+	if humanoidDon and kok and kok:IsA("BasePart") and typeof(hedef) == "Vector3" then
+		donusHumanoid = humanoidDon
+		donusEski = humanoidDon.AutoRotate
+		humanoidDon.AutoRotate = false
+		local bakis = Vector3.new(hedef.X, kok.Position.Y, hedef.Z)
+		if (bakis - kok.Position).Magnitude > 0.5 then
+			kok.CFrame = CFrame.lookAt(kok.Position, bakis)
+		end
+	end
 end
 
 local function setHolding(value: boolean)

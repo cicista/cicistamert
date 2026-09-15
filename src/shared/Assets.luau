@@ -104,7 +104,11 @@ Assets.Animations = {
 
 		Bos birakildigi surece hicbir sey oynamaz, hata da vermez.
 	]]
-	shovelDig = "",
+	-- Kurek kazi animasyonu (0.40 sn), kazi boyunca dongude
+	shovelDig = "rbxassetid://131623390335887",
+
+	-- Madende kazma animasyonu (0.43 sn), kazi boyunca dongude
+	pickaxeDig = "rbxassetid://88699767550436",
 
 	--[[
 		GPS elde tutulurken.
@@ -121,6 +125,47 @@ Assets.Animations = {
 		Iki kol yukarida, kafanin ustundeki brainrotu tutuyormus gibi.
 	]]
 	brainrotHold = "rbxassetid://81667374734076",
+}
+
+------------------------------------------------------------------
+-- KAZI EFEKTLERI  (bkz. StarterPlayerScripts > KaziEfekti)
+--
+-- Kazi animasyonunun belli bir aninda aletin ucundan gri parcacik cikar:
+-- kurekte kum fiskirir, kazmada tas kirilir. Animasyon dongude oynadigi
+-- icin her turda o anda tekrar eder.
+--
+--   animation     -- Assets.Animations icindeki anahtar
+--   particleTime  -- animasyonun kacinci saniyesinde (tur basina bir kez)
+--   count         -- kac parcacik
+--   spread        -- yayilma acisi (derece): kucuk = yukari fiskirma,
+--                    180 = her yone sacilma
+--   speedMin/Max  -- parcacik hizi
+------------------------------------------------------------------
+Assets.DigEffects = {
+	color1 = Color3.fromRGB(170, 165, 155),
+	color2 = Color3.fromRGB(105, 100, 95),
+	size = 0.35,
+	lifetimeMin = 0.3,
+	lifetimeMax = 0.6,
+	gravity = 30,
+
+	shovel = {
+		animation = "shovelDig",
+		particleTime = 0.25,
+		count = 16,
+		spread = 35,
+		speedMin = 8,
+		speedMax = 14,
+	},
+
+	pickaxe = {
+		animation = "pickaxeDig",
+		particleTime = 0.15,
+		count = 14,
+		spread = 180,
+		speedMin = 5,
+		speedMax = 11,
+	},
 }
 
 ------------------------------------------------------------------
