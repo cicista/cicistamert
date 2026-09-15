@@ -557,8 +557,8 @@ Assets.BodyItems = {
 	},
 	gps = {
 		-- SOL kalcanin yaninda, sarkan elin hizasinda
-		position = Vector3.new(-0.1, 0, -0.1),
-		positionR6 = Vector3.new(-0.1, -0.9, -0.1),
+		position = Vector3.new(-0.5, 0, -0.1),
+		positionR6 = Vector3.new(-0.5, -0.9, -0.1),
 		-- Yandan bakinca capraz: basi one-yukari, sapi arkaya-asagi
 		rotation = Vector3.new(-40, 0, 0),
 		scale = 0.6,
