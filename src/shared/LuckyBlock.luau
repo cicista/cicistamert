@@ -115,8 +115,12 @@ LuckyBlock.Event = {
 		en zor ada en iyi odulu tasisin.
 	]]
 	islandSands = { "kum", "sekerkum", "snowkum", "alevkum", "deniz" },
-	-- Sunucu acildiktan kac saniye sonra ilk etkinlik olsun
-	firstDelay = 180,
+	--[[
+		Sunucu acildiktan kac saniye sonra ilk etkinlik olsun.
+		Eskiden 180'di: her yeni sunucuda (Studio'da her Play'de) 3. dakikada
+		blok yagiyordu. Artik ilk yagmur da normal aralikta gelir.
+	]]
+	firstDelay = 7200,
 	-- Toplanmayan blok kac saniye sonra kaybolur (0 = hic kaybolmasin)
 	despawn = 1200,
 	--[[

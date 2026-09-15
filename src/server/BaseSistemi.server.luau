@@ -1719,6 +1719,14 @@ local function assignBase(player: Player): number?
 		return nil
 	end
 
+	-- Zaten bir base'in sahibiyse ayni base: iki kez atanmasin
+	for index, owner in owners do
+		if owner == player then
+			data.base = index
+			return index
+		end
+	end
+
 	for index = 1, Bases.Count do
 		if owners[index] == nil then
 			owners[index] = player
@@ -1792,13 +1800,58 @@ end
 ------------------------------------------------------------------
 -- YERLESTIRME / GERI ALMA
 ------------------------------------------------------------------
+--[[
+	BASE GUVENCESI
+
+	Oyuncuya base, veri yuklenince atanir. Canli sunucuda veri gec
+	yuklenirse atama kaciyor, data.base bos kaliyor ve slota koyma HICBIR
+	mesaj vermeden vazgeciyordu ("cik gir yapinca duzeldi" hatasi).
+
+	Artik: veride base yoksa ya da o base bu oyuncuya ait degilse atama
+	burada yeniden denenir. Yine olmazsa oyuncuya yazilir.
+]]
+-- Sahipsiz base var mi (yoksa atama denenmez: "No free bases" tekrar tekrar yazilmasin)
+function bosBaseVar(): boolean
+	for index = 1, Bases.Count do
+		if owners[index] == nil then
+			return true
+		end
+	end
+	return false
+end
+
+local function baseGuvence(player: Player, data: any): number?
+	if data.base and owners[data.base] == player then
+		return data.base
+	end
+
+	data.base = nil
+	if not bosBaseVar() then
+		Bildirim:FireClient(player, "No free bases left!", Color3.fromRGB(255, 120, 120))
+		return nil
+	end
+
+	local index = assignBase(player)
+	if index then
+		pushBase(player)
+		return index
+	end
+
+	Bildirim:FireClient(player, "Your base is still loading, try again in a moment.", Color3.fromRGB(255, 200, 90))
+	return nil
+end
+
 function placeInSlot(player: Player, uid: string, slotIndex: number)
 	if slotIndex < 1 or slotIndex > Bases.SlotCount then
 		return
 	end
 
 	local data = PlayerData.get(player)
-	if not data or not data.base then
+	if not data then
+		Bildirim:FireClient(player, "Your data is still loading, try again in a moment.", Color3.fromRGB(255, 200, 90))
+		return
+	end
+	if not baseGuvence(player, data) then
 		return
 	end
 
@@ -2000,8 +2053,14 @@ task.spawn(function()
 		task.wait(3)
 		for _, player in Players:GetPlayers() do
 			local data = PlayerData.get(player)
-			if data and data.base then
+			if data and data.base and owners[data.base] == player then
 				pushBase(player)
+			elseif data then
+				-- Emniyet: atamasi kacmis oyuncu burada base alir
+				data.base = nil
+				if bosBaseVar() and assignBase(player) then
+					pushBase(player)
+				end
 			end
 		end
 	end
@@ -2011,9 +2070,12 @@ end)
 -- OYUNCU BAGLANTILARI
 ------------------------------------------------------------------
 local function setupPlayer(player: Player)
-	local deadline = os.clock() + 10
-	while not PlayerData.get(player) and os.clock() < deadline do
-		task.wait(0.2)
+	--[[
+		Veri yuklenene kadar beklenir. Eskiden 10 saniyede vazgeciliyordu:
+		canli sunucuda veri gec gelirse base hic atanmiyordu.
+	]]
+	while player.Parent and not PlayerData.get(player) do
+		task.wait(0.25)
 	end
 	if not player.Parent then
 		return
