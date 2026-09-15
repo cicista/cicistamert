@@ -12,6 +12,7 @@
 	    kurek -- ELDEYKEN (kazi sirasinda kurek ele gelir)
 	    GPS   -- ELDEYKEN ya da oyuncu KESIFTEYKEN (kumun ustunde arama,
 	             kazi, denizde olta). Yani kumdan cikinca bele geri doner.
+	    ikisi -- flyboardla DENIZDEYKEN
 
 	Modeller elde tutulan esyanin AYNISI (Tools.buildShovel / buildGPS);
 	kurek yukseltilince ya da dedektor degisince govdedeki de yenilenir.
@@ -33,6 +34,9 @@ local AYAR = Assets.BodyItems
 
 -- KaziSistemi'nin "su an kesifte" niteligi (kumda GPS, kazi, denizde olta)
 local KESIF_NITELIGI = "KesifKisiti"
+
+-- Flyboard.server'in "tahtada, denizde" niteligi: ikisi birden gizlenir
+local FLYBOARD_NITELIGI = "Flyboarding"
 
 local KUREK_ADI = "SirtKuregi"
 local GPS_ADI = "BelGPS"
@@ -231,6 +235,7 @@ local function durumAl(player: Player, character: Model): Durum
 	table.insert(yeni.baglantilar, character.ChildAdded:Connect(tetikle))
 	table.insert(yeni.baglantilar, character.ChildRemoved:Connect(tetikle))
 	table.insert(yeni.baglantilar, player:GetAttributeChangedSignal(KESIF_NITELIGI):Connect(tetikle))
+	table.insert(yeni.baglantilar, player:GetAttributeChangedSignal(FLYBOARD_NITELIGI):Connect(tetikle))
 
 	return yeni
 end
@@ -249,14 +254,17 @@ function guncelle(player: Player)
 
 	local durum = durumAl(player, character)
 
+	-- Flyboardla denizdeyken ikisi de gorunmez
+	local denizde = player:GetAttribute(FLYBOARD_NITELIGI) == true
+
 	-- SIRTTA KUREK: elde degilse gorunur
 	kur(durum.kurek, character, data.shovel, { "UpperTorso", "Torso" }, Tools.buildShovel, KUREK_ADI, AYAR.shovel)
-	goster(durum.kurek, character, not eldeMi(character, "ShovelId"))
+	goster(durum.kurek, character, not denizde and not eldeMi(character, "ShovelId"))
 
 	-- BELDE GPS: elde degilse VE kesifte degilse gorunur
 	kur(durum.gps, character, data.detector, { "LowerTorso", "Torso" }, Tools.buildGPS, GPS_ADI, AYAR.gps)
 	local kesifte = player:GetAttribute(KESIF_NITELIGI) == true
-	goster(durum.gps, character, not kesifte and not eldeMi(character, "DetectorId"))
+	goster(durum.gps, character, not denizde and not kesifte and not eldeMi(character, "DetectorId"))
 end
 
 ------------------------------------------------------------------

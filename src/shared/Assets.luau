@@ -546,9 +546,10 @@ Assets.BodyItems = {
 	shovel = {
 		position = Vector3.new(0, -0.3, 0.7),
 		positionR6 = Vector3.new(0, -0.3, 0.7),
-		-- 45 derece capraz; kurek kafasinin ici DISARI bakar
-		rotation = Vector3.new(0, 0, 45),
-		scale = 1,
+		-- 45 derece capraz: arkadan bakinca kafa SAG omuzda, sap ucu SOL kalcada;
+		-- kurek kafasinin ici DISARI bakar
+		rotation = Vector3.new(0, 0, -45),
+		scale = 0.6,
 	},
 	gps = {
 		-- Sag yanda, bel hizasinda: sallanan el ile belin arasi
@@ -556,7 +557,7 @@ Assets.BodyItems = {
 		positionR6 = Vector3.new(1.2, -0.6, 0),
 		-- 20 derece egik
 		rotation = Vector3.new(0, 0, 20),
-		scale = 0.8,
+		scale = 0.6,
 	},
 }
 
