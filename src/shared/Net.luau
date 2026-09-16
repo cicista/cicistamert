@@ -122,9 +122,15 @@ Net.Events = {
 	"IndexAc",          -- client -> server: defteri istiyorum
 	"IndexDurum",       -- server -> client: kesfedilen brainrot adlari
 
-	-- Otomatik tiklayici (Pass)
-	"OtoTiklayiciDurum", -- server -> client: oyuncu passi aldi mi
-	"OtoTiklayiciSor",   -- client -> server: durumumu soyle
+	-- Robux gecisleri (bkz. Shared > Passler); sahiplik oyuncu niteligiyle gelir
+	"PassSatinAl",       -- client -> server: bu gecisin satin alma penceresini ac (ad)
+
+	-- Sagdaki butonlar
+	"BaseyeIsinlan",     -- client -> server: beni base'imin onune isinla
+	"IsinlayiciGit",     -- client -> server: acik adaya isinla (ada indeksi, Teleporter gecisi)
+
+	-- Hiz yukseltmesi (bkz. Shared > Hiz); seviye oyuncu niteliginde (SpeedLevel)
+	"HizAl",             -- client -> server: kac yukseltme alinacak
 
 	-- Admin
 	"AdminPanelAc",     -- server -> client: panel + yetki

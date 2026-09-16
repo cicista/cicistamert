@@ -92,6 +92,43 @@ local function anahtarOf(k: Kaynak): string
 	return "__gizli"
 end
 
+--[[
+	KADRAJ: YALNIZCA GORUNEN PARCALAR
+
+	Model:GetBoundingBox() gorunmez parcalari da (tutamak, carpisma kutusu,
+	efekt tasiyicisi) sayiyor ve kutuyu PrimaryPart'in eksenine hizaliyor.
+	Kimligi acilmamis brainrot modelinde bu yuzden kamera bos bir noktaya
+	bakiyordu; kup karenin sol altinda kucucuk kaliyordu. Artik kutu
+	yalnizca gorunen parcalardan, dunya eksenlerinde hesaplaniyor.
+]]
+local function gorunenSinir(model: Model): (Vector3?, Vector3?)
+	local enAz: Vector3? = nil
+	local enCok: Vector3? = nil
+
+	for _, parca in model:GetDescendants() do
+		if not parca:IsA("BasePart") or parca.Transparency >= 0.99 then
+			continue
+		end
+		if parca:GetAttribute(Assets.MeasureSkipAttribute) then
+			continue
+		end
+
+		local cf, boyut = parca.CFrame, parca.Size
+		local yari = Vector3.new(
+			math.abs(cf.RightVector.X) * boyut.X + math.abs(cf.UpVector.X) * boyut.Y + math.abs(cf.LookVector.X) * boyut.Z,
+			math.abs(cf.RightVector.Y) * boyut.X + math.abs(cf.UpVector.Y) * boyut.Y + math.abs(cf.LookVector.Y) * boyut.Z,
+			math.abs(cf.RightVector.Z) * boyut.X + math.abs(cf.UpVector.Z) * boyut.Y + math.abs(cf.LookVector.Z) * boyut.Z
+		) / 2
+
+		local alt = cf.Position - yari
+		local ust = cf.Position + yari
+		enAz = if enAz then enAz:Min(alt) else alt
+		enCok = if enCok then enCok:Max(ust) else ust
+	end
+
+	return enAz, enCok
+end
+
 local function kur(k: Kaynak): ViewportFrame?
 	-- Iki fonksiyon da zaten Clone() donduruyor; bir daha klonlanmiyor
 	local model = if k.revealed and k.name
@@ -129,11 +166,18 @@ local function kur(k: Kaynak): ViewportFrame?
 	kamera.Parent = vp
 	vp.CurrentCamera = kamera
 
-	local ok, cf, boyut = pcall(function()
-		return model:GetBoundingBox()
-	end)
-	if ok and cf and boyut then
-		kamera.CFrame = CFrame.lookAt(cf.Position + BAKIS_YONU * boyut.Magnitude * CERCEVE, cf.Position)
+	local enAz, enCok = gorunenSinir(model)
+	if enAz and enCok then
+		local merkez = (enAz + enCok) / 2
+		local kosegen = (enCok - enAz).Magnitude
+		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * kosegen * CERCEVE, merkez)
+	else
+		local ok, cf, boyut = pcall(function()
+			return model:GetBoundingBox()
+		end)
+		if ok and cf and boyut then
+			kamera.CFrame = CFrame.lookAt(cf.Position + BAKIS_YONU * boyut.Magnitude * CERCEVE, cf.Position)
+		end
 	end
 
 	return vp

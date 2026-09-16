@@ -17,7 +17,6 @@
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
-local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -60,8 +59,9 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local MinigameBasla = Net.event("MinigameBasla")
 local MinigameSonuc = Net.event("MinigameSonuc")
 local KaziBitti = Net.event("KaziBitti")
-local OtoTiklayiciDurum = Net.event("OtoTiklayiciDurum")
-local OtoTiklayiciSor = Net.event("OtoTiklayiciSor")
+-- Gecis sahipligi oyuncu niteliginden, satin alma sunucudan (bkz. Shared > Passler)
+local Passler = require(Shared:WaitForChild("Passler"))
+local PassSatinAl = Net.event("PassSatinAl")
 
 local ACTION_NAME = "KaziMinigameTut"
 
@@ -364,11 +364,11 @@ kaziIkon.Parent = kaziKatman
 --
 -- Barin SOLUNDA, kurek ikonuyla ayni yukseklikte durur. Uc hali var:
 --
---   pass yok      ->  "500 R$ AL"   (tiklayinca satin alma penceresi)
---   pass var, kapali ->  "DEVRE DISI"
---   pass var, acik   ->  "ACIK"     (kurek kendi kendine vurur)
+--   pass yok         ->  "BUY 500 R$"  (tiklayinca satin alma penceresi)
+--   pass var, kapali ->  "OFF"
+--   pass var, acik   ->  "ON"          (kurek kendi kendine vurur)
 --
--- Pass ID girilmediyse (bkz. Shared > OtoTiklayici) hic cizilmez.
+-- Dugme herkeste gorunur (bkz. Shared > Passler).
 ------------------------------------------------------------------
 
 --[[
@@ -397,12 +397,12 @@ otoKutu.AnchorPoint = Vector2.new(0.5, 0.5)
 otoKutu.Position = UDim2.fromScale(OTO_X, OTO_Y)
 otoKutu.Size = UDim2.fromOffset(176, 92)
 otoKutu.BackgroundTransparency = 1
-otoKutu.Visible = OtoTiklayici.gorunur()
+otoKutu.Visible = true
 otoKutu.ZIndex = 8
 otoKutu.Parent = kaziEkran
 
 UI.text({
-	text = "OTOMATIK TIKLAYICI",
+	text = "AUTO CLICKER",
 	size = UI.Sizes.small,
 	color = UI.Colors.textDim,
 	align = Enum.TextXAlignment.Center,
@@ -464,7 +464,7 @@ end)
 	dugme "satin al" halinde baslar. Yanlis tarafta hata yapmak bu yon:
 	sahip olmayana acik dugme gostermekten iyidir.
 ]]
-local otoSahip = OtoTiklayici.testSahipligi()
+local otoSahip = Passler.sahip(player, "AutoClicker")
 
 --[[
 	Acik/kapali tercihi.
@@ -482,25 +482,21 @@ local function otoCalisiyorMu(): boolean
 		imlec yine dibe iner ve brainrot kacar -- denge minioyunun kendi
 		kuralindan geliyor, tiklayicidan degil.
 	]]
-	return OtoTiklayici.gorunur() and otoSahip and otoAcik
+	return otoSahip and otoAcik
 end
 
 local function otoDugmeyiCiz()
-	if not OtoTiklayici.gorunur() then
-		otoKutu.Visible = false
-		return
-	end
-
 	otoKutu.Visible = true
 
 	if not otoSahip then
-		otoYazi.Text = `{OtoTiklayici.FIYAT} R$  AL`
+		local pass = Passler.get("AutoClicker")
+		otoYazi.Text = `BUY  {if pass then pass.fiyat else 0} R$`
 		otoRenk = UI.Colors.gold
 		otoDugme.BackgroundColor3 = otoRenk
 		return
 	end
 
-	otoYazi.Text = if otoAcik then "ACIK" else "DEVRE DISI"
+	otoYazi.Text = if otoAcik then "ON" else "OFF"
 	otoRenk = if otoAcik then UI.Colors.good else UI.Colors.bad
 	otoDugme.BackgroundColor3 = otoRenk
 end
@@ -508,22 +504,12 @@ end
 otoDugmeyiCiz()
 
 otoDugme.Activated:Connect(function()
-	if not OtoTiklayici.gorunur() then
-		return
-	end
-
 	--[[
-		Pass yoksa dugme satin alma penceresini acar. Sonucu beklemiyoruz:
-		sunucu PromptGamePassPurchaseFinished'i dinliyor ve durumu
-		kendiliginden gonderiyor (bkz. OtoTiklayici.server).
+		Pass yoksa dugme satin alma penceresini acar (sunucu uzerinden).
+		Satin alininca sunucu niteligi yazar, dugme kendiliginden doner.
 	]]
 	if not otoSahip then
-		local ok, hata = pcall(function()
-			MarketplaceService:PromptGamePassPurchase(player, OtoTiklayici.GAMEPASS_ID)
-		end)
-		if not ok then
-			warn(`[OtoTiklayici] satin alma penceresi acilamadi: {hata}`)
-		end
+		PassSatinAl:FireServer("AutoClicker")
 		return
 	end
 
@@ -531,13 +517,14 @@ otoDugme.Activated:Connect(function()
 	otoDugmeyiCiz()
 end)
 
-OtoTiklayiciDurum.OnClientEvent:Connect(function(sahipMi)
-	otoSahip = sahipMi == true
-	otoDugmeyiCiz()
-end)
-
-if OtoTiklayici.kurulu() then
-	OtoTiklayiciSor:FireServer()
+do
+	local pass = Passler.get("AutoClicker")
+	if pass then
+		player:GetAttributeChangedSignal(pass.nitelik):Connect(function()
+			otoSahip = Passler.sahip(player, "AutoClicker")
+			otoDugmeyiCiz()
+		end)
+	end
 end
 
 local hint = UI.text({

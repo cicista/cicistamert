@@ -125,24 +125,43 @@ Ores.Pickaxes = {
 		id = "CandyPickaxe",
 		displayName = "Candy Pickaxe",
 		island = "sekerkum",
-		price = 3_500_000_000,
+		price = 0,
 		color = Ores.Islands.sekerkum.color,
 	},
 	FrostyPickaxe = {
 		id = "FrostyPickaxe",
 		displayName = "Frosty Pickaxe",
 		island = "snowkum",
-		price = 17_500_000_000,
+		price = 0,
 		color = Ores.Islands.snowkum.color,
 	},
 	PhoenixPickaxe = {
 		id = "PhoenixPickaxe",
 		displayName = "Phoenix Pickaxe",
 		island = "alevkum",
-		price = 250_000_000_000,
+		price = 0,
 		color = Ores.Islands.alevkum.color,
 	},
 } :: { [string]: PickaxeInfo }
+
+--[[
+	KAZMA FIYATI = ADANIN ACILIS FIYATI
+
+	Her kazma, kendi adasini kaptandan ilk kez acmanin bedeliyle ayni
+	fiyattadir (bkz. OyunConfig.Islands). Ada fiyati degisince kazma da
+	kendiliginden degisir; burada ayrica sayi yazilmaz.
+]]
+do
+	local Config = require(script.Parent:WaitForChild("OyunConfig")) :: any
+	for _, kazma in Ores.Pickaxes do
+		local adaAdi = Ores.Islands[kazma.island].name
+		for _, ada in Config.Islands do
+			if ada.name == adaAdi then
+				kazma.price = ada.price
+			end
+		end
+	end
+end
 
 --[[
 	GEM RENKLERI  --  parlak, her gem kendi renginde

@@ -51,6 +51,8 @@ local SlotaKoy = Net.event("SlotaKoy")
 local SlottanAl = Net.event("SlottanAl")
 -- Toplama aninda para destelerinin sacilma efekti (bkz. ParaSacma.client)
 local ParaSac = Net.event("ParaSac")
+-- Sagdaki ev butonu: oyuncuyu kendi base'inin onune isinlar
+local BaseyeIsinlan = Net.event("BaseyeIsinlan")
 
 -- [baseIndex] = Player | nil
 local owners: { [number]: Player? } = {}
@@ -396,18 +398,65 @@ local function nextUpgrade(data: any): { kind: string, cost: number, label: stri
 end
 
 --[[
-	SLOT NUMARASI: slot zemininin UST YUZUNDE buyuk numara (1..10).
+	SLOT NUMARASI: slot zemininin ustunde buyuk numara.
 	Envanterde "Slot 3" yazan brainrotun base'in neresinde durdugu boylece
 	bir bakista gorulur.
+
+	NEDEN AYRI BIR PARCA
+	Numara once padin "Top" yuzune yaziliyordu. Haritadaki padlarin bir
+	kismi DONDURULMUS (ornegin yan yatirilmis silindir): onlarin Top yuzu
+	yukari degil yana bakiyor, numara ya hic gorunmuyordu ya da yamuk
+	duruyordu. Yazinin yonu de padin kendi donusune bagliydi.
+
+	Artik padin ustune gorunmez, ince bir parca konuyor. Bu parcanin ON
+	yuzu her zaman YUKARI bakiyor ve yazinin ust kenari 'ust' yonune
+	cevriliyor (bkz. slotSirasiKur). Boylece padin nasil donduruldugu
+	onemsiz.
 ]]
-local function buildSlotNumber(pad: BasePart, slotIndex: number)
+local SLOT_NUMARA_KALINLIK = 0.05
+
+-- Padin dunyadaki yari boyutlari (donmus parcalarda da dogru)
+local function dunyaYariBoyut(pad: BasePart): Vector3
+	local cf = pad.CFrame
+	local yari = pad.Size / 2
+	local x = math.abs(cf.RightVector.X) * yari.X + math.abs(cf.UpVector.X) * yari.Y + math.abs(cf.LookVector.X) * yari.Z
+	local y = math.abs(cf.RightVector.Y) * yari.X + math.abs(cf.UpVector.Y) * yari.Y + math.abs(cf.LookVector.Y) * yari.Z
+	local z = math.abs(cf.RightVector.Z) * yari.X + math.abs(cf.UpVector.Z) * yari.Y + math.abs(cf.LookVector.Z) * yari.Z
+	return Vector3.new(x, y, z)
+end
+
+local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3)
+	local eski = pad:FindFirstChild("SlotNumarasi")
+	if eski then
+		eski:Destroy()
+	end
+
+	local yari = dunyaYariBoyut(pad)
+	-- Kare: yazi dondurulse de sekli bozulmasin
+	local kenar = math.max(1, math.min(yari.X, yari.Z) * 2 * 0.9)
+	local merkez = pad.Position + Vector3.new(0, yari.Y + SLOT_NUMARA_KALINLIK / 2 + 0.02, 0)
+
+	local tasiyici = Instance.new("Part")
+	tasiyici.Name = "SlotNumarasi"
+	tasiyici.Size = Vector3.new(kenar, kenar, SLOT_NUMARA_KALINLIK)
+	-- On yuz (LookVector) yukari, yazinin ustu 'ust' yonunde
+	tasiyici.CFrame = CFrame.lookAt(merkez, merkez + Vector3.yAxis, ust)
+	tasiyici.Anchored = true
+	tasiyici.CanCollide = false
+	tasiyici.CanQuery = false
+	tasiyici.CanTouch = false
+	tasiyici.CastShadow = false
+	tasiyici.Transparency = 1
+	tasiyici:SetAttribute(Assets.MeasureSkipAttribute, true)
+	tasiyici.Parent = pad
+
 	local yuzey = Instance.new("SurfaceGui")
-	yuzey.Name = "SlotNumarasi"
-	yuzey.Face = Enum.NormalId.Top
+	yuzey.Name = "Yazi"
+	yuzey.Face = Enum.NormalId.Front
 	yuzey.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	yuzey.PixelsPerStud = 40
 	yuzey.LightInfluence = 0
-	yuzey.Parent = pad
+	yuzey.Parent = tasiyici
 
 	local yazi = Instance.new("TextLabel")
 	yazi.Size = UDim2.fromScale(1, 1)
@@ -515,8 +564,36 @@ local function resolveSlotSurface(node: Instance?): BasePart?
 	return nil
 end
 
+--[[
+	SLOT SIRASI  --  HARITADAKI ADA DEGIL KONUMA GORE
+
+	Haritada padlarin adlari (Slot1..Slot10) yerlerine gore duzenli
+	degildi: 1 numara bir yerde, 2 numara baska yerde duruyordu. Bu yuzden
+	her base'te slotlar KONUMLARINA gore yeniden siralanir (kus bakisi,
+	TOPLA butonu altta):
+
+	    5 . . . 6
+	    4 . . . 7
+	    3 . . . 8
+	    2 . . . 9
+	    1 [TOP] 10
+
+	Sol sutun onden arkaya 1-5, sag sutun arkadan one 6-10. 2. kat ayni
+	duzende 11-20. slotAdlari[base][mantiksal no] = haritadaki parca adi.
+]]
+local slotAdlari: { [Model]: { [number]: string } } = {}
+-- [baseIndex] = base'in merkezinden TOPLA butonuna dogru yatay yon
+local onYonleri: { [number]: Vector3 } = {}
+-- [base][mantiksal no] = numaranin ust kenarinin bakacagi yon
+local slotYonleri: { [Model]: { [number]: Vector3 } } = {}
+
+local function slotAdi(base: Model, slotIndex: number): string
+	local harita = slotAdlari[base]
+	return (harita and harita[slotIndex]) or Bases.slotName(slotIndex)
+end
+
 local function findSlotPart(base: Model, slotIndex: number): BasePart?
-	local name = Bases.slotName(slotIndex)
+	local name = slotAdi(base, slotIndex)
 
 	local direct = resolveSlotSurface(base:FindFirstChild(name))
 	if direct then
@@ -533,6 +610,82 @@ local function findSlotPart(base: Model, slotIndex: number): BasePart?
 
 	-- Ic ice modellerde de ara (son care)
 	return resolveSlotSurface(base:FindFirstChild(name, true))
+end
+
+--[[
+	Bir base'in slot sirasini konumlardan kurar (bkz. SLOT SIRASI).
+	on: base'in merkezinden TOPLA butonuna dogru yatay yon.
+]]
+type SlotKaydi = { ad: string, konum: Vector3 }
+
+local function slotSirasiKur(base: Model, on: Vector3)
+	-- Once haritadaki adlarla bulunur; eski sira silinir
+	slotAdlari[base] = nil
+	slotYonleri[base] = nil
+
+	local adlar: { [number]: string } = {}
+	local yonler: { [number]: Vector3 } = {}
+	local geri = -on
+	-- Arkaya bakan birinin sagi
+	local sag = geri:Cross(Vector3.yAxis).Unit
+	local aSayi = Bases.Upgrade.slotsPerFloor
+
+	for kat = 1, Bases.Upgrade.maxFloors do
+		local ilk = (kat - 1) * aSayi
+
+		local kayitlar: { SlotKaydi } = {}
+		local toplam = Vector3.zero
+		for no = ilk + 1, ilk + aSayi do
+			local ad = Bases.slotName(no)
+			local pad = findSlotPart(base, no)
+			if pad then
+				table.insert(kayitlar, { ad = ad, konum = pad.Position })
+				toplam += pad.Position
+			end
+		end
+
+		if #kayitlar == 0 then
+			continue
+		end
+
+		local merkez = toplam / #kayitlar
+		local sol: { SlotKaydi } = {}
+		local sagda: { SlotKaydi } = {}
+		for _, k in kayitlar do
+			if (k.konum - merkez):Dot(sag) < 0 then
+				table.insert(sol, k)
+			else
+				table.insert(sagda, k)
+			end
+		end
+
+		-- Sol: onden arkaya; sag: arkadan one
+		table.sort(sol, function(a, b)
+			return (a.konum - merkez):Dot(on) > (b.konum - merkez):Dot(on)
+		end)
+		table.sort(sagda, function(a, b)
+			return (a.konum - merkez):Dot(on) < (b.konum - merkez):Dot(on)
+		end)
+
+		-- Numaranin ust kenari: koridora mi duvara mi (Bases.SlotNumberFacing)
+		local koridora = Bases.SlotNumberFacing ~= "wall"
+		local solUst = if koridora then sag else -sag
+
+		local sira = ilk
+		for _, k in sol do
+			sira += 1
+			adlar[sira] = k.ad
+			yonler[sira] = solUst
+		end
+		for _, k in sagda do
+			sira += 1
+			adlar[sira] = k.ad
+			yonler[sira] = -solUst
+		end
+	end
+
+	slotAdlari[base] = adlar
+	slotYonleri[base] = yonler
 end
 
 --[[
@@ -704,7 +857,7 @@ local function slotNode(baseIndex: number, slotIndex: number): Instance?
 		return nil
 	end
 
-	local name = Bases.slotName(slotIndex)
+	local name = slotAdi(base, slotIndex)
 
 	local direct = base:FindFirstChild(name)
 	if direct then
@@ -1190,6 +1343,16 @@ local function setupBases()
 			buildHologram(base, bounds, size)
 			collectPads[index] = buildCollectButton(base, bounds, size, index)
 			upgradeSigns[index] = buildUpgradeSign(base, bounds, size, index)
+
+			-- Slot sirasi: merkezden TOPLA butonuna dogru yon "on" sayilir
+			local pad = collectPads[index]
+			local fark = if pad then pad.Position - bounds.Position else bounds.LookVector
+			local on = Vector3.new(fark.X, 0, fark.Z)
+			if on.Magnitude < 0.01 then
+				on = Vector3.new(bounds.LookVector.X, 0, bounds.LookVector.Z)
+			end
+			onYonleri[index] = on.Unit
+			slotSirasiKur(base, on.Unit)
 		else
 			warn(`[Base] {base.Name}: sinir kutusu hesaplanamadi, hologram konulamadi`)
 		end
@@ -1204,16 +1367,16 @@ local function setupBases()
 			if not pad:FindFirstChild("SlotPrompt") then
 				buildSlotPrompt(pad, index, slotIndex)
 			end
-			if not pad:FindFirstChild("SlotNumarasi") then
-				buildSlotNumber(pad, slotIndex)
-			end
+			local yonler = slotYonleri[base]
+			local ust = (yonler and yonler[slotIndex]) or Vector3.new(0, 0, -1)
+			buildSlotNumber(pad, slotIndex, ust)
 		end
 
 		if found < Bases.SlotCount then
 			local eksik: { string } = {}
 			for slotIndex = 1, Bases.SlotCount do
 				if not getSlotPart(index, slotIndex) then
-					table.insert(eksik, Bases.slotName(slotIndex))
+					table.insert(eksik, slotAdi(base, slotIndex))
 				end
 			end
 			warn(
@@ -2139,8 +2302,75 @@ local function setupPlayer(player: Player)
 	end
 end
 
+--[[
+	BASE'E ISINLANMA  (sagdaki ev butonu)
+
+	Oyuncu kendi base'inin ONUNE, TOPLA butonunun biraz ilerisine konur ve
+	yuzu base'e doner. Butonun tam ustune konmaz: basinca para toplanir ve
+	oyuncu bunu isinlanma sanabilir.
+
+	Kazi sirasinda (karakter yerine sabitken) ve flyboard'dayken yapilmaz.
+]]
+local ISINLANMA_BEKLEME = 3
+local ISINLANMA_MESAFE = 7
+local sonIsinlanma: { [Player]: number } = {}
+
+BaseyeIsinlan.OnServerEvent:Connect(function(player)
+	local simdi = os.clock()
+	if simdi - (sonIsinlanma[player] or 0) < ISINLANMA_BEKLEME then
+		return
+	end
+
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not root or not root:IsA("BasePart") or not humanoid or humanoid.Health <= 0 then
+		return
+	end
+
+	if character:GetAttribute("Kaziyor") == true then
+		Bildirim:FireClient(player, "Finish digging first!", Color3.fromRGB(255, 200, 90))
+		return
+	end
+	if player:GetAttribute("Flyboarding") == true then
+		Bildirim:FireClient(player, "Get off your flyboard first!", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	local index = baseGuvence(player, data)
+	if not index then
+		return
+	end
+
+	local base = getBase(index)
+	local pad = collectPads[index]
+	local on = onYonleri[index]
+	if not base or not pad or not on then
+		Bildirim:FireClient(player, "Your base is not ready yet.", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	sonIsinlanma[player] = simdi
+
+	local hedef = pad.Position + on * ISINLANMA_MESAFE + Vector3.new(0, 3.5, 0)
+	local bakis = Vector3.new(pad.Position.X, hedef.Y, pad.Position.Z)
+	character:PivotTo(CFrame.lookAt(hedef, bakis))
+	root.AssemblyLinearVelocity = Vector3.zero
+
+	Bildirim:FireClient(player, "Welcome home!", Color3.fromRGB(140, 230, 160))
+end)
+
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(setupPlayer, player)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	sonIsinlanma[player] = nil
 end)
 
 Players.PlayerRemoving:Connect(releaseBase)

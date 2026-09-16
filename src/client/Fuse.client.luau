@@ -536,6 +536,8 @@ local function secimCiz()
 	for index, item in items do
 		local renk = Rarity.color(item.rarity)
 		local yeter = (item.owned or 0) + #(durum.slots or {}) >= (durum.required or Fuse.Required)
+		-- Sunucu konamayacaklari sebebiyle birlikte kilitli yolluyor
+		local kilit = if type(item.locked) == "string" then item.locked else nil
 
 		local satir = Instance.new("TextButton")
 		satir.Name = item.uid
@@ -573,10 +575,10 @@ local function secimCiz()
 		ad.ZIndex = 23
 
 		local alt = UI.text({
-			text = `{Rarity.displayName(item.rarity)}  -  {detayYazisi(item)}`,
+			text = if kilit then kilit else `{Rarity.displayName(item.rarity)}  -  {detayYazisi(item)}`,
 			size = UI.Sizes.tiny,
 			font = UI.Fonts.bold,
-			color = renk,
+			color = if kilit then UI.Colors.textDim else renk,
 			frameSize = UDim2.new(1, -200, 0, 18),
 			position = UDim2.fromOffset(66, 34),
 			parent = satir,
@@ -585,7 +587,7 @@ local function secimCiz()
 
 		-- Ayni isimden kac tane var: 3'e yetiyorsa yesil
 		local adet = UI.text({
-			text = `x{item.owned or 1}`,
+			text = if kilit then "LOCKED" else `x{item.owned or 1}`,
 			size = UI.Sizes.heading,
 			font = UI.Fonts.bold,
 			color = if yeter then YESIL else UI.Colors.textDim,
@@ -595,6 +597,14 @@ local function secimCiz()
 			parent = satir,
 		})
 		adet.ZIndex = 23
+
+		if kilit then
+			-- Kilitli satir soluk durur ve tiklanmaz
+			satir.BackgroundTransparency = 0.45
+			ad.TextTransparency = 0.35
+			resim.BackgroundTransparency = 0.5
+			continue
+		end
 
 		satir.MouseButton1Click:Connect(function()
 			FuseEkle:FireServer(item.uid)

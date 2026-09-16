@@ -88,6 +88,7 @@ local function paket(player: Player)
 			done = alindi,
 			ready = not alindi and ilerleme >= def.target,
 			reward = Gorevler.rewardText(def),
+			xp = Gorevler.xp(def),
 			color = Rarity.color(reward.rarity),
 		})
 	end
@@ -142,6 +143,7 @@ end
 	kind    -- "dig" | "collect" | "sell" | "place" | "lucky" | "fuse"
 	amount  -- kac tane (varsayilan 1)
 	rarity  -- yalnizca "collect" icin: toplanan brainrotun kademesi
+	          (kademesi olmayan gorevler bunu yok sayar)
 
 	Ayni eylem birden fazla gorevi ilerletebilir (ornegin "20 kaz" ve
 	"90 kaz" ayni anda panodaysa ikisi de sayar).

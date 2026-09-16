@@ -82,7 +82,7 @@ Shovels.Info = {
 		displayName = "Iron Shovel",
 		level = 2,
 		rarity = "Rare",
-		price = 30_000_000,
+		price = 1_000_000,
 		digSpeed = 0.85,
 		barSize = 0.26,
 		barAcceleration = 1.25,
@@ -96,7 +96,7 @@ Shovels.Info = {
 		displayName = "Golden Shovel",
 		level = 3,
 		rarity = "Epic",
-		price = 110_000_000,
+		price = 2_000_000,
 		digSpeed = 0.7,
 		barSize = 0.30,
 		barAcceleration = 1.40,
@@ -110,7 +110,7 @@ Shovels.Info = {
 		displayName = "Diamond Shovel",
 		level = 4,
 		rarity = "Legendary",
-		price = 450_000_000,
+		price = 15_000_000,
 		digSpeed = 0.55,
 		barSize = 0.34,
 		barAcceleration = 1.55,
@@ -124,7 +124,7 @@ Shovels.Info = {
 		displayName = "Celestial Shovel",
 		level = 5,
 		rarity = "Mythic",
-		price = 1_800_000_000,
+		price = 110_000_000,
 		digSpeed = 0.4,
 		barSize = 0.40,
 		barAcceleration = 1.75,
@@ -166,25 +166,25 @@ local function adaKuregi(id: string, displayName: string, level: number, island:
 end
 
 -- CANDY ISLAND  (Lv 6-10) -- Lv10 Cosmic'i zor alir
-adaKuregi("LollipopShovel", "Lollipop Shovel", 6, "sekerkum", "Cosmic", 7_000_000_000, Color3.fromRGB(255, 150, 210))
-adaKuregi("GummyShovel", "Gummy Shovel", 7, "sekerkum", "Cosmic", 13_500_000_000, Color3.fromRGB(255, 130, 200))
-adaKuregi("CandyCaneShovel", "Candy Cane Shovel", 8, "sekerkum", "Cosmic", 27_000_000_000, Color3.fromRGB(255, 110, 170))
-adaKuregi("CaramelShovel", "Caramel Shovel", 9, "sekerkum", "Cosmic", 55_000_000_000, Color3.fromRGB(240, 120, 190))
-adaKuregi("SugarCrystalShovel", "Sugar Crystal Shovel", 10, "sekerkum", "Cosmic", 100_000_000_000, Color3.fromRGB(255, 90, 200))
+adaKuregi("LollipopShovel", "Lollipop Shovel", 6, "sekerkum", "Cosmic", 3_500_000_000, Color3.fromRGB(255, 150, 210))
+adaKuregi("GummyShovel", "Gummy Shovel", 7, "sekerkum", "Cosmic", 4_500_000_000, Color3.fromRGB(255, 130, 200))
+adaKuregi("CandyCaneShovel", "Candy Cane Shovel", 8, "sekerkum", "Cosmic", 5_500_000_000, Color3.fromRGB(255, 110, 170))
+adaKuregi("CaramelShovel", "Caramel Shovel", 9, "sekerkum", "Cosmic", 7_000_000_000, Color3.fromRGB(240, 120, 190))
+adaKuregi("SugarCrystalShovel", "Sugar Crystal Shovel", 10, "sekerkum", "Cosmic", 8_000_000_000, Color3.fromRGB(255, 90, 200))
 
 -- SNOW ISLAND  (Lv 11-15) -- Lv15 Secret'i zor alir
 adaKuregi("FrostShovel", "Frost Shovel", 11, "snowkum", "Gizli", 35_000_000_000, Color3.fromRGB(170, 230, 255))
-adaKuregi("GlacierShovel", "Glacier Shovel", 12, "snowkum", "Gizli", 70_000_000_000, Color3.fromRGB(140, 215, 255))
-adaKuregi("BlizzardShovel", "Blizzard Shovel", 13, "snowkum", "Gizli", 140_000_000_000, Color3.fromRGB(120, 200, 250))
-adaKuregi("PermafrostShovel", "Permafrost Shovel", 14, "snowkum", "Gizli", 280_000_000_000, Color3.fromRGB(100, 185, 245))
-adaKuregi("AuroraShovel", "Aurora Shovel", 15, "snowkum", "Gizli", 525_000_000_000, Color3.fromRGB(110, 240, 230))
+adaKuregi("GlacierShovel", "Glacier Shovel", 12, "snowkum", "Gizli", 38_000_000_000, Color3.fromRGB(140, 215, 255))
+adaKuregi("BlizzardShovel", "Blizzard Shovel", 13, "snowkum", "Gizli", 43_000_000_000, Color3.fromRGB(120, 200, 250))
+adaKuregi("PermafrostShovel", "Permafrost Shovel", 14, "snowkum", "Gizli", 50_000_000_000, Color3.fromRGB(100, 185, 245))
+adaKuregi("AuroraShovel", "Aurora Shovel", 15, "snowkum", "Gizli", 55_000_000_000, Color3.fromRGB(110, 240, 230))
 
 -- VOLCANO ISLAND  (Lv 16-20) -- Lv20 Infernal'i zor alir
-adaKuregi("EmberShovel", "Ember Shovel", 16, "alevkum", "Infernal", 500_000_000_000, Color3.fromRGB(255, 170, 70))
-adaKuregi("MagmaShovel", "Magma Shovel", 17, "alevkum", "Infernal", 1_000_000_000_000, Color3.fromRGB(255, 145, 50))
-adaKuregi("BlazeShovel", "Blaze Shovel", 18, "alevkum", "Infernal", 2_000_000_000_000, Color3.fromRGB(255, 120, 40))
-adaKuregi("InfernoShovel", "Inferno Shovel", 19, "alevkum", "Infernal", 4_000_000_000_000, Color3.fromRGB(255, 95, 30))
-adaKuregi("EruptionShovel", "Eruption Shovel", 20, "alevkum", "Infernal", 7_500_000_000_000, Color3.fromRGB(255, 70, 20))
+adaKuregi("EmberShovel", "Ember Shovel", 16, "alevkum", "Infernal", 300_000_000_000, Color3.fromRGB(255, 170, 70))
+adaKuregi("MagmaShovel", "Magma Shovel", 17, "alevkum", "Infernal", 330_000_000_000, Color3.fromRGB(255, 145, 50))
+adaKuregi("BlazeShovel", "Blaze Shovel", 18, "alevkum", "Infernal", 370_000_000_000, Color3.fromRGB(255, 120, 40))
+adaKuregi("InfernoShovel", "Inferno Shovel", 19, "alevkum", "Infernal", 420_000_000_000, Color3.fromRGB(255, 95, 30))
+adaKuregi("EruptionShovel", "Eruption Shovel", 20, "alevkum", "Infernal", 490_000_000_000, Color3.fromRGB(255, 70, 20))
 
 Shovels.Default = "Wooden" :: ShovelId
 

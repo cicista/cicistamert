@@ -196,6 +196,14 @@ end
 	Hem liste (eligibleItems) hem koyma (insertItem) ayni kurali kullanir;
 	listede gorunen her sey gercekten konabilir.
 ]]
+-- Fuse havuzunun adasi: kazi yapilan ya da kaptandan acilan en ileri ada
+local function fuseAdasi(player: Player): string
+	local ulasilan = PlayerData.reachedIsland(player)
+	local data = PlayerData.get(player)
+	local acik = if data then Brainrots.IslandOrder[math.clamp(data.islands or 1, 1, 4)] else nil
+	return Brainrots.laterIsland(ulasilan, acik)
+end
+
 local function uygunsuzluk(player: Player, item: any): string?
 	if item.slot then
 		return "A brainrot on your base cannot be fused."
@@ -206,11 +214,20 @@ local function uygunsuzluk(player: Player, item: any): string?
 
 	local next = Fuse.nextRarity(item.rarity)
 	if not next then
-		return `{Rarity.displayName(item.rarity)} cannot be fused, it is the top tier.`
+		return `{Rarity.displayName(item.rarity)} brainrots cannot be fused.`
 	end
 
-	if not Brainrots.availableOn(next, PlayerData.reachedIsland(player)) then
-		return `{Rarity.displayName(next)} brainrots unlock on a later island.`
+	--[[
+		Ust kademe oyuncunun gidebildigi adalarda yoksa konamaz. Ada: kazi
+		yapilan en ileri ada YA DA kaptandan acilmis en ileri ada (hangisi
+		ilerideyse). Adayi acip henuz kazmamis oyuncu da birlestirebilsin.
+	]]
+	if not Brainrots.availableOn(next, fuseAdasi(player)) then
+		local ilk = Brainrots.firstIslandOf(next)
+		local adaAdi = if ilk then Brainrots.IslandNames[ilk] else nil
+		return if adaAdi
+			then `Unlock {adaAdi} to fuse into {Rarity.displayName(next)}.`
+			else `{Rarity.displayName(next)} brainrots unlock on a later island.`
 	end
 
 	local slot = pending[player]
@@ -238,16 +255,33 @@ local function eligibleItems(player: Player): { any }
 	local sayac: { [string]: number } = {}
 
 	for _, item in data.inventory do
-		if uygunsuzluk(player, item) then
+		--[[
+			Abyssal (makinenin gormedigi kademe), base'teki ve kimligi
+			acilmamis brainrotlar listede hic cikmaz. Kademesi ya da adasi
+			yuzunden konamayanlar ise KILITLI olarak listelenir: oyuncu
+			Divine'ini "gorunmuyor" sanmasin, nedenini okusun.
+		]]
+		if not Fuse.sees(item.rarity) or item.slot or not item.revealed or type(item.name) ~= "string" then
 			continue
 		end
-		sayac[item.name] = (sayac[item.name] or 0) + 1
+
+		local sebep = uygunsuzluk(player, item)
+		-- Makinede baska kademe varken diger kademeler listelenmez
+		local slot = pending[player]
+		if sebep and slot and slot.rarity ~= item.rarity then
+			continue
+		end
+
+		if not sebep then
+			sayac[item.name] = (sayac[item.name] or 0) + 1
+		end
 		table.insert(out, {
 			uid = item.uid,
 			name = item.name,
 			rarity = item.rarity,
 			condition = item.condition,
 			mutation = item.mutation,
+			locked = sebep,
 		})
 	end
 
@@ -255,8 +289,11 @@ local function eligibleItems(player: Player): { any }
 		entry.owned = sayac[entry.name] or 0
 	end
 
-	-- Once cok olan (3'e yetenler ustte), sonra ada gore
+	-- Kilitliler en altta; once cok olan (3'e yetenler ustte), sonra ada gore
 	table.sort(out, function(a, b)
+		if (a.locked ~= nil) ~= (b.locked ~= nil) then
+			return a.locked == nil
+		end
 		if a.owned ~= b.owned then
 			return a.owned > b.owned
 		end
@@ -439,7 +476,8 @@ local function completeFuse(player: Player)
 	end
 
 	local nextRarity = Fuse.nextRarity(slot.rarity)
-	local ada = PlayerData.reachedIsland(player)
+	-- Koyarken kullanilan adanin aynisi (bkz. fuseAdasi)
+	local ada = fuseAdasi(player)
 
 	if not nextRarity or not Brainrots.availableOn(nextRarity, ada) then
 		-- Koyarken engelleniyor; yine de brainrotlar kaybolmasin
@@ -475,9 +513,10 @@ local function completeFuse(player: Player)
 	end
 
 	-- Gorev panosu: makinede bir birlestirme yapildi (tutsa da tutmasa da)
-	GorevTakip.ilerlet(player, "fuse", 1, nextRarity)
+	-- Fuse gorevi kademeye bakmaz: her deneme sayar
+	GorevTakip.ilerlet(player, "fuse", 1)
 	-- Level: her deneme XP verir; tutarsa cikan kademenin XP'si de eklenir
-	Seviye.xpVer(player, Seviye.XP.fuse + (if basari then Seviye.rarityXp(nextRarity) else 0))
+	Seviye.xpVer(player, Seviye.XP.fuse)
 
 	local fromRarity = slot.rarity
 	local souls = #slot.entries

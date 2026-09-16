@@ -30,6 +30,8 @@ local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Ores = require(Shared:WaitForChild("Ores"))
+local Passler = require(Shared:WaitForChild("Passler"))
+local Hiz = require(Shared:WaitForChild("Hiz"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -223,6 +225,7 @@ local function buildPanel(info: any)
 	actionButton("Kum raporu (bastigin zemin, Output'a yazar)", "kumRaporu", nil, UI.Colors.textDim)
 	actionButton("VFX raporu (suzme efektinin icerigi)", "vfxRaporu", nil, UI.Colors.textDim)
 	actionButton("Gizli brainrot raporu (HiddenPart modeli)", "gizliRaporu", nil, UI.Colors.textDim)
+	actionButton("Yabanci script raporu (haritadaki scriptler, Output'a yazar)", "scriptRaporu", nil, UI.Colors.warn)
 
 	--[[
 		KUREK SEVIYESI: 20 seviye tek satira sigmiyor; her ada ayri satir
@@ -244,6 +247,30 @@ local function buildPanel(info: any)
 			chipRow(shovelChips)
 		end
 	end
+
+	section("HIZ  --  alinan yukseltme sayisi (Speed = sayi + 1)")
+	local hizChips = {}
+	for _, adet in { 0, 10, 25, 50, 75, 99, 100 } do
+		table.insert(hizChips, {
+			label = tostring(adet),
+			command = "setSpeed",
+			arg = adet,
+			color = Hiz.renk(adet + 1),
+		})
+	end
+	chipRow(hizChips)
+
+	section("ROBUX GECISLERI  --  bu oturum icin ver / al")
+	local passChips = {}
+	for ad, pass in Passler.Info do
+		table.insert(passChips, {
+			label = pass.ad,
+			command = "togglePass",
+			arg = ad,
+			color = UI.Colors.gold,
+		})
+	end
+	chipRow(passChips)
 
 	section("DEDEKTOR SEVIYESI")
 	local detectorChips = {}

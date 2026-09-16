@@ -2,8 +2,9 @@
 	MadenSayaci  (LocalScript)
 	Yeri: StarterPlayer > StarterPlayerScripts > MadenSayaci
 
-	MADENLI BIR ADADAYKEN o adanin uc madeninden kac tane oldugunu
-	ayarlar (Settings) ikonunun hemen ustunde gosterir.
+	MADENLI BIR ADANIN KUMUNUN USTUNDEYKEN o adanin uc madeninden kac tane
+	oldugunu sagdaki isinlayici (Teleporter) ikonunun hemen ustunde
+	gosterir.
 
 	    Candy Island    Amethyst / Opal / Morganite
 	    Snow Island     Sapphire / Lapis / Quartz
@@ -11,12 +12,12 @@
 
 	Main Island'da ve denizde hicbir sey gorunmez.
 
-	ADA SINIRI
-	Workspace'teki ada modelinin (CandyIsland, SnowIsland, VolcanoIsland --
-	bkz. Shared > Ores > modelName) kutusu. Oyuncu kutunun yatay sinirlari
-	icindeyse o adada sayilir; zipladiginda ya da ucarken de kaybolmaz.
-	Kutu birkac saniyede bir yeniden olculur: model akisla (streaming)
-	parca parca yuklenirse sinir buyudukce guncellenir.
+	HANGI ADA
+	Ayagin altindaki ZEMININ ADINA bakilir: sekerkum -> Candy, snowkum ->
+	Snow, alevkum -> Volcano. Once ada modelinin kutusuna bakiliyordu;
+	kutular birbirine tastigi icin sayac yanlis adada cikiyordu (bug).
+	Ziplarken kaybolmasin diye kumdan ayrildiktan sonra kisa bir sure
+	daha gorunur kalir.
 
 	Sayilar sunucunun gonderdigi envanterden gelir (EnvanterGuncelle.ores).
 ]]
@@ -38,9 +39,12 @@ local UI = require(script.Parent:WaitForChild("UI"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 
--- Ada kontrolu siklik (saniye) ve sinir kutusunun yeniden olculme araligi
+-- Zemin kontrolu sikligi (saniye)
 local KONTROL_ARASI = 0.25
-local SINIR_TAZELE = 5
+-- Kumdan ayrildiktan (ziplama, kazi) sonra sayac bu kadar saniye daha kalir
+local KUMSUZ_BEKLEME = 1.5
+-- Ayagin altina kac stud isin atilir (Config.Sand.rayDepth ile ayni)
+local ISIN_BOYU = 12
 
 -- Kutunun ayarlar ikonuna olan dikey boslugu
 local IKON_BOSLUK = 8
@@ -178,66 +182,39 @@ EnvanterGuncelle.OnClientEvent:Connect(function(payload)
 end)
 
 ------------------------------------------------------------------
--- ADA TESPITI
+-- ADA TESPITI  --  yalnizca adanin KUMU
 ------------------------------------------------------------------
-type Sinir = { cf: CFrame, size: Vector3, olculdu: number }
-local sinirlar: { [string]: Sinir } = {}
-
-local function sinirAl(ada: string): Sinir?
-	local simdi = os.clock()
-	local eski = sinirlar[ada]
-	if eski and simdi - eski.olculdu < SINIR_TAZELE then
-		return eski
-	end
-
-	local cfg = Ores.Islands[ada]
-	local model = cfg and Workspace:FindFirstChild(cfg.modelName, true)
-	if not model or not model:IsA("Model") then
-		return eski
-	end
-
-	local ok, cf, size = pcall(function()
-		return model:GetBoundingBox()
-	end)
-	if not ok then
-		return eski
-	end
-
-	local yeni = { cf = cf, size = size, olculdu = simdi }
-	sinirlar[ada] = yeni
-	return yeni
-end
-
---[[
-	1) ZEMIN: ayagin altina isin atilir; carpilan parca hangi ada modelinin
-	   icindeyse o ada. En guvenilir yol -- ada kutulari birbirine
-	   tasabiliyor (SnowIsland'in kutusu Volcano'yu da kapliyordu ve
-	   volkanda Snow madenleri gorunuyordu).
-
-	   MainIsland'a basiliyorsa "main" doner: sayac gizlenir.
-]]
-local ANA_ADA_MODELI = "MainIsland"
+-- Zemin parcasi adi (kucuk harf) -> madenli ada kimligi
+local KUM_ADI: { [string]: string } = {
+	sekerkum = "sekerkum",
+	sakizkum = "sekerkum",
+	snowkum = "snowkum",
+	buzkum = "snowkum",
+	alevkum = "alevkum",
+	volkankum = "alevkum",
+}
 
 local isinAyari = RaycastParams.new()
 isinAyari.FilterType = Enum.RaycastFilterType.Exclude
 
-local function zemindenAda(konum: Vector3): string?
+-- Ayagin altindaki kum hangi madenli adanin; kum degilse nil
+local function kumdanAda(konum: Vector3): string?
 	isinAyari.FilterDescendantsInstances = { player.Character :: Instance }
 
-	local hit = Workspace:Raycast(konum, Vector3.new(0, -80, 0), isinAyari)
+	local hit = Workspace:Raycast(konum, Vector3.new(0, -ISIN_BOYU, 0), isinAyari)
 	if not hit then
 		return nil
 	end
 
+	-- Kum bir model/klasor icinde parcalardan olusuyor olabilir: iki ust kademeye de bakilir
 	local node: Instance? = hit.Instance
-	while node and node ~= Workspace do
-		if node.Name == ANA_ADA_MODELI then
-			return "main"
+	for _ = 1, 3 do
+		if not node or node == Workspace then
+			break
 		end
-		for _, ada in Ores.IslandOrder do
-			if node.Name == Ores.Islands[ada].modelName then
-				return ada
-			end
+		local ada = KUM_ADI[string.lower(node.Name)]
+		if ada then
+			return ada
 		end
 		node = node.Parent
 	end
@@ -245,43 +222,8 @@ local function zemindenAda(konum: Vector3): string?
 	return nil
 end
 
---[[
-	2) KUTU: zemin bir adaya ait degilse (su, hava, Terrain) oyuncuyu
-	   kapsayan ada kutularina bakilir. Birden fazlasi kapsiyorsa ALANI EN
-	   KUCUK olan secilir -- tasan buyuk kutu kucuk adayi ezmesin.
-]]
-local function kutudanAda(konum: Vector3): string?
-	local secilen: string? = nil
-	local enKucuk = math.huge
-
-	for _, ada in Ores.IslandOrder do
-		local sinir = sinirAl(ada)
-		if sinir then
-			local yerel = sinir.cf:PointToObjectSpace(konum)
-			if math.abs(yerel.X) <= sinir.size.X / 2 and math.abs(yerel.Z) <= sinir.size.Z / 2 then
-				local alan = sinir.size.X * sinir.size.Z
-				if alan < enKucuk then
-					enKucuk = alan
-					secilen = ada
-				end
-			end
-		end
-	end
-
-	return secilen
-end
-
--- Oyuncu hangi madenli adada; Main Island ya da hicbiri ise nil
-local function hangiAda(konum: Vector3): string?
-	local zemin = zemindenAda(konum)
-	if zemin == "main" then
-		return nil
-	end
-	if zemin then
-		return zemin
-	end
-	return kutudanAda(konum)
-end
+local sonKum = -math.huge
+local sonAda: string? = nil
 
 task.spawn(function()
 	while true do
@@ -289,7 +231,14 @@ task.spawn(function()
 
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
-		local ada = if root and root:IsA("BasePart") then hangiAda(root.Position) else nil
+		local kum = if root and root:IsA("BasePart") then kumdanAda(root.Position) else nil
+
+		local simdi = os.clock()
+		if kum then
+			sonKum = simdi
+			sonAda = kum
+		end
+		local ada = if kum then kum elseif simdi - sonKum < KUMSUZ_BEKLEME then sonAda else nil
 
 		if ada ~= mevcutAda then
 			mevcutAda = ada
@@ -299,9 +248,10 @@ task.spawn(function()
 end)
 
 ------------------------------------------------------------------
--- AYARLAR IKONUNUN USTUNE YERLESTIRME
+-- ISINLAYICI IKONUNUN USTUNE YERLESTIRME
 --
--- Ikon Menuler'in kurdugu "SagMenu" sutununda "Settings" adiyla duruyor.
+-- Ikon Menuler'in kurdugu "SagMenu" sutununda "Teleporter" adiyla duruyor
+-- (yoksa eskisi gibi "Settings").
 -- Konumu arayuz olcegiyle degisebildigi icin her karede okunuyor; kutu
 -- gorunmuyorken hic hesap yapilmaz.
 ------------------------------------------------------------------
@@ -314,7 +264,7 @@ local function butonuBul(): GuiObject?
 
 	local menu = playerGui:FindFirstChild("OyunMenuleri")
 	local sutun = menu and menu:FindFirstChild("SagMenu", true)
-	local buton = sutun and sutun:FindFirstChild("Settings", true)
+	local buton = sutun and (sutun:FindFirstChild("Teleporter", true) or sutun:FindFirstChild("Settings", true))
 
 	if menu and menu:IsA("ScreenGui") then
 		-- Ayni ust bosluk kurali: yoksa kutu ikona gore kayar

@@ -123,6 +123,11 @@ export type Data = {
 	-- Arka plan muzigi: ses yuzdesi (0..100) ve kapali mi
 	musicVolume: number,
 	musicMuted: boolean,
+	-- Ses efektleri (muzik haric butun sesler): yuzde ve kapali mi
+	sfxVolume: number,
+	sfxMuted: boolean,
+	-- Alinan hiz yukseltmesi sayisi (0..100, bkz. Shared > Hiz)
+	speedLevel: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
 	--[[
@@ -177,6 +182,9 @@ local function defaultData(): Data
 		uiScale = 100,
 		musicVolume = 100,
 		musicMuted = false,
+		sfxVolume = 100,
+		sfxMuted = false,
+		speedLevel = 0,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
 	}
@@ -262,6 +270,11 @@ local function migrate(raw: any): Data
 	-- Muzik ayari oncesi kayitlar: tam ses, acik
 	data.musicVolume = math.clamp(tonumber(raw.musicVolume) or 100, 0, 100)
 	data.musicMuted = raw.musicMuted == true
+	-- Ses efekti ayari oncesi kayitlar: tam ses, acik
+	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or 100, 0, 100)
+	data.sfxMuted = raw.sfxMuted == true
+	-- Hiz yukseltmesi oncesi kayitlar 0'dan baslar
+	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)

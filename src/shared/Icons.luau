@@ -93,6 +93,28 @@ local Map: { [string]: IconEntry } = {
 	},
 	shop = { "Menus", "Shop" },
 	teleport = { "Menus", "Teleport" },
+	--[[
+		Sagdaki base'e don butonu ve soldaki hiz butonu. Pakette adi kesin
+		bilinmiyor; sirayla denenir. Hicbiri yoksa butonda emoji gorunur.
+		Kendi ikonunu Assets > Icons icine "Home" / "Speed" adiyla koyarsan
+		o kullanilir.
+	]]
+	home = {
+		{ "Assets", "Home" },
+		{ "Menus", "Home" },
+		{ "Menus", "House" },
+		{ "Misc", "Home" },
+		{ "Misc", "House" },
+	},
+	speed = {
+		{ "Assets", "Speed" },
+		{ "Assets", "Shoe" },
+		{ "Stats", "Speed" },
+		{ "Stats", "WalkSpeed" },
+		{ "Misc", "Shoe" },
+		{ "Misc", "Boot" },
+		{ "Menus", "Speed" },
+	},
 	settings = { "Menus", "Settings" },
 	seller = { "Cash", "CashBag" },
 	detective = { "Misc", "Question" },

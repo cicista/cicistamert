@@ -71,6 +71,8 @@ function Envanter.push(player: Player)
 		pickaxes = data.pickaxes,
 		-- Envanter ekrani base bolumunu 1..acik slot sayisi kadar ciziyor
 		baseSlots = data.baseSlots,
+		-- Isinlayici menusu acik adalari bundan ciziyor
+		islands = data.islands,
 	})
 end
 

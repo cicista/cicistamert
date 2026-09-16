@@ -7,8 +7,10 @@
 	    SUZME SESI  -- BU OYUNCUNUN suzmesi dogunca (baskasinin suzmesinde calmaz)
 	    KAZI SESI   -- bu oyuncu kaziya basladigi AN (kumda / madende; denizde olta
 	                   atarken calmaz)
-	    KAZI DONGUSU -- "Dirt Digging": kazi SURDUGU SURECE dongude calar,
-	                   kazi bitince susar
+	    KAZI DONGUSU -- "Dirt Digging": kazi SURDUGU SURECE calar, kazi
+	                   bitince susar. Ses kendi uzunlugunda DONMEZ: her
+	                   DONGU_ARALIGI (0.4 sn) saniyede basa sarilir --
+	                   kurek ve kazma animasyonlarinin vurus hiziyla ayni
 
 	Sesler Studio'ya elle konan Sound'lar; ADIYLA bulunur. Turkce harfler,
 	buyuk/kucuk harf, bosluk, _ ve - yok sayilir:
@@ -136,6 +138,9 @@ end)
 ]]
 local donguSesi: Sound? = nil
 
+-- Kazi sesi bu kadar saniyede bir basa sarilir (kurek ve kazma vurusu)
+local DONGU_ARALIGI = 0.4
+
 local function donguyuDurdur()
 	local ses = donguSesi
 	donguSesi = nil
@@ -163,10 +168,18 @@ local function donguyuBaslat()
 
 	local kopya = kaynak:Clone()
 	kopya.Name = "KaziDongusu"
-	kopya.Looped = true
+	-- Kendi basina donmez; asagidaki dongu her 0.4 sn'de basa sarar
+	kopya.Looped = false
 	kopya.Parent = SoundService
-	kopya:Play()
 	donguSesi = kopya
+
+	task.spawn(function()
+		while donguSesi == kopya and kopya.Parent do
+			kopya.TimePosition = 0
+			kopya:Play()
+			task.wait(DONGU_ARALIGI)
+		end
+	end)
 end
 
 local function karakterBagla(karakter: Model)

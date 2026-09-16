@@ -1245,4 +1245,9 @@ function Index.kapat()
 	panel.Visible = false
 end
 
+-- Sol menudeki Index butonu ikinci tiklamada kapatsin diye
+function Index.acikMi(): boolean
+	return panel.Visible
+end
+
 return Index

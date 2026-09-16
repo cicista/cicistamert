@@ -14,17 +14,21 @@
 	yalnizca EYLEM SAYIYOR (kaz, topla, sat, yerlestir, ac, birlestir) --
 	bunlar oyunun her asamasinda asagi yukari ayni emegi ister.
 
-	ZORLUK DENGESI
+	ZORLUK DENGESI  (yarim saatte ~60 kazi)
 
-	Isik suzmesi sanslari: Common %62, Rare %25, Epic %9, Legendary %3.
-	Yani "10 Rare topla" ortalama 40 kazi demek -- yarim saatlik pano icin
-	normal zorluk. Hedefler bu tabloya gore secildi.
+	Isik suzmesi sanslari ana adada: Common %62, Rare %25, Epic %9,
+	Legendary %3. "8 Rare topla" ~30 kazi, "3 Epic topla" ~35 kazi demek.
+	Legendary tahta kurekle kazilamiyor; o gorev yalnizca en zor dilimde.
 
-	ODULLER TAMAMEN COIN
-	  easy   -> 1 Rare Coin
-	  normal -> 1 Epic Coin
-	  hard   -> 1 Legendary Coin
-	(Oduller artik coin degil, o kademeden kimligi acik bir brainrot.)
+	ODUL
+	  XP     : easy 500, normal 1500, hard 3000, extreme 5000
+	  Brainrot: KADEME GOREVI (collect) istedigi kademeden verir -- ustunden
+	            DEGIL. "3 Epic topla" -> 1 Epic brainrot.
+	            Kademesiz gorevler (kaz, sat, yerlestir, ac, fuse) zorluga
+	            gore: easy Common, normal Rare, hard Epic, extreme Legendary.
+
+	Coin sistemi kaldirildi; "Fuse ile X coin uret" gorevleri de kalkti.
+	Fuse gorevi artik yalnizca makineyi calistirmayi sayar.
 ]]
 
 local Rarity = require(script.Parent.Rarity)
@@ -46,8 +50,7 @@ export type Difficulty = "easy" | "normal" | "hard" | "extreme"
 export type QuestDef = {
 	id: string,
 	kind: QuestKind,
-	-- Sayilacak kademe. "collect" gorevinde toplanan brainrotun, "fuse"
-	-- gorevinde uretilen coinin kademesi. Bos birakilirsa hepsi sayar.
+	-- Yalnizca "collect": sayilacak (ve odul olarak verilecek) kademe
 	rarity: string?,
 	target: number,
 	difficulty: Difficulty,
@@ -55,122 +58,98 @@ export type QuestDef = {
 	short: string,
 	-- Panelde gorunen tam metin
 	text: string,
-	--[[
-		Zorlugun standart odulunun yerine gecer.
-
-		Fuse gorevleri icin var: "Mythic coin uret" diyen gorev odul olarak
-		yine Mythic vermez -- oyuncu zaten o coini elinde tutuyor. Istenen
-		fuse'in BIR ALTI verilir.
-	]]
-	reward: Reward?,
 }
 
 export type Reward = { rarity: string, count: number }
 
---[[
-	ODUL KADEMESI = EMEK KADEMESI
+-- Zorluga gore XP
+Gorevler.XP = {
+	easy = 500,
+	normal = 1500,
+	hard = 3000,
+	extreme = 5000,
+} :: { [Difficulty]: number }
 
-	Bir gorev Legendary coin veriyorsa EN AZ Epic isteyecek (Epic suzme kazmak
-	ya da Legendary coin uretmek); Mythic coin veriyorsa Legendary isteyecek.
-	Yoksa Common kazarak Mythic kazanilirdi ve kademelerin anlami kalmazdi.
-
-	  easy    -> Rare Coin       (Common seviyesi is)
-	  normal  -> Epic Coin       (Rare seviyesi is)
-	  hard    -> Legendary Coin  (Epic seviyesi is)
-	  extreme -> Mythic Coin     (Legendary seviyesi is)
-]]
+-- Kademesiz gorevlerin brainrot odulu
 local Rewards: { [Difficulty]: Reward } = {
-	easy = { rarity = "Rare", count = 1 },
-	normal = { rarity = "Epic", count = 1 },
-	hard = { rarity = "Legendary", count = 1 },
-	extreme = { rarity = "Mythic", count = 1 },
+	easy = { rarity = "Common", count = 1 },
+	normal = { rarity = "Rare", count = 1 },
+	hard = { rarity = "Epic", count = 1 },
+	extreme = { rarity = "Legendary", count = 1 },
 }
 
 local Pool: { QuestDef } = {
 	-- KOLAY  --  birkac dakika
 	{
-		id = "dig20",
+		id = "dig15",
 		kind = "dig",
-		target = 20,
-		difficulty = "easy",
-		short = "Beams Dug",
-		text = "Dig Up 20 Light Beams",
-	},
-	{
-		id = "common15",
-		kind = "collect",
-		rarity = "Common",
 		target = 15,
 		difficulty = "easy",
-		short = "Common Brainrots",
-		text = "Collect 15 Common Brainrots",
+		short = "Beams Dug",
+		text = "Dig Up 15 Light Beams",
 	},
 	{
-		id = "sell10",
-		kind = "sell",
+		id = "common10",
+		kind = "collect",
+		rarity = "Common",
 		target = 10,
 		difficulty = "easy",
-		short = "Brainrots Sold",
-		text = "Sell 10 Brainrots",
+		short = "Common Brainrots",
+		text = "Collect 10 Common Brainrots",
 	},
 	{
-		id = "place5",
+		id = "sell8",
+		kind = "sell",
+		target = 8,
+		difficulty = "easy",
+		short = "Brainrots Sold",
+		text = "Sell 8 Brainrots",
+	},
+	{
+		id = "place3",
 		kind = "place",
-		target = 5,
+		target = 3,
 		difficulty = "easy",
 		short = "Brainrots Placed",
-		text = "Place 5 Brainrots On Your Base",
+		text = "Place 3 Brainrots On Your Base",
 	},
 
-	-- NORMAL  --  yarim saatin buyuk kismi
+	-- NORMAL  --  yarim saatin bir kismi
 	{
-		id = "rare10",
-		kind = "collect",
-		rarity = "Rare",
-		target = 10,
-		difficulty = "normal",
-		short = "Rare Brainrots",
-		text = "Collect 10 Rare Brainrots",
-	},
-	{
-		id = "dig45",
+		id = "dig35",
 		kind = "dig",
-		target = 45,
+		target = 35,
 		difficulty = "normal",
 		short = "Beams Dug",
-		text = "Dig Up 45 Light Beams",
+		text = "Dig Up 35 Light Beams",
 	},
 	{
-		id = "sell25",
-		kind = "sell",
-		target = 25,
-		difficulty = "normal",
-		short = "Brainrots Sold",
-		text = "Sell 25 Brainrots",
-	},
-	{
-		--[[
-			Lucky block nadir bir esya: "3 tane ac" gorevi cogu panoda
-			bitirilemezdi. Tek blok isteniyor, odul yine Epic coin.
-		]]
-		id = "lucky1",
-		kind = "lucky",
-		target = 1,
-		difficulty = "normal",
-		short = "Lucky Blocks Opened",
-		text = "Open A Lucky Block",
-	},
-	{
-		id = "rare25",
+		id = "rare8",
 		kind = "collect",
 		rarity = "Rare",
-		target = 25,
+		target = 8,
 		difficulty = "normal",
 		short = "Rare Brainrots",
-		text = "Collect 25 Rare Brainrots",
+		text = "Collect 8 Rare Brainrots",
+	},
+	{
+		id = "sell20",
+		kind = "sell",
+		target = 20,
+		difficulty = "normal",
+		short = "Brainrots Sold",
+		text = "Sell 20 Brainrots",
+	},
+	{
+		id = "place8",
+		kind = "place",
+		target = 8,
+		difficulty = "normal",
+		short = "Brainrots Placed",
+		text = "Place 8 Brainrots On Your Base",
 	},
 
-	-- ZOR  --  Epic seviyesi is, Legendary coin verir
+	-- ZOR  --  yarim saatin cogu
 	{
 		id = "epic3",
 		kind = "collect",
@@ -181,37 +160,61 @@ local Pool: { QuestDef } = {
 		text = "Collect 3 Epic Brainrots",
 	},
 	{
-		id = "fuseLegendary",
-		kind = "fuse",
-		rarity = "Legendary",
+		id = "dig60",
+		kind = "dig",
+		target = 60,
+		difficulty = "hard",
+		short = "Beams Dug",
+		text = "Dig Up 60 Light Beams",
+	},
+	{
+		--[[
+			Lucky block nadir bir esya: tek blok isteniyor. Blogu olmayan
+			oyuncu icin zor sayilir.
+		]]
+		id = "lucky1",
+		kind = "lucky",
 		target = 1,
 		difficulty = "hard",
-		-- Istenen fuse'in bir alti: Legendary uret, Epic coin al
-		reward = { rarity = "Epic", count = 1 },
-		short = "Legendary Coins Made",
-		text = "Create A Legendary Coin At The Fuse Machine",
+		short = "Lucky Blocks Opened",
+		text = "Open A Lucky Block",
+	},
+	{
+		id = "fuse1",
+		kind = "fuse",
+		target = 1,
+		difficulty = "hard",
+		short = "Fuses Done",
+		text = "Use The Fuse Machine Once",
 	},
 
-	-- COK ZOR  --  Legendary seviyesi is, Mythic coin verir
+	-- COK ZOR  --  tam yarim saatlik is
 	{
-		id = "legendary2",
+		id = "legendary1",
 		kind = "collect",
 		rarity = "Legendary",
-		target = 2,
-		difficulty = "extreme",
-		short = "Legendary Brainrots",
-		text = "Collect 2 Legendary Brainrots",
-	},
-	{
-		id = "fuseMythic",
-		kind = "fuse",
-		rarity = "Mythic",
 		target = 1,
 		difficulty = "extreme",
-		-- Istenen fuse'in bir alti: Mythic uret, Legendary coin al
-		reward = { rarity = "Legendary", count = 1 },
-		short = "Mythic Coins Made",
-		text = "Create A Mythic Coin At The Fuse Machine",
+		short = "Legendary Brainrots",
+		text = "Collect A Legendary Brainrot",
+	},
+	{
+		id = "epic6",
+		kind = "collect",
+		rarity = "Epic",
+		target = 6,
+		difficulty = "extreme",
+		short = "Epic Brainrots",
+		text = "Collect 6 Epic Brainrots",
+	},
+	{
+		id = "rare20",
+		kind = "collect",
+		rarity = "Rare",
+		target = 20,
+		difficulty = "extreme",
+		short = "Rare Brainrots",
+		text = "Collect 20 Rare Brainrots",
 	},
 }
 
@@ -230,8 +233,16 @@ function Gorevler.get(id: string): QuestDef?
 	return byId[id]
 end
 
+-- Kademe gorevi kendi kademesini, digerleri zorluk odulunu verir
 function Gorevler.reward(def: QuestDef): Reward
-	return def.reward or Rewards[def.difficulty]
+	if def.kind == "collect" and def.rarity then
+		return { rarity = def.rarity, count = 1 }
+	end
+	return Rewards[def.difficulty]
+end
+
+function Gorevler.xp(def: QuestDef): number
+	return Gorevler.XP[def.difficulty] or 0
 end
 
 --[[

@@ -6,7 +6,7 @@
 
 	KULLANIM
 	  Seviye.xpVer(player, Seviye.XP.ore)
-	  Seviye.xpVer(player, Seviye.rarityXp("Epic"))
+	  Seviye.xpVer(player, Seviye.XP.beam)
 	  Seviye.carpan(player)   -- kazi sansina carpilan kalici level bonusu
 
 	XP yalnizca sunucuda verilir; istemci sadece gosterir (SeviyeDurum,
@@ -23,6 +23,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Fonts = require(Shared:WaitForChild("Fonts"))
 local Net = require(Shared:WaitForChild("Net"))
 local SeviyeAyar = require(Shared:WaitForChild("Seviye"))
+local Hiz = require(Shared:WaitForChild("Hiz"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
@@ -38,11 +39,14 @@ local Seviye = {}
 
 -- Diger scriptler ayarlara ayrica require yazmadan ulassin
 Seviye.XP = SeviyeAyar.XP
-Seviye.rarityXp = SeviyeAyar.rarityXp
 
 ------------------------------------------------------------------
--- BAS USTU YAZISI  ("Lv. 12")
+-- BAS USTU YAZISI  ("Lv. 12", altinda daha kucuk "Speed 57")
 ------------------------------------------------------------------
+local ETIKET_EN = 140
+local LEVEL_BOY = 30
+local HIZ_BOY = 20
+
 local function etiketGuncelle(player: Player)
 	local data = PlayerData.get(player)
 	local character = player.Character
@@ -55,16 +59,17 @@ local function etiketGuncelle(player: Player)
 	if not etiket then
 		local yeni = Instance.new("BillboardGui")
 		yeni.Name = ETIKET_ADI
-		yeni.Size = UDim2.fromOffset(120, 30)
-		-- Roblox'un kendi isim yazisinin biraz ustunde
-		yeni.StudsOffset = Vector3.new(0, 2.6, 0)
+		yeni.Size = UDim2.fromOffset(ETIKET_EN, LEVEL_BOY + HIZ_BOY)
+		-- Roblox'un kendi isim yazisinin biraz ustunde; hiz satiri eklenince
+		-- kutu asagi uzadigi icin merkez biraz yukari alindi
+		yeni.StudsOffset = Vector3.new(0, 2.8, 0)
 		yeni.MaxDistance = 90
 		yeni.LightInfluence = 0
 		yeni.Parent = head
 
 		local yazi = Instance.new("TextLabel")
 		yazi.Name = "Yazi"
-		yazi.Size = UDim2.fromScale(1, 1)
+		yazi.Size = UDim2.new(1, 0, 0, LEVEL_BOY)
 		yazi.BackgroundTransparency = 1
 		yazi.TextColor3 = Color3.fromRGB(255, 215, 40)
 		yazi.TextSize = 22
@@ -76,6 +81,21 @@ local function etiketGuncelle(player: Player)
 		kontur.Thickness = 2
 		kontur.Parent = yazi
 
+		-- Hiz seviyesi: levelin altinda, ondan kucuk; rengi seviyeyle isinir
+		local hizYazi = Instance.new("TextLabel")
+		hizYazi.Name = "Hiz"
+		hizYazi.Position = UDim2.fromOffset(0, LEVEL_BOY - 2)
+		hizYazi.Size = UDim2.new(1, 0, 0, HIZ_BOY)
+		hizYazi.BackgroundTransparency = 1
+		hizYazi.TextSize = 15
+		Fonts.apply(hizYazi)
+		hizYazi.Parent = yeni
+
+		local hizKontur = Instance.new("UIStroke")
+		hizKontur.Color = Color3.new(0, 0, 0)
+		hizKontur.Thickness = 1.5
+		hizKontur.Parent = hizYazi
+
 		etiket = yeni
 	end
 
@@ -83,7 +103,17 @@ local function etiketGuncelle(player: Player)
 	if yazi then
 		yazi.Text = `Lv. {data.level}`
 	end
+
+	local hizYazi = (etiket :: BillboardGui):FindFirstChild("Hiz") :: TextLabel?
+	if hizYazi then
+		local hizSeviyesi = (data.speedLevel or 0) + 1
+		hizYazi.Text = `Speed {hizSeviyesi}`
+		hizYazi.TextColor3 = Hiz.renk(hizSeviyesi)
+	end
 end
+
+-- Hiz yukseltmesi de bas ustu yazisini tazeler (bkz. ServerScriptService > Hiz)
+Seviye.etiketGuncelle = etiketGuncelle
 
 ------------------------------------------------------------------
 -- DURUM

@@ -52,29 +52,17 @@
 	Oyuncuya ayrica bir uyari gosterilmez.
 ]]
 
-local RunService = game:GetService("RunService")
-
 local KaziMinigame = require(script.Parent.KaziMinigame)
 
 local OtoTiklayici = {}
 
 --[[
-	Creator Dashboard'da olusturulan Pass'in ID'si.
+	SATIN ALMA VE SAHIPLIK Shared > Passler'da ("AutoClicker").
 
-	0 = henuz baglanmadi. Bu haldeyken dugme hic gorunmez, kimseye
-	satin alma penceresi acilmaz -- yani ID girilmeden oyuna zarar
-	vermez, ozellik sadece uyur.
-
-	Nasil alinir:
-	  create.roblox.com > deneyim > Associated Items > Passes > Create
-	  Pass'i olusturduktan sonra fiyatini FIYAT ile ayni yap (500).
-	  Adres cubugundaki .../passes/<ID>/... sayisini buraya yaz.
+	Dugme HERKESTE gorunur. Gecisi olmayan oyuncuda "BUY" yazar ve
+	basinca satin alma penceresi acilir (ID girilmediyse "Coming soon!").
+	Eskiden Studio test kapisi yuzunden herkeste bedava acik geliyordu.
 ]]
-OtoTiklayici.GAMEPASS_ID = 0
-
--- Magazada/dugmede yazan fiyat. Robux fiyatini Roblox tarafinda ayarlarsin;
--- bu sayi yalnizca arayuzde gosterilir.
-OtoTiklayici.FIYAT = 500
 
 --[[
 	Saniyedeki otomatik tiklama sayisi.
@@ -88,55 +76,5 @@ OtoTiklayici.CPS = KaziMinigame.MAX_CPS
 
 -- Iki otomatik tiklama arasindaki sure (saniye)
 OtoTiklayici.ARALIK = 1 / OtoTiklayici.CPS
-
---[[
-	Pass baglandi mi?
-
-	ID girilmediyse ozellik tamamen sessiz kalir: dugme cizilmez,
-	sunucu sorgu yapmaz. Yarim kurulmus bir satin alma akisinin
-	oyuncuya gorunmesi, hic gorunmemesinden kotudur.
-]]
-function OtoTiklayici.kurulu(): boolean
-	return OtoTiklayici.GAMEPASS_ID > 0
-end
-
---[[
-	STUDIO TEST KAPISI
-
-	Pass olusturulmadan ozelligi denemek icin. ACIKKEN, yalnizca
-	STUDIO'DA, pass alinmis gibi davranilir: dugme cikar, tiklayinca
-	acilir/kapanir, kurek kendi kendine vurur. Satin alma penceresi
-	acilmaz (acilacak bir pass yok).
-
-	YAYINDAKI OYUNU ETKILEMEZ: RunService:IsStudio() yalnizca Studio
-	icinde true. Sunucuda calisan gercek oyunda bu kapi kapalidir, yani
-	burayi true birakip yayina cikmak kimseye bedava pass vermez.
-
-	Pass ID girildikten sonra bu kapinin islevi kalmaz: kurulu() true
-	olur ve sahiplik normal yoldan, MarketplaceService'ten okunur.
-]]
-OtoTiklayici.TEST_STUDIO = true
-
---[[
-	Dugme cizilsin mi?
-
-	Ya pass baglanmistir, ya da Studio'da test kapisi aciktir.
-]]
-function OtoTiklayici.gorunur(): boolean
-	if OtoTiklayici.kurulu() then
-		return true
-	end
-	return OtoTiklayici.TEST_STUDIO and RunService:IsStudio()
-end
-
---[[
-	Sahiplik SORULMADAN dogru sayilsin mi?
-
-	Yalnizca test kapisi halinde. Pass baglandiysa burasi false doner ve
-	cevap sunucudan gelir -- test kapisi gercek sahipligin onune gecmez.
-]]
-function OtoTiklayici.testSahipligi(): boolean
-	return not OtoTiklayici.kurulu() and OtoTiklayici.TEST_STUDIO and RunService:IsStudio()
-end
 
 return OtoTiklayici

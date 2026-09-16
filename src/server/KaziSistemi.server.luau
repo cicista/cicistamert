@@ -359,8 +359,8 @@ local function finishDig(player: Player, won: boolean)
 	-- Gorev panosu: hem "kaz" hem de kademe gorevleri bu kazidan sayar
 	GorevTakip.ilerlet(player, "dig", 1)
 	GorevTakip.ilerlet(player, "collect", 1, beam.kind)
-	-- Level: kazilan brainrotun kademesine gore XP
-	Seviye.xpVer(player, Seviye.rarityXp(beam.kind))
+	-- Level: kademeden bagimsiz; denizde balik 100, kumda isik 30 XP
+	Seviye.xpVer(player, if session.sea then Seviye.XP.fish else Seviye.XP.beam)
 end
 
 local function startDig(player: Player, beamId: string)

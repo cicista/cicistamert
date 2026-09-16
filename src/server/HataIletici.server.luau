@@ -14,6 +14,16 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+--[[
+	KAPALI: ekip hata kutusunu Studio'da da gormek istemiyor. Hatalar yine
+	Output penceresinde. Tekrar acmak icin ACIK = true yap (HataEkrani ve
+	HataIletici ikisinde de).
+]]
+local ACIK = false
+if not ACIK then
+	return
+end
+
 if not RunService:IsStudio() then
 	return
 end

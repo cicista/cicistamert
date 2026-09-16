@@ -15,7 +15,9 @@
 	    olabilir, ayni isim sayisi arttikca sans artar.
 	  - Kimligi acilmamis (siyah) brainrot konamaz: adi bilinmiyor.
 	  - Base slotundaki brainrot konamaz.
-	  - En ust kademe birlestirilemez; ustu yok.
+	  - Makine Abyssal'i HIC GORMEZ: Abyssal konamaz ve uretilemez. Bu
+	    yuzden Infernal da birlestirilemez (ustu Abyssal). Divine, Cosmic,
+	    Secret birlestirilebilir (bkz. Fuse.Excluded).
 	  - Ust kademede oyuncunun ulastigi adada hic brainrot yoksa konamaz
 	    (yoksa sonraki adalarin brainrotu erken alinirdi).
 	  - Kazanilan brainrotun BOYUTU konanlardan birinin boyutudur (rastgele),
@@ -125,7 +127,22 @@ Fuse.VFX = {
 	preserveShading = true,
 }
 
--- Bir kademenin BIR USTU. En ust kademede nil doner.
+--[[
+	MAKINENIN GORMEDIGI KADEMELER
+
+	Bunlar makineye konamaz, makineden de cikamaz; secim listesinde de hic
+	gorunmez. Abyssal yalnizca denizden gelir.
+]]
+Fuse.Excluded = {
+	Abyssal = true,
+} :: { [string]: boolean }
+
+-- Makine bu kademeyi gorur mu (listede cikar mi)
+function Fuse.sees(rarityId: string?): boolean
+	return type(rarityId) == "string" and Rarity.Info[rarityId :: Rarity.RarityId] ~= nil and not Fuse.Excluded[rarityId]
+end
+
+-- Bir kademenin BIR USTU. En ust kademede ya da ustu makinenin gormedigi bir kademeyse nil.
 function Fuse.nextRarity(rarityId: string): string?
 	local info = Rarity.Info[rarityId :: Rarity.RarityId]
 	if not info then
@@ -134,6 +151,9 @@ function Fuse.nextRarity(rarityId: string): string?
 
 	for _, id in Rarity.Order do
 		if Rarity.Info[id].order == info.order + 1 then
+			if Fuse.Excluded[id] then
+				return nil
+			end
 			return id
 		end
 	end

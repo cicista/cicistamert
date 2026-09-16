@@ -18,6 +18,10 @@ local Bildirim = Remotes:WaitForChild("Bildirim")
 local PlayerData = require(script.Parent:WaitForChild("Modules"):WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Modules"):WaitForChild("Envanter"))
 local Format = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Format"))
+local Passler = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Passler"))
+local Net = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Net"))
+-- Sagdaki isinlayici butonu (Teleporter gecisi)
+local IsinlayiciGit = Net.event("IsinlayiciGit")
 
 local COOLDOWN = 3
 local lastUse = {}
@@ -307,6 +311,63 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 
 	local target = getIslandCFrame(island)
 	char:PivotTo(target)
+	root.AssemblyLinearVelocity = Vector3.zero
+
+	Bildirim:FireClient(player, "Welcome to " .. island.name .. "!", island.color or Color3.fromRGB(120, 220, 255))
+end)
+
+--[[
+	ISINLAYICI  (Teleporter gecisi)
+
+	Sagdaki isinlayici butonunun menusunden gelir. Yalnizca ACILMIS adalara
+	gidilir; ada burada satin alinmaz (o kaptanin isi). Gecis yoksa hicbir
+	sey olmaz, istemci zaten satin alma penceresini gosteriyor.
+]]
+IsinlayiciGit.OnServerEvent:Connect(function(player, index)
+	if typeof(index) ~= "number" then
+		return
+	end
+
+	if not Passler.sahip(player, "Teleporter") then
+		Bildirim:FireClient(player, "You need the Teleporter pass!", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	local island = Config.Islands[index]
+	local data = PlayerData.get(player)
+	if not island or island.comingSoon or not data then
+		return
+	end
+
+	if index > data.islands then
+		Bildirim:FireClient(player, `Unlock {island.name} at the captain first!`, Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	local now = os.clock()
+	if lastUse[player] and now - lastUse[player] < COOLDOWN then
+		return
+	end
+
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	if not char or not root or not humanoid or humanoid.Health <= 0 then
+		return
+	end
+
+	-- Kazi sirasinda karakter yerine sabit; flyboard'da da tahta yuzeye bagli
+	if char:GetAttribute("Kaziyor") == true then
+		Bildirim:FireClient(player, "Finish digging first!", Color3.fromRGB(255, 200, 90))
+		return
+	end
+	if player:GetAttribute("Flyboarding") == true then
+		Bildirim:FireClient(player, "Get off your flyboard first!", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	lastUse[player] = now
+	char:PivotTo(getIslandCFrame(island))
 	root.AssemblyLinearVelocity = Vector3.zero
 
 	Bildirim:FireClient(player, "Welcome to " .. island.name .. "!", island.color or Color3.fromRGB(120, 220, 255))

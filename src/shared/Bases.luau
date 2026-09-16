@@ -57,13 +57,20 @@ Bases.Upgrade = {
 	maxFloors = 2,
 	-- Bedava gelen slot sayisi (1. kat)
 	startingSlots = 10,
-	-- Kat acma bedeli (Rot)
-	floorCost = { [2] = 250_000_000_000, [3] = 2_000_000_000_000 },
+	--[[
+		Kat acma bedeli (Rot). 2. kat = Snow Island'i acma bedeli (10B).
+		3. kat su an kapali (maxFloors 2).
+	]]
+	floorCost = { [2] = 10_000_000_000, [3] = 2_000_000_000_000 },
 	-- Kat acilinca o kattan kac slot hediye gelir
 	slotsWithFloor = 1,
-	-- Tek slot bedeli (Rot). Her alinan slotta slotGrowth katina cikar.
-	slotBaseCost = 5_000_000_000,
-	slotGrowth = 1.55,
+	--[[
+		Tek slot bedeli (Rot). Her alinan slotta slotGrowth katina cikar.
+		2. katin 9 slotu 17B'den baslar; SON slot (20.) en pahali oltayla
+		(Leviathan Rod, 1.3T) ayni fiyattadir: 10B x 1.7174^9 = 1.3T.
+	]]
+	slotBaseCost = 10_000_000_000,
+	slotGrowth = (1_300_000_000_000 / 10_000_000_000) ^ (1 / 9),
 	-- Kilitli kat modellerinin adi: Kat2, Kat3
 	floorPrefix = "Kat",
 	-- Tabelanin yerini haritada belirleyen isaretci parca
@@ -115,7 +122,10 @@ end
 function Bases.slotCost(unlocked: number): number
 	local U = Bases.Upgrade
 	local step = math.max(0, unlocked - U.startingSlots)
-	return math.floor(U.slotBaseCost * U.slotGrowth ^ step)
+	local ham = U.slotBaseCost * U.slotGrowth ^ step
+	-- Ilk 3 basamaga yuvarlanir: 17.2B, 29.5B ... 1.3T (kusurat kalmaz)
+	local basamak = 10 ^ math.max(0, math.floor(math.log10(ham)) - 2)
+	return math.floor(ham / basamak + 0.5) * basamak
 end
 
 -- Gelir kac saniyede bir hesaplanir (dusuk deger = daha akici sayac, daha cok is)
@@ -227,6 +237,18 @@ Bases.Display = {
 
 -- Base'e erisimi olanlar: sadece sahibi brainrot koyabilir/alabilir.
 Bases.OwnerOnlyPlacement = true
+
+--[[
+	SLOT NUMARALARININ YONU  (kus bakisi, TOPLA butonu altta)
+
+	Slotlar konumlarina gore numaralanir: sol sutun alttan uste 1-5, sag
+	sutun ustten alta 6-10 (bkz. BaseSistemi > SLOT SIRASI).
+
+	    "aisle"  -- rakamlarin ust kenari ortadaki koridora bakar
+	    "wall"   -- rakamlarin ust kenari yan duvara bakar
+	Rakamlar ters duruyorsa bunu degistirmen yeterli.
+]]
+Bases.SlotNumberFacing = "aisle"
 
 -- Base'leri tutan klasorun adi
 Bases.FolderName = "Bases"

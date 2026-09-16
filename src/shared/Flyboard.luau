@@ -63,7 +63,7 @@ Flyboard.Info = {
 		displayName = "Basic Flyboard",
 		level = 1,
 		rarity = "Common",
-		price = 2_000_000_000_000,
+		price = 600_000_000_000,
 		-- Duz beyaz degil: buzlu, mavimsi bir beyaz
 		color = Color3.fromRGB(225, 240, 255),
 		speedBonus = 0.1,
@@ -78,7 +78,7 @@ Flyboard.Info = {
 		displayName = "Wave Flyboard",
 		level = 2,
 		rarity = "Rare",
-		price = 2_500_000_000_000,
+		price = 650_000_000_000,
 		-- Doygun zumrut yesili
 		color = Color3.fromRGB(40, 230, 110),
 		speedBonus = 0.15,
@@ -93,7 +93,7 @@ Flyboard.Info = {
 		displayName = "Storm Flyboard",
 		level = 3,
 		rarity = "Epic",
-		price = 4_500_000_000_000,
+		price = 850_000_000_000,
 		-- Elektrik mavisi
 		color = Color3.fromRGB(30, 140, 255),
 		speedBonus = 0.2,
@@ -108,7 +108,7 @@ Flyboard.Info = {
 		displayName = "Nebula Flyboard",
 		level = 4,
 		rarity = "Legendary",
-		price = 8_500_000_000_000,
+		price = 1_000_000_000_000,
 		-- Doygun galaksi moru
 		color = Color3.fromRGB(170, 60, 255),
 		speedBonus = 0.25,
@@ -123,7 +123,7 @@ Flyboard.Info = {
 		displayName = "Inferno Flyboard",
 		level = 5,
 		rarity = "Mythic",
-		price = 16_000_000_000_000,
+		price = 1_200_000_000_000,
 		-- Soluk kirmizi degil: doygun, yakici bir ton
 		color = Color3.fromRGB(255, 40, 25),
 		speedBonus = 0.3,

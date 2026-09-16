@@ -2,12 +2,17 @@
 --[[
 	LEVEL SISTEMI  --  ayarlar
 
-	XP NEREDEN GELIR
-	  Brainrot kazmak      -> kademesine gore (XP.rarity)
-	  Maden damari kirmak  -> XP.ore
-	  Lucky Block acmak    -> XP.luckyBlock
-	  Fuse denemesi        -> XP.fuse (+ tutarsa cikan kademenin XP'si)
-	  Gorev odulu toplamak -> XP.quest
+	XP NEREDEN GELIR  --  KADEMEYE GORE ARTMAZ
+	  Kumda isik suzmesi kazmak  -> XP.beam  (30, her kademe ayni)
+	  Maden damari kirmak        -> XP.ore   (50)
+	  Denizde balik tutmak       -> XP.fish  (100)
+	  Lucky Block acmak          -> XP.luckyBlock
+	  Fuse denemesi              -> XP.fuse
+	  Gorev odulu toplamak       -> zorluguna gore 500 - 5000
+	                                (bkz. Shared > Gorevler > XP)
+
+	Kademeye gore XP verilmiyordu cunku ust adalarda her kazi yuzlerce XP
+	getiriyor ve level dengesi kiriliyordu.
 
 	LEVEL ATLAYINCA
 	  - Rot Coin: her level 1, her 10. level 5 (rotCoinOdulu)
@@ -27,18 +32,11 @@ local Seviye = {}
 Seviye.Max = 100
 
 Seviye.XP = {
-	rarity = {
-		Common = 5,
-		Rare = 10,
-		Epic = 25,
-		Legendary = 60,
-		Mythic = 150,
-		Secret = 400, -- Divine
-	} :: { [string]: number },
-	ore = 8,
-	luckyBlock = 10,
-	fuse = 15,
-	quest = 40,
+	beam = 30,
+	ore = 50,
+	fish = 100,
+	luckyBlock = 30,
+	fuse = 30,
 }
 
 -- Her level icin kalici sans artisi (0.01 = %1)
@@ -46,14 +44,13 @@ Seviye.SansPerLevel = 0.01
 
 --[[
 	Bu levelden bir sonrakine gecmek icin gereken XP.
-	    Level 1 -> 50,  Level 10 -> ~1100,  Level 50 -> ~9800
+	    Level 1 -> 200 (7 kazi),  Level 10 -> ~2500,  Level 50 -> ~14800
+
+	Saatte ~120 kazi ve gorevlerle oyuncu saatte ~9000 XP toplar:
+	Level 10 ~1 saatte, Level 20 ~5 saatte gelir.
 ]]
 function Seviye.gerekenXp(level: number): number
-	return math.floor(50 * math.max(1, level) ^ 1.35)
-end
-
-function Seviye.rarityXp(rarityId: string?): number
-	return if rarityId then Seviye.XP.rarity[rarityId] or 0 else 0
+	return math.floor(200 * math.max(1, level) ^ 1.1)
 end
 
 function Seviye.sansCarpani(level: number): number

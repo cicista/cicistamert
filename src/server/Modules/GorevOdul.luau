@@ -77,7 +77,7 @@ function GorevOdul.topla(player: Player, id: string): boolean
 	local reward = Gorevler.reward(def)
 	-- Odul: o kademeden kimligi acik brainrot (bkz. GorevTakip.odulVer)
 	local adlar = GorevTakip.odulVer(player, def)
-	Seviye.xpVer(player, Seviye.XP.quest)
+	Seviye.xpVer(player, Gorevler.xp(def))
 
 	--[[
 		RUH GOSTERISI YOK.

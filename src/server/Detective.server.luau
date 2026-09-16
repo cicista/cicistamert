@@ -17,6 +17,10 @@
 	  verisine yazilir (PlayerData.detectiveJob): oyuncu yanindan ayrilabilir,
 	  oyundan cikip girse bile sure islemeye devam eder. Sure dolunca hepsi
 	  birden acilir. Is surerken yeni teslim alinmaz.
+
+	SECEREK INCELEME
+	  Istemci DetectiveTeslim ile uid listesi yollarsa yalnizca o
+	  brainrotlar birakilir (tek bir tane de olabilir); liste yoksa hepsi.
 ]]
 
 local Players = game:GetService("Players")
@@ -258,7 +262,7 @@ local function isiBitir(player: Player, data: any)
 	end
 end
 
-DetectiveTeslim.OnServerEvent:Connect(function(player)
+DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 	local data = PlayerData.get(player)
 	if not data then
 		return
@@ -276,6 +280,27 @@ DetectiveTeslim.OnServerEvent:Connect(function(player)
 	end
 
 	local liste = bekleyenler(data)
+
+	-- Secim geldiyse yalnizca secilenler (istemciye guvenilmez: listede olmayan uid atlanir)
+	if type(secilen) == "table" then
+		local istenen: { [string]: boolean } = {}
+		local sayi = 0
+		for _, uid in secilen do
+			if type(uid) == "string" and sayi < 500 then
+				istenen[uid] = true
+				sayi += 1
+			end
+		end
+
+		local suzulen = {}
+		for _, item in liste do
+			if istenen[item.uid] then
+				table.insert(suzulen, item)
+			end
+		end
+		liste = suzulen
+	end
+
 	if #liste == 0 then
 		Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
 		return

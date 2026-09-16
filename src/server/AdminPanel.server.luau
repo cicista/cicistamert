@@ -46,6 +46,8 @@ local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Assets = require(Shared:WaitForChild("Assets"))
 local Ores = require(Shared:WaitForChild("Ores"))
+local Passler = require(Shared:WaitForChild("Passler"))
+local Hiz = require(Shared:WaitForChild("Hiz"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -795,6 +797,86 @@ function commands.setDetector(player, data, arg)
 	end
 	Envanter.giveGPS(player)
 	return `Dedektor: {Detectors.get(arg).displayName}`
+end
+
+--[[
+	SCRIPT RAPORU
+
+	Bizim kodumuz yalnizca ServerScriptService, StarterPlayerScripts ve
+	ReplicatedStorage > Shared icinde. Bunlarin DISINDAKI butun scriptler
+	(haritaya ya da modellere gomulu olanlar) Output'a yazilir. Hazir
+	modellerle gelen, hata veren ya da disaridan modul yukleyen (require)
+	scriptleri bulup silmek icin.
+]]
+function commands.scriptRaporu(player, data)
+	local ServerScriptService = game:GetService("ServerScriptService")
+	local StarterPlayer = game:GetService("StarterPlayer")
+	local bizim = {
+		ServerScriptService,
+		StarterPlayer:FindFirstChild("StarterPlayerScripts"),
+		ReplicatedStorage:FindFirstChild("Shared"),
+	}
+
+	local function bizimMi(node: Instance): boolean
+		for _, kok in bizim do
+			if kok and node:IsDescendantOf(kok) then
+				return true
+			end
+		end
+		return false
+	end
+
+	local kokler = {
+		Workspace,
+		ReplicatedStorage,
+		game:GetService("ServerStorage"),
+		game:GetService("StarterGui"),
+		game:GetService("StarterPack"),
+		game:GetService("Lighting"),
+		game:GetService("SoundService"),
+		StarterPlayer,
+	}
+
+	local bulunan = {}
+	for _, kok in kokler do
+		for _, node in kok:GetDescendants() do
+			if node:IsA("LuaSourceContainer") and not bizimMi(node) then
+				table.insert(bulunan, `  {node.ClassName}  {node:GetFullName()}`)
+			end
+		end
+	end
+
+	print(`[Admin] Bizim klasorlerimiz disindaki scriptler ({#bulunan}):`)
+	for _, satir in bulunan do
+		print(satir)
+	end
+	return `{#bulunan} yabanci script -- liste Output'ta`
+end
+
+-- Robux gecisini bu oturum icin ver / geri al (kayda yazilmaz)
+function commands.togglePass(player, data, arg)
+	local info = if type(arg) == "string" then Passler.get(arg) else nil
+	if not info then
+		return nil
+	end
+	local yeni = not Passler.sahip(player, arg)
+	player:SetAttribute(info.nitelik, yeni)
+	return `{info.ad}: {if yeni then "VERILDI" else "ALINDI"} (bu oturum)`
+end
+
+-- Hiz yukseltmesi sayisini ayarla (0..100)
+function commands.setSpeed(player, data, arg)
+	local adet = tonumber(arg)
+	if not adet then
+		return nil
+	end
+	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
+	local yenile = script.Parent:FindFirstChild("Hiz")
+	local olay = yenile and yenile:FindFirstChild("HizYenile")
+	if olay and olay:IsA("BindableEvent") then
+		olay:Fire(player)
+	end
+	return `Hiz: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
 end
 
 function commands.clearInventory(player, data)

@@ -7,6 +7,8 @@
 	  uiScale      -- arayuz olcegi yuzdesi (%50..%150, varsayilan %100)
 	  musicVolume  -- arka plan muzigi ses yuzdesi (%0..%100, varsayilan %100)
 	  musicMuted   -- muzik kapali mi (varsayilan acik)
+	  sfxVolume    -- ses efektleri yuzdesi (%0..%100, varsayilan %100)
+	  sfxMuted     -- ses efektleri kapali mi (varsayilan acik)
 
 	NEDEN SUNUCUDA
 	Roblox'ta istemcinin kalici deposu yok; ayarin oturumlar arasinda
@@ -43,6 +45,8 @@ local function ayarlariYolla(player: Player)
 		uiScale = data.uiScale or 100,
 		musicVolume = data.musicVolume or 100,
 		musicMuted = data.musicMuted == true,
+		sfxVolume = data.sfxVolume or 100,
+		sfxMuted = data.sfxMuted == true,
 	})
 end
 
@@ -69,6 +73,14 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 		end
 		if type(payload.musicMuted) == "boolean" then
 			data.musicMuted = payload.musicMuted
+		end
+
+		local efekt = tonumber(payload.sfxVolume)
+		if efekt then
+			data.sfxVolume = math.clamp(math.round(efekt), 0, 100)
+		end
+		if type(payload.sfxMuted) == "boolean" then
+			data.sfxMuted = payload.sfxMuted
 		end
 	end
 

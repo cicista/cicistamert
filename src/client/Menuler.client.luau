@@ -90,6 +90,16 @@ local Muzik = istegeBagli("Muzik", {
 local ArayuzSesi = istegeBagli("ArayuzSesi", {
 	tikla = function() end,
 })
+-- Muzik disindaki butun seslerin ayari (Settings > Sound Effects)
+local SesEfekti = istegeBagli("SesEfekti", {
+	ayarla = function() end,
+	yuzde = function()
+		return 100
+	end,
+	kapali = function()
+		return false
+	end,
+})
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 local DetectiveAc = Net.event("DetectiveAc")
@@ -805,7 +815,7 @@ UI.text({
 })
 
 UI.text({
-	text = "Leave ALL your unidentified brainrots with me. I will identify them at once, you can leave!",
+	text = "Tap cards to pick some, or leave them ALL with me. You can leave while I work!",
 	size = UI.Sizes.small,
 	color = UI.Colors.textDim,
 	frameSize = UDim2.new(1, -80, 0, 20),
@@ -827,7 +837,7 @@ for _, child in detectiveListe:GetChildren() do
 	end
 end
 local detektifIzgara = Instance.new("UIGridLayout")
-detektifIzgara.CellSize = UDim2.fromOffset(112, 150)
+detektifIzgara.CellSize = UDim2.fromOffset(112, 178)
 detektifIzgara.CellPadding = UDim2.fromOffset(10, 10)
 detektifIzgara.SortOrder = Enum.SortOrder.LayoutOrder
 detektifIzgara.Parent = detectiveListe
@@ -909,6 +919,8 @@ local detektifDugmeYazi = UI.text({
 
 -- Durum
 local detektifBekleyen: { any } = {}
+-- Secilen kartlar (uid -> true); bossa dugme hepsini birakir
+local detektifSecili: { [string]: boolean } = {}
 local detektifIs: any = nil
 local detektifBitis = 0
 
@@ -921,18 +933,83 @@ local function detektifCalisiyor(): boolean
 	return detektifIs ~= nil and detektifBitis > os.clock()
 end
 
+local function detektifSeciliSayisi(): number
+	local n = 0
+	for _ in detektifSecili do
+		n += 1
+	end
+	return n
+end
+
+-- Ileri bildirim: kart tiklamasi dugme yazisini tazeler
+local detektifDurumCiz: () -> ()
+
 local function detektifKarti(item: any, sira: number)
 	local rarityInfo = Rarity.get(item.rarity)
 	local conditionInfo = Condition.get(item.condition)
 
-	local kart = Instance.new("Frame")
+	--[[
+		Kart bir dugme: tiklayinca SECILIR (altin cerceve + tik). Altindaki
+		kucuk IDENTIFY dugmesi yalnizca bu brainrotu birakir.
+	]]
+	local kart = Instance.new("TextButton")
 	kart.Name = item.uid
+	kart.Text = ""
+	kart.AutoButtonColor = false
 	kart.BackgroundColor3 = rarityInfo.color:Lerp(Color3.new(0, 0, 0), 0.55)
 	kart.BorderSizePixel = 0
 	kart.LayoutOrder = sira
 	kart.Parent = detectiveListe
 	UI.corner(kart, 12)
-	UI.stroke(kart, rarityInfo.color, 2)
+	local kartKontur = UI.stroke(kart, rarityInfo.color, 2)
+	-- Kart artik TextButton: kontur yaziya degil kenara gitsin
+	kartKontur.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+	local tik = UI.text({
+		text = "\u{2713}",
+		size = UI.Sizes.heading,
+		font = UI.Fonts.bold,
+		color = UI.Colors.gold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromOffset(28, 28),
+		position = UDim2.new(1, -30, 0, 2),
+		parent = kart,
+	})
+	tik.ZIndex = 6
+
+	local function secimiCiz()
+		local secili = detektifSecili[item.uid] == true
+		kartKontur.Color = if secili then UI.Colors.gold else rarityInfo.color
+		kartKontur.Thickness = if secili then 4 else 2
+		tik.Visible = secili
+	end
+	secimiCiz()
+
+	kart.MouseButton1Click:Connect(function()
+		if detektifSecili[item.uid] then
+			detektifSecili[item.uid] = nil
+		else
+			detektifSecili[item.uid] = true
+		end
+		secimiCiz()
+		detektifDurumCiz()
+	end)
+
+	local tek = UI.button(kart, "IDENTIFY", UDim2.new(1, -12, 0, 24), UI.Colors.good)
+	tek.Name = "TekTanimla"
+	tek.Position = UDim2.new(0, 6, 1, -28)
+	tek.ZIndex = 4
+	local tekYazi = tek:FindFirstChild("Label")
+	if tekYazi and tekYazi:IsA("TextLabel") then
+		tekYazi.TextSize = UI.Sizes.tiny
+		tekYazi.ZIndex = 5
+	end
+	UI.stroke(tek, Color3.fromRGB(0, 0, 0), 1.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	tek.MouseButton1Click:Connect(function()
+		if not detektifCalisiyor() then
+			DetectiveTeslim:FireServer({ item.uid })
+		end
+	end)
 
 	local gecis = Instance.new("UIGradient")
 	gecis.Rotation = 90
@@ -985,7 +1062,7 @@ local function detektifKarti(item: any, sira: number)
 end
 
 -- Yalnizca cubuk ve dugme yazilari (her saniye)
-local function detektifDurumCiz()
+function detektifDurumCiz()
 	if detektifCalisiyor() then
 		local kalan = detektifBitis - os.clock()
 		local toplam = math.max(1, tonumber(detektifIs.toplam) or 1)
@@ -1001,11 +1078,23 @@ local function detektifDurumCiz()
 		for _, item in detektifBekleyen do
 			toplam += tonumber(item.sure) or 0
 		end
-		detektifOzet.Text = if #detektifBekleyen > 0
-			then `{#detektifBekleyen} unidentified  -  total {detektifSure(toplam)}`
+		-- Secim varsa ozet ve dugme yalnizca secilenleri anlatir
+		local secili = detektifSeciliSayisi()
+		local seciliSure = 0
+		for _, item in detektifBekleyen do
+			if detektifSecili[item.uid] then
+				seciliSure += tonumber(item.sure) or 0
+			end
+		end
+		detektifOzet.Text = if secili > 0
+			then `{secili} selected  -  {detektifSure(seciliSure)}`
+			elseif #detektifBekleyen > 0 then `{#detektifBekleyen} unidentified  -  total {detektifSure(toplam)}`
 			else "No unidentified brainrots"
 		detektifDugme.BackgroundColor3 = if #detektifBekleyen > 0 then UI.Colors.good else UI.Colors.panel
-		detektifDugmeYazi.Text = if #detektifBekleyen > 0 then "IDENTIFY ALL" else "NOTHING LEFT"
+		detektifDugmeYazi.Text = if secili > 0
+			then `IDENTIFY {secili}`
+			elseif #detektifBekleyen > 0 then "IDENTIFY ALL"
+			else "NOTHING LEFT"
 	end
 end
 
@@ -1028,6 +1117,16 @@ local function detektifCiz()
 		table.sort(detektifBekleyen, function(a, b)
 			return (tonumber(a.sure) or 0) > (tonumber(b.sure) or 0)
 		end)
+		-- Artik listede olmayanlarin secimi dusurulur
+		local mevcut: { [string]: boolean } = {}
+		for _, item in detektifBekleyen do
+			mevcut[item.uid] = true
+		end
+		for uid in detektifSecili do
+			if not mevcut[uid] then
+				detektifSecili[uid] = nil
+			end
+		end
 		for sira, item in detektifBekleyen do
 			detektifKarti(item, sira)
 		end
@@ -1038,7 +1137,15 @@ end
 
 detektifDugme.MouseButton1Click:Connect(function()
 	if not detektifCalisiyor() and #detektifBekleyen > 0 then
-		DetectiveTeslim:FireServer()
+		local secilen = {}
+		for uid in detektifSecili do
+			table.insert(secilen, uid)
+		end
+		if #secilen > 0 then
+			DetectiveTeslim:FireServer(secilen)
+		else
+			DetectiveTeslim:FireServer()
+		end
 	end
 end)
 
@@ -1566,6 +1673,14 @@ local ayarPaneliniAc: () -> ()
 local gorevPaneliniAc: () -> ()
 -- Rot Coin magazasi da dosyanin sonunda kuruluyor
 local rotCoinMagazaAc: () -> ()
+--[[
+	Isinlayici ve hiz panelleri de dosyanin sonunda kuruluyor. Ayri yerel
+	yerine tek tablo: Luau ust seviyede en fazla 200 yerel kabul ediyor.
+]]
+local ekMenu = {
+	isinlayiciAc = function() end,
+	hizAc = function() end,
+}
 
 local MENU_BOYU = 52
 
@@ -1764,7 +1879,14 @@ local function pariltiKatmani(yuz: Frame, sira: number): Frame
 	return isik
 end
 
-local function menuButonu(sutun: Frame, iconId: string, isim: string, renk: Color3, onClick: (() -> ())?)
+local function menuButonu(
+	sutun: Frame,
+	iconId: string,
+	isim: string,
+	renk: Color3,
+	onClick: (() -> ())?,
+	yedekYazi: string?
+)
 	menuSirasi += 1
 
 	local buton = Instance.new("ImageButton")
@@ -1824,8 +1946,8 @@ local function menuButonu(sutun: Frame, iconId: string, isim: string, renk: Colo
 	ikon.Parent = yuz
 
 	local yedek = UI.text({
-		text = string.upper(string.sub(isim, 1, 3)),
-		size = UI.Sizes.small,
+		text = yedekYazi or string.upper(string.sub(isim, 1, 3)),
+		size = if yedekYazi then UI.Sizes.huge else UI.Sizes.small,
 		font = UI.Fonts.bold,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.fromScale(1, 1),
@@ -1906,7 +2028,13 @@ local MenuRenk = {
 	index = Color3.fromRGB(186, 120, 255), -- mor
 	friends = Color3.fromRGB(255, 120, 190), -- pembe
 	settings = Color3.fromRGB(90, 220, 210), -- turkuaz
+	speed = Color3.fromRGB(110, 230, 255), -- buz mavisi
+	teleporter = Color3.fromRGB(150, 120, 255), -- lila
+	home = Color3.fromRGB(120, 220, 110), -- cimen yesili
 }
+
+-- Sagdaki ev butonu: sunucu dogrular ve base'in onune isinlar
+local BaseyeIsinlan = Net.event("BaseyeIsinlan")
 
 -- SOL: oyunun kendi sistemleri
 menuButonu(solSutun, "inventory", "Inventory", MenuRenk.inventory, toggleEnvanter)
@@ -1921,13 +2049,32 @@ menuButonu(solSutun, "rewards", "Rewards", MenuRenk.rewards, function()
 	odulPaneliniAc()
 end)
 menuButonu(solSutun, "index", "Index", MenuRenk.index, function()
-	Index.ac()
+	-- Ikinci tiklama kapatir
+	if Index.acikMi() then
+		Index.kapat()
+	else
+		Index.ac()
+	end
 end)
 menuButonu(solSutun, "friends", "Friends", MenuRenk.friends, function()
 	arkadasPaneliniAc()
 end)
+-- Hiz yukseltmesi (ayakkabi); pakette ikon yoksa emoji
+menuButonu(solSutun, "speed", "Speed", MenuRenk.speed, function()
+	ekMenu.hizAc()
+end, "\u{1F45F}")
 
--- SAG: ekstra
+--[[
+	SAG: yukaridan asagi Teleporter, base'e don, Settings.
+	Sutun alttan dizildigi icin once eklenen ustte durur.
+	Isimler onemli: MadenSayaci "Teleporter" butonunun ustune oturuyor.
+]]
+menuButonu(sagSutun, "teleport", "Teleporter", MenuRenk.teleporter, function()
+	ekMenu.isinlayiciAc()
+end, "\u{1F300}")
+menuButonu(sagSutun, "home", "Base", MenuRenk.home, function()
+	BaseyeIsinlan:FireServer()
+end, "\u{1F3E0}")
 menuButonu(sagSutun, "settings", "Settings", MenuRenk.settings, function()
 	ayarPaneliniAc()
 end)
@@ -3215,12 +3362,13 @@ do
 	--   ARAYUZ OLCEGI  -- UI modulu uyguluyor (UI.setScale butun ScreenGui'lere
 	--                     UIScale koyar)
 	--   MUZIK          -- arka plan muziginin sesi ve ac/kapat (bkz. Muzik modulu)
+	--   SES EFEKTLERI  -- muzik disindaki butun sesler (bkz. SesEfekti modulu)
 	-- Burasi yalnizca paneli cizer ve secilen degerleri sunucuya kaydeder.
 	--
 	-- Deger sunucuda PlayerData icinde durur (uiScale), boylece oyuncu
 	-- cikip girince ayari yerinde kalir.
 	------------------------------------------------------------------
-	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 440), "Ayarlar")
+	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 480), "Ayarlar")
 
 	UI.text({
 		text = "Settings",
@@ -3314,49 +3462,72 @@ do
 
 	local MUZIK_ADIM = 10
 
-	local muzikKisButon = UI.button(ayarPanel, "-", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
-	muzikKisButon.Name = "MuzikKis"
-	muzikKisButon.Position = UDim2.fromOffset(18, 302)
+	--[[
+		SES SATIRI: [-] yuzde [+] [ON/OFF]
 
-	local muzikYazi = UI.text({
-		text = "100%",
-		size = UI.Sizes.title,
+		Muzik ve ses efektleri ayni duzende, alt alta. Ac/kapat dugmesinin
+		rengi durumla degisir: UI.hover kullanilmaz (rengi geri cevirirdi).
+	]]
+	local function sesSatiri(ad: string, y: number)
+		local kis = UI.button(ayarPanel, "-", UDim2.fromOffset(52, 52), UI.Colors.panelLight)
+		kis.Name = `{ad}Kis`
+		kis.Position = UDim2.fromOffset(18, y)
+
+		local yazi = UI.text({
+			text = "100%",
+			size = UI.Sizes.title,
+			font = UI.Fonts.bold,
+			color = UI.Colors.gold,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromOffset(110, 52),
+			position = UDim2.fromOffset(74, y),
+			parent = ayarPanel,
+		})
+
+		local ac = UI.button(ayarPanel, "+", UDim2.fromOffset(52, 52), UI.Colors.panelLight)
+		ac.Name = `{ad}Ac`
+		ac.Position = UDim2.fromOffset(188, y)
+
+		isaretiBuyut(kis)
+		isaretiBuyut(ac)
+
+		local dugme = Instance.new("TextButton")
+		dugme.Name = `{ad}AcKapat`
+		dugme.Position = UDim2.fromOffset(252, y)
+		dugme.Size = UDim2.fromOffset(160, 52)
+		dugme.AutoButtonColor = false
+		dugme.BorderSizePixel = 0
+		dugme.Text = ""
+		dugme.Parent = ayarPanel
+		UI.corner(dugme, 10)
+		UI.stroke(dugme, Color3.fromRGB(0, 0, 0), 2)
+
+		local dugmeYazi = UI.text({
+			text = "",
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			color = Color3.new(1, 1, 1),
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromScale(1, 1),
+			parent = dugme,
+		})
+
+		return kis, yazi, ac, dugme, dugmeYazi
+	end
+
+	local muzikKisButon, muzikYazi, muzikAcButon, muzikDugme, muzikDugmeYazi = sesSatiri("Muzik", 302)
+
+	UI.text({
+		text = "SOUND EFFECTS",
+		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
-		color = UI.Colors.gold,
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromOffset(250, 52),
-		position = UDim2.fromOffset(90, 302),
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 370),
 		parent = ayarPanel,
 	})
 
-	local muzikAcButon = UI.button(ayarPanel, "+", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
-	muzikAcButon.Name = "MuzikAc"
-	muzikAcButon.Position = UDim2.fromOffset(350, 302)
-
-	isaretiBuyut(muzikKisButon)
-	isaretiBuyut(muzikAcButon)
-
-	-- Ac/kapat dugmesi rengi durumla degisir: UI.hover kullanilmaz (rengi geri cevirirdi)
-	local muzikDugme = Instance.new("TextButton")
-	muzikDugme.Name = "MuzikAcKapat"
-	muzikDugme.Position = UDim2.fromOffset(18, 368)
-	muzikDugme.Size = UDim2.new(1, -36, 0, 48)
-	muzikDugme.AutoButtonColor = false
-	muzikDugme.BorderSizePixel = 0
-	muzikDugme.Text = ""
-	muzikDugme.Parent = ayarPanel
-	UI.corner(muzikDugme, 10)
-	UI.stroke(muzikDugme, Color3.fromRGB(0, 0, 0), 2)
-
-	local muzikDugmeYazi = UI.text({
-		text = "",
-		size = UI.Sizes.body,
-		font = UI.Fonts.bold,
-		color = Color3.new(1, 1, 1),
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromScale(1, 1),
-		parent = muzikDugme,
-	})
+	local efektKisButon, efektYazi, efektAcButon, efektDugme, efektDugmeYazi = sesSatiri("Efekt", 396)
 
 	--[[
 		SUNUCUYA KAYIT
@@ -3379,6 +3550,8 @@ do
 				uiScale = UI.getScale(),
 				musicVolume = Muzik.yuzde(),
 				musicMuted = Muzik.kapali(),
+				sfxVolume = SesEfekti.yuzde(),
+				sfxMuted = SesEfekti.kapali(),
 			})
 		end)
 	end
@@ -3409,9 +3582,38 @@ do
 		local kapali = Muzik.kapali()
 		muzikYazi.Text = if kapali then "OFF" else `{Muzik.yuzde()}%`
 		muzikYazi.TextColor3 = if kapali then UI.Colors.textDim else UI.Colors.gold
-		muzikDugme.BackgroundColor3 = if kapali then UI.Colors.good else Color3.fromRGB(200, 70, 80)
-		muzikDugmeYazi.Text = if kapali then "Music: OFF  -  tap to turn ON" else "Music: ON  -  tap to turn OFF"
+		muzikDugme.BackgroundColor3 = if kapali then Color3.fromRGB(200, 70, 80) else UI.Colors.good
+		muzikDugmeYazi.Text = if kapali then "OFF" else "ON"
 	end
+
+	local function efektCiz()
+		local kapali = SesEfekti.kapali()
+		efektYazi.Text = if kapali then "OFF" else `{SesEfekti.yuzde()}%`
+		efektYazi.TextColor3 = if kapali then UI.Colors.textDim else UI.Colors.gold
+		efektDugme.BackgroundColor3 = if kapali then Color3.fromRGB(200, 70, 80) else UI.Colors.good
+		efektDugmeYazi.Text = if kapali then "OFF" else "ON"
+	end
+
+	local function efektSesDegistir(fark: number)
+		-- Ses degistirmek kapali efektleri de acar
+		SesEfekti.ayarla(SesEfekti.yuzde() + fark, false)
+		efektCiz()
+		ayarKaydiniPlanla()
+	end
+
+	efektKisButon.MouseButton1Click:Connect(function()
+		efektSesDegistir(-MUZIK_ADIM)
+	end)
+
+	efektAcButon.MouseButton1Click:Connect(function()
+		efektSesDegistir(MUZIK_ADIM)
+	end)
+
+	efektDugme.MouseButton1Click:Connect(function()
+		SesEfekti.ayarla(nil, not SesEfekti.kapali())
+		efektCiz()
+		ayarKaydiniPlanla()
+	end)
 
 	local function muzikSesDegistir(fark: number)
 		-- Ses degistirmek kapali muzigi de acar
@@ -3452,10 +3654,15 @@ do
 		local ses = tonumber(data.musicVolume)
 		Muzik.ayarla(ses, if type(data.musicMuted) == "boolean" then data.musicMuted else nil)
 		muzikCiz()
+
+		local efekt = tonumber(data.sfxVolume)
+		SesEfekti.ayarla(efekt, if type(data.sfxMuted) == "boolean" then data.sfxMuted else nil)
+		efektCiz()
 	end)
 
 	olcekYazisiTazele(UI.getScale())
 	muzikCiz()
+	efektCiz()
 
 	function ayarPaneliniAc()
 		ayarPanel.Visible = not ayarPanel.Visible
@@ -3558,6 +3765,20 @@ do
 			position = UDim2.new(1, -174, 0, 10),
 			parent = row,
 		})
+
+		-- Odulun XP'si, brainrot yazisinin hemen altinda
+		if type(quest.xp) == "number" and quest.xp > 0 then
+			UI.text({
+				text = `+{quest.xp} XP`,
+				size = UI.Sizes.small,
+				font = UI.Fonts.bold,
+				color = UI.Colors.gold,
+				align = Enum.TextXAlignment.Right,
+				frameSize = UDim2.new(0, 160, 0, 20),
+				position = UDim2.new(1, -174, 0, 36),
+				parent = row,
+			})
+		end
 
 		UI.text({
 			text = if bitti then "COLLECTED" else `{quest.progress} / {quest.target}`,
@@ -3682,4 +3903,387 @@ do
 
 	-- Output'ta bu satir gorunuyorsa butun menu ve paneller kuruldu
 	print("[Menuler] arayuz kuruldu")
+end
+
+
+-- ISINLAYICI + HIZ PANELLERI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
+do
+	local Config = require(Shared:WaitForChild("OyunConfig"))
+	local Passler = require(Shared:WaitForChild("Passler"))
+	local Hiz = require(Shared:WaitForChild("Hiz"))
+	local PassSatinAl = Net.event("PassSatinAl")
+	local IsinlayiciGit = Net.event("IsinlayiciGit")
+	local HizAl = Net.event("HizAl")
+	-- Para birimi sarisi (Shared > Bases.RotColor ile ayni)
+	local ROT_SARI = Color3.fromRGB(255, 214, 41)
+
+	------------------------------------------------------------------
+	-- ISINLAYICI  (sagdaki Teleporter butonu)
+	--
+	-- Acilmis butun adalar tek tusla. Teleporter gecisi (Robux) gerekir;
+	-- gecis yoksa panelin ustunde satin alma dugmesi durur ve ada
+	-- dugmeleri de satin alma penceresini acar. Adalar kaptandan acilir;
+	-- burada yalnizca acik olanlara gidilir.
+	------------------------------------------------------------------
+	local TP_MOR = Color3.fromRGB(150, 120, 255)
+
+	local tpPanel = UI.panel(screen, UDim2.fromOffset(480, 470), "Isinlayici")
+
+	UI.text({
+		text = "Teleporter",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = TP_MOR,
+		frameSize = UDim2.new(1, -80, 0, 34),
+		position = UDim2.fromOffset(18, 14),
+		parent = tpPanel,
+	})
+
+	UI.closeButton(tpPanel).MouseButton1Click:Connect(function()
+		tpPanel.Visible = false
+	end)
+
+	local tpAciklama = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 40),
+		position = UDim2.fromOffset(18, 50),
+		parent = tpPanel,
+		wrapped = true,
+	})
+
+	local tpListe = makeScroll(tpPanel, UDim2.fromOffset(14, 96), UDim2.new(1, -28, 1, -110))
+
+	local function tpSahip(): boolean
+		return Passler.sahip(player, "Teleporter")
+	end
+
+	local function tpCiz()
+		local pass = Passler.get("Teleporter")
+		local sahip = tpSahip()
+		local acik = tonumber(inventory.islands) or 1
+
+		tpAciklama.Text = if sahip
+			then "Teleport to any island you have unlocked."
+			else `Get the Teleporter pass ({if pass then pass.fiyat else 0} R$) to travel to your unlocked islands from anywhere.`
+
+		clearRows(tpListe)
+
+		local sira = 0
+
+		-- Gecis yoksa en ustte satin alma satiri
+		if not sahip then
+			sira += 1
+			local satir = Instance.new("Frame")
+			satir.Name = "SatinAl"
+			satir.Size = UDim2.new(1, -6, 0, 60)
+			satir.BackgroundColor3 = UI.Colors.panelLight
+			satir.BorderSizePixel = 0
+			satir.LayoutOrder = sira
+			satir.Parent = tpListe
+			UI.corner(satir, 10)
+			UI.stroke(satir, UI.Colors.gold, 2)
+
+			UI.text({
+				text = "Teleporter Pass",
+				size = UI.Sizes.body,
+				font = UI.Fonts.bold,
+				color = UI.Colors.gold,
+				frameSize = UDim2.new(1, -170, 1, 0),
+				position = UDim2.fromOffset(14, 0),
+				parent = satir,
+			})
+
+			local al = UI.button(satir, `BUY  {if pass then pass.fiyat else 0} R$`, UDim2.fromOffset(140, 42), UI.Colors.good)
+			al.AnchorPoint = Vector2.new(1, 0.5)
+			al.Position = UDim2.new(1, -10, 0.5, 0)
+			UI.stroke(al, Color3.fromRGB(0, 0, 0), 2)
+			al.MouseButton1Click:Connect(function()
+				PassSatinAl:FireServer("Teleporter")
+			end)
+		end
+
+		for index, ada in Config.Islands do
+			if ada.comingSoon then
+				continue
+			end
+
+			sira += 1
+			local acildi = index <= acik
+
+			local satir = Instance.new("Frame")
+			satir.Name = ada.name
+			satir.Size = UDim2.new(1, -6, 0, 64)
+			satir.BackgroundColor3 = UI.Colors.panelLight
+			satir.BorderSizePixel = 0
+			satir.LayoutOrder = sira
+			satir.Parent = tpListe
+			UI.corner(satir, 10)
+			UI.stroke(satir, if acildi then ada.color else UI.Colors.panel, 1)
+
+			UI.text({
+				text = if acildi then ada.name else "???",
+				size = UI.Sizes.body,
+				font = UI.Fonts.bold,
+				color = if acildi then ada.color else UI.Colors.textDim,
+				frameSize = UDim2.new(1, -170, 0, 24),
+				position = UDim2.fromOffset(14, 8),
+				parent = satir,
+			})
+
+			UI.text({
+				text = if acildi then ada.desc else "Unlock it at the captain first.",
+				size = UI.Sizes.tiny,
+				color = UI.Colors.textDim,
+				frameSize = UDim2.new(1, -170, 0, 26),
+				position = UDim2.fromOffset(14, 32),
+				parent = satir,
+				wrapped = true,
+			})
+
+			local renk = if acildi and sahip then UI.Colors.good elseif acildi then UI.Colors.gold else UI.Colors.panel
+			local yazi = if not acildi then "LOCKED" elseif sahip then "TELEPORT" else "NEED PASS"
+			local buton = UI.button(satir, yazi, UDim2.fromOffset(140, 42), renk)
+			buton.AnchorPoint = Vector2.new(1, 0.5)
+			buton.Position = UDim2.new(1, -10, 0.5, 0)
+			UI.stroke(buton, Color3.fromRGB(0, 0, 0), 2)
+
+			if acildi then
+				buton.MouseButton1Click:Connect(function()
+					if tpSahip() then
+						IsinlayiciGit:FireServer(index)
+						tpPanel.Visible = false
+					else
+						PassSatinAl:FireServer("Teleporter")
+					end
+				end)
+			end
+		end
+	end
+
+	function ekMenu.isinlayiciAc()
+		tpPanel.Visible = not tpPanel.Visible
+		if tpPanel.Visible then
+			tpCiz()
+		end
+	end
+
+	-- Gecis alininca ya da yeni ada acilinca acik panel tazelensin
+	do
+		local pass = Passler.get("Teleporter")
+		if pass then
+			player:GetAttributeChangedSignal(pass.nitelik):Connect(function()
+				if tpPanel.Visible then
+					tpCiz()
+				end
+			end)
+		end
+	end
+
+	EnvanterGuncelle.OnClientEvent:Connect(function(data)
+		if type(data) == "table" and tpPanel.Visible then
+			-- Menuler'in kendi dinleyicisi 'inventory'yi ayni karede guncelliyor
+			task.defer(tpCiz)
+		end
+	end)
+
+	------------------------------------------------------------------
+	-- HIZ  (soldaki ayakkabi butonu)
+	--
+	-- 100 yukseltme; her biri Rot ister ve fiyati katlanarak artar
+	-- (bkz. Shared > Hiz). Seviye sunucudan oyuncu niteligiyle gelir.
+	------------------------------------------------------------------
+	local hzPanel = UI.panel(screen, UDim2.fromOffset(440, 380), "Hiz")
+
+	UI.text({
+		text = "Speed",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(110, 230, 255),
+		frameSize = UDim2.new(1, -80, 0, 34),
+		position = UDim2.fromOffset(18, 14),
+		parent = hzPanel,
+	})
+
+	UI.closeButton(hzPanel).MouseButton1Click:Connect(function()
+		hzPanel.Visible = false
+	end)
+
+	local hzSeviye = UI.text({
+		text = "",
+		size = UI.Sizes.huge,
+		font = UI.Fonts.bold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -36, 0, 50),
+		position = UDim2.fromOffset(18, 58),
+		parent = hzPanel,
+	})
+
+	local hzCarpan = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -36, 0, 24),
+		position = UDim2.fromOffset(18, 110),
+		parent = hzPanel,
+	})
+
+	-- Ilerleme cubugu: alinan / 100
+	local hzOluk = Instance.new("Frame")
+	hzOluk.Name = "Cubuk"
+	hzOluk.Position = UDim2.fromOffset(18, 146)
+	hzOluk.Size = UDim2.new(1, -36, 0, 16)
+	hzOluk.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	hzOluk.BorderSizePixel = 0
+	hzOluk.Parent = hzPanel
+	UI.corner(hzOluk, 8)
+
+	local hzDolgu = Instance.new("Frame")
+	hzDolgu.Name = "Dolgu"
+	hzDolgu.Size = UDim2.fromScale(0, 1)
+	hzDolgu.BorderSizePixel = 0
+	hzDolgu.Parent = hzOluk
+	UI.corner(hzDolgu, 8)
+
+	local hzSayac = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 166),
+		parent = hzPanel,
+	})
+
+	local hzBakiye = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = ROT_SARI,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 192),
+		parent = hzPanel,
+	})
+
+	--[[
+		Iki dugme: +1 ve +10. Renkleri para yetip yetmemesine gore degisiyor;
+		UI.hover rengi ilk temasta sakladigi icin hover'i elle kuruyoruz.
+	]]
+	local function hzDugmesi(x: number, adet: number)
+		local dugme = Instance.new("TextButton")
+		dugme.Name = `Al{adet}`
+		dugme.Position = UDim2.new(x, if x == 0 then 18 else 6, 0, 226)
+		dugme.Size = UDim2.new(0.5, -24, 0, 70)
+		dugme.AutoButtonColor = false
+		dugme.BorderSizePixel = 0
+		dugme.Text = ""
+		dugme.Parent = hzPanel
+		UI.corner(dugme, 12)
+		UI.stroke(dugme, Color3.fromRGB(0, 0, 0), 2)
+
+		local ust = UI.text({
+			text = `+{adet} SPEED`,
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, 0, 0, 32),
+			position = UDim2.fromOffset(0, 6),
+			parent = dugme,
+		})
+
+		local alt = UI.text({
+			text = "",
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = ROT_SARI,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, 0, 0, 24),
+			position = UDim2.fromOffset(0, 38),
+			parent = dugme,
+		})
+
+		local renk = UI.Colors.panel
+		dugme.MouseEnter:Connect(function()
+			dugme.BackgroundColor3 = UI.shade(renk, UI.HoverLift)
+		end)
+		dugme.MouseLeave:Connect(function()
+			dugme.BackgroundColor3 = renk
+		end)
+		dugme.MouseButton1Click:Connect(function()
+			HizAl:FireServer(adet)
+		end)
+
+		return function(alinan: number, rot: number)
+			local kalan = math.min(adet, Hiz.Max - alinan)
+			if kalan <= 0 then
+				ust.Text = "MAXED"
+				alt.Text = ""
+				renk = UI.Colors.panel
+			else
+				local fiyat = Hiz.topluFiyat(alinan, kalan)
+				ust.Text = `+{kalan} SPEED`
+				alt.Text = `{Format.short(fiyat)} Rot`
+				renk = if rot >= fiyat then UI.Colors.good else UI.Colors.panel
+			end
+			dugme.BackgroundColor3 = renk
+		end
+	end
+
+	local hzBir = hzDugmesi(0, 1)
+	local hzOn = hzDugmesi(0.5, 10)
+
+	UI.text({
+		text = `Max Speed {Hiz.Max + 1} = x{Hiz.MaxCarpan} walk speed`,
+		size = UI.Sizes.tiny,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 310),
+		parent = hzPanel,
+	})
+
+	local function hzCiz()
+		local alinan = tonumber(player:GetAttribute(Hiz.Nitelik)) or 0
+		local seviye = alinan + 1
+		local rot = tonumber(inventory.rot) or 0
+		local renk = Hiz.renk(seviye)
+
+		hzSeviye.Text = `Speed {seviye}`
+		hzSeviye.TextColor3 = renk
+		if alinan >= Hiz.Max then
+			hzCarpan.Text = `x{string.format("%.2f", Hiz.carpan(alinan))} walk speed (MAX)`
+		else
+			hzCarpan.Text = `x{string.format("%.2f", Hiz.carpan(alinan))}  ->  x{string.format("%.2f", Hiz.carpan(alinan + 1))} walk speed`
+		end
+		hzDolgu.Size = UDim2.fromScale(alinan / Hiz.Max, 1)
+		hzDolgu.BackgroundColor3 = renk
+		hzSayac.Text = `{alinan} / {Hiz.Max} upgrades`
+		hzBakiye.Text = `You have {Format.short(rot)} Rot`
+
+		hzBir(alinan, rot)
+		hzOn(alinan, rot)
+	end
+
+	function ekMenu.hizAc()
+		hzPanel.Visible = not hzPanel.Visible
+		if hzPanel.Visible then
+			hzCiz()
+		end
+	end
+
+	player:GetAttributeChangedSignal(Hiz.Nitelik):Connect(function()
+		if hzPanel.Visible then
+			hzCiz()
+		end
+	end)
+
+	EnvanterGuncelle.OnClientEvent:Connect(function(data)
+		if type(data) == "table" and hzPanel.Visible then
+			task.defer(hzCiz)
+		end
+	end)
 end
