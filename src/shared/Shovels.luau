@@ -10,7 +10,10 @@
 	Ada kureklerinde adanin UC madeninin HER BIRINDEN istenen adet, kuregin
 	adadaki sirasina gore (bkz. OreCosts):
 
-	    1. kurek 2   2. kurek 3   3. kurek 5   4. kurek 7   5. kurek 10
+	    1. kurek 0   2. kurek 3   3. kurek 5   4. kurek 7   5. kurek 9
+
+	Adanin ilk kuregi maden ISTEMEZ: oyuncu adaya yeni gelmistir, maden
+	toplamaya henuz baslamamistir.
 
 	KAZI GUCU
 	Kazi zorlugu "rarity.order - kurek gucu" farkindan gelir (bkz. Shared >
@@ -58,7 +61,7 @@ export type ShovelInfo = {
 }
 
 -- Ada kureklerinin maden bedeli: adadaki sirasina gore (1..5)
-Shovels.OreCosts = { 2, 3, 5, 7, 10 }
+Shovels.OreCosts = { 0, 3, 5, 7, 9 }
 
 Shovels.Order = { "Wooden", "Iron", "Golden", "Diamond", "Celestial" } :: { ShovelId }
 

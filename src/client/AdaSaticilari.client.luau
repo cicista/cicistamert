@@ -291,10 +291,15 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 		-- Bedel satiri: yetiyorsa yesil, sirasi gelmis ama yetmiyorsa sari
 		local yeterli = payload.rot >= entry.price
 		local parcalar: { Parca } = { { yazi = "Needs:" } }
-		for _, ore in payload.ores do
-			table.insert(parcalar, { ore = ore.id, yazi = tostring(entry.oreCost) })
-			if (sayac[ore.id] or 0) < entry.oreCost then
-				yeterli = false
+		if (entry.oreCost or 0) <= 0 then
+			-- Adanin ilk kuregi: yalnizca Rot
+			parcalar = { { yazi = "No ores needed" } }
+		else
+			for _, ore in payload.ores do
+				table.insert(parcalar, { ore = ore.id, yazi = tostring(entry.oreCost) })
+				if (sayac[ore.id] or 0) < entry.oreCost then
+					yeterli = false
+				end
 			end
 		end
 

@@ -320,8 +320,10 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 	end
 
 	PlayerData.addRot(player, -info.price)
-	for _, id in cfg.ores do
-		PlayerData.addOre(player, id, -bedel)
+	if bedel > 0 then
+		for _, id in cfg.ores do
+			PlayerData.addOre(player, id, -bedel)
+		end
 	end
 
 	data.shovel = info.id
