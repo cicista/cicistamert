@@ -425,16 +425,63 @@ local function dunyaYariBoyut(pad: BasePart): Vector3
 	return Vector3.new(x, y, z)
 end
 
-local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3)
+--[[
+	NUMARA NEREYE KONUR
+
+	Slot tek parca degil: tas cerceve + ustunde acik renkli kare gibi birden
+	fazla parcadan olusabiliyor. Numara yalnizca "pad" parcasinin ustune
+	konunca bazi slotlarda ustteki karenin ALTINDA kaliyordu (gorunmeyen
+	numaralar). Artik:
+	  - yatay merkez ve boyut: slotun GORUNEN butun parcalarinin kutusu
+	  - yukseklik: yukaridan asagi isin; slotun EN UST yuzeyi
+]]
+local function slotYuzeyi(node: Instance, pad: BasePart): (Vector3, number)
+	local parcalar: { BasePart } = {}
+	if node:IsA("BasePart") then
+		table.insert(parcalar, node)
+	end
+	for _, d in node:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "SlotNumarasi" and d.Transparency < 1 then
+			table.insert(parcalar, d)
+		end
+	end
+	if #parcalar == 0 then
+		table.insert(parcalar, pad)
+	end
+
+	local enAz, enCok = nil, nil
+	for _, p in parcalar do
+		local yari = dunyaYariBoyut(p)
+		local alt, ust = p.Position - yari, p.Position + yari
+		enAz = if enAz then enAz:Min(alt) else alt
+		enCok = if enCok then enCok:Max(ust) else ust
+	end
+
+	local merkez = ((enAz :: Vector3) + (enCok :: Vector3)) / 2
+	local boyut = (enCok :: Vector3) - (enAz :: Vector3)
+	local ustY = (enCok :: Vector3).Y
+
+	local ayar = RaycastParams.new()
+	ayar.FilterType = Enum.RaycastFilterType.Include
+	ayar.FilterDescendantsInstances = parcalar
+	local isin = Workspace:Raycast(Vector3.new(merkez.X, ustY + 5, merkez.Z), Vector3.new(0, -(boyut.Y + 10), 0), ayar)
+	if isin then
+		ustY = isin.Position.Y
+	end
+
+	return Vector3.new(merkez.X, ustY, merkez.Z), math.min(boyut.X, boyut.Z)
+end
+
+local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3, node: Instance?)
 	local eski = pad:FindFirstChild("SlotNumarasi")
 	if eski then
 		eski:Destroy()
 	end
 
-	local yari = dunyaYariBoyut(pad)
+	local yuzey, genislik = slotYuzeyi(node or pad, pad)
 	-- Kare: yazi dondurulse de sekli bozulmasin
-	local kenar = math.max(1, math.min(yari.X, yari.Z) * 2 * 0.9)
-	local merkez = pad.Position + Vector3.new(0, yari.Y + SLOT_NUMARA_KALINLIK / 2 + 0.02, 0)
+	local kenar = math.max(1, genislik * 0.7)
+	local merkez = yuzey + Vector3.new(0, SLOT_NUMARA_KALINLIK / 2 + 0.03, 0)
 
 	local tasiyici = Instance.new("Part")
 	tasiyici.Name = "SlotNumarasi"
@@ -464,7 +511,7 @@ local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3)
 	yazi.Text = tostring(slotIndex)
 	yazi.TextScaled = true
 	yazi.TextColor3 = Color3.fromRGB(255, 255, 255)
-	yazi.TextTransparency = 0.35
+	yazi.TextTransparency = 0
 	Fonts.apply(yazi)
 	yazi.Parent = yuzey
 
@@ -474,8 +521,8 @@ local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3)
 
 	local kontur = Instance.new("UIStroke")
 	kontur.Color = Color3.fromRGB(0, 0, 0)
-	kontur.Thickness = 3
-	kontur.Transparency = 0.4
+	kontur.Thickness = 4
+	kontur.Transparency = 0
 	kontur.Parent = yazi
 end
 
@@ -669,7 +716,12 @@ local function slotSirasiKur(base: Model, on: Vector3)
 
 		-- Numaranin ust kenari: koridora mi duvara mi (Bases.SlotNumberFacing)
 		local koridora = Bases.SlotNumberFacing ~= "wall"
-		local solUst = if koridora then sag else -sag
+		--[[
+			SurfaceGui'nin on yuzu yukari cevrilince yazinin ustu parcanin
+			UpVector'unun TERSINE dusuyor (oyunda denendi: rakamlar duvara
+			bakiyordu). Bu yuzden istenen yonun tersi veriliyor.
+		]]
+		local solUst = if koridora then -sag else sag
 
 		local sira = ilk
 		for _, k in sol do
@@ -1369,7 +1421,7 @@ local function setupBases()
 			end
 			local yonler = slotYonleri[base]
 			local ust = (yonler and yonler[slotIndex]) or Vector3.new(0, 0, -1)
-			buildSlotNumber(pad, slotIndex, ust)
+			buildSlotNumber(pad, slotIndex, ust, slotNode(index, slotIndex))
 		end
 
 		if found < Bases.SlotCount then

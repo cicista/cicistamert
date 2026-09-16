@@ -19,6 +19,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rods = require(Shared:WaitForChild("Rods"))
@@ -360,8 +361,8 @@ function Olta.cast(character: Model, target: Vector3): BasePart?
 	samandira.Name = Rods.LineName
 	samandira.Shape = Enum.PartType.Ball
 	samandira.Size = Vector3.new(0.6, 0.6, 0.6)
-	samandira.Color = Color3.fromRGB(255, 80, 80)
-	samandira.Material = Enum.Material.SmoothPlastic
+	samandira.Color = Rods.LineColor
+	samandira.Material = Enum.Material.Neon
 	samandira.Transparency = 1
 	samandira.Anchored = true
 	samandira.CanCollide = false
@@ -378,12 +379,15 @@ function Olta.cast(character: Model, target: Vector3): BasePart?
 	misina.Name = "Misina"
 	misina.Attachment0 = tip
 	misina.Attachment1 = hedefNokta
-	misina.Width0 = 0.06
-	misina.Width1 = 0.06
+	misina.Width0 = 0.08
+	misina.Width1 = 0.08
 	misina.FaceCamera = true
+	-- Neon: isiktan etkilenmez, kendisi parlar
 	misina.LightInfluence = 0
-	misina.Color = ColorSequence.new(Color3.fromRGB(240, 245, 250))
-	misina.Transparency = NumberSequence.new(0.15)
+	misina.LightEmission = 1
+	misina.Brightness = 4
+	misina.Color = ColorSequence.new(Rods.LineColor)
+	misina.Transparency = NumberSequence.new(0)
 	-- Ucarken ip gergin; sarkma suya dustukten sonra geliyor
 	misina.CurveSize0 = 0
 	misina.CurveSize1 = 0
@@ -413,10 +417,13 @@ function Olta.cast(character: Model, target: Vector3): BasePart?
 
 		local baslangicZamani = os.clock()
 		while true do
-			local oran = (os.clock() - baslangicZamani) / Rods.CastFlight
-			if oran >= 1 then
+			local ham = (os.clock() - baslangicZamani) / Rods.CastFlight
+			if ham >= 1 then
 				break
 			end
+
+			-- Ivmeli: hizli cikar, suya yaklastikca yavaslar
+			local oran = TweenService:GetValue(ham, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 			-- Duz gidis + sin egrisiyle yukari kavis
 			local nokta = basla:Lerp(target, oran)

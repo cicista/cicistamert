@@ -35,12 +35,23 @@ local Odul = {}
 -- Ust uste gelen iki "al" istegi ayni odulu iki kez vermesin
 local aliyor: { [Player]: boolean } = {}
 
+-- Oyuncunun bu oturuma girdigi an (os.clock); bkz. Rewards.MinSessionSeconds
+local girisZamani: { [Player]: number } = {}
+
 local function durum(player: Player): Rewards.State?
 	local data = PlayerData.get(player)
 	if not data then
 		return nil
 	end
-	return Rewards.state(data.lastReward or 0, data.rewardDay or 1, os.time())
+	local d = Rewards.state(data.lastReward or 0, data.rewardDay or 1, os.time())
+
+	-- Oyuna girdikten sonra en az 15 dakika oynamadan alinamaz
+	local oynanan = os.clock() - (girisZamani[player] or os.clock())
+	local kalanOyun = Rewards.MinSessionSeconds - oynanan
+	if kalanOyun > 0 and (d.ready or d.remaining < kalanOyun) then
+		return { day = d.day, ready = false, remaining = math.ceil(kalanOyun) }
+	end
+	return d
 end
 
 function Odul.push(player: Player)
@@ -139,13 +150,19 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	aliyor[player] = nil
+	girisZamani[player] = nil
 end)
+
+for _, player in Players:GetPlayers() do
+	girisZamani[player] = os.clock()
+end
 
 --[[
 	Oyuncu girince durumu bir kez gonderir; menu butonu odul hazirsa
 	isaret gosterebilsin.
 ]]
 Players.PlayerAdded:Connect(function(player)
+	girisZamani[player] = os.clock()
 	task.delay(3, function()
 		if player.Parent then
 			Odul.push(player)

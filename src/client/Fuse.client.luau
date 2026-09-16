@@ -912,8 +912,13 @@ end
 local SHAKE_NAME = "FuseSarsinti"
 local shaking = false
 
+-- Settings > Screen Shake kapaliysa sarsinti yok (nitelik Ayarlar'dan gelir)
+local function sarsintiKapali(): boolean
+	return game:GetService("Players").LocalPlayer:GetAttribute("SarsintiKapali") == true
+end
+
 local function shakeCamera(duration: number, strength: number)
-	if shaking then
+	if shaking or sarsintiKapali() then
 		return
 	end
 	shaking = true

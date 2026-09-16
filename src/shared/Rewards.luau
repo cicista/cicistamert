@@ -35,6 +35,15 @@ local Rewards = {}
 -- Iki odul arasi bekleme (saniye). 86400 = 24 saat
 Rewards.cooldown = 86400
 
+--[[
+	OYUNA GIRINCE BEKLEME
+
+	Oyuncu oyuna girdikten sonra gunluk odulu alabilmek icin bu kadar
+	saniye oynamak zorunda (her giriste). 24 saat dolmus olsa bile once bu
+	sure dolar; sayac panelde kalan sure olarak gorunur.
+]]
+Rewards.MinSessionSeconds = 15 * 60
+
 -- Son odulden bu kadar saniye gecerse seri bozulur, 1. gune donulur (48 saat)
 Rewards.streakReset = 172800
 

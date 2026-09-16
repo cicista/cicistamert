@@ -9,6 +9,9 @@
 	  musicMuted   -- muzik kapali mi (varsayilan acik)
 	  sfxVolume    -- ses efektleri yuzdesi (%0..%100, varsayilan %100)
 	  sfxMuted     -- ses efektleri kapali mi (varsayilan acik)
+	  shakeOff     -- ekran sarsintisi kapali mi (varsayilan acik); oyuncunun
+	                  "SarsintiKapali" niteligine de yazilir, sarsinti yapan
+	                  istemci kodlari onu okur
 
 	NEDEN SUNUCUDA
 	Roblox'ta istemcinin kalici deposu yok; ayarin oturumlar arasinda
@@ -41,12 +44,14 @@ local OLCEK_MAX = 150
 
 local function ayarlariYolla(player: Player)
 	local data = PlayerData.get(player) or PlayerData.load(player)
+	player:SetAttribute("SarsintiKapali", data.shakeOff == true)
 	AyarDurum:FireClient(player, {
 		uiScale = data.uiScale or 100,
 		musicVolume = data.musicVolume or 100,
 		musicMuted = data.musicMuted == true,
 		sfxVolume = data.sfxVolume or 100,
 		sfxMuted = data.sfxMuted == true,
+		shakeOff = data.shakeOff == true,
 	})
 end
 
@@ -81,6 +86,9 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 		end
 		if type(payload.sfxMuted) == "boolean" then
 			data.sfxMuted = payload.sfxMuted
+		end
+		if type(payload.shakeOff) == "boolean" then
+			data.shakeOff = payload.shakeOff
 		end
 	end
 

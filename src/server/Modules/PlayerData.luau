@@ -126,6 +126,8 @@ export type Data = {
 	-- Ses efektleri (muzik haric butun sesler): yuzde ve kapali mi
 	sfxVolume: number,
 	sfxMuted: boolean,
+	-- Ekran sarsintisi kapali mi (Settings > Screen Shake)
+	shakeOff: boolean,
 	-- Alinan hiz yukseltmesi sayisi (0..100, bkz. Shared > Hiz)
 	speedLevel: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
@@ -184,6 +186,7 @@ local function defaultData(): Data
 		musicMuted = false,
 		sfxVolume = 100,
 		sfxMuted = false,
+		shakeOff = false,
 		speedLevel = 0,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
@@ -273,6 +276,7 @@ local function migrate(raw: any): Data
 	-- Ses efekti ayari oncesi kayitlar: tam ses, acik
 	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or 100, 0, 100)
 	data.sfxMuted = raw.sfxMuted == true
+	data.shakeOff = raw.shakeOff == true
 	-- Hiz yukseltmesi oncesi kayitlar 0'dan baslar
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 

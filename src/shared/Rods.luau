@@ -168,12 +168,14 @@ Rods.LineName = "OltaMisinasi"
 	SAVURMA ZAMANLAMASI
 
 	Girdaba tiklayinca minigame ANINDA acilmaz: once olta savrulur.
-	Uc sayi var, hepsi ayni 2.25 saniyenin icinde gecer:
+	Uc sayi var, hepsi ayni 1.9 saniyenin icinde gecer:
 
 	  0.00  tiklandi, savurma animasyonu basladi -- misina gorunmez
-	  1.75  CastRelease  -- animasyon bitti, MISINA BIRAKILDI
-	  2.25  CastFlight bitti -- samandira girdabin ortasina dustu
-	  2.25  CastTime -- minigame penceresi acilir
+	  1.00  CastRelease  -- savurma one geldi, MISINA BIRAKILDI
+	  1.90  CastFlight bitti -- samandira girdabin ortasina dustu
+	  1.90  CastTime -- minigame penceresi acilir
+
+	Misina ucarken hizli cikip suya yaklastikca yavaslar (ivmeli).
 
 	CastTime elle yazilmaz, CastRelease + CastFlight olarak hesaplanir:
 	pencere her zaman misinanin suya dustugu anda acilir. Savurma
@@ -185,11 +187,14 @@ Rods.LineName = "OltaMisinasi"
 	yani olta kademesi bu sureyi degistirmez.
 ]]
 
--- Savurma animasyonunun (RodCast) suresi; misina tam bitiminde birakilir
-Rods.CastRelease = 1.733
+-- Misinanin birakildigi an: savurma animasyonunun (RodCast, 1.733 sn) 1. saniyesi
+Rods.CastRelease = 1.0
 
 -- Misinanin havada gecirdigi sure: oltanin ucundan girdabin ortasina
-Rods.CastFlight = 0.5
+Rods.CastFlight = 0.9
+
+-- Misina ve ucundaki samandiranin neon rengi
+Rods.LineColor = Color3.fromRGB(60, 255, 230)
 
 -- Tiklamayla minigame penceresinin acilmasi arasindaki toplam sure
 Rods.CastTime = Rods.CastRelease + Rods.CastFlight

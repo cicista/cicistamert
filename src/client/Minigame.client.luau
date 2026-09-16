@@ -579,6 +579,11 @@ local rng = Random.new()
 	ADIMINDAN SONRA uygulanmali; yoksa oyunun kendi kamera kodu uzerine
 	yazip etkiyi siler. BindToRenderStep'in oncelik sayisi bunun icin.
 ]]
+-- Settings > Screen Shake kapaliysa sarsinti yok (nitelik Ayarlar'dan gelir)
+local function sarsintiKapali(): boolean
+	return game:GetService("Players").LocalPlayer:GetAttribute("SarsintiKapali") == true
+end
+
 local function sarsintiyiBagla()
 	if sarsintiBagli then
 		return
@@ -601,7 +606,7 @@ local function sarsintiyiBagla()
 		-- Vurus, durus acisinin UZERINE ekleniyor; taban aci hep korunur
 		kaziIkon.Rotation = ikonAci + vurusYon * v * 27
 
-		if sarsintiGucu <= 0 then
+		if sarsintiGucu <= 0 or sarsintiKapali() then
 			return
 		end
 
@@ -872,6 +877,9 @@ perfectLabel.Visible = false
 local everLeft = false
 
 local function shakeScreen()
+	if sarsintiKapali() then
+		return
+	end
 	local origin = root.Position
 
 	task.spawn(function()

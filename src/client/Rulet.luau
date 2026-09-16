@@ -325,7 +325,15 @@ function Rulet.reset(reel: Reel, rarities: { string })
 end
 
 -- Paneli kisaca titretir (kazanma hissi)
+-- Settings > Screen Shake kapaliysa sarsinti yok (nitelik Ayarlar'dan gelir)
+local function sarsintiKapali(): boolean
+	return game:GetService("Players").LocalPlayer:GetAttribute("SarsintiKapali") == true
+end
+
 function Rulet.shake(frame: GuiObject)
+	if sarsintiKapali() then
+		return
+	end
 	local home = frame.Position
 	task.spawn(function()
 		for _ = 1, 6 do

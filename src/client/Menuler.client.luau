@@ -582,6 +582,44 @@ local function refreshEnvanter()
 		return Brainrots.minIncome(item.rarity, item.condition)
 	end
 
+	--[[
+		CANTADAKI BRAINROTA TIKLAYINCA ELE ALINIR
+
+		Hotbar'daki gibi: brainrot cantada bir Tool olarak duruyor (nitelik:
+		BrainrotUid). Tiklaninca kusanilir, zaten eldeyse birakilir; envanter
+		kapanir ki oyuncu elindekini gorsun. Base'teki brainrotlar bu yolla
+		alinmaz (onlarin tiklamasi slottan geri alir).
+	]]
+	local function eleAlTikla(row: TextButton, item: any)
+		row.MouseButton1Click:Connect(function()
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if not humanoid then
+				return
+			end
+
+			for _, tool in character:GetChildren() do
+				if tool:IsA("Tool") and tool:GetAttribute("BrainrotUid") == item.uid then
+					humanoid:UnequipTools()
+					return
+				end
+			end
+
+			local backpack = player:FindFirstChildOfClass("Backpack")
+			if not backpack then
+				return
+			end
+			for _, tool in backpack:GetChildren() do
+				if tool:IsA("Tool") and tool:GetAttribute("BrainrotUid") == item.uid then
+					humanoid:EquipTool(tool)
+					envanter.Visible = false
+					return
+				end
+			end
+		end)
+		UI.hover(row)
+	end
+
 	local function tabanaTikla(row: TextButton, item: any)
 		row.MouseButton1Click:Connect(function()
 			SlottanAl:FireServer(item.uid)
@@ -634,7 +672,7 @@ local function refreshEnvanter()
 	end)
 
 	for index, item in cantada do
-		brainrotRow(envanterListe, item, 1000 + index, envanterPencere)
+		eleAlTikla(brainrotRow(envanterListe, item, 1000 + index, envanterPencere), item)
 	end
 end
 
@@ -3368,7 +3406,7 @@ do
 	-- Deger sunucuda PlayerData icinde durur (uiScale), boylece oyuncu
 	-- cikip girince ayari yerinde kalir.
 	------------------------------------------------------------------
-	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 480), "Ayarlar")
+	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 560), "Ayarlar")
 
 	UI.text({
 		text = "Settings",
@@ -3530,6 +3568,52 @@ do
 	local efektKisButon, efektYazi, efektAcButon, efektDugme, efektDugmeYazi = sesSatiri("Efekt", 396)
 
 	--[[
+		EKRAN SARSINTISI: tek ac/kapat. Deger oyuncunun "SarsintiKapali"
+		niteliginde durur; kazi, Fuse ve Lucky Block sarsintilari onu okur.
+	]]
+	UI.text({
+		text = "SCREEN SHAKE",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 464),
+		parent = ayarPanel,
+	})
+
+	local sarsintiDugme = Instance.new("TextButton")
+	sarsintiDugme.Name = "SarsintiAcKapat"
+	sarsintiDugme.Position = UDim2.fromOffset(18, 490)
+	sarsintiDugme.Size = UDim2.new(1, -36, 0, 48)
+	sarsintiDugme.AutoButtonColor = false
+	sarsintiDugme.BorderSizePixel = 0
+	sarsintiDugme.Text = ""
+	sarsintiDugme.Parent = ayarPanel
+	UI.corner(sarsintiDugme, 10)
+	UI.stroke(sarsintiDugme, Color3.fromRGB(0, 0, 0), 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+	local sarsintiYazi = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = sarsintiDugme,
+	})
+
+	local function sarsintiKapaliMi(): boolean
+		return player:GetAttribute("SarsintiKapali") == true
+	end
+
+	local function sarsintiCiz()
+		local kapali = sarsintiKapaliMi()
+		sarsintiDugme.BackgroundColor3 = if kapali then Color3.fromRGB(200, 70, 80) else UI.Colors.good
+		sarsintiYazi.Text = if kapali then "Screen Shake: OFF" else "Screen Shake: ON"
+	end
+	player:GetAttributeChangedSignal("SarsintiKapali"):Connect(sarsintiCiz)
+
+	--[[
 		SUNUCUYA KAYIT
 
 		Butona her basista remote atilmasin diye son degisiklikten 0.4 saniye
@@ -3552,6 +3636,7 @@ do
 				musicMuted = Muzik.kapali(),
 				sfxVolume = SesEfekti.yuzde(),
 				sfxMuted = SesEfekti.kapali(),
+				shakeOff = player:GetAttribute("SarsintiKapali") == true,
 			})
 		end)
 	end
@@ -3609,6 +3694,13 @@ do
 		efektSesDegistir(MUZIK_ADIM)
 	end)
 
+	sarsintiDugme.MouseButton1Click:Connect(function()
+		-- Hemen etkili olsun; sunucu kaydedip ayni degeri geri yazar
+		player:SetAttribute("SarsintiKapali", not sarsintiKapaliMi())
+		sarsintiCiz()
+		ayarKaydiniPlanla()
+	end)
+
 	efektDugme.MouseButton1Click:Connect(function()
 		SesEfekti.ayarla(nil, not SesEfekti.kapali())
 		efektCiz()
@@ -3663,6 +3755,7 @@ do
 	olcekYazisiTazele(UI.getScale())
 	muzikCiz()
 	efektCiz()
+	sarsintiCiz()
 
 	function ayarPaneliniAc()
 		ayarPanel.Visible = not ayarPanel.Visible

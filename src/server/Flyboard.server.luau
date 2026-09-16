@@ -586,6 +586,80 @@ local function hasarYazisi(character: Model, amount: number)
 	Debris:AddItem(billboard, P.damageTextTime)
 end
 
+--[[
+	TAHTASIZ DENIZE GIRIS YOK
+
+	Hiz yukseltmesinden sonra oyuncular kaldirma kuvvetini asip denize
+	dalabiliyordu. Artik flyboardi olmayan oyuncu suya degdigi anda KARADA
+	son durdugu yere geri konur. Karadaki konum kisa araliklarla kaydedilir;
+	suya girmeden biraz onceki kayit kullanilir (hizli oyuncu kiyida
+	takilip kalmasin).
+]]
+local KARA_ARALIK = 0.1
+local KARA_GECMIS = 12
+-- Geri konulacak kayit en az bu kadar eski olmali
+local KARA_GERI = 0.15
+local UYARI_ARALIK = 2
+
+type KaraKaydi = { cf: CFrame, t: number }
+local karaGecmisi: { [Player]: { KaraKaydi } } = {}
+local sonUyari: { [Player]: number } = {}
+
+local function karayiKaydet(player: Player, root: BasePart, humanoid: Humanoid)
+	local zemin = humanoid.FloorMaterial
+	if zemin == Enum.Material.Air or zemin == Enum.Material.Water then
+		return
+	end
+
+	local gecmis = karaGecmisi[player]
+	if not gecmis then
+		gecmis = {}
+		karaGecmisi[player] = gecmis
+	end
+
+	local simdi = os.clock()
+	local son = gecmis[#gecmis]
+	if son and simdi - son.t < KARA_ARALIK then
+		return
+	end
+
+	table.insert(gecmis, { cf = root.CFrame, t = simdi })
+	if #gecmis > KARA_GECMIS then
+		table.remove(gecmis, 1)
+	end
+end
+
+-- Karaya geri koyar; kayit yoksa false
+local function karayaGeriKoy(player: Player, character: Model, root: BasePart): boolean
+	local gecmis = karaGecmisi[player]
+	if not gecmis or #gecmis == 0 then
+		return false
+	end
+
+	local simdi = os.clock()
+	local secilen = gecmis[1]
+	for i = #gecmis, 1, -1 do
+		if simdi - gecmis[i].t >= KARA_GERI then
+			secilen = gecmis[i]
+			break
+		end
+	end
+
+	character:PivotTo(secilen.cf + Vector3.new(0, 0.5, 0))
+	root.AssemblyLinearVelocity = Vector3.zero
+
+	if simdi - (sonUyari[player] or 0) >= UYARI_ARALIK then
+		sonUyari[player] = simdi
+		Bildirim:FireClient(player, "You need a Flyboard to enter the sea!", Color3.fromRGB(255, 120, 120))
+	end
+	return true
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	karaGecmisi[player] = nil
+	sonUyari[player] = nil
+end)
+
 local function bogul(player: Player, root: BasePart, humanoid: Humanoid, surface: number)
 	--[[
 		KALDIRMA KUVVETI  (tutuklama DEGIL)
@@ -673,6 +747,7 @@ RunService.Heartbeat:Connect(function(dt)
 		if not ride then
 			if not surface then
 				suyuBirak(player)
+				karayiKaydet(player, root, humanoid)
 				continue
 			end
 
@@ -682,8 +757,8 @@ RunService.Heartbeat:Connect(function(dt)
 			if info then
 				suyuBirak(player)
 				mount(player, info)
-			else
-				-- Tahtasi yok: yuzeyde tutulur ve can kaybeder
+			elseif not karayaGeriKoy(player, character, root) then
+				-- Tahtasi yok ve karada kaydi da yok: yuzeyde tutulur, can kaybeder
 				bogul(player, root, humanoid, surface)
 			end
 
