@@ -130,6 +130,8 @@ export type Data = {
 	shakeOff: boolean,
 	-- Alinan hiz yukseltmesi sayisi (0..100, bkz. Shared > Hiz)
 	speedLevel: number,
+	-- Hiz rebirth sayisi (0..Hiz.MaxRebirth); arkadaki izin boyu ve rengi
+	speedRebirth: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
 	--[[
@@ -188,6 +190,7 @@ local function defaultData(): Data
 		sfxMuted = false,
 		shakeOff = false,
 		speedLevel = 0,
+		speedRebirth = 0,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
 	}
@@ -279,6 +282,7 @@ local function migrate(raw: any): Data
 	data.shakeOff = raw.shakeOff == true
 	-- Hiz yukseltmesi oncesi kayitlar 0'dan baslar
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
+	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
 
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)

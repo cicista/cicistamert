@@ -11,6 +11,13 @@
 	Yurume hizi alinan yukseltmeyle DOGRUSAL artar; 100. yukseltmede
 	taban hizin 10 katina ulasir (16 -> 160).
 
+	REBIRTH
+	Speed 101'e (100 yukseltme) ulasan oyuncu rebirth atabilir: hiz Speed 1'e
+	doner, karakterin arkasinda bir iz (trail) belirir. Her rebirth'te iz
+	biraz uzar ve rengi bir sonraki hiz rengine gecer:
+	    1 beyaz, 2 yesil, 3 mavi, 4 mor, 5 turuncu, 6 kirmizi
+	Kirmizidan (6. rebirth) sonra rebirth atilamaz.
+
 	FIYAT
 	Katlanarak artar. Ilk yukseltme IlkFiyat, 100. yukseltme SonFiyat --
 	en pahali oltayla (Leviathan Rod) ayni. Aradaki her adim ayni oranda
@@ -92,6 +99,29 @@ local Renkler = {
 	{ en = 85, renk = Color3.fromRGB(255, 150, 50) },
 	{ en = math.huge, renk = Color3.fromRGB(255, 50, 50) },
 }
+
+-- En fazla rebirth: renk sayisi kadar (kirmizida biter)
+Hiz.MaxRebirth = #Renkler
+Hiz.RebirthNitelik = "SpeedRebirth"
+
+-- Izin (trail) omru: ilk rebirth'te 0.35 sn, her rebirth'te +0.15 sn
+Hiz.IzIlkOmur = 0.35
+Hiz.IzOmurArtisi = 0.15
+
+-- 'rebirth' kez rebirth atilmis oyuncunun iz rengi (0 ise iz yok)
+function Hiz.rebirthRengi(rebirth: number): Color3?
+	local r = Renkler[math.clamp(rebirth, 0, #Renkler)]
+	return if rebirth >= 1 and r then r.renk else nil
+end
+
+function Hiz.izOmru(rebirth: number): number
+	return Hiz.IzIlkOmur + Hiz.IzOmurArtisi * math.max(0, rebirth - 1)
+end
+
+-- Rebirth atilabilir mi
+function Hiz.rebirthAtilabilir(alinan: number, rebirth: number): boolean
+	return alinan >= Hiz.Max and rebirth < Hiz.MaxRebirth
+end
 
 -- 'seviye' = alinan + 1
 function Hiz.renk(seviye: number): Color3

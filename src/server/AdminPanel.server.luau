@@ -864,6 +864,21 @@ function commands.togglePass(player, data, arg)
 	return `{info.ad}: {if yeni then "VERILDI" else "ALINDI"} (bu oturum)`
 end
 
+-- Hiz rebirth sayisini ayarla (0..Hiz.MaxRebirth)
+function commands.setRebirth(player, data, arg)
+	local adet = tonumber(arg)
+	if not adet then
+		return nil
+	end
+	data.speedRebirth = math.clamp(math.floor(adet), 0, Hiz.MaxRebirth)
+	local yenile = script.Parent:FindFirstChild("Hiz")
+	local olay = yenile and yenile:FindFirstChild("HizYenile")
+	if olay and olay:IsA("BindableEvent") then
+		olay:Fire(player)
+	end
+	return `Hiz rebirth: {data.speedRebirth}`
+end
+
 -- Hiz yukseltmesi sayisini ayarla (0..100)
 function commands.setSpeed(player, data, arg)
 	local adet = tonumber(arg)

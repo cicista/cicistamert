@@ -131,6 +131,7 @@ Net.Events = {
 
 	-- Hiz yukseltmesi (bkz. Shared > Hiz); seviye oyuncu niteliginde (SpeedLevel)
 	"HizAl",             -- client -> server: kac yukseltme alinacak
+	"HizRebirth",        -- client -> server: Speed 101'de rebirth at
 
 	-- Admin
 	"AdminPanelAc",     -- server -> client: panel + yetki

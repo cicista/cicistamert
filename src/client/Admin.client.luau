@@ -260,6 +260,18 @@ local function buildPanel(info: any)
 	end
 	chipRow(hizChips)
 
+	section("HIZ REBIRTH  --  iz rengi ve boyu")
+	local rebirthChips = {}
+	for adet = 0, Hiz.MaxRebirth do
+		table.insert(rebirthChips, {
+			label = `R{adet}`,
+			command = "setRebirth",
+			arg = adet,
+			color = Hiz.rebirthRengi(adet) or UI.Colors.textDim,
+		})
+	end
+	chipRow(rebirthChips)
+
 	section("ROBUX GECISLERI  --  bu oturum icin ver / al")
 	local passChips = {}
 	for ad, pass in Passler.Info do

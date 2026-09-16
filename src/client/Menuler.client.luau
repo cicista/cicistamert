@@ -4007,6 +4007,7 @@ do
 	local PassSatinAl = Net.event("PassSatinAl")
 	local IsinlayiciGit = Net.event("IsinlayiciGit")
 	local HizAl = Net.event("HizAl")
+	local HizRebirth = Net.event("HizRebirth")
 	-- Para birimi sarisi (Shared > Bases.RotColor ile ayni)
 	local ROT_SARI = Color3.fromRGB(255, 214, 41)
 
@@ -4187,7 +4188,7 @@ do
 	-- 100 yukseltme; her biri Rot ister ve fiyati katlanarak artar
 	-- (bkz. Shared > Hiz). Seviye sunucudan oyuncu niteligiyle gelir.
 	------------------------------------------------------------------
-	local hzPanel = UI.panel(screen, UDim2.fromOffset(440, 380), "Hiz")
+	local hzPanel = UI.panel(screen, UDim2.fromOffset(440, 440), "Hiz")
 
 	UI.text({
 		text = "Speed",
@@ -4329,13 +4330,45 @@ do
 	local hzBir = hzDugmesi(0, 1)
 	local hzOn = hzDugmesi(0.5, 10)
 
-	UI.text({
-		text = `Max Speed {Hiz.Max + 1} = x{Hiz.MaxCarpan} walk speed`,
+	--[[
+		REBIRTH: Speed 101'de acilir. Hiz basa doner, arkadaki iz uzar ve
+		bir sonraki hiz rengine gecer (Shared > Hiz). Kirmizidan sonra biter.
+	]]
+	local hzRebirth = Instance.new("TextButton")
+	hzRebirth.Name = "Rebirth"
+	hzRebirth.Position = UDim2.fromOffset(18, 308)
+	hzRebirth.Size = UDim2.new(1, -36, 0, 54)
+	hzRebirth.AutoButtonColor = false
+	hzRebirth.BorderSizePixel = 0
+	hzRebirth.Text = ""
+	hzRebirth.Parent = hzPanel
+	UI.corner(hzRebirth, 12)
+	UI.stroke(hzRebirth, Color3.fromRGB(0, 0, 0), 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+	local hzRebirthYazi = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = hzRebirth,
+	})
+
+	hzRebirth.MouseButton1Click:Connect(function()
+		local alinan = tonumber(player:GetAttribute(Hiz.Nitelik)) or 0
+		local rebirth = tonumber(player:GetAttribute(Hiz.RebirthNitelik)) or 0
+		if Hiz.rebirthAtilabilir(alinan, rebirth) then
+			HizRebirth:FireServer()
+		end
+	end)
+
+	local hzRebirthBilgi = UI.text({
+		text = "",
 		size = UI.Sizes.tiny,
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -36, 0, 20),
-		position = UDim2.fromOffset(18, 310),
+		position = UDim2.fromOffset(18, 370),
 		parent = hzPanel,
 	})
 
@@ -4359,6 +4392,24 @@ do
 
 		hzBir(alinan, rot)
 		hzOn(alinan, rot)
+
+		local rebirth = tonumber(player:GetAttribute(Hiz.RebirthNitelik)) or 0
+		if rebirth >= Hiz.MaxRebirth then
+			hzRebirthYazi.Text = "ALL REBIRTHS DONE"
+			hzRebirth.BackgroundColor3 = UI.Colors.panel
+			hzRebirthYazi.TextColor3 = Hiz.rebirthRengi(rebirth) or UI.Colors.text
+		elseif alinan >= Hiz.Max then
+			hzRebirthYazi.Text = `REBIRTH  ({rebirth + 1}/{Hiz.MaxRebirth})`
+			hzRebirth.BackgroundColor3 = UI.Colors.good
+			hzRebirthYazi.TextColor3 = Color3.new(1, 1, 1)
+		else
+			hzRebirthYazi.Text = `Rebirth at Speed {Hiz.Max + 1}  ({rebirth}/{Hiz.MaxRebirth})`
+			hzRebirth.BackgroundColor3 = UI.Colors.panel
+			hzRebirthYazi.TextColor3 = UI.Colors.textDim
+		end
+		hzRebirthBilgi.Text = if rebirth >= Hiz.MaxRebirth
+			then "Your trail is at its longest."
+			else "Rebirth resets your speed and gives you a longer, new-colored trail."
 	end
 
 	function ekMenu.hizAc()
@@ -4368,11 +4419,13 @@ do
 		end
 	end
 
-	player:GetAttributeChangedSignal(Hiz.Nitelik):Connect(function()
-		if hzPanel.Visible then
-			hzCiz()
-		end
-	end)
+	for _, nitelik in { Hiz.Nitelik, Hiz.RebirthNitelik } do
+		player:GetAttributeChangedSignal(nitelik):Connect(function()
+			if hzPanel.Visible then
+				hzCiz()
+			end
+		end)
+	end
 
 	EnvanterGuncelle.OnClientEvent:Connect(function(data)
 		if type(data) == "table" and hzPanel.Visible then
