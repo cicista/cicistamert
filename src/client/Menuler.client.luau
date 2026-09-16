@@ -2701,7 +2701,7 @@ task.spawn(function()
 			gecis.Parent = kart
 
 			UI.text({
-				text = `{odul.minutes} min`,
+				text = if odul.minutes >= 60 then `{odul.minutes // 60} hr` else `{odul.minutes} min`,
 				size = UI.Sizes.heading,
 				font = UI.Fonts.bold,
 				color = BEYAZ,

@@ -42,11 +42,12 @@ export type PlaytimeOdul = {
 }
 
 SosyalOdul.Playtime = {
-	{ minutes = 5, kind = "rotcoin", amount = 1 },
-	{ minutes = 15, kind = "rot", amount = 5000 },
-	{ minutes = 30, kind = "luckyblock", amount = 1 },
-	{ minutes = 45, kind = "rotcoin", amount = 2 },
-	{ minutes = 60, kind = "rotcoin", amount = 3 },
+	-- 15 dakikadan 3 saate
+	{ minutes = 15, kind = "rotcoin", amount = 1 },
+	{ minutes = 30, kind = "rot", amount = 5000 },
+	{ minutes = 60, kind = "luckyblock", amount = 1 },
+	{ minutes = 120, kind = "rotcoin", amount = 2 },
+	{ minutes = 180, kind = "rotcoin", amount = 3 },
 } :: { PlaytimeOdul }
 
 -- En ucuz Lucky Block turu (playtime odulu bunu verir)
