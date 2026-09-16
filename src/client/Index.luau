@@ -789,22 +789,12 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		TextColor3'u yazip buradaki animasyonu eziyordu. plainStyle ikisini
 		de temizliyor, renk tamamen asagidaki surucude.
 	]]
-	local degerli = Rarity.get(info.rarity).order >= DEGERLI_SIRA
-	UI.plainStyle(ad, if degerli then Color3.new(1, 1, 1) else GRI)
-
+	--[[
+		Isim artik KADEMENIN KENDI RENGINDE ve sabit. Gokkusagi ile
+		siyah-gri gidip gelme kaldirildi: isimler rengarenk gorunuyordu.
+	]]
+	UI.plainStyle(ad, Rarity.textColor(info.rarity))
 	local adGecis: UIGradient? = nil
-	if degerli then
-		-- Gradyan yazi rengiyle carpildigi icin taban beyaz (yukarida)
-		local gecis = Instance.new("UIGradient")
-		gecis.Name = "Gokkusagi"
-		gecis.Parent = ad
-		adGecis = gecis
-	else
-		local kontur = ad:FindFirstChildOfClass("UIStroke")
-		if kontur then
-			kontur.Color = ACIK_KONTUR
-		end
-	end
 
 	local gelir = UI.text({
 		text = Format.perSecond(Brainrots.income(info.name, "Normal")),
@@ -1133,9 +1123,6 @@ RunService.RenderStepped:Connect(function(dt)
 		local adGecis = hucre.adGecis
 		if adGecis then
 			adGecis.Color = gokkusagi(zaman * GOKKUSAGI_HIZ + hucre.faz * 0.05)
-		else
-			local karisim = (math.sin(zaman * SIYAHGRI_HIZ + hucre.faz) + 1) * 0.5
-			hucre.ad.TextColor3 = SIYAH:Lerp(GRI, karisim)
 		end
 
 		if hucre.kesif then

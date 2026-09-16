@@ -19,7 +19,6 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rods = require(Shared:WaitForChild("Rods"))
@@ -417,13 +416,10 @@ function Olta.cast(character: Model, target: Vector3): BasePart?
 
 		local baslangicZamani = os.clock()
 		while true do
-			local ham = (os.clock() - baslangicZamani) / Rods.CastFlight
-			if ham >= 1 then
+			local oran = (os.clock() - baslangicZamani) / Rods.CastFlight
+			if oran >= 1 then
 				break
 			end
-
-			-- Ivmeli: hizli cikar, suya yaklastikca yavaslar
-			local oran = TweenService:GetValue(ham, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 			-- Duz gidis + sin egrisiyle yukari kavis
 			local nokta = basla:Lerp(target, oran)

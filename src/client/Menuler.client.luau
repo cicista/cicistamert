@@ -2109,7 +2109,7 @@ end, "\u{1F45F}")
 ]]
 menuButonu(sagSutun, "teleporter", "Teleporter", MenuRenk.teleporter, function()
 	ekMenu.isinlayiciAc()
-end, "\u{1F300}")
+end)
 menuButonu(sagSutun, "home", "Base", MenuRenk.home, function()
 	BaseyeIsinlan:FireServer()
 end, "\u{1F3E0}")

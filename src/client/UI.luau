@@ -164,29 +164,20 @@ end
 	(parilti gradyani, parildama etiketi) once temizlenir -- yoksa bir kez
 	Divine cikan yazi sonsuza dek parildamaya devam ederdi.
 ]]
+--[[
+	KADEME RENGI  --  DUZ
+
+	Arayuzdeki isimler ve kademe yazilari kademenin KENDI renginde, tek
+	renk. Eskiden Epic ve ustune parlak gradyan, ust kademelere de renk
+	degistiren parildama takiliyordu; isimler rengarenk gorunuyordu.
+	(Dunyadaki etiketin kademe satiri parlamaya devam ediyor, bkz. Etiket.)
+]]
 function UI.rarityStyle(label: TextLabel, rarityId: string): TextLabel
 	-- textColor: cok koyu kademeler (Secret) yazida beyaza doner, okunsun
 	local color = Rarity.textColor(rarityId)
 
 	Divine.untag(label)
-
-	if Rarity.isDivine(rarityId) then
-		--[[
-			GRADYAN KALIR
-
-			Eskiden burada clearGlow cagriliyordu ve ust kademeler duz tek
-			renk kaliyordu -- Mythic'ten bile ucuz gorunuyorlardi. Artik
-			Mythic ile ayni parlak gradyan uygulaniyor, PARILDAYAN SEY de
-			gradyanin kendisi oluyor (bkz. IlahiRenk > paint).
-		]]
-		Fonts.applyGlow(label, color)
-		-- tagIf: kademenin KENDI paleti takilir, hepsi Divine olmaz
-		Divine.tagIf(label, rarityId)
-	elseif Rarity.isGlowing(rarityId) then
-		Fonts.applyGlow(label, color)
-	else
-		Fonts.clearGlow(label, color)
-	end
+	Fonts.clearGlow(label, color)
 
 	return label
 end

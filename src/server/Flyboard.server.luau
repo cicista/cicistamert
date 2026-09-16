@@ -337,8 +337,26 @@ local rides: { [Player]: Ride } = {}
 	Genlik stud cinsinden; her oyuncunun dalgasi farkli yerden baslar ki
 	yan yana gezenler ayni anda inip kalkmasin.
 ]]
-local SALINIM_GENLIK = 0.1
-local SALINIM_HIZI = 2.4
+-- 0.1 stud gozle secilmiyordu (kamera da karakterle birlikte gidiyor)
+local SALINIM_GENLIK = 0.3
+local SALINIM_HIZI = 2
+
+--[[
+	TAHTA NE KADAR ASAGIDA
+
+	Sabit 3 stud degil: karakterin ayak mesafesi (HipHeight + kok parcanin
+	yarisi; R6'da 3) + tahtanin yari kalinligi. Sabit deger bazi
+	avatarlarda tahtayi ayagin USTUNE koyuyordu, ayaklar tahtanin icinde /
+	altinda kaliyordu.
+]]
+local function tahtaMesafesi(root: BasePart, humanoid: Humanoid, anchor: BasePart): number
+	local ayak = if humanoid.RigType == Enum.HumanoidRigType.R6
+		then root.Size.Y / 2 + 2
+		else humanoid.HipHeight + root.Size.Y / 2
+	-- Tahtanin en ince ekseni kalinligidir (model nasil donmus olursa olsun)
+	local kalinlik = math.min(anchor.Size.X, anchor.Size.Y, anchor.Size.Z)
+	return ayak + kalinlik / 2 + 0.05
+end
 
 --[[
 	HIZ
@@ -437,7 +455,8 @@ local function mount(player: Player, info: Flyboard.FlyboardInfo)
 		Model oldugunda tek parcayi kaynaklamak yetmiyor: kalanlar havada
 		asili kalir ve ilk fizik adiminda dagilirdi.
 	]]
-	local hedef = root.CFrame * CFrame.new(0, -P.boardOffset, 0)
+	local mesafe = tahtaMesafesi(root, humanoid, anchor)
+	local hedef = root.CFrame * CFrame.new(0, -mesafe, 0)
 
 	if board:IsA("BasePart") then
 		board.CFrame = hedef
@@ -492,6 +511,7 @@ local function mount(player: Player, info: Flyboard.FlyboardInfo)
 		hold = hold,
 		gyro = gyro,
 		info = info,
+		mesafe = mesafe,
 		rise = 0,
 		leftSeaAt = nil,
 		walkSpeed = tabanHiz(humanoid),
@@ -787,7 +807,7 @@ RunService.Heartbeat:Connect(function(dt)
 		-- YUKSEKLIK
 		------------------------------------------------------------------
 		local salinim = math.sin(os.clock() * SALINIM_HIZI + (player.UserId % 7)) * SALINIM_GENLIK
-		local hedefY = surface + P.hoverHeight + ride.rise + P.boardOffset + salinim
+		local hedefY = surface + P.hoverHeight + ride.rise + (ride.mesafe or P.boardOffset) + salinim
 		ride.hold.Position = Vector3.new(root.Position.X, hedefY, root.Position.Z)
 
 		------------------------------------------------------------------

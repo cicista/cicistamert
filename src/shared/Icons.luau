@@ -93,18 +93,11 @@ local Map: { [string]: IconEntry } = {
 	},
 	shop = { "Menus", "Shop" },
 	--[[
-		Sagdaki Teleporter butonu. Paketteki "Menus > Teleport" bir kumanda
-		resmiydi, kullanilmiyor. Kendi ikonunu Assets > Icons icine
-		"Teleporter" adiyla koy; yoksa portal adli ikonlar denenir, hicbiri
-		yoksa butonda portal emojisi gorunur.
+		Sagdaki Teleporter butonu: paketteki portal (Menus > Teleport).
+		Yedek emoji YOK -- paket gec yuklenince once emoji gorunuyordu ve
+		kumanda gibi duruyordu.
 	]]
-	teleporter = {
-		{ "Assets", "Teleporter" },
-		{ "Assets", "Teleport" },
-		{ "Assets", "Portal" },
-		{ "Menus", "Portal" },
-		{ "Misc", "Portal" },
-	},
+	teleporter = { "Menus", "Teleport" },
 	--[[
 		Sagdaki base'e don butonu ve soldaki hiz butonu. Pakette adi kesin
 		bilinmiyor; sirayla denenir. Hicbiri yoksa butonda emoji gorunur.
