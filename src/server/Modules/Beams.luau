@@ -26,6 +26,7 @@ local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Divine = require(Shared:WaitForChild("Divine"))
 local Ores = require(Shared:WaitForChild("Ores"))
+local Fonts = require(Shared:WaitForChild("Fonts"))
 
 local Sand = require(script.Parent:WaitForChild("Sand"))
 
@@ -937,6 +938,83 @@ function Beams.countFor(player: Player, sea: boolean?): number
 	return count
 end
 
+--[[
+	SUZME ETIKETI  --  SUNUCUDA, HERKES ICIN
+
+	Etiketler eskiden her oyuncunun istemcisinde, yalnizca KENDI suzmeleri
+	icin kuruluyordu: baskasinin suzmesinde hic yazi yoktu ve istemci
+	tarafinda bir sey ters giderse oyuncu kendi etiketlerini de goremiyordu.
+
+	Artik etiket suzme modeliyle birlikte sunucuda kuruluyor ve herkese
+	gidiyor: KADEMESI ve SAHIBININ ADI yazar. Istemci yalnizca sus verir
+	(bkz. StarterPlayerScripts > SuzmeEtiketleri): kendi suzmen "YOURS"
+	olarak yesil ve belirgin, baskasininki soluk ve sahibinin adiyla.
+]]
+local ETIKET_ADI = "SuzmeEtiketi"
+
+local function etiketKur(model: Model, player: Player, kind: string, spot: Vector3)
+	local ana = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not ana then
+		return
+	end
+
+	local renk = Rarity.beamColor(kind)
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = ETIKET_ADI
+	gui.Size = UDim2.fromOffset(150, 52)
+	-- Suzmenin 16 stud ustunde (eski istemci etiketiyle ayni yukseklik)
+	gui.StudsOffsetWorldSpace = (spot + Vector3.new(0, 16, 0)) - ana.Position
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = G.scanRadius + 20
+	gui:SetAttribute("Kind", kind)
+	gui:SetAttribute("Owner", player.UserId)
+
+	local kart = Instance.new("Frame")
+	kart.Name = "Kart"
+	kart.Size = UDim2.fromScale(1, 1)
+	kart.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	kart.BackgroundTransparency = 0.25
+	kart.BorderSizePixel = 0
+	kart.Parent = gui
+
+	local kose = Instance.new("UICorner")
+	kose.CornerRadius = UDim.new(0, 10)
+	kose.Parent = kart
+
+	local cerceve = Instance.new("UIStroke")
+	cerceve.Name = "Cerceve"
+	cerceve.Color = renk
+	cerceve.Thickness = 2
+	cerceve.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cerceve.Parent = kart
+
+	local ad = Instance.new("TextLabel")
+	ad.Name = "Kind"
+	ad.BackgroundTransparency = 1
+	ad.Size = UDim2.new(1, -8, 0.6, 0)
+	ad.Position = UDim2.fromOffset(4, 2)
+	ad.Text = string.upper(Rarity.beamName(kind))
+	ad.TextColor3 = renk
+	ad.TextSize = 20
+	Fonts.apply(ad)
+	ad.Parent = kart
+
+	local sahip = Instance.new("TextLabel")
+	sahip.Name = "Sahip"
+	sahip.BackgroundTransparency = 1
+	sahip.Size = UDim2.new(1, -8, 0.4, -2)
+	sahip.Position = UDim2.new(0, 4, 0.6, 0)
+	sahip.Text = `{player.DisplayName}'s`
+	sahip.TextColor3 = Color3.fromRGB(200, 205, 215)
+	sahip.TextSize = 14
+	Fonts.apply(sahip)
+	sahip.Parent = kart
+
+	gui.Parent = ana
+end
+
 -- Suzmeyi fiilen kuran ortak adim; kimin, ne turde ve nerede oldugu belli.
 local function createBeam(player: Player, kind: string, spot: Vector3, sea: boolean?, island: string?): Beam
 	beamCounter += 1
@@ -948,6 +1026,9 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 		else buildBeamModel(kind, spot)
 	model:SetAttribute("BeamId", id)
 	model:SetAttribute("Owner", player.UserId)
+	-- StreamingEnabled: model (ve etiketi) istemciye TEK PARCA gelsin
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	etiketKur(model, player, kind, spot)
 	model.Parent = folder
 
 	--[[

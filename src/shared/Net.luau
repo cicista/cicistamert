@@ -34,6 +34,7 @@ Net.Events = {
 	"DetectiveAc",      -- server -> client: teslim edilebilir siyah brainrotlar
 	"DetectiveTeslim",  -- client -> server: bu brainrotu temizle
 	"DetectiveSonuc",   -- server -> client: acilan brainrot bilgisi
+	"DetectiveDurum",   -- server -> client: toplu inceleme isi (kalan, toplam, adet) ya da nil
 
 	-- Base
 	"BaseGuncelle",     -- server -> client: base durumu + toplam gelir

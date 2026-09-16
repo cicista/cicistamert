@@ -102,6 +102,8 @@ export type Data = {
 	-- Rewards > Social: alinan tek seferlik oduller ("group", "like") ve kullanilan kodlar
 	socialClaimed: { [string]: boolean },
 	redeemedCodes: { [string]: boolean },
+	-- Detective'e birakilan toplu inceleme: { bitis = os.time, toplam, uids }
+	detectiveJob: any?,
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
 	islands: number,
 	--[[
@@ -118,6 +120,9 @@ export type Data = {
 	pickaxes: { [string]: boolean },
 	-- Arayuz olcegi yuzdesi (Settings > Interface Scale); 100 = varsayilan
 	uiScale: number,
+	-- Arka plan muzigi: ses yuzdesi (0..100) ve kapali mi
+	musicVolume: number,
+	musicMuted: boolean,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
 	--[[
@@ -170,6 +175,8 @@ local function defaultData(): Data
 		ores = {},
 		pickaxes = {},
 		uiScale = 100,
+		musicVolume = 100,
+		musicMuted = false,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
 	}
@@ -252,6 +259,9 @@ local function migrate(raw: any): Data
 
 	-- Ayar oncesi kayitlarda uiScale yok; varsayilan %100 ile acilir
 	data.uiScale = math.clamp(tonumber(raw.uiScale) or 100, 50, 150)
+	-- Muzik ayari oncesi kayitlar: tam ses, acik
+	data.musicVolume = math.clamp(tonumber(raw.musicVolume) or 100, 0, 100)
+	data.musicMuted = raw.musicMuted == true
 
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)
@@ -266,6 +276,18 @@ local function migrate(raw: any): Data
 	-- Level sisteminden onceki kayitlar Level 1'den baslar
 	data.level = math.clamp(math.floor(tonumber(raw.level) or 1), 1, 100)
 	data.xp = math.max(0, math.floor(tonumber(raw.xp) or 0))
+	-- Detective isi oyundan cikip girince de surer
+	local is = raw.detectiveJob
+	if type(is) == "table" and type(is.bitis) == "number" and type(is.uids) == "table" then
+		local uids: { string } = {}
+		for _, uid in is.uids do
+			if type(uid) == "string" then
+				table.insert(uids, uid)
+			end
+		end
+		data.detectiveJob = { bitis = is.bitis, toplam = tonumber(is.toplam) or 0, uids = uids }
+	end
+
 	-- Social Rewards (onceki kayitlarda yok: hic alinmamis sayilir)
 	data.socialClaimed = {}
 	data.redeemedCodes = {}

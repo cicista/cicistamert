@@ -10,6 +10,13 @@
 	normal haliyle envantere doner.
 
 	Acilan brainrot artik base slotuna konabilir ve saniyelik gelir uretir.
+
+	TOPLU INCELEME
+	  Oyuncu kimligi belirlenmemis BUTUN brainrotlarini tek seferde birakir.
+	  Bekleme suresi hepsinin (Rarity.revealTime) TOPLAMIDIR. Is oyuncu
+	  verisine yazilir (PlayerData.detectiveJob): oyuncu yanindan ayrilabilir,
+	  oyundan cikip girse bile sure islemeye devam eder. Sure dolunca hepsi
+	  birden acilir. Is surerken yeni teslim alinmaz.
 ]]
 
 local Players = game:GetService("Players")
@@ -34,6 +41,7 @@ local Bildirim = Net.event("Bildirim")
 local DetectiveAc = Net.event("DetectiveAc")
 local DetectiveTeslim = Net.event("DetectiveTeslim")
 local DetectiveSonuc = Net.event("DetectiveSonuc")
+local DetectiveDurum = Net.event("DetectiveDurum")
 
 local D = Config.Detective
 local rng = Random.new()
@@ -108,6 +116,9 @@ local function findNPC(): Model?
 	return nil
 end
 
+-- Panel acma asagida tanimli (toplu inceleme bolumu); prompt ondan once kuruluyor
+local panelAc: (player: Player) -> ()
+
 local function attachPrompt(model: Model)
 	local anchor: BasePart? = model.PrimaryPart
 		or model:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -132,108 +143,187 @@ local function attachPrompt(model: Model)
 	prompt.Parent = anchor
 
 	prompt.Triggered:Connect(function(player)
-		local data = PlayerData.get(player)
-		if not data then
-			return
-		end
-
-		-- Sadece henuz acilmamis brainrotlar teslim edilebilir
-		local pending = {}
-		for _, item in data.inventory do
-			if not item.revealed then
-				table.insert(pending, {
-					uid = item.uid,
-					rarity = item.rarity,
-					condition = item.condition,
-					mutation = item.mutation,
-				})
-			end
-		end
-
-		if #pending == 0 then
-			Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
-			return
-		end
-
-		DetectiveAc:FireClient(player, pending)
+		panelAc(player)
 	end)
 end
 
 ------------------------------------------------------------------
--- INCELEME
+-- TOPLU INCELEME
 ------------------------------------------------------------------
-DetectiveTeslim.OnServerEvent:Connect(function(player, uid)
-	if type(uid) ~= "string" then
-		return
-	end
-	if busy[player] then
-		Bildirim:FireClient(player, "The Detective is still busy with the last one.", Color3.fromRGB(255, 200, 90))
-		return
-	end
+local function sureYazisi(saniye: number): string
+	local t = math.max(0, math.ceil(saniye))
+	return string.format("%d:%02d", t // 60, t % 60)
+end
 
-	local item = PlayerData.findItem(player, uid)
-	if not item or item.revealed then
-		return
-	end
-
-	local rarityInfo = Rarity.get(item.rarity :: any)
-
-	busy[player] = true
-	Bildirim:FireClient(
-		player,
-		`Detective is working... ({rarityInfo.revealTime}s)`,
-		rarityInfo.color
-	)
-
-	task.delay(rarityInfo.revealTime, function()
-		busy[player] = nil
-
-		-- Oyuncu bu arada ciktiysa veya esya kaybolduysa
-		if not player.Parent then
-			return
+-- Kimligi belirlenmemis brainrotlar (sure = kademesinin acilma suresi)
+local function bekleyenler(data: any): { any }
+	local out = {}
+	for _, item in data.inventory do
+		if not item.revealed then
+			table.insert(out, {
+				uid = item.uid,
+				rarity = item.rarity,
+				condition = item.condition,
+				mutation = item.mutation,
+				sure = Rarity.get(item.rarity :: any).revealTime,
+			})
 		end
+	end
+	return out
+end
+
+-- Istemciye giden is ozeti; is yoksa nil
+local function isOzeti(data: any): any?
+	local is = data.detectiveJob
+	if not is then
+		return nil
+	end
+	return {
+		kalan = math.max(0, is.bitis - os.time()),
+		toplam = is.toplam,
+		adet = #is.uids,
+	}
+end
+
+function panelAc(player: Player)
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	local liste = bekleyenler(data)
+	local is = isOzeti(data)
+	if #liste == 0 and not is then
+		Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	DetectiveAc:FireClient(player, { pending = liste, job = is })
+end
+
+-- Sure doldu: isteki butun brainrotlar birden acilir
+local function isiBitir(player: Player, data: any)
+	local is = data.detectiveJob
+	data.detectiveJob = nil
+	if not is then
+		return
+	end
+
+	local sonuclar = {}
+	for _, uid in is.uids do
 		local current = PlayerData.findItem(player, uid)
+		-- Bu arada satilmis / makineye konmus / zaten acilmis olabilir
 		if not current or current.revealed then
-			return
+			continue
 		end
 
 		--[[
-			Rarity sabit kalir; hangi brainrot oldugu simdi belli olur.
-
-			Isim KAZILDIGI ADANIN listesinden seciliyor: ayni kademe her
-			adada farkli brainrotlar veriyor. Eski kayitlarda ada yok,
-			nil gelirse butun havuza dusuluyor.
+			Rarity sabit kalir; hangi brainrot oldugu simdi belli olur. Isim
+			KAZILDIGI ADANIN listesinden seciliyor (eski kayitlarda ada yok,
+			nil gelirse butun havuza dusuluyor).
 		]]
 		local picked = Brainrots.rollIsland(current.rarity :: any, current.island, rng)
 		current.name = picked.name
 		current.revealed = true
 
-		local income = Brainrots.income(picked.name, current.condition :: any, current.mutation :: any)
-		local conditionInfo = Condition.get(current.condition :: any)
-
-		Envanter.syncBrainrots(player)
-		Envanter.push(player)
-		DetectiveSonuc:FireClient(player, {
+		table.insert(sonuclar, {
 			uid = uid,
 			name = picked.name,
 			rarity = current.rarity,
 			condition = current.condition,
 			mutation = current.mutation,
-			income = income,
+			income = Brainrots.income(picked.name, current.condition :: any, current.mutation :: any),
 		})
+	end
 
-		-- Mutasyon da bu anda ortaya cikar: ismi ve rengi ona gore yazilir
-		local special = Mutations.isSpecial(current.mutation)
+	Envanter.syncBrainrots(player)
+	Envanter.push(player)
+	DetectiveSonuc:FireClient(player, sonuclar)
+	DetectiveDurum:FireClient(player, nil)
+
+	if #sonuclar > 0 then
+		-- En degerlisi bildirimde yazar
+		local enIyi = sonuclar[1]
+		for _, sonuc in sonuclar do
+			if sonuc.income > enIyi.income then
+				enIyi = sonuc
+			end
+		end
+		local special = Mutations.isSpecial(enIyi.mutation)
 		Bildirim:FireClient(
 			player,
-			`{picked.name} {conditionInfo.shortName} ({Format.perSecond(income)})`,
-			if special then Mutations.color(current.mutation) else rarityInfo.color
+			`Detective identified {#sonuclar} brainrot(s)! Best: {enIyi.name} ({Format.perSecond(enIyi.income)})`,
+			if special then Mutations.color(enIyi.mutation) else Rarity.color(enIyi.rarity)
 		)
-	end)
+	end
+end
+
+DetectiveTeslim.OnServerEvent:Connect(function(player)
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	local mevcut = isOzeti(data)
+	if mevcut then
+		Bildirim:FireClient(
+			player,
+			`The Detective is still working ({sureYazisi(mevcut.kalan)} left).`,
+			Color3.fromRGB(255, 200, 90)
+		)
+		DetectiveDurum:FireClient(player, mevcut)
+		return
+	end
+
+	local liste = bekleyenler(data)
+	if #liste == 0 then
+		Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	local toplam = 0
+	local uids = {}
+	for _, item in liste do
+		toplam += item.sure
+		table.insert(uids, item.uid)
+	end
+	toplam = math.max(1, math.ceil(toplam))
+
+	data.detectiveJob = { bitis = os.time() + toplam, toplam = toplam, uids = uids }
+	DetectiveDurum:FireClient(player, isOzeti(data))
+	Bildirim:FireClient(
+		player,
+		`Detective is identifying {#uids} brainrot(s) ({sureYazisi(toplam)}). You can leave!`,
+		Color3.fromRGB(255, 236, 180)
+	)
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-	busy[player] = nil
+-- Suresi dolan isler (oyuncu nerede olursa olsun)
+task.spawn(function()
+	while true do
+		task.wait(1)
+		local simdi = os.time()
+		for _, player in Players:GetPlayers() do
+			local data = PlayerData.get(player)
+			local is = data and data.detectiveJob
+			if is and simdi >= is.bitis then
+				local ok, hata = pcall(isiBitir, player, data)
+				if not ok then
+					warn(`[Detective] {player.Name} isi bitirilemedi: {tostring(hata)}`)
+				end
+			end
+		end
+	end
+end)
+
+-- Oyuna donen oyuncu suren isini gorsun
+Players.PlayerAdded:Connect(function(player)
+	task.delay(4, function()
+		local data = player.Parent and PlayerData.get(player)
+		if data and data.detectiveJob then
+			DetectiveDurum:FireClient(player, isOzeti(data))
+		end
+	end)
 end)
 
 ------------------------------------------------------------------

@@ -3,14 +3,16 @@
 	FUSE  --  brainrot birlestirme
 
 	FUSE MAKINESI
-	  3 AYNI brainrotu alir (ayni isim, kimligi acilmis). Oyuncu "FUSE"a
-	  basinca birlestirme yapilir:
+	  AYNI KADEMEDEN 3 brainrot alir (isimleri farkli olabilir, kimligi
+	  acilmis). Ayni isimler sansi artirir (bkz. Fuse.Chances). Oyuncu
+	  "FUSE"a basinca birlestirme yapilir:
 
-	    %SuccessChance ihtimalle  -> BIR UST kademeden acilmis bir brainrot
+	    sans ihtimalle            -> BIR UST kademeden acilmis bir brainrot
 	    kalan ihtimalle           -> HICBIR SEY; konan 3 brainrot gider
 
 	MAKINE KURALLARI
-	  - Icine konan butun brainrotlar AYNI ISIMDE olmali (orn. 3 Tim Cheese).
+	  - Icine konan butun brainrotlar AYNI KADEMEDE olmali; isimler farkli
+	    olabilir, ayni isim sayisi arttikca sans artar.
 	  - Kimligi acilmamis (siyah) brainrot konamaz: adi bilinmiyor.
 	  - Base slotundaki brainrot konamaz.
 	  - En ust kademe birlestirilemez; ustu yok.
@@ -34,8 +36,24 @@ local Fuse = {}
 -- Makineye kac ayni brainrot konur
 Fuse.Required = 3
 
--- Bir ust kademe brainrot cikma ihtimali (yuzde). Tutmazsa hicbir sey cikmaz.
-Fuse.SuccessChance = 25
+--[[
+	BASARI SANSI (yuzde)  --  makineye konan brainrotlarin ISIMLERINE gore
+
+	Ayni kademeden FARKLI isimli brainrotlar da konabilir; ayni isim ne kadar
+	coksa sans o kadar yuksek:
+	    3'u ayni isim   -> same3
+	    2'si ayni isim  -> same2
+	    hepsi farkli    -> mixed
+	Tutmazsa hicbir sey cikmaz.
+]]
+Fuse.Chances = {
+	same3 = 25,
+	same2 = 20,
+	mixed = 15,
+}
+
+-- En yuksek sans (arayuzde "en fazla" olarak yazar)
+Fuse.SuccessChance = Fuse.Chances.same3
 
 -- Makinede kac saniye islem yapilmazsa icindekiler geri verilir
 Fuse.Timeout = 60
@@ -215,9 +233,29 @@ function Fuse.rollSize(entries: { any }, rng: Random): string
 	return Condition.get(picked.condition).id
 end
 
--- Birlestirme tuttu mu (sabit Fuse.SuccessChance)
-function Fuse.rollSuccess(rng: Random): boolean
-	return rng:NextNumber() * 100 < Fuse.SuccessChance
+-- Makinedekilerin sansi: en cok tekrar eden isim sayisina gore (bkz. Fuse.Chances)
+function Fuse.chanceFor(entries: { any }): number
+	local sayac: { [string]: number } = {}
+	local enCok = 0
+	for _, entry in entries do
+		local ad = entry.name or (entry.item and entry.item.name)
+		if type(ad) == "string" then
+			sayac[ad] = (sayac[ad] or 0) + 1
+			enCok = math.max(enCok, sayac[ad])
+		end
+	end
+
+	if enCok >= 3 then
+		return Fuse.Chances.same3
+	elseif enCok == 2 then
+		return Fuse.Chances.same2
+	end
+	return Fuse.Chances.mixed
+end
+
+-- Birlestirme tuttu mu (sans verilmezse en yuksek sans)
+function Fuse.rollSuccess(rng: Random, chance: number?): boolean
+	return rng:NextNumber() * 100 < (chance or Fuse.SuccessChance)
 end
 
 return Fuse

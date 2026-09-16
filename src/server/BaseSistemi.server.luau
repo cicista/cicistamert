@@ -395,6 +395,41 @@ local function nextUpgrade(data: any): { kind: string, cost: number, label: stri
 	}
 end
 
+--[[
+	SLOT NUMARASI: slot zemininin UST YUZUNDE buyuk numara (1..10).
+	Envanterde "Slot 3" yazan brainrotun base'in neresinde durdugu boylece
+	bir bakista gorulur.
+]]
+local function buildSlotNumber(pad: BasePart, slotIndex: number)
+	local yuzey = Instance.new("SurfaceGui")
+	yuzey.Name = "SlotNumarasi"
+	yuzey.Face = Enum.NormalId.Top
+	yuzey.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	yuzey.PixelsPerStud = 40
+	yuzey.LightInfluence = 0
+	yuzey.Parent = pad
+
+	local yazi = Instance.new("TextLabel")
+	yazi.Size = UDim2.fromScale(1, 1)
+	yazi.BackgroundTransparency = 1
+	yazi.Text = tostring(slotIndex)
+	yazi.TextScaled = true
+	yazi.TextColor3 = Color3.fromRGB(255, 255, 255)
+	yazi.TextTransparency = 0.35
+	Fonts.apply(yazi)
+	yazi.Parent = yuzey
+
+	local sinir = Instance.new("UITextSizeConstraint")
+	sinir.MaxTextSize = 120
+	sinir.Parent = yazi
+
+	local kontur = Instance.new("UIStroke")
+	kontur.Color = Color3.fromRGB(0, 0, 0)
+	kontur.Thickness = 3
+	kontur.Transparency = 0.4
+	kontur.Parent = yazi
+end
+
 local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: number)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "SlotPrompt"
@@ -1135,6 +1170,15 @@ local function setupBases()
 		end
 		collectPads[index] = nil
 
+		--[[
+			STREAMING: base HER OYUNCUYA HER ZAMAN gonderilir. Uzak bir base'in
+			para toplama butonu (renk: kirmizi bekleme / yesil hazir) bazi
+			oyuncularda hic gelmiyor ya da gec geliyordu.
+		]]
+		if base:IsA("Model") then
+			base.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+		end
+
 		local oldSign = base:FindFirstChild("GelisimTabelasi")
 		if oldSign then
 			oldSign:Destroy()
@@ -1159,6 +1203,9 @@ local function setupBases()
 			found += 1
 			if not pad:FindFirstChild("SlotPrompt") then
 				buildSlotPrompt(pad, index, slotIndex)
+			end
+			if not pad:FindFirstChild("SlotNumarasi") then
+				buildSlotNumber(pad, slotIndex)
 			end
 		end
 

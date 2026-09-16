@@ -2,9 +2,11 @@
 	Ayarlar  (Script)
 	Yeri: ServerScriptService > Ayarlar
 
-	Oyuncunun kisisel ayarlarini saklar ve geri verir. Su an tek ayar var:
+	Oyuncunun kisisel ayarlarini saklar ve geri verir:
 
-	  uiScale  -- arayuz olcegi yuzdesi (%50..%150, varsayilan %100)
+	  uiScale      -- arayuz olcegi yuzdesi (%50..%150, varsayilan %100)
+	  musicVolume  -- arka plan muzigi ses yuzdesi (%0..%100, varsayilan %100)
+	  musicMuted   -- muzik kapali mi (varsayilan acik)
 
 	NEDEN SUNUCUDA
 	Roblox'ta istemcinin kalici deposu yok; ayarin oturumlar arasinda
@@ -39,6 +41,8 @@ local function ayarlariYolla(player: Player)
 	local data = PlayerData.get(player) or PlayerData.load(player)
 	AyarDurum:FireClient(player, {
 		uiScale = data.uiScale or 100,
+		musicVolume = data.musicVolume or 100,
+		musicMuted = data.musicMuted == true,
 	})
 end
 
@@ -57,6 +61,14 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 		local yuzde = tonumber(payload.uiScale)
 		if yuzde then
 			data.uiScale = math.clamp(math.round(yuzde), OLCEK_MIN, OLCEK_MAX)
+		end
+
+		local ses = tonumber(payload.musicVolume)
+		if ses then
+			data.musicVolume = math.clamp(math.round(ses), 0, 100)
+		end
+		if type(payload.musicMuted) == "boolean" then
+			data.musicMuted = payload.musicMuted
 		end
 	end
 

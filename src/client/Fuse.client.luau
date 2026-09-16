@@ -6,8 +6,8 @@
 	   Makinede E'ye basinca acilir:
 
 	       [ Fuse Machine                         X ]
-	         Bring 3 same Brainrots to Fuse
-	         25% chance for a better Brainrot!
+	         Bring 3 Brainrots of the same tier
+	         15-25% chance (same names = higher)
 	       [ slot ]      [ slot ]      [ slot ]
 	           \____________ | ____________/
 	                  [ sonuc kutusu ]
@@ -44,6 +44,18 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
+-- Istege bagli: yoksa Fuse arayuzu yine kurulur, yalnizca mutasyon yazisi cikmaz
+local MutasyonGosterisi = (function()
+	local modul = script.Parent:WaitForChild("MutasyonGosterisi", 5)
+	local ok, sonuc = pcall(function()
+		return if modul then require(modul) else nil
+	end)
+	if ok and sonuc then
+		return sonuc
+	end
+	warn("[Fuse] MutasyonGosterisi yuklenemedi; mutasyon yazisi gosterilmeyecek")
+	return { goster = function() end }
+end)()
 
 local FuseDurum = Net.event("FuseDurum")
 local FuseGeriAl = Net.event("FuseGeriAl")
@@ -501,12 +513,14 @@ local function secimCiz()
 	end
 
 	local items = durum.items or {}
-	secimBaslik.Text = if durum.name then `Add another {durum.name}` else "Choose a Brainrot"
+	secimBaslik.Text = if durum.rarity
+		then `Add another {Rarity.displayName(durum.rarity)} brainrot`
+		else "Choose a Brainrot"
 
 	if #items == 0 then
 		local yok = UI.text({
-			text = if durum.name
-				then `You have no more {durum.name} to add.`
+			text = if durum.rarity
+				then `You have no more {Rarity.displayName(durum.rarity)} brainrots to add.`
 				else "No brainrots you can fuse. You need identified brainrots that are not on your base.",
 			size = UI.Sizes.small,
 			color = UI.Colors.textDim,
@@ -597,8 +611,13 @@ local function pencereCiz()
 	local gerekli = durum.required or Fuse.Required
 	local sayi = #slots
 
-	yonerge.Text = `Bring <font color="#FF4040">{gerekli}</font> same Brainrots to Fuse`
-	sansYazi.Text = `{durum.chance or Fuse.SuccessChance}% chance for a better Brainrot!`
+	yonerge.Text = `Bring <font color="#FF4040">{gerekli}</font> Brainrots of the same tier`
+	if durum.chance then
+		sansYazi.Text = `{durum.chance}% chance for a better Brainrot!`
+	else
+		local sanslar = durum.chances or Fuse.Chances
+		sansYazi.Text = `{sanslar.mixed}-{sanslar.same3}% chance  -  same names = higher!`
+	end
 
 	onizleme.temizle()
 	for i = 1, gerekli do
@@ -911,6 +930,27 @@ local function shakeCamera(duration: number, strength: number)
 	end)
 end
 
+-- Gosteride donen resimler (ruhlar ve sonuc)
+local gosteriOnizleme = BrainrotOnizleme.seritPencere(stage)
+
+-- Icinde brainrot resmi olan yuvarlak ruh
+local function resimliRuh(renk: Color3, boy: number, kaynak: any?): Frame
+	local ruh = makeOrb(renk, boy)
+	ruh.BackgroundTransparency = 0.35
+	if type(kaynak) == "table" and type(kaynak.name) == "string" then
+		local resim = Instance.new("Frame")
+		resim.Name = "Resim"
+		resim.AnchorPoint = Vector2.new(0.5, 0.5)
+		resim.Position = UDim2.fromScale(0.5, 0.5)
+		resim.Size = UDim2.fromScale(1.25, 1.25)
+		resim.BackgroundTransparency = 1
+		resim.ZIndex = 3
+		resim.Parent = ruh
+		gosteriOnizleme.ekle(resim, { name = kaynak.name, mutation = kaynak.mutation, revealed = true })
+	end
+	return ruh
+end
+
 local function playMerge(data: any)
 	if merging then
 		return
@@ -929,7 +969,11 @@ local function playMerge(data: any)
 	UI.plainStyle(mergeName, UI.Colors.text)
 	Mutations.untag(mergeSub)
 
-	mergeTitle.Text = `FUSING {soulCount} {string.upper(tostring(data.fromName or ""))}`
+	mergeTitle.Text = `FUSING {string.upper(tostring(data.fromName or ""))}`
+	if tonumber(data.chance) then
+		mergeSub.Text = `{data.chance}% chance for a better brainrot...`
+		mergeSub.TextColor3 = UI.Colors.textDim
+	end
 	UI.plainStyle(mergeTitle, fromColor)
 
 	mergeRoot.Visible = true
@@ -937,8 +981,9 @@ local function playMerge(data: any)
 
 	-- 1. ASAMA: ruhlar donerek merkeze kapanir
 	local souls: { Frame } = {}
+	local kaynaklar = if type(data.sources) == "table" then data.sources else {}
 	for index = 1, soulCount do
-		souls[index] = makeOrb(fromColor, SOUL_SIZE)
+		souls[index] = resimliRuh(fromColor, SOUL_SIZE * 2, kaynaklar[index])
 	end
 
 	local elapsed = 0
@@ -954,8 +999,9 @@ local function playMerge(data: any)
 			if soul.Parent then
 				local angle = (index - 1) / soulCount * math.pi * 2 + turn
 				soul.Position = UDim2.new(0.5, math.cos(angle) * radius, 0.5, math.sin(angle) * radius)
-				local size = SOUL_SIZE * (1 - eased * 0.5)
+				local size = SOUL_SIZE * 2 * (1 - eased * 0.6)
 				soul.Size = UDim2.fromOffset(size, size)
+				soul.Rotation = eased * 360
 			end
 		end
 
@@ -968,9 +1014,11 @@ local function playMerge(data: any)
 	if spin.Connected then
 		spin:Disconnect()
 	end
+	gosteriOnizleme.temizle()
 	for _, soul in souls do
 		soul:Destroy()
 	end
+	mergeSub.Text = ""
 
 	-- 2. ASAMA: parlama
 	local core = makeOrb(Color3.new(1, 1, 1), 24)
@@ -987,9 +1035,26 @@ local function playMerge(data: any)
 		shockwave(toColor)
 		burstStars(toColor, 18)
 
-		TweenService:Create(core, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-			Size = UDim2.fromOffset(84, 84),
+		TweenService:Create(core, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.fromOffset(170, 170),
+			BackgroundTransparency = 0.45,
 		}):Play()
+
+		-- Kazanilan brainrotun resmi cekirdegin icinde belirir
+		if type(data.name) == "string" then
+			local sonuc = Instance.new("Frame")
+			sonuc.Name = "Sonuc"
+			sonuc.AnchorPoint = Vector2.new(0.5, 0.5)
+			sonuc.Position = UDim2.fromScale(0.5, 0.5)
+			sonuc.Size = UDim2.fromScale(1.2, 1.2)
+			sonuc.BackgroundTransparency = 1
+			sonuc.ZIndex = 3
+			sonuc.Parent = core
+			gosteriOnizleme.ekle(sonuc, { name = data.name, mutation = data.mutation, revealed = true })
+		end
+
+		-- Mutasyon ciktiysa ekranda buyuk yaziyla
+		MutasyonGosterisi.goster(data.mutation, data.name)
 
 		mergeTitle.Text = "FUSE SUCCESS!"
 		UI.plainStyle(mergeTitle, YESIL)
@@ -1019,7 +1084,7 @@ local function playMerge(data: any)
 		UI.plainStyle(mergeTitle, KIRMIZI)
 		mergeName.Text = "Better luck next time!"
 		UI.plainStyle(mergeName, Color3.new(1, 1, 1))
-		mergeSub.Text = `All {soulCount} {tostring(data.fromName or "brainrots")} were lost`
+		mergeSub.Text = `All {soulCount} brainrots were lost`
 		mergeSub.TextColor3 = Color3.fromRGB(255, 120, 120)
 	end
 
@@ -1029,6 +1094,7 @@ local function playMerge(data: any)
 	fade:Play()
 	fade.Completed:Wait()
 
+	gosteriOnizleme.temizle()
 	clearStage()
 	mergeRoot.Visible = false
 	merging = false

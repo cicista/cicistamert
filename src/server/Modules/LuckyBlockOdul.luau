@@ -21,6 +21,7 @@
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -99,6 +100,80 @@ local function buildBlock(tierId: string): Model
 end
 
 --[[
+	LUCKY BLOCK SESI  --  herkes duyar
+
+	Studio'ya elle konan ses ADIYLA bulunur: adinda (bosluk, _ ve - yok
+	sayilarak) "luckyblock" gecen ilk Sound. Workspace, SoundService ya da
+	ReplicatedStorage icinde olabilir. Bir kez bulunup sablon olarak saklanir.
+
+	Sesin kopyasi sunucuda DOGRUDAN Workspace'e konup calinir: bir parcaya
+	bagli olmadigi icin konumsuzdur, haritadaki HERKES ayni sekilde duyar.
+
+	Calar:
+	    - Lucky Block yagmurunda bir blok belirince
+	    - kazidan Lucky Block cikinca
+	    - biri yerdeki blogu alinca
+	Ayni anda bircok blok duserse ses ust uste binmesin: en fazla
+	SES_ARALIGI saniyede bir.
+]]
+local SES_ARALIGI = 0.3
+local SES_KOPYA_NITELIGI = "LuckyBlockSesKopyasi"
+
+local sesSablonu: Sound? = nil
+local sesUyarildi = false
+local sonSes = 0
+
+local function luckySesAdi(ad: string): boolean
+	local sade = string.lower((string.gsub(ad, "[%s_%-]", "")))
+	return string.find(sade, "luckyblock", 1, true) ~= nil
+end
+
+local function luckySesi(): Sound?
+	if sesSablonu then
+		return sesSablonu
+	end
+
+	for _, kok in { Workspace :: Instance, SoundService, ReplicatedStorage } do
+		for _, d in kok:GetDescendants() do
+			if d:IsA("Sound") and luckySesAdi(d.Name) and not d:GetAttribute(SES_KOPYA_NITELIGI) then
+				local sablon = d:Clone()
+				sablon.Looped = false
+				sablon:SetAttribute(SES_KOPYA_NITELIGI, true)
+				sesSablonu = sablon
+				return sablon
+			end
+		end
+	end
+
+	if not sesUyarildi then
+		sesUyarildi = true
+		warn('[LuckyBlock] Adinda "Lucky Block" gecen bir Sound bulunamadi (Workspace / SoundService / ReplicatedStorage). Ses olmadan devam ediliyor.')
+	end
+	return nil
+end
+
+function LuckyBlockOdul.sesCal()
+	local simdi = os.clock()
+	if simdi - sonSes < SES_ARALIGI then
+		return
+	end
+
+	local sablon = luckySesi()
+	if not sablon then
+		return
+	end
+	sonSes = simdi
+
+	local ses = sablon:Clone()
+	ses.Parent = Workspace
+	ses:Play()
+	ses.Ended:Once(function()
+		ses:Destroy()
+	end)
+	Debris:AddItem(ses, 15)
+end
+
+--[[
 	Kazilan yerde blogu kisa sure gosterir: havalanir, doner ve kaybolur.
 	Sadece gorsel -- odul zaten envantere eklenmis olur.
 ]]
@@ -128,6 +203,9 @@ function LuckyBlockOdul.showDrop(position: Vector3, tierId: string)
 
 	-- Paketin kendi animasyonunu baslat
 	Assets.playAnimations(model)
+
+	-- Blok ortaya cikti: herkes duyar
+	LuckyBlockOdul.sesCal()
 
 	local glow = Instance.new("PointLight")
 	glow.Color = LuckyBlock.get(tierId).color
@@ -266,6 +344,9 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 	Assets.playAnimations(model)
 	buildBeacon(primary, nokta.Y)
 
+	-- Blok ortaya cikti: herkes duyar
+	LuckyBlockOdul.sesCal()
+
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "Etiket"
 	sign.Size = UDim2.fromOffset(230, 40)
@@ -309,13 +390,33 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 		Envanter.syncLuckyBlocks(player)
 		Envanter.push(player)
 
+		-- Yerden alindi: ses tekrar calar
+		LuckyBlockOdul.sesCal()
+
+		model:Destroy()
+
+		-- Haritada hala alinabilir kac blok kaldi (alinan az once silindi)
+		local kalan = 0
+		for _, blok in blocksFolder():GetChildren() do
+			local alPrompt = blok:FindFirstChild("AlPrompt", true)
+			if alPrompt and alPrompt:IsA("ProximityPrompt") and alPrompt.Enabled then
+				kalan += 1
+			end
+		end
+		local kalanYazi = if kalan == 0 then "none left" else `{kalan} left`
+
 		Bildirim:FireClient(
 			player,
-			`You got a {tier.displayName}! Take it from your backpack and click.`,
+			`You got a {tier.displayName}! Take it from your backpack and click. ({kalanYazi})`,
 			tier.color
 		)
 
-		model:Destroy()
+		-- Herkese: kim aldi, kac tane kaldi
+		for _, diger in Players:GetPlayers() do
+			if diger ~= player then
+				Bildirim:FireClient(diger, `{player.DisplayName} took a {tier.displayName}! {kalanYazi}`, tier.color)
+			end
+		end
 	end)
 
 	-- Havada suzul

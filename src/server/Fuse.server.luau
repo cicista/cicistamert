@@ -4,8 +4,9 @@
 
 	ILK ADADAKI FUSE MAKINESI  (Config.Fuse.machineName)
 
-	   3 AYNI brainrot (ayni isim) konur, oyuncu FUSE'a basar:
-	     %Fuse.SuccessChance  -> bir ust kademeden acilmis brainrot
+	   AYNI KADEMEDEN 3 brainrot konur (isimler farkli olabilir), FUSE'a basilir:
+	     Fuse.chanceFor ihtimalle -> bir ust kademeden acilmis brainrot
+	                                 (3 ayni isim %25, 2 ayni %20, hepsi farkli %15)
 	     kalani               -> hicbir sey, konan 3 brainrot gider
 
 	   Kurallar ve oranlar Shared > Fuse'ta. Hepsi SUNUCUDA dogrulanir:
@@ -213,8 +214,8 @@ local function uygunsuzluk(player: Player, item: any): string?
 	end
 
 	local slot = pending[player]
-	if slot and slot.name ~= item.name then
-		return `The machine holds {slot.name}, add the same brainrot.`
+	if slot and slot.rarity ~= item.rarity then
+		return `The machine holds {Rarity.displayName(slot.rarity)} brainrots, add the same tier.`
 	end
 
 	return nil
@@ -223,9 +224,9 @@ end
 --[[
 	MAKINEYE KONABILECEK BRAINROTLAR (secim listesi)
 
-	Makinede bir brainrot varsa yalnizca AYNI ISIMDEKILER listelenir.
-	Ayni isimden toplam kac tane oldugu da gider: oyuncu 3'e yetip
-	yetmeyecegini listeden gorsun.
+	Makinede bir brainrot varsa yalnizca AYNI KADEMEDEKILER listelenir.
+	Ayni isimden toplam kac tane oldugu da gider: ayni isimler sansi
+	artirdigi icin oyuncu listeden gorsun.
 ]]
 local function eligibleItems(player: Player): { any }
 	local data = PlayerData.get(player)
@@ -288,7 +289,9 @@ local function pushStatus(player: Player)
 		rarity = if slot then slot.rarity else nil,
 		nextRarity = if slot then Fuse.nextRarity(slot.rarity) else nil,
 		required = Fuse.Required,
-		chance = Fuse.SuccessChance,
+		-- Makine doluysa gercek sans; degilse nil (arayuz aralik yazar)
+		chance = if slot and #slot.entries >= Fuse.Required then Fuse.chanceFor(slot.entries) else nil,
+		chances = Fuse.Chances,
 		slots = slots,
 		mutations = if slot then Fuse.mutationChances(slot.entries) else {},
 		timeout = if slot then math.max(0, Fuse.Timeout - (os.clock() - slot.lastAt)) else 0,
@@ -431,7 +434,7 @@ local function completeFuse(player: Player)
 	end
 
 	if #slot.entries < Fuse.Required then
-		Bildirim:FireClient(player, `You need {Fuse.Required} of the same brainrot to fuse.`, UYARI)
+		Bildirim:FireClient(player, `You need {Fuse.Required} brainrots of the same tier to fuse.`, UYARI)
 		return
 	end
 
@@ -445,7 +448,8 @@ local function completeFuse(player: Player)
 		return
 	end
 
-	local basari = Fuse.rollSuccess(rng)
+	local sans = Fuse.chanceFor(slot.entries)
+	local basari = Fuse.rollSuccess(rng, sans)
 
 	--[[
 		ODUL ONCE veriye yazilir, makine ANCAK ondan sonra bosaltilir. Brainrot
@@ -475,9 +479,19 @@ local function completeFuse(player: Player)
 	-- Level: her deneme XP verir; tutarsa cikan kademenin XP'si de eklenir
 	Seviye.xpVer(player, Seviye.XP.fuse + (if basari then Seviye.rarityXp(nextRarity) else 0))
 
-	local fromName = slot.name
 	local fromRarity = slot.rarity
 	local souls = #slot.entries
+
+	-- Gosteride donecek resimler ve baslik: hepsi ayni isimse o isim
+	local kaynaklar = {}
+	local hepsiAyni = true
+	for _, entry in slot.entries do
+		table.insert(kaynaklar, { name = entry.item.name, mutation = entry.mutation })
+		if entry.item.name ~= slot.name then
+			hepsiAyni = false
+		end
+	end
+	local fromName = if hepsiAyni then slot.name else `{Rarity.displayName(fromRarity)} brainrots`
 
 	pending[player] = nil
 	fusing[player] = true
@@ -493,6 +507,8 @@ local function completeFuse(player: Player)
 		mutation = mutation,
 		income = if kazanilan then Brainrots.income(kazanilan.name, condition :: any, mutation :: any) else 0,
 		souls = souls,
+		sources = kaynaklar,
+		chance = sans,
 	})
 
 	local charge = playFuseSound(player, Fuse.VFX.charge)
@@ -525,7 +541,7 @@ local function completeFuse(player: Player)
 				Rarity.color(nextRarity :: string)
 			)
 		else
-			Bildirim:FireClient(player, `Fuse failed... your {souls} {fromName} were lost.`, RED)
+			Bildirim:FireClient(player, `Fuse failed... your {souls} brainrots were lost.`, RED)
 		end
 
 		pushStatus(player)

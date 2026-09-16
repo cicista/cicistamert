@@ -46,11 +46,60 @@ local Rulet = require(script.Parent:WaitForChild("Rulet"))
 local Index = require(script.Parent:WaitForChild("Index"))
 -- Liste satirlarindaki brainrot resimleri (Envanter, Detective)
 local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
+-- Mutasyon ortaya cikinca ekranda buyuk yazi
+--[[
+	ISTEGE BAGLI MODULLER  --  MENUYU KILITLEMEZ
+
+	Asagidaki uc modul (mutasyon gosterisi, muzik, tiklama sesi) scriptin EN
+	BASINDA bekleniyordu. Biri o an Studio'da yoksa (Rojo henuz aktarmamis
+	olabilir) script hata vermeden SONSUZA KADAR bekliyor ve butun arayuz
+	(sol menu, Rot gostergesi, paneller) hic kurulmuyordu.
+
+	Artik her biri en fazla 5 saniye beklenir; bulunamaz ya da yuklenemezse
+	Output'a uyari yazilir ve bos bir yedekle devam edilir -- menu yine
+	kurulur, yalnizca o ozellik calismaz.
+]]
+local function istegeBagli(ad: string, yedek: any): any
+	local modul = script.Parent:WaitForChild(ad, 5)
+	if not modul then
+		warn(`[Menuler] "{ad}" modulu bulunamadi; bu ozellik kapali, arayuz devam ediyor`)
+		return yedek
+	end
+	local ok, sonuc = pcall(require, modul)
+	if not ok then
+		warn(`[Menuler] "{ad}" yuklenemedi: {tostring(sonuc)}`)
+		return yedek
+	end
+	return sonuc
+end
+
+local MutasyonGosterisi = istegeBagli("MutasyonGosterisi", {
+	goster = function() end,
+})
+-- Arka plan muzigi (Happy Shoppers); ses ayari Settings panelinde
+local Muzik = istegeBagli("Muzik", {
+	ayarla = function() end,
+	yuzde = function()
+		return 100
+	end,
+	kapali = function()
+		return false
+	end,
+})
+-- Menu butonlarina tiklama sesi (Cartoon Bubble)
+local ArayuzSesi = istegeBagli("ArayuzSesi", {
+	tikla = function() end,
+})
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 local DetectiveAc = Net.event("DetectiveAc")
 local DetectiveTeslim = Net.event("DetectiveTeslim")
 local DetectiveSonuc = Net.event("DetectiveSonuc")
+-- Yeni remote: yoksa menu beklemesin (yalnizca Detective ilerleme gostergesi guncellenmez)
+local DetectiveDurum = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DetectiveDurum", 5) :: RemoteEvent?
+if not DetectiveDurum then
+	warn("[Menuler] DetectiveDurum remote'u yok; Detective ilerlemesi gosterilmeyecek")
+end
 local BaseGuncelle = Net.event("BaseGuncelle")
 local SlottanAl = Net.event("SlottanAl")
 local EtkinlikSayaci = Net.event("EtkinlikSayaci")
@@ -142,16 +191,25 @@ local function brainrotRow(
 	local special = revealed and Mutations.isSpecial(item.mutation)
 
 	local row = Instance.new("TextButton")
-	row.Size = UDim2.new(1, -6, 0, 62)
-	row.BackgroundColor3 = UI.Colors.panelLight
+	row.Size = UDim2.new(1, -6, 0, 68)
+	-- Kademe renginde canli zemin: soldan saga koyulasir
+	row.BackgroundColor3 = Color3.new(1, 1, 1)
 	row.BorderSizePixel = 0
 	-- Fare etkisi tiklanabilir satirlarda ayrica veriliyor (UI.hover)
 	row.AutoButtonColor = false
 	row.Text = ""
 	row.LayoutOrder = order
 	row.Parent = parent
-	UI.corner(row, 10)
-	UI.stroke(row, rarityInfo.color, 1)
+	UI.corner(row, 12)
+	UI.stroke(row, rarityInfo.color, 2)
+
+	local zemin = Instance.new("UIGradient")
+	zemin.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, rarityInfo.color:Lerp(Color3.new(0, 0, 0), 0.35)),
+		ColorSequenceKeypoint.new(0.45, rarityInfo.color:Lerp(Color3.fromRGB(28, 30, 42), 0.72)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(28, 30, 42)),
+	})
+	zemin.Parent = row
 
 	--[[
 		BRAINROT RESMI
@@ -238,8 +296,8 @@ local function brainrotRow(
 
 	-- Sagda kondisyon rozeti
 	local badge = Instance.new("Frame")
-	badge.Size = UDim2.fromOffset(56, 26)
-	badge.Position = UDim2.new(1, -68, 0.5, -13)
+	badge.Size = UDim2.fromOffset(56, 24)
+	badge.Position = UDim2.new(1, -66, 0, 34)
 	badge.BackgroundColor3 = conditionInfo.color
 	badge.BackgroundTransparency = 0.75
 	badge.BorderSizePixel = 0
@@ -256,16 +314,51 @@ local function brainrotRow(
 		parent = badge,
 	})
 
+	--[[
+		NEREDE DURUYOR: base'teyse yesil "ON BASE #3", cantadaysa mavi
+		"BACKPACK" etiketi. Base'dekinin resminin kosesinde de slot numarasi.
+	]]
+	local yerEtiketi = Instance.new("Frame")
+	yerEtiketi.AnchorPoint = Vector2.new(1, 0)
+	yerEtiketi.Position = UDim2.new(1, -10, 0, 6)
+	yerEtiketi.Size = UDim2.fromOffset(if item.slot then 104 else 92, 20)
+	yerEtiketi.BackgroundColor3 = if item.slot then Color3.fromRGB(60, 190, 90) else Color3.fromRGB(60, 130, 230)
+	yerEtiketi.BorderSizePixel = 0
+	yerEtiketi.Parent = row
+	UI.corner(yerEtiketi, 10)
+	UI.stroke(yerEtiketi, Color3.fromRGB(0, 0, 0), 1)
+
+	UI.text({
+		text = if item.slot then `ON BASE #{item.slot}` else "BACKPACK",
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = yerEtiketi,
+	})
+
 	if item.slot then
-		UI.text({
-			text = `Slot {item.slot}`,
+		local numara = Instance.new("Frame")
+		numara.Position = UDim2.fromOffset(2, 2)
+		numara.Size = UDim2.fromOffset(22, 22)
+		numara.BackgroundColor3 = Color3.fromRGB(60, 190, 90)
+		numara.BorderSizePixel = 0
+		numara.ZIndex = 5
+		numara.Parent = icon
+		UI.corner(numara, 11)
+		UI.stroke(numara, Color3.fromRGB(0, 0, 0), 1)
+
+		local numaraYazi = UI.text({
+			text = tostring(item.slot),
 			size = UI.Sizes.tiny,
-			color = UI.Colors.accent,
-			align = Enum.TextXAlignment.Right,
-			frameSize = UDim2.fromOffset(90, 16),
-			position = UDim2.new(1, -170, 0, 8),
-			parent = row,
+			font = UI.Fonts.bold,
+			color = Color3.new(1, 1, 1),
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromScale(1, 1),
+			parent = numara,
 		})
+		numaraYazi.ZIndex = 6
 	end
 
 	return row
@@ -274,51 +367,155 @@ end
 ------------------------------------------------------------------
 -- ENVANTER
 ------------------------------------------------------------------
-local envanter = UI.panel(screen, UDim2.fromOffset(520, 480), "Envanter")
+local envanter = UI.panel(screen, UDim2.fromOffset(600, 580), "Envanter")
+
+--[[
+	ENVANTER  --  canli, iki bolumlu
+
+	    [ Inventory                               X ]   <- renkli baslik
+	    ( 12 Brainrots ) ( 3 Unidentified ) ( 4/10 On Base )
+	    ON YOUR BASE  4/10
+	      #1 ....  #2 ....  #3 (bos)  ...            <- slot sirasiyla, bos slotlar da
+	    IN YOUR BACKPACK  (8)
+	      pahalidan ucuza ...
+
+	Base'deki bir brainrota tiklamak onu cantaya geri alir.
+]]
+local envanterBaslik = Instance.new("Frame")
+envanterBaslik.Name = "Baslik"
+envanterBaslik.Size = UDim2.new(1, 0, 0, 60)
+envanterBaslik.BackgroundColor3 = Color3.new(1, 1, 1)
+envanterBaslik.BorderSizePixel = 0
+envanterBaslik.Parent = envanter
+UI.corner(envanterBaslik, 14)
+
+local envanterBaslikGecis = Instance.new("UIGradient")
+envanterBaslikGecis.Color = ColorSequence.new(Color3.fromRGB(50, 150, 255), Color3.fromRGB(170, 90, 255))
+envanterBaslikGecis.Parent = envanterBaslik
 
 UI.text({
 	text = "Inventory",
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = envanter,
+	color = Color3.new(1, 1, 1),
+	frameSize = UDim2.new(1, -80, 1, 0),
+	position = UDim2.fromOffset(18, 0),
+	parent = envanterBaslik,
 })
-
-local envanterOzet = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 48),
-	parent = envanter,
-})
-
 
 UI.closeButton(envanter).MouseButton1Click:Connect(function()
 	envanter.Visible = false
 end)
 
-local envanterListe = makeScroll(envanter, UDim2.fromOffset(14, 96), UDim2.new(1, -28, 1, -110))
+-- Ozet cipleri
+local envanterCipler = Instance.new("Frame")
+envanterCipler.Position = UDim2.fromOffset(14, 70)
+envanterCipler.Size = UDim2.new(1, -28, 0, 30)
+envanterCipler.BackgroundTransparency = 1
+envanterCipler.Parent = envanter
+
+local ciplerDizilim = Instance.new("UIListLayout")
+ciplerDizilim.FillDirection = Enum.FillDirection.Horizontal
+ciplerDizilim.Padding = UDim.new(0, 8)
+ciplerDizilim.SortOrder = Enum.SortOrder.LayoutOrder
+ciplerDizilim.Parent = envanterCipler
+
+local function cip(renk: Color3, sira: number): TextLabel
+	local kutu = Instance.new("Frame")
+	kutu.Size = UDim2.fromOffset(170, 30)
+	kutu.BackgroundColor3 = renk
+	kutu.BorderSizePixel = 0
+	kutu.LayoutOrder = sira
+	kutu.Parent = envanterCipler
+	UI.corner(kutu, 15)
+	UI.stroke(kutu, Color3.fromRGB(0, 0, 0), 2)
+
+	return UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = kutu,
+	})
+end
+
+local cipToplam = cip(Color3.fromRGB(60, 130, 230), 1)
+local cipGizli = cip(Color3.fromRGB(90, 90, 110), 2)
+local cipBase = cip(Color3.fromRGB(60, 190, 90), 3)
+
+local envanterListe = makeScroll(envanter, UDim2.fromOffset(14, 112), UDim2.new(1, -28, 1, -126))
 
 -- Yalnizca ekrandaki satirlara brainrot resmi kurulur (bkz. BrainrotOnizleme)
 local envanterPencere = BrainrotOnizleme.pencere(envanterListe, envanter)
 
--- Ayirici baslik satiri (BRAINROTLAR gibi)
-local function sectionHeader(parent: Instance, text: string, order: number)
+-- Renkli bolum basligi
+local function sectionHeader(parent: Instance, text: string, order: number, renk: Color3?)
 	local holder = Instance.new("Frame")
-	holder.Size = UDim2.new(1, -6, 0, 24)
-	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.new(1, -6, 0, 32)
+	holder.BackgroundColor3 = renk or UI.Colors.panelLight
+	holder.BorderSizePixel = 0
 	holder.LayoutOrder = order
 	holder.Parent = parent
+	UI.corner(holder, 10)
+	UI.stroke(holder, Color3.fromRGB(0, 0, 0), 2)
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
+	gecis.Parent = holder
 
 	UI.text({
 		text = text,
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		frameSize = UDim2.new(1, -20, 1, 0),
+		position = UDim2.fromOffset(12, 0),
+		parent = holder,
+	})
+end
+
+-- Bos base slotu: numarasi ve nasil doldurulacagi
+local function bosSlotSatiri(parent: Instance, slotNo: number, order: number)
+	local satir = Instance.new("Frame")
+	satir.Size = UDim2.new(1, -6, 0, 40)
+	satir.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
+	satir.BackgroundTransparency = 0.2
+	satir.BorderSizePixel = 0
+	satir.LayoutOrder = order
+	satir.Parent = parent
+	UI.corner(satir, 10)
+	local cerceve = UI.stroke(satir, Color3.fromRGB(60, 190, 90), 1)
+	cerceve.Transparency = 0.6
+
+	local numara = Instance.new("Frame")
+	numara.AnchorPoint = Vector2.new(0, 0.5)
+	numara.Position = UDim2.new(0, 10, 0.5, 0)
+	numara.Size = UDim2.fromOffset(28, 28)
+	numara.BackgroundColor3 = Color3.fromRGB(60, 190, 90)
+	numara.BackgroundTransparency = 0.5
+	numara.BorderSizePixel = 0
+	numara.Parent = satir
+	UI.corner(numara, 14)
+
+	UI.text({
+		text = tostring(slotNo),
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
-		color = UI.Colors.textDim,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.fromScale(1, 1),
-		parent = holder,
+		parent = numara,
+	})
+
+	UI.text({
+		text = `Empty slot  -  hold a brainrot and press E on slot {slotNo}`,
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -60, 1, 0),
+		position = UDim2.fromOffset(50, 0),
+		parent = satir,
 	})
 end
 
@@ -332,46 +529,40 @@ local function refreshEnvanter()
 	clearRows(envanterListe)
 
 	local items = inventory.inventory or {}
-	local hidden, placed = 0, 0
+	local slotSayisi = math.max(1, math.floor(tonumber(inventory.baseSlots) or 10))
+
+	local hidden = 0
+	local slotta: { [number]: any } = {}
+	local cantada: { any } = {}
+	local fazlaSlot: { any } = {}
 	for _, item in items do
 		if not item.revealed then
 			hidden += 1
 		end
 		if item.slot then
-			placed += 1
+			if item.slot <= slotSayisi and not slotta[item.slot] then
+				slotta[item.slot] = item
+			else
+				table.insert(fazlaSlot, item)
+			end
+		else
+			table.insert(cantada, item)
 		end
 	end
 
-	envanterOzet.Text = `{#items} brainrots  -  {hidden} unidentified  -  {placed} on base`
-
-
-	------------------------------------------------------------------
-	-- BRAINROTLAR
-	------------------------------------------------------------------
-	sectionHeader(envanterListe, `BRAINROTS ({#items})`, 100)
-
-	if #items == 0 then
-		UI.text({
-			text = "No brainrots yet. Hold your GPS and look for light beams in the sand.",
-			size = UI.Sizes.small,
-			color = UI.Colors.textDim,
-			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, 0, 0, 36),
-			parent = envanterListe,
-			wrapped = true,
-		}).LayoutOrder = 5
-		return
+	local placed = 0
+	for _ in slotta do
+		placed += 1
 	end
+	placed += #fazlaSlot
 
-	-- Once acilmamislar, sonra rarity'ye gore
-	local sorted = table.clone(items)
+	cipToplam.Text = `{#items} Brainrots`
+	cipGizli.Text = `{hidden} Unidentified`
+	cipBase.Text = `{placed}/{slotSayisi} On Base`
+
 	--[[
-		SIRALAMA: pahalidan ucuza.
-
-		Once kimligi belirlenmemisler (islem bekleyenler ustte kalsin),
-		sonra saniyelik getiriye gore buyukten kucuge. Getiri rarity,
-		boyut ve mutasyonu birlikte hesaba kattigi icin "pahali" olan
-		gercekten en cok kazandirandir.
+		SIRALAMA: pahalidan ucuza. Getiri kademe, boyut ve mutasyonu birlikte
+		hesaba kattigi icin "pahali" olan gercekten en cok kazandirandir.
 	]]
 	local function worth(item: any): number
 		if item.revealed and item.name then
@@ -381,24 +572,59 @@ local function refreshEnvanter()
 		return Brainrots.minIncome(item.rarity, item.condition)
 	end
 
-	table.sort(sorted, function(a, b)
-		if a.revealed ~= b.revealed then
-			return not a.revealed
+	local function tabanaTikla(row: TextButton, item: any)
+		row.MouseButton1Click:Connect(function()
+			SlottanAl:FireServer(item.uid)
+		end)
+		UI.hover(row)
+	end
+
+	------------------------------------------------------------------
+	-- BASE: slot sirasiyla, bos slotlar da
+	------------------------------------------------------------------
+	sectionHeader(envanterListe, `ON YOUR BASE   {placed}/{slotSayisi}`, 1, Color3.fromRGB(60, 190, 90))
+
+	for slotNo = 1, slotSayisi do
+		local item = slotta[slotNo]
+		if item then
+			tabanaTikla(brainrotRow(envanterListe, item, 1 + slotNo, envanterPencere), item)
+		else
+			bosSlotSatiri(envanterListe, slotNo, 1 + slotNo)
+		end
+	end
+	for index, item in fazlaSlot do
+		tabanaTikla(brainrotRow(envanterListe, item, 1 + slotSayisi + index, envanterPencere), item)
+	end
+
+	------------------------------------------------------------------
+	-- CANTA: once acilmislar pahalidan ucuza, sonra acilmamislar
+	------------------------------------------------------------------
+	sectionHeader(envanterListe, `IN YOUR BACKPACK   ({#cantada})`, 1000, Color3.fromRGB(60, 130, 230))
+
+	if #cantada == 0 then
+		UI.text({
+			text = "Your backpack is empty. Hold your GPS and look for light beams in the sand.",
+			size = UI.Sizes.small,
+			color = UI.Colors.textDim,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, 0, 0, 36),
+			parent = envanterListe,
+			wrapped = true,
+		}).LayoutOrder = 1001
+		return
+	end
+
+	table.sort(cantada, function(a, b)
+		local acikA = a.revealed == true and a.name ~= nil
+		local acikB = b.revealed == true and b.name ~= nil
+		if acikA ~= acikB then
+			return acikA
 		end
 		return worth(a) > worth(b)
 	end)
 
-	for index, item in sorted do
-		local row = brainrotRow(envanterListe, item, 100 + index, envanterPencere)
-
-		-- Base'e konmus olanlar tiklaninca geri alinir
-		if item.slot then
-			row.MouseButton1Click:Connect(function()
-				SlottanAl:FireServer(item.uid)
-			end)
-
-			UI.hover(row)
-		end
+	for index, item in cantada do
+		brainrotRow(envanterListe, item, 1000 + index, envanterPencere)
 	end
 end
 
@@ -558,8 +784,16 @@ end)
 ------------------------------------------------------------------
 -- DETECTIVE
 ------------------------------------------------------------------
-local detective = UI.panel(screen, UDim2.fromOffset(520, 440), "Detective")
+local detective = UI.panel(screen, UDim2.fromOffset(640, 540), "Detective")
 
+--[[
+	BRAINROT DETECTIVE PANELI  --  toplu inceleme
+
+	Kimligi belirlenmemis butun brainrotlar buyuk kartlarda gorunur; tek
+	dugmeyle HEPSI birden birakilir. Bekleme hepsinin suresinin toplami;
+	oyuncu yanindan ayrilabilir (sure sunucuda, kayitta isler). Is surerken
+	panel ilerleme cubugunu ve kalan sureyi gosterir.
+]]
 UI.text({
 	text = "Brainrot Detective",
 	size = UI.Sizes.title,
@@ -571,11 +805,11 @@ UI.text({
 })
 
 UI.text({
-	text = "Hand me a pitch-black brainrot and I will tell you who it is.",
+	text = "Leave ALL your unidentified brainrots with me. I will identify them at once, you can leave!",
 	size = UI.Sizes.small,
 	color = UI.Colors.textDim,
 	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 48),
+	position = UDim2.fromOffset(18, 50),
 	parent = detective,
 })
 
@@ -583,47 +817,280 @@ UI.closeButton(detective).MouseButton1Click:Connect(function()
 	detective.Visible = false
 end)
 
-local detectiveListe = makeScroll(detective, UDim2.fromOffset(14, 78), UDim2.new(1, -28, 1, -92))
+local DETEKTIF_ALT = 100
+
+local detectiveListe = makeScroll(detective, UDim2.fromOffset(14, 80), UDim2.new(1, -28, 1, -(80 + DETEKTIF_ALT + 14)))
+-- Kartlar izgarada: liste duzeni yerine izgara
+for _, child in detectiveListe:GetChildren() do
+	if child:IsA("UIListLayout") then
+		child:Destroy()
+	end
+end
+local detektifIzgara = Instance.new("UIGridLayout")
+detektifIzgara.CellSize = UDim2.fromOffset(112, 150)
+detektifIzgara.CellPadding = UDim2.fromOffset(10, 10)
+detektifIzgara.SortOrder = Enum.SortOrder.LayoutOrder
+detektifIzgara.Parent = detectiveListe
+
 local detectivePencere = BrainrotOnizleme.pencere(detectiveListe, detective)
 
-DetectiveAc.OnClientEvent:Connect(function(pending)
+-- Alt cubuk: ozet / ilerleme + buyuk dugme
+local detektifAlt = Instance.new("Frame")
+detektifAlt.AnchorPoint = Vector2.new(0, 1)
+detektifAlt.Position = UDim2.new(0, 14, 1, -14)
+detektifAlt.Size = UDim2.new(1, -28, 0, DETEKTIF_ALT)
+detektifAlt.BackgroundColor3 = UI.Colors.panelLight
+detektifAlt.BorderSizePixel = 0
+detektifAlt.Parent = detective
+UI.corner(detektifAlt, 12)
+UI.stroke(detektifAlt, Color3.fromRGB(255, 236, 180), 2)
+
+local detektifOzet = UI.text({
+	text = "",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(255, 236, 180),
+	frameSize = UDim2.new(1, -270, 0, 26),
+	position = UDim2.fromOffset(16, 12),
+	parent = detektifAlt,
+})
+
+local detektifBar = Instance.new("Frame")
+detektifBar.Position = UDim2.fromOffset(16, 48)
+detektifBar.Size = UDim2.new(1, -270, 0, 32)
+detektifBar.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
+detektifBar.BorderSizePixel = 0
+detektifBar.Parent = detektifAlt
+UI.corner(detektifBar, 16)
+UI.stroke(detektifBar, Color3.fromRGB(0, 0, 0), 2)
+
+local detektifDolgu = Instance.new("Frame")
+detektifDolgu.Size = UDim2.fromScale(0, 1)
+detektifDolgu.BackgroundColor3 = Color3.new(1, 1, 1)
+detektifDolgu.BorderSizePixel = 0
+detektifDolgu.Parent = detektifBar
+UI.corner(detektifDolgu, 16)
+local detektifDolguGecis = Instance.new("UIGradient")
+detektifDolguGecis.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(120, 230, 120))
+detektifDolguGecis.Parent = detektifDolgu
+
+local detektifBarYazi = UI.text({
+	text = "",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromScale(1, 1),
+	parent = detektifBar,
+})
+detektifBarYazi.ZIndex = 3
+
+local detektifDugme = Instance.new("TextButton")
+detektifDugme.AnchorPoint = Vector2.new(1, 0.5)
+detektifDugme.Position = UDim2.new(1, -16, 0.5, 0)
+detektifDugme.Size = UDim2.fromOffset(226, 64)
+detektifDugme.BackgroundColor3 = UI.Colors.good
+detektifDugme.AutoButtonColor = false
+detektifDugme.BorderSizePixel = 0
+detektifDugme.Text = ""
+detektifDugme.Parent = detektifAlt
+UI.corner(detektifDugme, 12)
+UI.stroke(detektifDugme, Color3.fromRGB(0, 0, 0), 3)
+
+local detektifDugmeYazi = UI.text({
+	text = "",
+	size = UI.Sizes.heading,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromScale(1, 1),
+	parent = detektifDugme,
+})
+
+-- Durum
+local detektifBekleyen: { any } = {}
+local detektifIs: any = nil
+local detektifBitis = 0
+
+local function detektifSure(saniye: number): string
+	local t = math.max(0, math.ceil(saniye))
+	return string.format("%d:%02d", t // 60, t % 60)
+end
+
+local function detektifCalisiyor(): boolean
+	return detektifIs ~= nil and detektifBitis > os.clock()
+end
+
+local function detektifKarti(item: any, sira: number)
+	local rarityInfo = Rarity.get(item.rarity)
+	local conditionInfo = Condition.get(item.condition)
+
+	local kart = Instance.new("Frame")
+	kart.Name = item.uid
+	kart.BackgroundColor3 = rarityInfo.color:Lerp(Color3.new(0, 0, 0), 0.55)
+	kart.BorderSizePixel = 0
+	kart.LayoutOrder = sira
+	kart.Parent = detectiveListe
+	UI.corner(kart, 12)
+	UI.stroke(kart, rarityInfo.color, 2)
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
+	gecis.Parent = kart
+
+	local resim = Instance.new("Frame")
+	resim.AnchorPoint = Vector2.new(0.5, 0)
+	resim.Position = UDim2.new(0.5, 0, 0, 8)
+	resim.Size = UDim2.fromOffset(92, 92)
+	resim.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+	resim.BorderSizePixel = 0
+	resim.ClipsDescendants = true
+	resim.Parent = kart
+	UI.corner(resim, 10)
+
+	local soru = UI.text({
+		text = "?",
+		size = UI.Sizes.huge,
+		font = UI.Fonts.bold,
+		color = rarityInfo.color,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = resim,
+	})
+	detectivePencere.ekle(resim, { mutation = item.mutation, revealed = false }, soru)
+
+	local ad = UI.text({
+		text = rarityInfo.displayName,
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = rarityInfo.color,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -8, 0, 20),
+		position = UDim2.fromOffset(4, 104),
+		parent = kart,
+	})
+	UI.rarityStyle(ad, item.rarity)
+
+	UI.text({
+		text = `{conditionInfo.shortName}  -  {detektifSure(tonumber(item.sure) or 0)}`,
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(230, 230, 240),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -8, 0, 18),
+		position = UDim2.fromOffset(4, 126),
+		parent = kart,
+	})
+end
+
+-- Yalnizca cubuk ve dugme yazilari (her saniye)
+local function detektifDurumCiz()
+	if detektifCalisiyor() then
+		local kalan = detektifBitis - os.clock()
+		local toplam = math.max(1, tonumber(detektifIs.toplam) or 1)
+		detektifBar.Visible = true
+		detektifDolgu.Size = UDim2.fromScale(math.clamp(1 - kalan / toplam, 0, 1), 1)
+		detektifBarYazi.Text = `{detektifSure(kalan)} left  -  you can leave!`
+		detektifOzet.Text = `Identifying {detektifIs.adet or 0} brainrot(s)...`
+		detektifDugme.BackgroundColor3 = UI.Colors.panel
+		detektifDugmeYazi.Text = "WORKING..."
+	else
+		detektifBar.Visible = false
+		local toplam = 0
+		for _, item in detektifBekleyen do
+			toplam += tonumber(item.sure) or 0
+		end
+		detektifOzet.Text = if #detektifBekleyen > 0
+			then `{#detektifBekleyen} unidentified  -  total {detektifSure(toplam)}`
+			else "No unidentified brainrots"
+		detektifDugme.BackgroundColor3 = if #detektifBekleyen > 0 then UI.Colors.good else UI.Colors.panel
+		detektifDugmeYazi.Text = if #detektifBekleyen > 0 then "IDENTIFY ALL" else "NOTHING LEFT"
+	end
+end
+
+local function detektifCiz()
 	detectivePencere.temizle()
 	clearRows(detectiveListe)
 
-	for index, item in pending do
-		local rarityInfo = Rarity.get(item.rarity)
-		local row = brainrotRow(detectiveListe, {
-			uid = item.uid,
-			rarity = item.rarity,
-			condition = item.condition,
-			mutation = item.mutation,
-			revealed = false,
-		}, index, detectivePencere)
-
-		row.MouseButton1Click:Connect(function()
-			DetectiveTeslim:FireServer(item.uid)
-			row.Visible = false
-		end)
-
-		UI.hover(row)
-
-		UI.text({
-			text = `{rarityInfo.revealTime}s`,
-			size = UI.Sizes.tiny,
+	if detektifCalisiyor() then
+		local bilgi = UI.text({
+			text = "The Detective is working on your brainrots. Come back when the bar is full!",
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
 			color = UI.Colors.textDim,
-			align = Enum.TextXAlignment.Right,
-			frameSize = UDim2.fromOffset(90, 16),
-			position = UDim2.new(1, -170, 1, -26),
-			parent = row,
+			align = Enum.TextXAlignment.Center,
+			wrapped = true,
+			parent = detectiveListe,
 		})
+		bilgi.Size = UDim2.fromOffset(560, 60)
+	else
+		table.sort(detektifBekleyen, function(a, b)
+			return (tonumber(a.sure) or 0) > (tonumber(b.sure) or 0)
+		end)
+		for sira, item in detektifBekleyen do
+			detektifKarti(item, sira)
+		end
 	end
 
+	detektifDurumCiz()
+end
+
+detektifDugme.MouseButton1Click:Connect(function()
+	if not detektifCalisiyor() and #detektifBekleyen > 0 then
+		DetectiveTeslim:FireServer()
+	end
+end)
+
+DetectiveAc.OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" then
+		return
+	end
+	detektifBekleyen = if type(payload.pending) == "table" then payload.pending else {}
+	detektifIs = if type(payload.job) == "table" then payload.job else nil
+	detektifBitis = os.clock() + (if detektifIs then tonumber(detektifIs.kalan) or 0 else 0)
+	detektifCiz()
 	detective.Visible = true
 end)
 
-DetectiveSonuc.OnClientEvent:Connect(function()
+local detektifDurumOlayi = DetectiveDurum
+if detektifDurumOlayi then detektifDurumOlayi.OnClientEvent:Connect(function(is)
+	detektifIs = if type(is) == "table" then is else nil
+	detektifBitis = os.clock() + (if detektifIs then tonumber(detektifIs.kalan) or 0 else 0)
+	if detektifIs then
+		-- Birakilanlar artik isin icinde: kart listesi bosalir
+		detektifBekleyen = {}
+	end
 	if detective.Visible then
-		detective.Visible = false
+		detektifCiz()
+	end
+end)
+end
+
+DetectiveSonuc.OnClientEvent:Connect(function(sonuclar)
+	detektifIs = nil
+	detektifBekleyen = {}
+	if detective.Visible then
+		detektifCiz()
+	end
+
+	-- Mutasyonlu cikanlar ekranda buyuk yaziyla (sirayla)
+	if type(sonuclar) == "table" then
+		for _, sonuc in sonuclar do
+			if type(sonuc) == "table" then
+				MutasyonGosterisi.goster(sonuc.mutation, sonuc.name)
+			end
+		end
+	end
+end)
+
+-- Geri sayim
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		if detective.Visible and detektifIs then
+			detektifDurumCiz()
+		end
 	end
 end)
 
@@ -954,6 +1421,11 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			luckyDetail.Text = `{Rarity.displayName(winner.rarity)} {conditionInfo.shortName}{tag} ({Format.perSecond(winner.income or 0)})`
 			-- Boyut satiri her zaman boyut renginde; mutasyon rengini ele gecirmez
 			luckyDetail.TextColor3 = conditionInfo.color
+
+			-- Mutasyon ciktiysa ekranda buyuk yaziyla
+			if special then
+				MutasyonGosterisi.goster(winner.mutation, winner.name)
+			end
 		end,
 	})
 
@@ -1382,7 +1854,11 @@ local function menuButonu(sutun: Frame, iconId: string, isim: string, renk: Colo
 		buton.MouseLeave:Connect(function()
 			bas(false)
 		end)
-		buton.MouseButton1Click:Connect(onClick)
+		buton.MouseButton1Click:Connect(function()
+			-- Tiklama sesi (sol menu ve Settings butonu)
+			ArayuzSesi.tikla()
+			onClick()
+		end)
 
 		-- Aydinlanma + buyume yalnizca CALISAN butonlarda
 		UI.hover(buton, yuz, yuz)
@@ -2356,740 +2832,854 @@ task.spawn(function()
 end)
 
 
-------------------------------------------------------------------
--- FRIENDS SEKMESI  --  arkadas buffi
---
--- Ayni sunucuda Roblox arkadasi olan oyuncu kazida +%15 sans alir. Bonus
--- sunucuda hesaplanir (bkz. Modules > Arkadaslar); burasi yalnizca
--- gosterir: buffun durumu, sunucudaki arkadaslar ve davet dugmesi.
-------------------------------------------------------------------
-local arkadasPanel = UI.panel(screen, UDim2.fromOffset(440, 440), "Arkadaslar")
-
-UI.text({
-	text = "Friends",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = Color3.fromRGB(255, 120, 190),
-	frameSize = UDim2.new(1, -80, 0, 34),
-	position = UDim2.fromOffset(18, 14),
-	parent = arkadasPanel,
-})
-
-UI.closeButton(arkadasPanel).MouseButton1Click:Connect(function()
-	arkadasPanel.Visible = false
-end)
-
-local arkadasDurumYazi = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -36, 0, 40),
-	position = UDim2.fromOffset(18, 50),
-	parent = arkadasPanel,
-	wrapped = true,
-})
-
-local arkadasListe = makeScroll(arkadasPanel, UDim2.fromOffset(14, 98), UDim2.new(1, -28, 1, -172))
-
-local davetButon = UI.button(arkadasPanel, "Invite Friends", UDim2.new(1, -40, 0, 48), Color3.fromRGB(255, 120, 190))
-davetButon.AnchorPoint = Vector2.new(0.5, 1)
-davetButon.Position = UDim2.new(0.5, 0, 1, -16)
-
--- Sunucudan gelen son durum
-local arkadasSayisi = 0
-local arkadasYuzde = 15
-local arkadasListesi: { any } = {}
-
-local function arkadasCiz()
-	if arkadasSayisi > 0 then
-		arkadasDurumYazi.Text = `Friend Boost active: +{arkadasYuzde}% Luck`
-			.. `  ({arkadasSayisi} friend{if arkadasSayisi == 1 then "" else "s"} in this server)`
-		arkadasDurumYazi.TextColor3 = Color3.fromRGB(120, 255, 150)
-	else
-		arkadasDurumYazi.Text = `Play in the same server with a friend to get +{arkadasYuzde}% Luck!`
-		arkadasDurumYazi.TextColor3 = UI.Colors.textDim
-	end
-
-	clearRows(arkadasListe)
-
-	if #arkadasListesi == 0 then
-		UI.text({
-			text = "No friends in this server yet. Invite them below!",
-			size = UI.Sizes.small,
-			color = UI.Colors.textDim,
-			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, 0, 0, 36),
-			parent = arkadasListe,
-			wrapped = true,
-		})
-		return
-	end
-
-	for sira, arkadas in arkadasListesi do
-		local satir = Instance.new("Frame")
-		satir.Name = `Arkadas{sira}`
-		satir.Size = UDim2.new(1, -6, 0, 56)
-		satir.BackgroundColor3 = UI.Colors.panelLight
-		satir.BorderSizePixel = 0
-		satir.LayoutOrder = sira
-		satir.Parent = arkadasListe
-		UI.corner(satir, 10)
-
-		local avatar = Instance.new("ImageLabel")
-		avatar.Name = "Avatar"
-		avatar.Position = UDim2.fromOffset(6, 6)
-		avatar.Size = UDim2.fromOffset(44, 44)
-		avatar.BackgroundColor3 = UI.Colors.panel
-		avatar.BorderSizePixel = 0
-		avatar.Parent = satir
-		UI.corner(avatar, 22)
-
-		-- Avatar resmi web'den gelir ve bekletir: listeyi tutmasin
-		local userId = tonumber(arkadas.userId)
-		if userId then
-			task.spawn(function()
-				local ok, resim = pcall(function()
-					return Players:GetUserThumbnailAsync(
-						userId,
-						Enum.ThumbnailType.HeadShot,
-						Enum.ThumbnailSize.Size100x100
-					)
-				end)
-				if ok and avatar.Parent then
-					avatar.Image = resim
-				end
-			end)
-		end
-
-		UI.text({
-			text = tostring(arkadas.displayName or arkadas.name or "?"),
-			size = UI.Sizes.body,
-			font = UI.Fonts.bold,
-			frameSize = UDim2.new(1, -150, 0, 22),
-			position = UDim2.fromOffset(60, 8),
-			parent = satir,
-		})
-
-		UI.text({
-			text = `@{tostring(arkadas.name or "?")}`,
-			size = UI.Sizes.small,
-			color = UI.Colors.textDim,
-			frameSize = UDim2.new(1, -150, 0, 18),
-			position = UDim2.fromOffset(60, 30),
-			parent = satir,
-		})
-
-		UI.text({
-			text = `+{arkadasYuzde}% Luck`,
-			size = UI.Sizes.small,
-			font = UI.Fonts.bold,
-			color = Color3.fromRGB(120, 255, 150),
-			align = Enum.TextXAlignment.Right,
-			frameSize = UDim2.fromOffset(90, 22),
-			position = UDim2.new(1, -100, 0.5, -11),
-			parent = satir,
-		})
-	end
-end
-
-ArkadasDurum.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" then
-		return
-	end
-
-	arkadasSayisi = tonumber(data.sayi) or 0
-	arkadasYuzde = tonumber(data.yuzde) or arkadasYuzde
-	arkadasListesi = if type(data.arkadaslar) == "table" then data.arkadaslar else {}
-
-	-- Rot'un ustundeki buff yazisi
-	arkadasBuff.Text = `Friend Boost: +{arkadasYuzde}% Luck`
-	arkadasBuff.Visible = arkadasSayisi > 0
-	solSutunuYerlestir()
-
-	if arkadasPanel.Visible then
-		arkadasCiz()
-	end
-end)
-
---[[
-	DAVET
-	Roblox'un kendi davet penceresi. Studio'da ve davete izin vermeyen
-	hesaplarda acilamaz; o durumda panel sebebini yazar.
-]]
-davetButon.MouseButton1Click:Connect(function()
-	local oyuncu = Players.LocalPlayer
-	local ok, izin = pcall(function()
-		return SocialService:CanSendGameInviteAsync(oyuncu)
-	end)
-
-	if ok and izin then
-		pcall(function()
-			SocialService:PromptGameInvite(oyuncu)
-		end)
-	else
-		arkadasDurumYazi.Text = "Invites are not available right now (they don't work in Studio)."
-		arkadasDurumYazi.TextColor3 = UI.Colors.warn
-	end
-end)
-
-function arkadasPaneliniAc()
-	arkadasPanel.Visible = not arkadasPanel.Visible
-	if arkadasPanel.Visible then
-		arkadasCiz()
-		ArkadasAc:FireServer()
-	end
-end
-
-
-------------------------------------------------------------------
--- ROTCOIN MAGAZASI  (sol menude eski Pets butonunun yeri)
---
--- Urunler ve fiyatlar Shared > RotCoinMagaza'da; satin alma sunucuda
--- dogrulanir. Panel yalnizca listeyi cizer ve id yollar.
-------------------------------------------------------------------
-local RC_SARI = Color3.fromRGB(255, 215, 40)
-
-local rcPanel = UI.panel(screen, UDim2.fromOffset(500, 500), "RotCoinMagaza")
-
-UI.text({
-	text = "Rot Coin Shop",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = RC_SARI,
-	frameSize = UDim2.new(1, -80, 0, 34),
-	position = UDim2.fromOffset(18, 14),
-	parent = rcPanel,
-})
-
-UI.closeButton(rcPanel).MouseButton1Click:Connect(function()
-	rcPanel.Visible = false
-end)
-
-local rcBakiyeYazi = UI.text({
-	text = "",
-	size = UI.Sizes.body,
-	font = UI.Fonts.bold,
-	color = RC_SARI,
-	frameSize = UDim2.new(1, -36, 0, 24),
-	position = UDim2.fromOffset(18, 50),
-	parent = rcPanel,
-})
-
-local rcIksirYazi = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -36, 0, 20),
-	position = UDim2.fromOffset(18, 76),
-	parent = rcPanel,
-})
-
-local rcListe = makeScroll(rcPanel, UDim2.fromOffset(14, 104), UDim2.new(1, -28, 1, -118))
-
--- Sunucudan gelen son durum
-local rcBakiye = inventory.rotCoins or 0
-local iksirCarpan = 1
--- Iksirin bitecegi an (os.clock); istemci kendi sayar, sunucu her alista duzeltir
-local iksirBitis = 0
-
-local function iksirKalan(): number
-	return if iksirCarpan > 1 then math.max(0, iksirBitis - os.clock()) else 0
-end
-
-local function iksirYazilariniGuncelle()
-	local kalan = iksirKalan()
-	local aktif = kalan > 0
-
-	if aktif then
-		local yazi = `{RotCoinMagaza.carpanYazisi(iksirCarpan)} Luck ({RotCoinMagaza.sureYazisi(kalan)})`
-		iksirBuff.Text = `Luck Potion: {yazi}`
-		rcIksirYazi.Text = `Active potion: {yazi}`
-		rcIksirYazi.TextColor3 = Color3.fromRGB(90, 220, 255)
-	else
-		rcIksirYazi.Text = "No luck potion active"
-		rcIksirYazi.TextColor3 = UI.Colors.textDim
-	end
-
-	if iksirBuff.Visible ~= aktif then
-		iksirBuff.Visible = aktif
-		solSutunuYerlestir()
-	end
-end
-
-local function rcCiz()
-	rcBakiyeYazi.Text = `You have {Format.short(rcBakiye)} Rot Coin`
-	iksirYazilariniGuncelle()
-
-	clearRows(rcListe)
-
-	for sira, urun in RotCoinMagaza.Urunler do
-		local yeter = rcBakiye >= urun.price
-
-		local satir = Instance.new("Frame")
-		satir.Name = urun.id
-		satir.Size = UDim2.new(1, -6, 0, 72)
-		satir.BackgroundColor3 = UI.Colors.panelLight
-		satir.BorderSizePixel = 0
-		satir.LayoutOrder = sira
-		satir.Parent = rcListe
-		UI.corner(satir, 10)
-		UI.stroke(satir, urun.color, 1)
-
-		local ikon = Instance.new("ImageLabel")
-		ikon.Name = "Ikon"
-		ikon.Position = UDim2.fromOffset(8, 8)
-		ikon.Size = UDim2.fromOffset(56, 56)
-		ikon.BackgroundTransparency = 1
-		ikon.ScaleType = Enum.ScaleType.Fit
-		ikon.Parent = satir
-		Icons.bind(ikon, urun.icon)
-		if urun.tint then
-			ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
-		end
-
-		UI.text({
-			text = urun.name,
-			size = UI.Sizes.body,
-			font = UI.Fonts.bold,
-			color = urun.color,
-			frameSize = UDim2.new(1, -214, 0, 24),
-			position = UDim2.fromOffset(74, 10),
-			parent = satir,
-		})
-
-		UI.text({
-			text = urun.desc,
-			size = UI.Sizes.tiny,
-			color = UI.Colors.textDim,
-			frameSize = UDim2.new(1, -214, 0, 30),
-			position = UDim2.fromOffset(74, 34),
-			parent = satir,
-			wrapped = true,
-		})
-
-		local buton = UI.button(
-			satir,
-			`{urun.price} Rot Coin`,
-			UDim2.fromOffset(124, 44),
-			if yeter then UI.Colors.good else UI.Colors.panel
-		)
-		buton.AnchorPoint = Vector2.new(1, 0.5)
-		buton.Position = UDim2.new(1, -10, 0.5, 0)
-		UI.stroke(buton, Color3.fromRGB(0, 0, 0), 2)
-		buton.MouseButton1Click:Connect(function()
-			RotCoinMagazaAl:FireServer(urun.id)
-		end)
-	end
-end
-
-function rotCoinMagazaAc()
-	rcPanel.Visible = not rcPanel.Visible
-	if rcPanel.Visible then
-		rcCiz()
-		RotCoinMagazaAc:FireServer()
-	end
-end
-
--- Bakiye degisince (odul, satin alma) acik panel tazelensin
-EnvanterGuncelle.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" or type(data.rotCoins) ~= "number" then
-		return
-	end
-	rcBakiye = data.rotCoins
-	if rcPanel.Visible then
-		rcCiz()
-	end
-end)
-
-RotCoinMagazaDurum.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" then
-		return
-	end
-	iksirCarpan = tonumber(data.carpan) or 1
-	iksirBitis = os.clock() + (tonumber(data.kalan) or 0)
-	iksirYazilariniGuncelle()
-end)
-
--- Geri sayim: saniyede bir yazilar guncellenir, sure bitince yazi kalkar
-task.spawn(function()
-	while true do
-		task.wait(1)
-		iksirYazilariniGuncelle()
-	end
-end)
-
-RotCoinMagazaAc:FireServer()
-
-------------------------------------------------------------------
--- AYARLAR PANELI  (Settings)
---
--- Panelin butun metinleri INGILIZCE -- oyuncunun gordugu her yer oyle.
---
--- Tek ayar var: ARAYUZ OLCEGI. Olcegi UI modulu uyguluyor (UI.setScale
--- butun ScreenGui'lere UIScale koyar); burasi yalnizca paneli cizer ve
--- secilen degeri sunucuya kaydeder.
---
--- Deger sunucuda PlayerData icinde durur (uiScale), boylece oyuncu
--- cikip girince ayari yerinde kalir.
-------------------------------------------------------------------
-local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 286), "Ayarlar")
-
-UI.text({
-	text = "Settings",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = ayarPanel,
-})
-
-UI.closeButton(ayarPanel).MouseButton1Click:Connect(function()
-	ayarPanel.Visible = false
-end)
-
-UI.text({
-	text = "INTERFACE SCALE",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -36, 0, 20),
-	position = UDim2.fromOffset(18, 62),
-	parent = ayarPanel,
-})
-
-UI.text({
-	text = "Resizes every menu and HUD element.",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -36, 0, 20),
-	position = UDim2.fromOffset(18, 84),
-	parent = ayarPanel,
-})
-
--- Buyutme/kucultme ikilisi ve aralarindaki yuzde yazisi
-local kucultButon = UI.button(ayarPanel, "-", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
-kucultButon.Name = "Kucult"
-kucultButon.Position = UDim2.fromOffset(18, 116)
-
-local olcekYazi = UI.text({
-	text = "100%",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = UI.Colors.gold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.fromOffset(250, 52),
-	position = UDim2.fromOffset(90, 116),
-	parent = ayarPanel,
-})
-
-local buyutButon = UI.button(ayarPanel, "+", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
-buyutButon.Name = "Buyut"
-buyutButon.Position = UDim2.fromOffset(350, 116)
-
--- "+" ve "-" isaretleri govde yazisi boyunda kucuk kaliyordu
-local function isaretiBuyut(buton: TextButton)
-	local etiket = buton:FindFirstChild("Label")
-	if etiket and etiket:IsA("TextLabel") then
-		etiket.TextSize = UI.Sizes.heading
-	end
-end
-
-isaretiBuyut(kucultButon)
-isaretiBuyut(buyutButon)
-
-local sifirlaButon = UI.button(ayarPanel, "Reset to 100%", UDim2.new(1, -36, 0, 44), UI.Colors.panelLight)
-sifirlaButon.Name = "Sifirla"
-sifirlaButon.Position = UDim2.fromOffset(18, 182)
-
-UI.text({
-	text = `Range {UI.ScaleMin}% - {UI.ScaleMax}%   -   saved automatically`,
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -36, 0, 20),
-	position = UDim2.fromOffset(18, 240),
-	parent = ayarPanel,
-})
-
---[[
-	SUNUCUYA KAYIT
-
-	Butona her basista remote atilmasin diye son degisiklikten 0.4 saniye
-	sonra TEK sefer gonderilir. Oyuncu ard arda bassa bile sunucuya tek
-	istek gider.
-]]
-local ayarKaydiBekliyor = false
-
-local function ayarKaydiniPlanla()
-	if ayarKaydiBekliyor then
-		return
-	end
-	ayarKaydiBekliyor = true
-
-	task.delay(0.4, function()
-		ayarKaydiBekliyor = false
-		AyarKaydet:FireServer({ uiScale = UI.getScale() })
-	end)
-end
-
-local function olcekYazisiTazele(yuzde: number)
-	olcekYazi.Text = `{yuzde}%`
-end
-
-local function olcegiDegistir(fark: number)
-	olcekYazisiTazele(UI.setScale(UI.getScale() + fark))
-	ayarKaydiniPlanla()
-end
-
-kucultButon.MouseButton1Click:Connect(function()
-	olcegiDegistir(-UI.ScaleStep)
-end)
-
-buyutButon.MouseButton1Click:Connect(function()
-	olcegiDegistir(UI.ScaleStep)
-end)
-
-sifirlaButon.MouseButton1Click:Connect(function()
-	olcekYazisiTazele(UI.setScale(UI.ScaleDefault))
-	ayarKaydiniPlanla()
-end)
-
---[[
-	Sunucudan gelen kayitli ayar. Hem oyuncu girdiginde hem de her
-	kaydetmeden sonra geliyor; ikisinde de yazi ile olcek ayni degere
-	oturur.
-]]
-AyarDurum.OnClientEvent:Connect(function(data)
-	if type(data) ~= "table" then
-		return
-	end
-
-	local yuzde = tonumber(data.uiScale)
-	if yuzde then
-		olcekYazisiTazele(UI.setScale(yuzde))
-	end
-end)
-
-olcekYazisiTazele(UI.getScale())
-
-function ayarPaneliniAc()
-	ayarPanel.Visible = not ayarPanel.Visible
-
-	--[[
-		Panel acilirken sunucudaki degeri tazeler. AyarKaydet gecerli bir
-		deger tasimadiginda sunucu yalnizca mevcut ayari geri yollar
-		(bkz. ServerScriptService > Ayarlar).
-	]]
-	if ayarPanel.Visible then
-		AyarKaydet:FireServer(nil)
-	end
-end
-
-
-------------------------------------------------------------------
--- GOREV PANOSU  (Quests)
---
--- Pano herkeste ayni ve YARIM SAATTE BIR yenilenir (bkz. Shared >
--- Gorevler). Burasi yalnizca gosterir: gorevleri, ilerlemeyi ve
--- yenilenmeye kalan sureyi sunucu yolluyor.
---
--- SAYAC ISTEMCIDE ISLER
--- Sunucu her saniye paket gondermesin diye kalan sure bir kez gelir ve
--- burada geri sayilir. Sifira inince yeni pano istenir; sunucu da dilim
--- degisince kendiliginden yolladigi icin iki taraf ayni yerde bulusur.
-------------------------------------------------------------------
-local gorevPanel = UI.panel(screen, UDim2.fromOffset(520, 470), "Gorevler")
-
-UI.text({
-	text = "Quests",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = gorevPanel,
-})
-
-local gorevSayacYazi = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 50),
-	parent = gorevPanel,
-})
-
-UI.closeButton(gorevPanel).MouseButton1Click:Connect(function()
-	gorevPanel.Visible = false
-end)
-
-local gorevListe = makeScroll(gorevPanel, UDim2.fromOffset(14, 82), UDim2.new(1, -28, 1, -96))
-
--- Sunucudan gelen son pano
-local gorevVerisi: { remaining: number, quests: { any } } = { remaining = 0, quests = {} }
-local gorevKalan = 0
-
-local function gorevSatiri(parent: Instance, quest: any, order: number)
-	local bitti = quest.done == true
-	-- Hedef doldu ama odul henuz alinmadi: satirda Collect dugmesi belirir
-	local hazir = quest.ready == true
-	local renk = quest.color or UI.Colors.accent
-
-	local row = Instance.new("Frame")
-	row.Name = quest.id
-	row.Size = UDim2.new(1, -6, 0, 84)
-	row.BackgroundColor3 = UI.Colors.panelLight
-	row.BorderSizePixel = 0
-	row.LayoutOrder = order
-	row.Parent = parent
-	UI.corner(row, 10)
-	-- Biten gorev kendi odulunun renginde cerceve alir
-	UI.stroke(
-		row,
-		if hazir then UI.Colors.gold elseif bitti then UI.Colors.good else UI.Colors.panel,
-		if hazir or bitti then 2 else 1
-	)
+-- FRIENDS SEKMESI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
+do
+	------------------------------------------------------------------
+	-- FRIENDS SEKMESI  --  arkadas buffi
+	--
+	-- Ayni sunucuda Roblox arkadasi olan oyuncu kazida +%15 sans alir. Bonus
+	-- sunucuda hesaplanir (bkz. Modules > Arkadaslar); burasi yalnizca
+	-- gosterir: buffun durumu, sunucudaki arkadaslar ve davet dugmesi.
+	------------------------------------------------------------------
+	local arkadasPanel = UI.panel(screen, UDim2.fromOffset(440, 440), "Arkadaslar")
 
 	UI.text({
-		text = quest.text,
+		text = "Friends",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 120, 190),
+		frameSize = UDim2.new(1, -80, 0, 34),
+		position = UDim2.fromOffset(18, 14),
+		parent = arkadasPanel,
+	})
+
+	UI.closeButton(arkadasPanel).MouseButton1Click:Connect(function()
+		arkadasPanel.Visible = false
+	end)
+
+	local arkadasDurumYazi = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 40),
+		position = UDim2.fromOffset(18, 50),
+		parent = arkadasPanel,
+		wrapped = true,
+	})
+
+	local arkadasListe = makeScroll(arkadasPanel, UDim2.fromOffset(14, 98), UDim2.new(1, -28, 1, -172))
+
+	local davetButon = UI.button(arkadasPanel, "Invite Friends", UDim2.new(1, -40, 0, 48), Color3.fromRGB(255, 120, 190))
+	davetButon.AnchorPoint = Vector2.new(0.5, 1)
+	davetButon.Position = UDim2.new(0.5, 0, 1, -16)
+
+	-- Sunucudan gelen son durum
+	local arkadasSayisi = 0
+	local arkadasYuzde = 15
+	local arkadasListesi: { any } = {}
+
+	local function arkadasCiz()
+		if arkadasSayisi > 0 then
+			arkadasDurumYazi.Text = `Friend Boost active: +{arkadasYuzde}% Luck`
+				.. `  ({arkadasSayisi} friend{if arkadasSayisi == 1 then "" else "s"} in this server)`
+			arkadasDurumYazi.TextColor3 = Color3.fromRGB(120, 255, 150)
+		else
+			arkadasDurumYazi.Text = `Play in the same server with a friend to get +{arkadasYuzde}% Luck!`
+			arkadasDurumYazi.TextColor3 = UI.Colors.textDim
+		end
+
+		clearRows(arkadasListe)
+
+		if #arkadasListesi == 0 then
+			UI.text({
+				text = "No friends in this server yet. Invite them below!",
+				size = UI.Sizes.small,
+				color = UI.Colors.textDim,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, 0, 0, 36),
+				parent = arkadasListe,
+				wrapped = true,
+			})
+			return
+		end
+
+		for sira, arkadas in arkadasListesi do
+			local satir = Instance.new("Frame")
+			satir.Name = `Arkadas{sira}`
+			satir.Size = UDim2.new(1, -6, 0, 56)
+			satir.BackgroundColor3 = UI.Colors.panelLight
+			satir.BorderSizePixel = 0
+			satir.LayoutOrder = sira
+			satir.Parent = arkadasListe
+			UI.corner(satir, 10)
+
+			local avatar = Instance.new("ImageLabel")
+			avatar.Name = "Avatar"
+			avatar.Position = UDim2.fromOffset(6, 6)
+			avatar.Size = UDim2.fromOffset(44, 44)
+			avatar.BackgroundColor3 = UI.Colors.panel
+			avatar.BorderSizePixel = 0
+			avatar.Parent = satir
+			UI.corner(avatar, 22)
+
+			-- Avatar resmi web'den gelir ve bekletir: listeyi tutmasin
+			local userId = tonumber(arkadas.userId)
+			if userId then
+				task.spawn(function()
+					local ok, resim = pcall(function()
+						return Players:GetUserThumbnailAsync(
+							userId,
+							Enum.ThumbnailType.HeadShot,
+							Enum.ThumbnailSize.Size100x100
+						)
+					end)
+					if ok and avatar.Parent then
+						avatar.Image = resim
+					end
+				end)
+			end
+
+			UI.text({
+				text = tostring(arkadas.displayName or arkadas.name or "?"),
+				size = UI.Sizes.body,
+				font = UI.Fonts.bold,
+				frameSize = UDim2.new(1, -150, 0, 22),
+				position = UDim2.fromOffset(60, 8),
+				parent = satir,
+			})
+
+			UI.text({
+				text = `@{tostring(arkadas.name or "?")}`,
+				size = UI.Sizes.small,
+				color = UI.Colors.textDim,
+				frameSize = UDim2.new(1, -150, 0, 18),
+				position = UDim2.fromOffset(60, 30),
+				parent = satir,
+			})
+
+			UI.text({
+				text = `+{arkadasYuzde}% Luck`,
+				size = UI.Sizes.small,
+				font = UI.Fonts.bold,
+				color = Color3.fromRGB(120, 255, 150),
+				align = Enum.TextXAlignment.Right,
+				frameSize = UDim2.fromOffset(90, 22),
+				position = UDim2.new(1, -100, 0.5, -11),
+				parent = satir,
+			})
+		end
+	end
+
+	ArkadasDurum.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then
+			return
+		end
+
+		arkadasSayisi = tonumber(data.sayi) or 0
+		arkadasYuzde = tonumber(data.yuzde) or arkadasYuzde
+		arkadasListesi = if type(data.arkadaslar) == "table" then data.arkadaslar else {}
+
+		-- Rot'un ustundeki buff yazisi
+		arkadasBuff.Text = `Friend Boost: +{arkadasYuzde}% Luck`
+		arkadasBuff.Visible = arkadasSayisi > 0
+		solSutunuYerlestir()
+
+		if arkadasPanel.Visible then
+			arkadasCiz()
+		end
+	end)
+
+	--[[
+		DAVET
+		Roblox'un kendi davet penceresi. Studio'da ve davete izin vermeyen
+		hesaplarda acilamaz; o durumda panel sebebini yazar.
+	]]
+	davetButon.MouseButton1Click:Connect(function()
+		local oyuncu = Players.LocalPlayer
+		local ok, izin = pcall(function()
+			return SocialService:CanSendGameInviteAsync(oyuncu)
+		end)
+
+		if ok and izin then
+			pcall(function()
+				SocialService:PromptGameInvite(oyuncu)
+			end)
+		else
+			arkadasDurumYazi.Text = "Invites are not available right now (they don't work in Studio)."
+			arkadasDurumYazi.TextColor3 = UI.Colors.warn
+		end
+	end)
+
+	function arkadasPaneliniAc()
+		arkadasPanel.Visible = not arkadasPanel.Visible
+		if arkadasPanel.Visible then
+			arkadasCiz()
+			ArkadasAc:FireServer()
+		end
+	end
+end
+
+
+-- ROTCOIN MAGAZASI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
+do
+	------------------------------------------------------------------
+	-- ROTCOIN MAGAZASI  (sol menude eski Pets butonunun yeri)
+	--
+	-- Urunler ve fiyatlar Shared > RotCoinMagaza'da; satin alma sunucuda
+	-- dogrulanir. Panel yalnizca listeyi cizer ve id yollar.
+	------------------------------------------------------------------
+	local RC_SARI = Color3.fromRGB(255, 215, 40)
+
+	local rcPanel = UI.panel(screen, UDim2.fromOffset(500, 500), "RotCoinMagaza")
+
+	UI.text({
+		text = "Rot Coin Shop",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = RC_SARI,
+		frameSize = UDim2.new(1, -80, 0, 34),
+		position = UDim2.fromOffset(18, 14),
+		parent = rcPanel,
+	})
+
+	UI.closeButton(rcPanel).MouseButton1Click:Connect(function()
+		rcPanel.Visible = false
+	end)
+
+	local rcBakiyeYazi = UI.text({
+		text = "",
 		size = UI.Sizes.body,
 		font = UI.Fonts.bold,
-		-- Odul yazisiyla arasinda nefes payi kalsin diye dar tutuldu
-		frameSize = UDim2.new(1, -190, 0, 24),
-		position = UDim2.fromOffset(14, 10),
-		parent = row,
+		color = RC_SARI,
+		frameSize = UDim2.new(1, -36, 0, 24),
+		position = UDim2.fromOffset(18, 50),
+		parent = rcPanel,
 	})
 
-	-- Odul her zaman brainrot; rengi odulun kademesinden gelir
-	UI.text({
-		text = quest.reward,
+	local rcIksirYazi = UI.text({
+		text = "",
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
-		color = renk,
-		align = Enum.TextXAlignment.Right,
-		frameSize = UDim2.new(0, 160, 0, 24),
-		position = UDim2.new(1, -174, 0, 10),
-		parent = row,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 76),
+		parent = rcPanel,
 	})
 
-	UI.text({
-		text = if bitti then "COLLECTED" else `{quest.progress} / {quest.target}`,
-		size = UI.Sizes.small,
-		font = UI.Fonts.bold,
-		color = if bitti then UI.Colors.good else UI.Colors.textDim,
-		frameSize = UDim2.new(1, -28, 0, 20),
-		position = UDim2.fromOffset(14, 36),
-		parent = row,
-	})
+	local rcListe = makeScroll(rcPanel, UDim2.fromOffset(14, 104), UDim2.new(1, -28, 1, -118))
 
-	local oluk = Instance.new("Frame")
-	oluk.Name = "Cubuk"
-	oluk.Position = UDim2.fromOffset(14, 62)
-	-- Collect dugmesi cikacaksa cubuk kisalir, dugmenin altina girmesin
-	oluk.Size = if hazir then UDim2.new(1, -132, 0, 12) else UDim2.new(1, -28, 0, 12)
-	oluk.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
-	oluk.BorderSizePixel = 0
-	oluk.Parent = row
-	UI.corner(oluk, 6)
+	-- Sunucudan gelen son durum
+	local rcBakiye = inventory.rotCoins or 0
+	local iksirCarpan = 1
+	-- Iksirin bitecegi an (os.clock); istemci kendi sayar, sunucu her alista duzeltir
+	local iksirBitis = 0
 
-	local oran = if quest.target > 0 then math.clamp(quest.progress / quest.target, 0, 1) else 0
-	if oran > 0 then
-		local dolgu = Instance.new("Frame")
-		dolgu.Name = "Dolgu"
-		dolgu.Size = UDim2.fromScale(oran, 1)
-		dolgu.BackgroundColor3 = if bitti then UI.Colors.good else renk
-		dolgu.BorderSizePixel = 0
-		dolgu.Parent = oluk
-		UI.corner(dolgu, 6)
+	local function iksirKalan(): number
+		return if iksirCarpan > 1 then math.max(0, iksirBitis - os.clock()) else 0
 	end
 
-	--[[
-		COLLECT
+	local function iksirYazilariniGuncelle()
+		local kalan = iksirKalan()
+		local aktif = kalan > 0
 
-		Odul kendiliginden verilmiyor: hedef dolunca satirda bu dugme cikar.
-		Cubugun sagindaki bosluga oturur, yazilarla ic ice girmez.
+		if aktif then
+			local yazi = `{RotCoinMagaza.carpanYazisi(iksirCarpan)} Luck ({RotCoinMagaza.sureYazisi(kalan)})`
+			iksirBuff.Text = `Luck Potion: {yazi}`
+			rcIksirYazi.Text = `Active potion: {yazi}`
+			rcIksirYazi.TextColor3 = Color3.fromRGB(90, 220, 255)
+		else
+			rcIksirYazi.Text = "No luck potion active"
+			rcIksirYazi.TextColor3 = UI.Colors.textDim
+		end
 
-		Basilinca panel kapanir; patlama sunucudan gelir, boylece efekt
-		arayuzun arkasinda kalmaz.
-	]]
-	if hazir then
-		local topla = UI.button(row, "Collect", UDim2.fromOffset(100, 26), UI.Colors.gold)
-		topla.AnchorPoint = Vector2.new(1, 0)
-		-- Cubukla ayni hizada: cubuk 62..74, dugme 55..81
-		topla.Position = UDim2.new(1, -14, 0, 55)
-		-- Menu butonlariyla ayni imza: kalin siyah kontur
-		UI.stroke(topla, Color3.fromRGB(0, 0, 0), 2)
-
-		topla.MouseButton1Click:Connect(function()
-			GorevAl:FireServer(quest.id)
-			gorevPanel.Visible = false
-		end)
-
-		UI.hover(topla)
-	end
-end
-
-local function gorevleriCiz()
-	clearRows(gorevListe)
-
-	if #gorevVerisi.quests == 0 then
-		UI.text({
-			text = "Loading Quests...",
-			size = UI.Sizes.small,
-			color = UI.Colors.textDim,
-			frameSize = UDim2.new(1, -6, 0, 40),
-			parent = gorevListe,
-		})
-		return
-	end
-
-	for index, quest in gorevVerisi.quests do
-		gorevSatiri(gorevListe, quest, index)
-	end
-end
-
-local function gorevSayaciYaz()
-	gorevSayacYazi.Text = `New Quests In {sureMetni(gorevKalan)}`
-end
-
-GorevDurum.OnClientEvent:Connect(function(veri)
-	if type(veri) ~= "table" then
-		return
-	end
-
-	gorevVerisi = veri
-	gorevKalan = math.max(0, tonumber(veri.remaining) or 0)
-	gorevSayaciYaz()
-
-	-- Panel kapaliyken cizmeye gerek yok; acilirken zaten cizilecek
-	if gorevPanel.Visible then
-		gorevleriCiz()
-	end
-end)
-
-function gorevPaneliniAc()
-	gorevPanel.Visible = not gorevPanel.Visible
-
-	if gorevPanel.Visible then
-		GorevAc:FireServer()
-		gorevleriCiz()
-		gorevSayaciYaz()
-	end
-end
-
-task.spawn(function()
-	while true do
-		task.wait(1)
-
-		if gorevKalan > 0 then
-			gorevKalan -= 1
-			if gorevPanel.Visible then
-				gorevSayaciYaz()
-			end
-		elseif gorevPanel.Visible then
-			-- Sure doldu: yeni panoyu iste (sunucu da kendiliginden yollar)
-			GorevAc:FireServer()
+		if iksirBuff.Visible ~= aktif then
+			iksirBuff.Visible = aktif
+			solSutunuYerlestir()
 		end
 	end
-end)
+
+	local function rcCiz()
+		rcBakiyeYazi.Text = `You have {Format.short(rcBakiye)} Rot Coin`
+		iksirYazilariniGuncelle()
+
+		clearRows(rcListe)
+
+		for sira, urun in RotCoinMagaza.Urunler do
+			local yeter = rcBakiye >= urun.price
+
+			local satir = Instance.new("Frame")
+			satir.Name = urun.id
+			satir.Size = UDim2.new(1, -6, 0, 72)
+			satir.BackgroundColor3 = UI.Colors.panelLight
+			satir.BorderSizePixel = 0
+			satir.LayoutOrder = sira
+			satir.Parent = rcListe
+			UI.corner(satir, 10)
+			UI.stroke(satir, urun.color, 1)
+
+			local ikon = Instance.new("ImageLabel")
+			ikon.Name = "Ikon"
+			ikon.Position = UDim2.fromOffset(8, 8)
+			ikon.Size = UDim2.fromOffset(56, 56)
+			ikon.BackgroundTransparency = 1
+			ikon.ScaleType = Enum.ScaleType.Fit
+			ikon.Parent = satir
+			Icons.bind(ikon, urun.icon)
+			if urun.tint then
+				ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
+			end
+
+			UI.text({
+				text = urun.name,
+				size = UI.Sizes.body,
+				font = UI.Fonts.bold,
+				color = urun.color,
+				frameSize = UDim2.new(1, -214, 0, 24),
+				position = UDim2.fromOffset(74, 10),
+				parent = satir,
+			})
+
+			UI.text({
+				text = urun.desc,
+				size = UI.Sizes.tiny,
+				color = UI.Colors.textDim,
+				frameSize = UDim2.new(1, -214, 0, 30),
+				position = UDim2.fromOffset(74, 34),
+				parent = satir,
+				wrapped = true,
+			})
+
+			local buton = UI.button(
+				satir,
+				`{urun.price} Rot Coin`,
+				UDim2.fromOffset(124, 44),
+				if yeter then UI.Colors.good else UI.Colors.panel
+			)
+			buton.AnchorPoint = Vector2.new(1, 0.5)
+			buton.Position = UDim2.new(1, -10, 0.5, 0)
+			UI.stroke(buton, Color3.fromRGB(0, 0, 0), 2)
+			buton.MouseButton1Click:Connect(function()
+				RotCoinMagazaAl:FireServer(urun.id)
+			end)
+		end
+	end
+
+	function rotCoinMagazaAc()
+		rcPanel.Visible = not rcPanel.Visible
+		if rcPanel.Visible then
+			rcCiz()
+			RotCoinMagazaAc:FireServer()
+		end
+	end
+
+	-- Bakiye degisince (odul, satin alma) acik panel tazelensin
+	EnvanterGuncelle.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" or type(data.rotCoins) ~= "number" then
+			return
+		end
+		rcBakiye = data.rotCoins
+		if rcPanel.Visible then
+			rcCiz()
+		end
+	end)
+
+	RotCoinMagazaDurum.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then
+			return
+		end
+		iksirCarpan = tonumber(data.carpan) or 1
+		iksirBitis = os.clock() + (tonumber(data.kalan) or 0)
+		iksirYazilariniGuncelle()
+	end)
+
+	-- Geri sayim: saniyede bir yazilar guncellenir, sure bitince yazi kalkar
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			iksirYazilariniGuncelle()
+		end
+	end)
+
+	RotCoinMagazaAc:FireServer()
+end
+
+-- AYARLAR PANELI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
+do
+	------------------------------------------------------------------
+	-- AYARLAR PANELI  (Settings)
+	--
+	-- Panelin butun metinleri INGILIZCE -- oyuncunun gordugu her yer oyle.
+	--
+	-- Iki ayar var:
+	--   ARAYUZ OLCEGI  -- UI modulu uyguluyor (UI.setScale butun ScreenGui'lere
+	--                     UIScale koyar)
+	--   MUZIK          -- arka plan muziginin sesi ve ac/kapat (bkz. Muzik modulu)
+	-- Burasi yalnizca paneli cizer ve secilen degerleri sunucuya kaydeder.
+	--
+	-- Deger sunucuda PlayerData icinde durur (uiScale), boylece oyuncu
+	-- cikip girince ayari yerinde kalir.
+	------------------------------------------------------------------
+	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 440), "Ayarlar")
+
+	UI.text({
+		text = "Settings",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		frameSize = UDim2.new(1, -80, 0, 36),
+		position = UDim2.fromOffset(18, 14),
+		parent = ayarPanel,
+	})
+
+	UI.closeButton(ayarPanel).MouseButton1Click:Connect(function()
+		ayarPanel.Visible = false
+	end)
+
+	UI.text({
+		text = "INTERFACE SCALE",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 62),
+		parent = ayarPanel,
+	})
+
+	UI.text({
+		text = "Resizes every menu and HUD element.",
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 84),
+		parent = ayarPanel,
+	})
+
+	-- Buyutme/kucultme ikilisi ve aralarindaki yuzde yazisi
+	local kucultButon = UI.button(ayarPanel, "-", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
+	kucultButon.Name = "Kucult"
+	kucultButon.Position = UDim2.fromOffset(18, 116)
+
+	local olcekYazi = UI.text({
+		text = "100%",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = UI.Colors.gold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromOffset(250, 52),
+		position = UDim2.fromOffset(90, 116),
+		parent = ayarPanel,
+	})
+
+	local buyutButon = UI.button(ayarPanel, "+", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
+	buyutButon.Name = "Buyut"
+	buyutButon.Position = UDim2.fromOffset(350, 116)
+
+	-- "+" ve "-" isaretleri govde yazisi boyunda kucuk kaliyordu
+	local function isaretiBuyut(buton: TextButton)
+		local etiket = buton:FindFirstChild("Label")
+		if etiket and etiket:IsA("TextLabel") then
+			etiket.TextSize = UI.Sizes.heading
+		end
+	end
+
+	isaretiBuyut(kucultButon)
+	isaretiBuyut(buyutButon)
+
+	local sifirlaButon = UI.button(ayarPanel, "Reset to 100%", UDim2.new(1, -36, 0, 44), UI.Colors.panelLight)
+	sifirlaButon.Name = "Sifirla"
+	sifirlaButon.Position = UDim2.fromOffset(18, 182)
+
+	UI.text({
+		text = `Range {UI.ScaleMin}% - {UI.ScaleMax}%   -   saved automatically`,
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 240),
+		parent = ayarPanel,
+	})
+
+	------------------------------------------------------------------
+	-- MUZIK: ses seviyesi (-/+) ve ac/kapat
+	------------------------------------------------------------------
+	UI.text({
+		text = "MUSIC",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 276),
+		parent = ayarPanel,
+	})
+
+	local MUZIK_ADIM = 10
+
+	local muzikKisButon = UI.button(ayarPanel, "-", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
+	muzikKisButon.Name = "MuzikKis"
+	muzikKisButon.Position = UDim2.fromOffset(18, 302)
+
+	local muzikYazi = UI.text({
+		text = "100%",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = UI.Colors.gold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromOffset(250, 52),
+		position = UDim2.fromOffset(90, 302),
+		parent = ayarPanel,
+	})
+
+	local muzikAcButon = UI.button(ayarPanel, "+", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
+	muzikAcButon.Name = "MuzikAc"
+	muzikAcButon.Position = UDim2.fromOffset(350, 302)
+
+	isaretiBuyut(muzikKisButon)
+	isaretiBuyut(muzikAcButon)
+
+	-- Ac/kapat dugmesi rengi durumla degisir: UI.hover kullanilmaz (rengi geri cevirirdi)
+	local muzikDugme = Instance.new("TextButton")
+	muzikDugme.Name = "MuzikAcKapat"
+	muzikDugme.Position = UDim2.fromOffset(18, 368)
+	muzikDugme.Size = UDim2.new(1, -36, 0, 48)
+	muzikDugme.AutoButtonColor = false
+	muzikDugme.BorderSizePixel = 0
+	muzikDugme.Text = ""
+	muzikDugme.Parent = ayarPanel
+	UI.corner(muzikDugme, 10)
+	UI.stroke(muzikDugme, Color3.fromRGB(0, 0, 0), 2)
+
+	local muzikDugmeYazi = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = muzikDugme,
+	})
+
+	--[[
+		SUNUCUYA KAYIT
+
+		Butona her basista remote atilmasin diye son degisiklikten 0.4 saniye
+		sonra TEK sefer gonderilir. Oyuncu ard arda bassa bile sunucuya tek
+		istek gider.
+	]]
+	local ayarKaydiBekliyor = false
+
+	local function ayarKaydiniPlanla()
+		if ayarKaydiBekliyor then
+			return
+		end
+		ayarKaydiBekliyor = true
+
+		task.delay(0.4, function()
+			ayarKaydiBekliyor = false
+			AyarKaydet:FireServer({
+				uiScale = UI.getScale(),
+				musicVolume = Muzik.yuzde(),
+				musicMuted = Muzik.kapali(),
+			})
+		end)
+	end
+
+	local function olcekYazisiTazele(yuzde: number)
+		olcekYazi.Text = `{yuzde}%`
+	end
+
+	local function olcegiDegistir(fark: number)
+		olcekYazisiTazele(UI.setScale(UI.getScale() + fark))
+		ayarKaydiniPlanla()
+	end
+
+	kucultButon.MouseButton1Click:Connect(function()
+		olcegiDegistir(-UI.ScaleStep)
+	end)
+
+	buyutButon.MouseButton1Click:Connect(function()
+		olcegiDegistir(UI.ScaleStep)
+	end)
+
+	sifirlaButon.MouseButton1Click:Connect(function()
+		olcekYazisiTazele(UI.setScale(UI.ScaleDefault))
+		ayarKaydiniPlanla()
+	end)
+
+	local function muzikCiz()
+		local kapali = Muzik.kapali()
+		muzikYazi.Text = if kapali then "OFF" else `{Muzik.yuzde()}%`
+		muzikYazi.TextColor3 = if kapali then UI.Colors.textDim else UI.Colors.gold
+		muzikDugme.BackgroundColor3 = if kapali then UI.Colors.good else Color3.fromRGB(200, 70, 80)
+		muzikDugmeYazi.Text = if kapali then "Music: OFF  -  tap to turn ON" else "Music: ON  -  tap to turn OFF"
+	end
+
+	local function muzikSesDegistir(fark: number)
+		-- Ses degistirmek kapali muzigi de acar
+		Muzik.ayarla(Muzik.yuzde() + fark, false)
+		muzikCiz()
+		ayarKaydiniPlanla()
+	end
+
+	muzikKisButon.MouseButton1Click:Connect(function()
+		muzikSesDegistir(-MUZIK_ADIM)
+	end)
+
+	muzikAcButon.MouseButton1Click:Connect(function()
+		muzikSesDegistir(MUZIK_ADIM)
+	end)
+
+	muzikDugme.MouseButton1Click:Connect(function()
+		Muzik.ayarla(nil, not Muzik.kapali())
+		muzikCiz()
+		ayarKaydiniPlanla()
+	end)
+
+	--[[
+		Sunucudan gelen kayitli ayar. Hem oyuncu girdiginde hem de her
+		kaydetmeden sonra geliyor; ikisinde de yazi ile olcek ayni degere
+		oturur.
+	]]
+	AyarDurum.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then
+			return
+		end
+
+		local yuzde = tonumber(data.uiScale)
+		if yuzde then
+			olcekYazisiTazele(UI.setScale(yuzde))
+		end
+
+		local ses = tonumber(data.musicVolume)
+		Muzik.ayarla(ses, if type(data.musicMuted) == "boolean" then data.musicMuted else nil)
+		muzikCiz()
+	end)
+
+	olcekYazisiTazele(UI.getScale())
+	muzikCiz()
+
+	function ayarPaneliniAc()
+		ayarPanel.Visible = not ayarPanel.Visible
+
+		--[[
+			Panel acilirken sunucudaki degeri tazeler. AyarKaydet gecerli bir
+			deger tasimadiginda sunucu yalnizca mevcut ayari geri yollar
+			(bkz. ServerScriptService > Ayarlar).
+		]]
+		if ayarPanel.Visible then
+			AyarKaydet:FireServer(nil)
+		end
+	end
+end
+
+
+-- GOREV PANOSU: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
+do
+	------------------------------------------------------------------
+	-- GOREV PANOSU  (Quests)
+	--
+	-- Pano herkeste ayni ve YARIM SAATTE BIR yenilenir (bkz. Shared >
+	-- Gorevler). Burasi yalnizca gosterir: gorevleri, ilerlemeyi ve
+	-- yenilenmeye kalan sureyi sunucu yolluyor.
+	--
+	-- SAYAC ISTEMCIDE ISLER
+	-- Sunucu her saniye paket gondermesin diye kalan sure bir kez gelir ve
+	-- burada geri sayilir. Sifira inince yeni pano istenir; sunucu da dilim
+	-- degisince kendiliginden yolladigi icin iki taraf ayni yerde bulusur.
+	------------------------------------------------------------------
+	local gorevPanel = UI.panel(screen, UDim2.fromOffset(520, 470), "Gorevler")
+
+	UI.text({
+		text = "Quests",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		frameSize = UDim2.new(1, -80, 0, 36),
+		position = UDim2.fromOffset(18, 14),
+		parent = gorevPanel,
+	})
+
+	local gorevSayacYazi = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -80, 0, 20),
+		position = UDim2.fromOffset(18, 50),
+		parent = gorevPanel,
+	})
+
+	UI.closeButton(gorevPanel).MouseButton1Click:Connect(function()
+		gorevPanel.Visible = false
+	end)
+
+	local gorevListe = makeScroll(gorevPanel, UDim2.fromOffset(14, 82), UDim2.new(1, -28, 1, -96))
+
+	-- Sunucudan gelen son pano
+	local gorevVerisi: { remaining: number, quests: { any } } = { remaining = 0, quests = {} }
+	local gorevKalan = 0
+
+	local function gorevSatiri(parent: Instance, quest: any, order: number)
+		local bitti = quest.done == true
+		-- Hedef doldu ama odul henuz alinmadi: satirda Collect dugmesi belirir
+		local hazir = quest.ready == true
+		local renk = quest.color or UI.Colors.accent
+
+		local row = Instance.new("Frame")
+		row.Name = quest.id
+		row.Size = UDim2.new(1, -6, 0, 84)
+		row.BackgroundColor3 = UI.Colors.panelLight
+		row.BorderSizePixel = 0
+		row.LayoutOrder = order
+		row.Parent = parent
+		UI.corner(row, 10)
+		-- Biten gorev kendi odulunun renginde cerceve alir
+		UI.stroke(
+			row,
+			if hazir then UI.Colors.gold elseif bitti then UI.Colors.good else UI.Colors.panel,
+			if hazir or bitti then 2 else 1
+		)
+
+		UI.text({
+			text = quest.text,
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			-- Odul yazisiyla arasinda nefes payi kalsin diye dar tutuldu
+			frameSize = UDim2.new(1, -190, 0, 24),
+			position = UDim2.fromOffset(14, 10),
+			parent = row,
+		})
+
+		-- Odul her zaman brainrot; rengi odulun kademesinden gelir
+		UI.text({
+			text = quest.reward,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = renk,
+			align = Enum.TextXAlignment.Right,
+			frameSize = UDim2.new(0, 160, 0, 24),
+			position = UDim2.new(1, -174, 0, 10),
+			parent = row,
+		})
+
+		UI.text({
+			text = if bitti then "COLLECTED" else `{quest.progress} / {quest.target}`,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = if bitti then UI.Colors.good else UI.Colors.textDim,
+			frameSize = UDim2.new(1, -28, 0, 20),
+			position = UDim2.fromOffset(14, 36),
+			parent = row,
+		})
+
+		local oluk = Instance.new("Frame")
+		oluk.Name = "Cubuk"
+		oluk.Position = UDim2.fromOffset(14, 62)
+		-- Collect dugmesi cikacaksa cubuk kisalir, dugmenin altina girmesin
+		oluk.Size = if hazir then UDim2.new(1, -132, 0, 12) else UDim2.new(1, -28, 0, 12)
+		oluk.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+		oluk.BorderSizePixel = 0
+		oluk.Parent = row
+		UI.corner(oluk, 6)
+
+		local oran = if quest.target > 0 then math.clamp(quest.progress / quest.target, 0, 1) else 0
+		if oran > 0 then
+			local dolgu = Instance.new("Frame")
+			dolgu.Name = "Dolgu"
+			dolgu.Size = UDim2.fromScale(oran, 1)
+			dolgu.BackgroundColor3 = if bitti then UI.Colors.good else renk
+			dolgu.BorderSizePixel = 0
+			dolgu.Parent = oluk
+			UI.corner(dolgu, 6)
+		end
+
+		--[[
+			COLLECT
+
+			Odul kendiliginden verilmiyor: hedef dolunca satirda bu dugme cikar.
+			Cubugun sagindaki bosluga oturur, yazilarla ic ice girmez.
+
+			Basilinca panel kapanir; patlama sunucudan gelir, boylece efekt
+			arayuzun arkasinda kalmaz.
+		]]
+		if hazir then
+			local topla = UI.button(row, "Collect", UDim2.fromOffset(100, 26), UI.Colors.gold)
+			topla.AnchorPoint = Vector2.new(1, 0)
+			-- Cubukla ayni hizada: cubuk 62..74, dugme 55..81
+			topla.Position = UDim2.new(1, -14, 0, 55)
+			-- Menu butonlariyla ayni imza: kalin siyah kontur
+			UI.stroke(topla, Color3.fromRGB(0, 0, 0), 2)
+
+			topla.MouseButton1Click:Connect(function()
+				GorevAl:FireServer(quest.id)
+				gorevPanel.Visible = false
+			end)
+
+			UI.hover(topla)
+		end
+	end
+
+	local function gorevleriCiz()
+		clearRows(gorevListe)
+
+		if #gorevVerisi.quests == 0 then
+			UI.text({
+				text = "Loading Quests...",
+				size = UI.Sizes.small,
+				color = UI.Colors.textDim,
+				frameSize = UDim2.new(1, -6, 0, 40),
+				parent = gorevListe,
+			})
+			return
+		end
+
+		for index, quest in gorevVerisi.quests do
+			gorevSatiri(gorevListe, quest, index)
+		end
+	end
+
+	local function gorevSayaciYaz()
+		gorevSayacYazi.Text = `New Quests In {sureMetni(gorevKalan)}`
+	end
+
+	GorevDurum.OnClientEvent:Connect(function(veri)
+		if type(veri) ~= "table" then
+			return
+		end
+
+		gorevVerisi = veri
+		gorevKalan = math.max(0, tonumber(veri.remaining) or 0)
+		gorevSayaciYaz()
+
+		-- Panel kapaliyken cizmeye gerek yok; acilirken zaten cizilecek
+		if gorevPanel.Visible then
+			gorevleriCiz()
+		end
+	end)
+
+	function gorevPaneliniAc()
+		gorevPanel.Visible = not gorevPanel.Visible
+
+		if gorevPanel.Visible then
+			GorevAc:FireServer()
+			gorevleriCiz()
+			gorevSayaciYaz()
+		end
+	end
+
+	task.spawn(function()
+		while true do
+			task.wait(1)
+
+			if gorevKalan > 0 then
+				gorevKalan -= 1
+				if gorevPanel.Visible then
+					gorevSayaciYaz()
+				end
+			elseif gorevPanel.Visible then
+				-- Sure doldu: yeni panoyu iste (sunucu da kendiliginden yollar)
+				GorevAc:FireServer()
+			end
+		end
+	end)
+
+	-- Output'ta bu satir gorunuyorsa butun menu ve paneller kuruldu
+	print("[Menuler] arayuz kuruldu")
+end

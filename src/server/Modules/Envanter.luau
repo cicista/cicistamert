@@ -69,6 +69,8 @@ function Envanter.push(player: Player)
 		-- Madenler ve kazmalar (ada saticilari ve ileride envanter ekrani)
 		ores = data.ores,
 		pickaxes = data.pickaxes,
+		-- Envanter ekrani base bolumunu 1..acik slot sayisi kadar ciziyor
+		baseSlots = data.baseSlots,
 	})
 end
 
@@ -318,74 +320,103 @@ end
 	Slotta olmayan her brainrot icin bir Tool bulunur; fazlaliklar silinir.
 ]]
 --[[
-	Sirt cantasini siralar: Kurek, GPS, sonra brainrotlar PAHALIDAN UCUZA.
+	Sirt cantasini (hotbar) siralar: once KIMLIGI ACILMIS brainrotlar
+	PAHALIDAN UCUZA, sonra acilmamislar.
 
-	Roblox'un canta arayuzu Tool'lari eklenme sirasina gore dizer. Sirayi
-	degistirmenin tek yolu Tool'lari istenen sirada yeniden parent etmek.
-	ELDE TUTULAN tool'a dokunulmaz (o Character'in altindadir), yoksa
-	oyuncunun elindeki esya duserdi.
+	NEDEN IKI ADIM
+	Roblox'un canta arayuzu Tool'lari eklenme sirasina gore dizer. Onceki
+	surum her Tool'u ayni karede cikarip hemen geri koyuyordu; bu ya hic
+	istemciye gitmiyor ya da Tool bosalttigi kendi yerine geri oturuyordu --
+	sira hic degismiyordu. Artik:
+	    1. siralanacak Tool'lar gorunmez bir BEKLEME klasorune alinir
+	       (oyuncunun altinda "CantaSirasi"; syncBrainrots onu da tarar,
+	       yoksa Tool'lari kayip sanip kopyasini uretirdi)
+	    2. kisa bir bekleme sonra istenen sirayla cantaya geri konur
+	Zaten siraliysa hicbir seye dokunulmaz (her senkronda titremesin).
+	ELDE TUTULAN tool'a dokunulmaz (o Character'in altindadir).
 ]]
+local PARK_ADI = "CantaSirasi"
+local siralaniyor: { [Player]: boolean } = {}
+
+local function parkKlasoru(player: Player): Folder
+	local var = player:FindFirstChild(PARK_ADI)
+	if var and var:IsA("Folder") then
+		return var
+	end
+	local yeni = Instance.new("Folder")
+	yeni.Name = PARK_ADI
+	yeni.Parent = player
+	return yeni
+end
+
 local function reorderBackpack(player: Player, backpack: Instance)
+	if siralaniyor[player] then
+		return
+	end
+
 	local data = PlayerData.get(player)
 	if not data then
 		return
 	end
 
-	-- uid -> saniyelik getiri
+	-- uid -> (acilmis mi, saniyelik getiri)
+	local acik: { [string]: boolean } = {}
 	local worth: { [string]: number } = {}
 	for _, entry in data.inventory do
 		if entry.revealed and entry.name then
+			acik[entry.uid] = true
 			worth[entry.uid] = Brainrots.income(entry.name, entry.condition, entry.mutation)
 		else
-			-- Acilmamis: rarity'nin en dusuk uyesi kadar sayilir
 			worth[entry.uid] = Brainrots.minIncome(entry.rarity, entry.condition)
 		end
 	end
 
-	local shovel: Tool? = nil
-	local gps: Tool? = nil
-	local brainrots: { Tool } = {}
-
+	local mevcut: { Tool } = {}
 	for _, tool in backpack:GetChildren() do
-		if tool:IsA("Tool") then
-			if tool.Name == Tools.ShovelName then
-				shovel = tool
-			elseif tool.Name == Tools.GPSName then
-				gps = tool
-			elseif tool:GetAttribute("BrainrotUid") then
-				table.insert(brainrots, tool)
-			end
+		if tool:IsA("Tool") and tool:GetAttribute("BrainrotUid") then
+			table.insert(mevcut, tool)
 		end
 	end
-
-	if #brainrots < 2 and not shovel and not gps then
+	if #mevcut < 2 then
 		return
 	end
 
-	table.sort(brainrots, function(a, b)
+	local istenen = table.clone(mevcut)
+	table.sort(istenen, function(a, b)
 		local ua = a:GetAttribute("BrainrotUid") :: string
 		local ub = b:GetAttribute("BrainrotUid") :: string
+		if (acik[ua] == true) ~= (acik[ub] == true) then
+			return acik[ua] == true
+		end
 		return (worth[ua] or 0) > (worth[ub] or 0)
 	end)
 
-	-- Istenen sira: once ekipman, sonra brainrotlar
-	local ordered: { Tool } = {}
-	if shovel then
-		table.insert(ordered, shovel)
+	local ayni = true
+	for i, tool in istenen do
+		if mevcut[i] ~= tool then
+			ayni = false
+			break
+		end
 	end
-	if gps then
-		table.insert(ordered, gps)
-	end
-	for _, tool in brainrots do
-		table.insert(ordered, tool)
+	if ayni then
+		return
 	end
 
-	-- Yeniden parent etmek Tool'u listenin sonuna atar; sirayla yapinca
-	-- istenen dizilim olusur
-	for _, tool in ordered do
-		tool.Parent = nil
-		tool.Parent = backpack
+	siralaniyor[player] = true
+	local park = parkKlasoru(player)
+	for _, tool in istenen do
+		tool.Parent = park
 	end
+
+	task.spawn(function()
+		task.wait(0.15)
+		for _, tool in istenen do
+			if tool.Parent == park and backpack.Parent then
+				tool.Parent = backpack
+			end
+		end
+		siralaniyor[player] = nil
+	end)
 end
 
 function Envanter.syncBrainrots(player: Player)
@@ -407,7 +438,8 @@ function Envanter.syncBrainrots(player: Player)
 
 	-- Cantada/elde bulunan brainrot tool'lari
 	local present: { [string]: Tool } = {}
-	local places = { backpack :: Instance, player.Character }
+	-- Siralama sirasinda bekleme klasorundeki Tool'lar da sayilir (bkz. reorderBackpack)
+	local places = { backpack :: Instance, player.Character, player:FindFirstChild(PARK_ADI) }
 
 	for _, place in places do
 		if place then

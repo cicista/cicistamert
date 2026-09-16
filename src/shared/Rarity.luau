@@ -36,6 +36,8 @@ export type RarityInfo = {
 	-- Minigame zorlugu: brainrot ikonunun kacis agresifligi (bkz. DigMinigame)
 	escapeDifficulty: number,
 	-- Brainrot Detective'in bu kademeyi temizlemesi kac saniye surer
+	-- Detective'in bu kademeyi acma suresi (saniye). Toplu acmada sureler toplanir.
+	-- Degerler dengeleme icin YARIYA indirildi.
 	revealTime: number,
 }
 --[[
@@ -90,7 +92,7 @@ Rarity.Info = {
 		incomeMin = 5,
 		incomeMax = 25,
 		escapeDifficulty = 0.4,
-		revealTime = 3,
+		revealTime = 1.5,
 	},
 
 	Rare = {
@@ -103,7 +105,7 @@ Rarity.Info = {
 		incomeMin = 50,
 		incomeMax = 250,
 		escapeDifficulty = 1,
-		revealTime = 5,
+		revealTime = 2.5,
 	},
 
 	Epic = {
@@ -116,7 +118,7 @@ Rarity.Info = {
 		incomeMin = 500,
 		incomeMax = 2_500,
 		escapeDifficulty = 2,
-		revealTime = 8,
+		revealTime = 4,
 	},
 
 	Legendary = {
@@ -129,7 +131,7 @@ Rarity.Info = {
 		incomeMin = 5_000,
 		incomeMax = 25_000,
 		escapeDifficulty = 3.2,
-		revealTime = 12,
+		revealTime = 6,
 	},
 
 	Mythic = {
@@ -142,7 +144,7 @@ Rarity.Info = {
 		incomeMin = 50_000,
 		incomeMax = 250_000,
 		escapeDifficulty = 4.5,
-		revealTime = 18,
+		revealTime = 9,
 	},
 
 	--[[
@@ -166,7 +168,7 @@ Rarity.Info = {
 		incomeMin = 500_000,
 		incomeMax = 2_500_000,
 		escapeDifficulty = 6,
-		revealTime = 25,
+		revealTime = 12.5,
 	},
 
 	--[[
@@ -191,7 +193,7 @@ Rarity.Info = {
 		incomeMin = 5_000_000,
 		incomeMax = 25_000_000,
 		escapeDifficulty = 7.5,
-		revealTime = 30,
+		revealTime = 15,
 	},
 
 	--[[
@@ -211,7 +213,7 @@ Rarity.Info = {
 		incomeMin = 50_000_000,
 		incomeMax = 250_000_000,
 		escapeDifficulty = 9,
-		revealTime = 35,
+		revealTime = 17.5,
 	},
 
 	-- ALEVKUM: volkan turuncusu <-> beyaz
@@ -225,7 +227,7 @@ Rarity.Info = {
 		incomeMin = 500_000_000,
 		incomeMax = 2_500_000_000,
 		escapeDifficulty = 11,
-		revealTime = 40,
+		revealTime = 20,
 	},
 
 	-- DENIZ: derin deniz mavisi <-> beyaz
@@ -239,7 +241,7 @@ Rarity.Info = {
 		incomeMin = 5_000_000_000,
 		incomeMax = 25_000_000_000,
 		escapeDifficulty = 13,
-		revealTime = 45,
+		revealTime = 22.5,
 	},
 } :: { [RarityId]: RarityInfo }
 

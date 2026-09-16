@@ -226,11 +226,12 @@ GPSGuncelle.OnClientEvent:Connect(function(list)
 
 	-- Artik olmayan etiketleri sil
 	local alive: { [string]: boolean } = {}
+	--[[
+		ETIKETLER ARTIK SUNUCUDA kuruluyor (Modules > Beams, herkes gorur);
+		burada yeni etiket uretilmez. Onceden kalanlar asagida temizlenir.
+	]]
 	for _, beam in beams do
-		alive[beam.id] = true
-		if not labels[beam.id] then
-			labels[beam.id] = makeLabel(beam)
-		end
+		alive[beam.id] = false
 	end
 
 	for id, billboard in labels do

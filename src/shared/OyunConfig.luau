@@ -90,7 +90,7 @@ Config.Admin = {
 -- Ikisi de haritada elle konur; script yalnizca ad ile arar. Model
 -- bulunamazsa o noktaya basit bir tezgah kurulur (diger NPC'lerdeki gibi).
 --
---   Makine  : 3 ayni brainrot alir, %25 ihtimalle bir ust kademe brainrot verir
+--   Makine  : ayni kademeden 3 brainrot alir, %15-25 ihtimalle bir ust kademe verir
 ------------------------------------------------------------------
 Config.Fuse = {
 	-- MAKINE
@@ -101,14 +101,15 @@ Config.Fuse = {
 	machinePromptSubText = "Fuse Machine",
 	-- Esya koymak icin E'ye BASILI TUTMA suresi
 	machineHoldDuration = 0.4,
-	machinePromptDistance = 12,
+	-- Etkilesim mesafesi: makine buyuk, uzaktan da E ile acilabilsin
+	machinePromptDistance = 20,
 	machineSpawnPosition = Vector3.new(-44, 5, -40),
 	--[[
 		Panel kac stud yaklasinca gorunur.
 		Prompt'tan bagimsizdir: oyuncu yaklasinca ne yapmasi gerektigini
 		("Same Rarity Brainrot 0/5") tetiklemeden gorsun diye.
 	]]
-	machineRange = 18,
+	machineRange = 28,
 }
 
 ------------------------------------------------------------------
