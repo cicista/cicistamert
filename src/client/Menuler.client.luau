@@ -2107,7 +2107,7 @@ end, "\u{1F45F}")
 	Sutun alttan dizildigi icin once eklenen ustte durur.
 	Isimler onemli: MadenSayaci "Teleporter" butonunun ustune oturuyor.
 ]]
-menuButonu(sagSutun, "teleport", "Teleporter", MenuRenk.teleporter, function()
+menuButonu(sagSutun, "teleporter", "Teleporter", MenuRenk.teleporter, function()
 	ekMenu.isinlayiciAc()
 end, "\u{1F300}")
 menuButonu(sagSutun, "home", "Base", MenuRenk.home, function()
@@ -4163,11 +4163,56 @@ do
 		end
 	end
 
-	-- Gecis alininca ya da yeni ada acilinca acik panel tazelensin
+	--[[
+		BUTON GECIS ALINANA KADAR GRI
+
+		Yuzun ustune gri bir ortu konur (ikonun altinda); ikon da grilesir.
+		Yuzun kendi rengine dokunulmuyor: fare efekti o rengi hafizada
+		tutuyor, degistirilse alindiktan sonra gri geri donerdi.
+	]]
+	local tpButon = sagSutun:FindFirstChild("Teleporter")
+	local tpYuz = tpButon and tpButon:FindFirstChild("Yuz")
+	local tpOrtu: Frame? = nil
+	if tpYuz and tpYuz:IsA("Frame") then
+		local ortu = Instance.new("Frame")
+		ortu.Name = "GriOrtu"
+		ortu.Size = UDim2.fromScale(1, 1)
+		ortu.BackgroundColor3 = Color3.fromRGB(125, 128, 135)
+		ortu.BorderSizePixel = 0
+		ortu.ZIndex = 4
+		ortu.Parent = tpYuz
+		UI.corner(ortu, 10)
+		tpOrtu = ortu
+	end
+
+	local function tpButonCiz()
+		local sahip = tpSahip()
+		if tpOrtu then
+			tpOrtu.Visible = not sahip
+		end
+		if tpButon and tpButon:IsA("GuiObject") then
+			tpButon.BackgroundColor3 = if sahip
+				then MenuRenk.teleporter:Lerp(Color3.new(0, 0, 0), 0.32)
+				else Color3.fromRGB(80, 82, 88)
+		end
+		if tpYuz then
+			for _, d in tpYuz:GetChildren() do
+				if d:IsA("ImageLabel") then
+					d.ImageColor3 = if sahip then Color3.new(1, 1, 1) else Color3.fromRGB(175, 175, 175)
+				elseif d:IsA("TextLabel") then
+					d.TextColor3 = if sahip then Color3.new(1, 1, 1) else Color3.fromRGB(175, 175, 175)
+				end
+			end
+		end
+	end
+	tpButonCiz()
+
+	-- Gecis alininca buton renklenir, acik panel tazelenir
 	do
 		local pass = Passler.get("Teleporter")
 		if pass then
 			player:GetAttributeChangedSignal(pass.nitelik):Connect(function()
+				tpButonCiz()
 				if tpPanel.Visible then
 					tpCiz()
 				end

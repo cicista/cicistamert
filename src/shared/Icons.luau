@@ -92,7 +92,19 @@ local Map: { [string]: IconEntry } = {
 		{ "Menus", "Inventory" },
 	},
 	shop = { "Menus", "Shop" },
-	teleport = { "Menus", "Teleport" },
+	--[[
+		Sagdaki Teleporter butonu. Paketteki "Menus > Teleport" bir kumanda
+		resmiydi, kullanilmiyor. Kendi ikonunu Assets > Icons icine
+		"Teleporter" adiyla koy; yoksa portal adli ikonlar denenir, hicbiri
+		yoksa butonda portal emojisi gorunur.
+	]]
+	teleporter = {
+		{ "Assets", "Teleporter" },
+		{ "Assets", "Teleport" },
+		{ "Assets", "Portal" },
+		{ "Menus", "Portal" },
+		{ "Misc", "Portal" },
+	},
 	--[[
 		Sagdaki base'e don butonu ve soldaki hiz butonu. Pakette adi kesin
 		bilinmiyor; sirayla denenir. Hicbiri yoksa butonda emoji gorunur.
