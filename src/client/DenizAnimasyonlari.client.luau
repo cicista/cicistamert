@@ -24,8 +24,11 @@
 	DUSME ANIMASYONU KAPALI
 	Tahta karakteri havada tuttugu icin Humanoid kendini "dusuyor" sayip
 	Roblox'un fall / jump animasyonunu da oynatiyordu; flyboardIdle ile
-	karisinca karakter kambur duruyordu. Tahtadayken Freefall / Jumping /
-	FallingDown durumlari kapatilir ve bu animasyonlar her karede durdurulur.
+	karisinca karakter kambur duruyordu. Tahtadayken bu animasyonlar her
+	karede durdurulur.
+
+	Humanoid DURUMLARINA dokunulmaz: Freefall kapatilinca Humanoid havada
+	yurume kuvveti uygulamiyor, tahtadaki oyuncu hareket edemiyordu.
 ]]
 
 local Players = game:GetService("Players")
@@ -77,13 +80,6 @@ local function denizde(): boolean
 	return player:GetAttribute("Flyboarding") == true
 end
 
--- Tahtadayken kapatilan Humanoid durumlari
-local KAPALI_DURUMLAR = {
-	Enum.HumanoidStateType.Freefall,
-	Enum.HumanoidStateType.Jumping,
-	Enum.HumanoidStateType.FallingDown,
-}
-
 -- Animate scriptinin tahtada karismamasi gereken animasyonlari (Animation adlari)
 local KARISAN_ANIMASYONLAR = {
 	FallAnim = true,
@@ -97,22 +93,6 @@ local KARISAN_ANIMASYONLAR = {
 	ClimbAnim = true,
 }
 
-local function durumlariAyarla(tahtada: boolean)
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
-	for _, durum in KAPALI_DURUMLAR do
-		humanoid:SetStateEnabled(durum, not tahtada)
-	end
-	if tahtada then
-		local simdiki = humanoid:GetState()
-		if table.find(KAPALI_DURUMLAR, simdiki) then
-			humanoid:ChangeState(Enum.HumanoidStateType.Running)
-		end
-	end
-end
 
 local function hepsiniDurdur()
 	for _, track in { izler.idle, izler.cast, izler.fishing } do
@@ -124,7 +104,6 @@ end
 
 -- Tahta durumuna gore duris animasyonu
 local function durusuGuncelle()
-	durumlariAyarla(denizde())
 	if denizde() then
 		if izler.idle and not izler.idle.IsPlaying then
 			izler.idle:Play(0.25)
