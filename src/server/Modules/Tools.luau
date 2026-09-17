@@ -25,6 +25,7 @@ local Assets = require(Shared:WaitForChild("Assets"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local LevelGlow = require(Shared:WaitForChild("LevelGlow"))
 local Divine = require(Shared:WaitForChild("Divine"))
+local Icons = require(Shared:WaitForChild("Icons"))
 local Fuse = require(Shared:WaitForChild("Fuse"))
 local Etiket = require(Shared:WaitForChild("Etiket"))
 local GPSEfekt = require(Shared:WaitForChild("GPSEfekt"))
@@ -498,6 +499,20 @@ end
 ------------------------------------------------------------------
 -- KUREK
 ------------------------------------------------------------------
+--[[
+	HOTBAR IKONU
+
+	Assets > Icons icindeki resim (tool_shovel, tool_pickaxe, tool_gps,
+	tool_fishingrod) Tool.TextureId'ye yazilir: hotbarda yazi yerine ikon
+	gorunur. Ikon bulunamazsa eskisi gibi adi yazar.
+]]
+function Tools.hotbarIkonu(tool: Tool, ikonAdi: string)
+	local resim = Icons.assetTam(ikonAdi)
+	if resim then
+		tool.TextureId = resim
+	end
+end
+
 function Tools.buildShovel(shovelId: string): Tool
 	local info = Shovels.get(shovelId :: any)
 
@@ -534,6 +549,7 @@ function Tools.buildShovel(shovelId: string): Tool
 	end
 
 	tool.Name = Tools.ShovelName
+	Tools.hotbarIkonu(tool, "tool_shovel")
 	tool.CanBeDropped = false
 	tool.ToolTip = `{info.displayName}  |  Lv.{info.level}`
 	tool:SetAttribute("ShovelId", info.id)
@@ -569,6 +585,7 @@ function Tools.buildPickaxe(pickaxeId: string): Tool
 	local handle = if model then serbestModeliBagla(tool, model, Assets.ToolGrips.pickaxe) else nil
 	if handle then
 		tool.Name = Tools.PickaxeName
+		Tools.hotbarIkonu(tool, "tool_pickaxe")
 		tool.CanBeDropped = false
 		tool.ToolTip = info.displayName
 		tool:SetAttribute("PickaxeId", info.id)
@@ -600,6 +617,7 @@ function Tools.buildPickaxe(pickaxeId: string): Tool
 	weld.Parent = body
 
 	tool.Name = Tools.PickaxeName
+	Tools.hotbarIkonu(tool, "tool_pickaxe")
 	tool.CanBeDropped = false
 	tool.ToolTip = info.displayName
 	tool:SetAttribute("PickaxeId", info.id)
@@ -662,6 +680,7 @@ function Tools.buildGPS(detectorId: string): Tool
 	end
 
 	tool.Name = Tools.GPSName
+	Tools.hotbarIkonu(tool, "tool_gps")
 	tool.CanBeDropped = false
 	tool.ToolTip = `{info.displayName}  |  Lv.{info.level}  |  Luck x{info.luck}`
 	tool:SetAttribute("DetectorId", info.id)

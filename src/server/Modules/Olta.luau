@@ -17,12 +17,14 @@
 	  Olta.reel(character)          -- misinayi toplar
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rods = require(Shared:WaitForChild("Rods"))
 local Assets = require(Shared:WaitForChild("Assets"))
+local Icons = require(Shared:WaitForChild("Icons"))
 
 local Olta = {}
 
@@ -293,8 +295,68 @@ function Olta.attach(character: Model, model: Model): boolean
 		end
 	end
 
+	-- Hotbarda olta ikonu (bkz. HOTBAR IKONU)
+	Olta.ikonTak(character)
 	return true
 end
+
+--[[
+	HOTBAR IKONU
+
+	Olta Tool degil, hotbarda hic gorunmuyordu. Oltayla birlikte karaktere
+	ICI BOS bir Tool konur (parcasi yok, tiklayinca bir sey yapmaz): hotbarda
+	Assets > Icons > tool_fishingrod ikonuyla gorunur. Oyuncu onu hotbardan
+	birakirsa ya da baska bir esya kusanilirsa geri takilir; olta kalkinca
+	o da silinir. "RodId" niteligi kesif kisitinin izin verdigi esya oldugunu
+	soyler.
+]]
+local IKON_TOOL_ADI = "Fishing Rod"
+
+local function ikonToolKaldir(character: Model)
+	local player = Players:GetPlayerFromCharacter(character)
+	for _, yer in { character :: Instance, if player then player:FindFirstChildOfClass("Backpack") else nil } do
+		if yer then
+			for _, t in yer:GetChildren() do
+				if t:IsA("Tool") and t:GetAttribute("RodId") ~= nil then
+					t:Destroy()
+				end
+			end
+		end
+	end
+end
+
+local function ikonToolTak(character: Model)
+	ikonToolKaldir(character)
+
+	local tool = Instance.new("Tool")
+	tool.Name = IKON_TOOL_ADI
+	tool.RequiresHandle = false
+	tool.CanBeDropped = false
+	tool.ManualActivationOnly = true
+	tool.ToolTip = "Fishing Rod"
+	tool:SetAttribute("RodId", true)
+	local resim = Icons.assetTam("tool_fishingrod")
+	if resim then
+		tool.TextureId = resim
+	end
+	tool.Parent = character
+
+	-- Hotbardan birakilirsa (cantaya giderse) olta eldeyken geri takilir
+	tool.AncestryChanged:Connect(function()
+		if not tool.Parent or tool.Parent == character then
+			return
+		end
+		task.defer(function()
+			if tool.Parent and tool.Parent ~= character and character.Parent
+				and character:FindFirstChild(Rods.ToolName)
+			then
+				tool.Parent = character
+			end
+		end)
+	end)
+end
+
+Olta.ikonTak = ikonToolTak
 
 function Olta.has(player: Player): boolean
 	local character = player.Character
@@ -320,6 +382,7 @@ function Olta.remove(character: Model?)
 	if rod then
 		rod:Destroy()
 	end
+	ikonToolKaldir(character)
 end
 
 --[[

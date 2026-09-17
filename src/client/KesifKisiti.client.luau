@@ -34,6 +34,7 @@ local function kesifAraciMi(tool: Tool): boolean
 	return tool:GetAttribute("ShovelId") ~= nil
 		or tool:GetAttribute("DetectorId") ~= nil
 		or tool:GetAttribute("PickaxeId") ~= nil
+		or tool:GetAttribute("RodId") ~= nil
 end
 
 local function denetle(character: Model, child: Instance)
