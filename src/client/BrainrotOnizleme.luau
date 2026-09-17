@@ -69,6 +69,8 @@ local ISIK = Color3.fromRGB(255, 255, 255)
 local ISIK_YONU = Vector3.new(-0.4, -0.7, -0.6)
 -- Kutunun kosegeninin bu kati kadar geri cekilir; 1'in alti kadraji doldurur
 local CERCEVE = 0.9
+-- Kimligi acilmamis kup daha yakindan (karede daha buyuk)
+local GIZLI_CERCEVE = 0.62
 
 ------------------------------------------------------------------
 
@@ -101,12 +103,16 @@ end
 	bakiyordu; kup karenin sol altinda kucucuk kaliyordu. Artik kutu
 	yalnizca gorunen parcalardan, dunya eksenlerinde hesaplaniyor.
 ]]
-local function gorunenSinir(model: Model): (Vector3?, Vector3?)
+local function gorunenSinir(model: Model, yalnizcaNitelik: string?): (Vector3?, Vector3?)
 	local enAz: Vector3? = nil
 	local enCok: Vector3? = nil
 
 	for _, parca in model:GetDescendants() do
 		if not parca:IsA("BasePart") or parca.Transparency >= 0.99 then
+			continue
+		end
+		-- Istenirse yalnizca bu nitelikli parcalar (gizli modelin "?" kupu)
+		if yalnizcaNitelik and not parca:GetAttribute(yalnizcaNitelik) then
 			continue
 		end
 		if parca:GetAttribute(Assets.MeasureSkipAttribute) then
@@ -166,11 +172,24 @@ local function kur(k: Kaynak): ViewportFrame?
 	kamera.Parent = vp
 	vp.CurrentCamera = kamera
 
-	local enAz, enCok = gorunenSinir(model)
+	--[[
+		KIMLIGI ACILMAMIS: kamera yalnizca "?" kupune (keepPart) bakar ve
+		daha yakindan cekilir. Modelin geri kalani kadraja katilinca kup
+		karenin kosesinde kucucuk kaliyordu.
+	]]
+	local enAz, enCok = nil, nil
+	local cerceve = CERCEVE
+	if not (k.revealed and k.name) then
+		enAz, enCok = gorunenSinir(model, Assets.HiddenBrainrot.keepAttribute)
+		cerceve = GIZLI_CERCEVE
+	end
+	if not enAz or not enCok then
+		enAz, enCok = gorunenSinir(model)
+	end
 	if enAz and enCok then
 		local merkez = (enAz + enCok) / 2
 		local kosegen = (enCok - enAz).Magnitude
-		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * kosegen * CERCEVE, merkez)
+		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * kosegen * cerceve, merkez)
 	else
 		local ok, cf, boyut = pcall(function()
 			return model:GetBoundingBox()

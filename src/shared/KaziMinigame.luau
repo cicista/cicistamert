@@ -275,6 +275,19 @@ function KaziMinigame.reachable(gearId: string, rarityId: string): boolean
 end
 
 --[[
+	Bu kurekle kazilabilen EN YUKSEK kademe (magazada "Can dig up to ...").
+]]
+function KaziMinigame.enYuksekKademe(gearId: string): string?
+	local secilen: string? = nil
+	for _, id in Rarity.Order do
+		if KaziMinigame.reachable(gearId, id) then
+			secilen = id
+		end
+	end
+	return secilen
+end
+
+--[[
 	Minioyunun EN HIZLI bitirilebilecegi sure (saniye).
 	Erisilemez kademede math.huge doner.
 

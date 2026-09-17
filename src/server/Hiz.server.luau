@@ -204,7 +204,7 @@ HizAl.OnServerEvent:Connect(function(player, adet)
 	if data.rot < fiyat then
 		Bildirim:FireClient(
 			player,
-			`Not enough Rot! You need {Format.short(fiyat)} Rot.`,
+			`Not enough Rot! You need {Format.short(fiyat - data.rot)} more Rot for Speed +{adet}.`,
 			Color3.fromRGB(255, 90, 90)
 		)
 		return

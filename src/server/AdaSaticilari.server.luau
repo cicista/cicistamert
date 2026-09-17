@@ -302,21 +302,24 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 		return
 	end
 
-	if data.rot < info.price then
-		Bildirim:FireClient(player, `Not enough Rot! {info.displayName} costs {Format.short(info.price)} Rot.`, HATA)
-		return
-	end
-
+	--[[
+		EKSIKLER TEK BILDIRIMDE: hangi madenden kac tane ve ne kadar Rot
+		eksik oldugu birlikte yazar ("Missing: 1.2B Rot, 3 Amethyst, 1 Opal").
+	]]
 	local bedel = info.oreCost or 0
+	local eksikler: { string } = {}
+	if data.rot < info.price then
+		table.insert(eksikler, `{Format.short(info.price - data.rot)} Rot`)
+	end
 	for _, id in cfg.ores do
-		if (data.ores[id] or 0) < bedel then
-			Bildirim:FireClient(
-				player,
-				`Not enough {Ores.Info[id].displayName}! You need {bedel} (you have {data.ores[id] or 0}).`,
-				HATA
-			)
-			return
+		local var = data.ores[id] or 0
+		if var < bedel then
+			table.insert(eksikler, `{bedel - var} {Ores.Info[id].displayName}`)
 		end
+	end
+	if #eksikler > 0 then
+		Bildirim:FireClient(player, `Missing for {info.displayName}: {table.concat(eksikler, ", ")}`, HATA)
+		return
 	end
 
 	PlayerData.addRot(player, -info.price)
@@ -363,7 +366,7 @@ KazmaAl.OnServerEvent:Connect(function(player, pickaxeId)
 	end
 
 	if data.rot < kazma.price then
-		Bildirim:FireClient(player, `Not enough Rot! {kazma.displayName} costs {Format.short(kazma.price)} Rot.`, HATA)
+		Bildirim:FireClient(player, `Not enough Rot! You need {Format.short(kazma.price - data.rot)} more Rot for the {kazma.displayName}.`, HATA)
 		return
 	end
 
@@ -407,15 +410,20 @@ MadenTakas.OnServerEvent:Connect(function(player, oreId)
 		end
 	end
 
+	local takasEksik: { string } = {}
 	for _, id in digerleri do
-		if (data.ores[id] or 0) < Ores.TradeCost then
-			Bildirim:FireClient(
-				player,
-				`You need {Ores.TradeCost} {Ores.Info[id].displayName} to trade for {maden.displayName}.`,
-				UYARI
-			)
-			return
+		local var = data.ores[id] or 0
+		if var < Ores.TradeCost then
+			table.insert(takasEksik, `{Ores.TradeCost - var} {Ores.Info[id].displayName}`)
 		end
+	end
+	if #takasEksik > 0 then
+		Bildirim:FireClient(
+			player,
+			`Missing to trade for {maden.displayName}: {table.concat(takasEksik, ", ")}`,
+			UYARI
+		)
+		return
 	end
 
 	for _, id in digerleri do

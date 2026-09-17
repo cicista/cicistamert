@@ -23,6 +23,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Icons = require(Shared:WaitForChild("Icons"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
+local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -87,9 +89,9 @@ local function bolumBasligi(parent: Instance, text: string, order: number)
 	})
 end
 
-local function satir(parent: Instance, order: number, renk: Color3, vurgulu: boolean): TextButton
+local function satir(parent: Instance, order: number, renk: Color3, vurgulu: boolean, boy: number?): TextButton
 	local row = Instance.new("TextButton")
-	row.Size = UDim2.new(1, -6, 0, 74)
+	row.Size = UDim2.new(1, -6, 0, boy or 74)
 	row.BackgroundColor3 = UI.Colors.panelLight
 	row.BorderSizePixel = 0
 	row.AutoButtonColor = false
@@ -273,7 +275,21 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 	end
 
 	for i, entry in payload.shovels do
-		local row = satir(kurekListe, i, entry.color, entry.equipped or entry.buyable)
+		local row = satir(kurekListe, i, entry.color, entry.equipped or entry.buyable, 96)
+
+		-- Bu kurekle kazilabilen en yuksek kademe
+		local kademe = KaziMinigame.enYuksekKademe(entry.id)
+		if kademe then
+			local kazYazi = UI.text({
+				text = `Can dig up to <font color="#{Rarity.textColor(kademe):ToHex()}">{Rarity.displayName(kademe)}</font>`,
+				size = UI.Sizes.small,
+				font = UI.Fonts.bold,
+				frameSize = UDim2.new(1, -170, 0, 20),
+				position = UDim2.fromOffset(14, 60),
+				parent = row,
+			})
+			kazYazi.RichText = true
+		end
 		if entry.owned and not entry.equipped then
 			row.BackgroundTransparency = 0.4
 		end

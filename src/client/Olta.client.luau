@@ -102,9 +102,9 @@ local function satirCiz(entry: any, order: number)
 	})
 
 	UI.text({
-		text = `Luck x{entry.luck}  Range {entry.scanRadius} studs`,
+		text = if entry.needs then entry.needs else `Luck x{entry.luck}  Range {entry.scanRadius} studs`,
 		size = UI.Sizes.small,
-		color = UI.Colors.textDim,
+		color = if entry.needs then UI.Colors.warn else UI.Colors.textDim,
 		frameSize = UDim2.new(1, -150, 0, 20),
 		position = UDim2.fromOffset(14, 36),
 		parent = row,
@@ -124,7 +124,7 @@ local function satirCiz(entry: any, order: number)
 		return
 	end
 
-	if not entry.owned and not entry.next then
+	if not entry.owned and (not entry.next or entry.needs) then
 		UI.text({
 			text = "LOCKED",
 			size = UI.Sizes.small,

@@ -227,6 +227,34 @@ local function gecerliAd(name: any, rarity: any): string?
 	return pool[degistirmeRng:NextInteger(1, #pool)].name
 end
 
+-- Kayittaki tek bir brainrot kaydini dogrular ve temiz bir kopya doner
+local function esyaOku(item: any): InventoryItem?
+	if type(item) ~= "table" or type(item.uid) ~= "string" or type(item.rarity) ~= "string" then
+		return nil
+	end
+
+	-- Katalogdan kaldirilmis bir isimse ayni rarity'den bir baskasi gelir
+	local ad = gecerliAd(item.name, item.rarity)
+
+	return {
+		uid = item.uid,
+		rarity = item.rarity,
+		condition = if type(item.condition) == "string" then item.condition else "Normal",
+		-- Mutasyon oncesi kayitlar Normal sayilir
+		mutation = if type(item.mutation) == "string" then item.mutation else "Normal",
+		name = ad,
+		-- Adsiz kalan esya "kimligi belirlenmemis" durumuna doner
+		revealed = item.revealed == true and ad ~= nil,
+		slot = tonumber(item.slot),
+		--[[
+			Ada KORUNMALI: eskiden burada dusuyordu ve yeniden girince
+			kimliksiz esya adasiz kaliyor, Detective butun havuzdan
+			isim veriyordu.
+		]]
+		island = if type(item.island) == "string" then item.island else nil,
+	} :: any
+end
+
 local function migrate(raw: any): Data
 	local data = defaultData()
 	if type(raw) ~= "table" then
@@ -297,16 +325,40 @@ local function migrate(raw: any): Data
 	-- Level sisteminden onceki kayitlar Level 1'den baslar
 	data.level = math.clamp(math.floor(tonumber(raw.level) or 1), 1, 100)
 	data.xp = math.max(0, math.floor(tonumber(raw.xp) or 0))
-	-- Detective isi oyundan cikip girince de surer
+	--[[
+		DETECTIVE ISI oyundan cikip girince de surer.
+
+		Yeni bicim: brainrotlar envanterden CIKIP isin icinde durur (items);
+		is bitince (bitti) oyuncu Detective'e gidip geri alir.
+		Eski bicimde yalnizca uid listesi vardi, esyalar envanterdeydi: onlar
+		asagida, envanter okunduktan sonra ise tasiniyor.
+	]]
 	local is = raw.detectiveJob
-	if type(is) == "table" and type(is.bitis) == "number" and type(is.uids) == "table" then
-		local uids: { string } = {}
-		for _, uid in is.uids do
-			if type(uid) == "string" then
-				table.insert(uids, uid)
+	local eskiIsUidleri: { string }? = nil
+	if type(is) == "table" and type(is.bitis) == "number" then
+		local items = {}
+		if type(is.items) == "table" then
+			for _, item in is.items do
+				local kopya = esyaOku(item)
+				if kopya then
+					table.insert(items, kopya)
+				end
 			end
 		end
-		data.detectiveJob = { bitis = is.bitis, toplam = tonumber(is.toplam) or 0, uids = uids }
+		if type(is.uids) == "table" and not is.items then
+			eskiIsUidleri = {}
+			for _, uid in is.uids do
+				if type(uid) == "string" then
+					table.insert(eskiIsUidleri :: { string }, uid)
+				end
+			end
+		end
+		data.detectiveJob = {
+			bitis = is.bitis,
+			toplam = tonumber(is.toplam) or 0,
+			items = items,
+			bitti = is.bitti == true,
+		}
 	end
 
 	-- Social Rewards (onceki kayitlarda yok: hic alinmamis sayilir)
@@ -410,27 +462,24 @@ local function migrate(raw: any): Data
 
 	if type(raw.inventory) == "table" then
 		for _, item in raw.inventory do
-			if type(item) == "table" and type(item.uid) == "string" and type(item.rarity) == "string" then
-				-- Katalogdan kaldirilmis bir isimse ayni rarity'den bir baskasi gelir
-				local ad = gecerliAd(item.name, item.rarity)
+			local kopya = esyaOku(item)
+			if kopya then
+				table.insert(data.inventory, kopya)
+			end
+		end
+	end
 
-				table.insert(data.inventory, {
-					uid = item.uid,
-					rarity = item.rarity,
-					condition = if type(item.condition) == "string" then item.condition else "Normal",
-					-- Mutasyon oncesi kayitlar Normal sayilir
-					mutation = if type(item.mutation) == "string" then item.mutation else "Normal",
-					name = ad,
-					-- Adsiz kalan esya "kimligi belirlenmemis" durumuna doner
-					revealed = item.revealed == true and ad ~= nil,
-					slot = tonumber(item.slot),
-					--[[
-						Ada KORUNMALI: eskiden burada dusuyordu ve yeniden girince
-						kimliksiz esya adasiz kaliyor, Detective butun havuzdan
-						isim veriyordu.
-					]]
-					island = if type(item.island) == "string" then item.island else nil,
-				})
+	-- Eski bicim Detective isi: esyalar envanterden isin icine tasinir
+	local isVerisi = data.detectiveJob
+	if eskiIsUidleri and isVerisi then
+		local istenen: { [string]: boolean } = {}
+		for _, uid in eskiIsUidleri do
+			istenen[uid] = true
+		end
+		for i = #data.inventory, 1, -1 do
+			local item = data.inventory[i]
+			if istenen[item.uid] and not item.revealed then
+				table.insert(isVerisi.items, table.remove(data.inventory, i))
 			end
 		end
 	end

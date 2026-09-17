@@ -853,7 +853,7 @@ UI.text({
 })
 
 UI.text({
-	text = "Tap cards to pick some, or leave them ALL with me. You can leave while I work!",
+	text = "Tap cards to pick some, or leave them ALL with me. Come back to collect them!",
 	size = UI.Sizes.small,
 	color = UI.Colors.textDim,
 	frameSize = UDim2.new(1, -80, 0, 20),
@@ -968,7 +968,7 @@ local function detektifSure(saniye: number): string
 end
 
 local function detektifCalisiyor(): boolean
-	return detektifIs ~= nil and detektifBitis > os.clock()
+	return detektifIs ~= nil and detektifIs.bitti ~= true and detektifBitis > os.clock()
 end
 
 local function detektifSeciliSayisi(): number
@@ -1256,7 +1256,8 @@ end)
 ------------------------------------------------------------------
 -- MAGAZA
 ------------------------------------------------------------------
-local magaza = UI.panel(screen, UDim2.fromOffset(520, 470), "Magaza")
+-- Iki sutun: solda kurekler, sagda GPS'ler (kaydirmadan hepsi gorunsun)
+local magaza = UI.panel(screen, UDim2.fromOffset(1040, 520), "Magaza")
 
 UI.text({
 	text = "Shopkeeper",
@@ -1280,24 +1281,27 @@ UI.closeButton(magaza).MouseButton1Click:Connect(function()
 	magaza.Visible = false
 end)
 
-local magazaListe = makeScroll(magaza, UDim2.fromOffset(14, 78), UDim2.new(1, -28, 1, -92))
+local magazaKurekler = makeScroll(magaza, UDim2.fromOffset(14, 78), UDim2.new(0.5, -21, 1, -92))
+local magazaGpsler = makeScroll(magaza, UDim2.new(0.5, 7, 0, 78), UDim2.new(0.5, -21, 1, -92))
+-- Kurekte "Can dig up to Divine" yazisi icin
+local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 
 --[[
 	Magaza satiri.
 	detail: o toola ozgu ikinci satir (kurekte bar/hiz, gpste sans/menzil)
 	onBuy:  satin alma remote'unu tetikleyen fonksiyon
 ]]
-local function shopRow(entry: any, detail: string, order: number, onBuy: () -> ())
+local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order: number, onBuy: () -> (), detail2: string?)
 	local color = Rarity.color(entry.rarity)
 
 	local row = Instance.new("TextButton")
-	row.Size = UDim2.new(1, -6, 0, 70)
+	row.Size = UDim2.new(1, -6, 0, if detail2 then 88 else 70)
 	row.BackgroundColor3 = UI.Colors.panelLight
 	row.BorderSizePixel = 0
 	row.AutoButtonColor = false
 	row.Text = ""
 	row.LayoutOrder = order
-	row.Parent = magazaListe
+	row.Parent = parent
 	UI.corner(row, 10)
 	-- Kusanili olan kademe kendi renginde kalin cerceve alir
 	UI.stroke(
@@ -1329,6 +1333,19 @@ local function shopRow(entry: any, detail: string, order: number, onBuy: () -> (
 		position = UDim2.fromOffset(14, 32),
 		parent = row,
 	})
+
+	if detail2 then
+		local satir3 = UI.text({
+			text = detail2,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = UI.Colors.text,
+			frameSize = UDim2.new(1, -160, 0, 20),
+			position = UDim2.fromOffset(14, 56),
+			parent = row,
+		})
+		satir3.RichText = true
+	end
 
 	--[[
 		DURUM YAZISI
@@ -1369,8 +1386,19 @@ local function shopRow(entry: any, detail: string, order: number, onBuy: () -> (
 	end
 end
 
+-- "Can dig up to <Divine>" (kademe kendi renginde)
+local function kazabilir(gearId: string): string?
+	local kademe = KaziMinigame.enYuksekKademe(gearId)
+	if not kademe then
+		return nil
+	end
+	local renk = Rarity.textColor(kademe)
+	return `Can dig up to <font color="#{renk:ToHex()}">{Rarity.displayName(kademe)}</font>`
+end
+
 MagazaAc.OnClientEvent:Connect(function(payload)
-	clearRows(magazaListe)
+	clearRows(magazaKurekler)
+	clearRows(magazaGpsler)
 
 	if type(payload) ~= "table" then
 		return
@@ -1382,17 +1410,19 @@ MagazaAc.OnClientEvent:Connect(function(payload)
 	-- KUREKLER: minigame kolayligi
 	------------------------------------------------------------------
 	order += 1
-	sectionHeader(magazaListe, "SHOVELS  --  easier minigame", order)
+	sectionHeader(magazaKurekler, "SHOVELS  --  easier minigame", order)
 
 	for _, entry in payload.shovels or {} do
 		order += 1
 		shopRow(
+			magazaKurekler,
 			entry,
 			`Bar {math.floor(entry.barSize * 100)}%  -  Dig speed {string.format("%.2f", 1 / entry.digSpeed)}x`,
 			order,
 			function()
 				KurekAl:FireServer(entry.id)
-			end
+			end,
+			kazabilir(entry.id)
 		)
 	end
 
@@ -1400,11 +1430,12 @@ MagazaAc.OnClientEvent:Connect(function(payload)
 	-- DEDEKTORLER: yuksek rarity sansi
 	------------------------------------------------------------------
 	order += 1
-	sectionHeader(magazaListe, "DETECTORS  --  better rarity odds", order)
+	sectionHeader(magazaGpsler, "DETECTORS  --  better rarity odds", order)
 
 	for _, entry in payload.detectors or {} do
 		order += 1
 		shopRow(
+			magazaGpsler,
 			entry,
 			`Luck x{entry.luck}  -  Range {entry.scanRadius} studs`,
 			order,
@@ -1718,6 +1749,7 @@ local rotCoinMagazaAc: () -> ()
 local ekMenu = {
 	isinlayiciAc = function() end,
 	hizAc = function() end,
+	detektifAc = function() end,
 }
 
 local MENU_BOYU = 52
@@ -2069,6 +2101,7 @@ local MenuRenk = {
 	speed = Color3.fromRGB(110, 230, 255), -- buz mavisi
 	teleporter = Color3.fromRGB(150, 120, 255), -- lila
 	home = Color3.fromRGB(120, 220, 110), -- cimen yesili
+	detective = Color3.fromRGB(150, 150, 165), -- gri (ilerledikce yesile dolar)
 }
 
 -- Sagdaki ev butonu: sunucu dogrular ve base'in onune isinlar
@@ -2101,6 +2134,10 @@ end)
 menuButonu(solSutun, "speed", "Speed", MenuRenk.speed, function()
 	ekMenu.hizAc()
 end, "\u{1F45F}")
+-- Detective takibi: buton alttan yesile dolar, is bitince parlar
+menuButonu(solSutun, "detective", "Detective", MenuRenk.detective, function()
+	ekMenu.detektifAc()
+end)
 
 --[[
 	SAG: yukaridan asagi Teleporter, base'e don, Settings.
@@ -4477,4 +4514,256 @@ do
 			task.defer(hzCiz)
 		end
 	end)
+end
+
+
+-- DETECTIVE TAKIP: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
+do
+	------------------------------------------------------------------
+	-- DETECTIVE TAKIBI  (sol menudeki 8. buton)
+	--
+	-- Yalnizca IZLEME: buradan brainrot verilmez, alinmaz. Detective'e
+	-- birakilan brainrotlarin kalan suresi ve is bitince hangi
+	-- brainrotlarin ciktigi gorulur. Teslim almak icin Detective'e gidilir.
+	--
+	-- BUTONUN KENDISI BAR: is surerken yuzu alttan yukari yesile dolar;
+	-- is bitince parlar (kontur altin renkte nabiz atar).
+	------------------------------------------------------------------
+	local DetectiveTakip = Net.event("DetectiveTakip")
+	local DetectiveDurumOlayi = Net.event("DetectiveDurum")
+
+	local TAKIP_SARI = Color3.fromRGB(255, 236, 180)
+	local DOLUM_YESIL = Color3.fromRGB(70, 215, 95)
+
+	local takipIs: any = nil
+	local takipBitis = 0
+
+	local takipPanel = UI.panel(screen, UDim2.fromOffset(560, 520), "DetektifTakip")
+
+	UI.text({
+		text = "Detective",
+		size = UI.Sizes.title,
+		font = UI.Fonts.bold,
+		color = TAKIP_SARI,
+		frameSize = UDim2.new(1, -80, 0, 34),
+		position = UDim2.fromOffset(18, 14),
+		parent = takipPanel,
+	})
+
+	UI.closeButton(takipPanel).MouseButton1Click:Connect(function()
+		takipPanel.Visible = false
+	end)
+
+	local takipDurum = UI.text({
+		text = "",
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 24),
+		position = UDim2.fromOffset(18, 54),
+		parent = takipPanel,
+		wrapped = true,
+	})
+
+	local takipOluk = Instance.new("Frame")
+	takipOluk.Position = UDim2.fromOffset(18, 86)
+	takipOluk.Size = UDim2.new(1, -36, 0, 26)
+	takipOluk.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
+	takipOluk.BorderSizePixel = 0
+	takipOluk.Parent = takipPanel
+	UI.corner(takipOluk, 13)
+	UI.stroke(takipOluk, Color3.fromRGB(0, 0, 0), 2)
+
+	local takipDolgu = Instance.new("Frame")
+	takipDolgu.Size = UDim2.fromScale(0, 1)
+	takipDolgu.BackgroundColor3 = DOLUM_YESIL
+	takipDolgu.BorderSizePixel = 0
+	takipDolgu.Parent = takipOluk
+	UI.corner(takipDolgu, 13)
+
+	local takipBarYazi = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = takipOluk,
+	})
+	takipBarYazi.ZIndex = 3
+
+	local takipListe = makeScroll(takipPanel, UDim2.fromOffset(14, 124), UDim2.new(1, -28, 1, -138))
+	local takipPencere = BrainrotOnizleme.pencere(takipListe, takipPanel)
+
+	local function takipKalan(): number
+		if not takipIs or takipIs.bitti then
+			return 0
+		end
+		return math.max(0, takipBitis - os.clock())
+	end
+
+	local function takipOran(): number
+		if not takipIs then
+			return 0
+		end
+		if takipIs.bitti then
+			return 1
+		end
+		local toplam = math.max(1, tonumber(takipIs.toplam) or 1)
+		return math.clamp(1 - takipKalan() / toplam, 0, 1)
+	end
+
+	-- Liste yalnizca durum degisince yeniden kurulur
+	local function takipListeCiz()
+		takipPencere.temizle()
+		clearRows(takipListe)
+
+		if not takipIs then
+			UI.text({
+				text = "Take your unidentified brainrots to the Detective. You can follow the progress here.",
+				size = UI.Sizes.small,
+				color = UI.Colors.textDim,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -10, 0, 44),
+				parent = takipListe,
+				wrapped = true,
+			})
+			return
+		end
+
+		if not takipIs.bitti then
+			UI.text({
+				text = `The Detective is identifying {takipIs.adet or 0} brainrot(s). Results will show up here.`,
+				size = UI.Sizes.small,
+				color = UI.Colors.textDim,
+				align = Enum.TextXAlignment.Center,
+				frameSize = UDim2.new(1, -10, 0, 44),
+				parent = takipListe,
+				wrapped = true,
+			})
+			return
+		end
+
+		local sonuclar = if type(takipIs.sonuclar) == "table" then takipIs.sonuclar else {}
+		table.sort(sonuclar, function(a, b)
+			return (tonumber(a.income) or 0) > (tonumber(b.income) or 0)
+		end)
+		for sira, sonuc in sonuclar do
+			brainrotRow(takipListe, {
+				uid = sonuc.uid,
+				name = sonuc.name,
+				rarity = sonuc.rarity,
+				condition = sonuc.condition,
+				mutation = sonuc.mutation,
+				revealed = true,
+			}, sira, takipPencere)
+		end
+	end
+
+	local function takipYaziCiz()
+		local oran = takipOran()
+		takipDolgu.Size = UDim2.fromScale(oran, 1)
+
+		if not takipIs then
+			takipDurum.Text = "No brainrots at the Detective."
+			takipDurum.TextColor3 = UI.Colors.textDim
+			takipBarYazi.Text = ""
+		elseif takipIs.bitti then
+			takipDurum.Text = `Done! Go to the Detective to collect {takipIs.adet or 0} brainrot(s).`
+			takipDurum.TextColor3 = DOLUM_YESIL
+			takipBarYazi.Text = "READY"
+		else
+			local t = math.ceil(takipKalan())
+			takipDurum.Text = `Identifying {takipIs.adet or 0} brainrot(s)...`
+			takipDurum.TextColor3 = TAKIP_SARI
+			takipBarYazi.Text = string.format("%d:%02d left", t // 60, t % 60)
+		end
+	end
+
+	function ekMenu.detektifAc()
+		takipPanel.Visible = not takipPanel.Visible
+		if takipPanel.Visible then
+			takipListeCiz()
+			takipYaziCiz()
+			DetectiveTakip:FireServer()
+		end
+	end
+
+	------------------------------------------------------------------
+	-- BUTON: dolum + parlama
+	------------------------------------------------------------------
+	local takipButon = solSutun:FindFirstChild("Detective")
+	local takipYuz = takipButon and takipButon:FindFirstChild("Yuz")
+	local butonDolum: Frame? = nil
+	local butonKontur: UIStroke? = nil
+	if takipYuz and takipYuz:IsA("Frame") then
+		local dolum = Instance.new("Frame")
+		dolum.Name = "Dolum"
+		dolum.AnchorPoint = Vector2.new(0, 1)
+		dolum.Position = UDim2.fromScale(0, 1)
+		dolum.Size = UDim2.fromScale(1, 0)
+		dolum.BackgroundColor3 = DOLUM_YESIL
+		dolum.BorderSizePixel = 0
+		-- Parlama bandinin (3) altinda, ikonun (5) altinda
+		dolum.ZIndex = 2
+		dolum.Parent = takipYuz
+		butonDolum = dolum
+	end
+	if takipButon then
+		butonKontur = takipButon:FindFirstChildOfClass("UIStroke")
+	end
+
+	local function butonCiz()
+		local dolum = butonDolum
+		if dolum then
+			dolum.Visible = takipIs ~= nil
+			dolum.Size = UDim2.fromScale(1, takipOran())
+		end
+
+		local kontur = butonKontur
+		if kontur then
+			if takipIs and takipIs.bitti then
+				-- Is bitti: altin kontur nabiz atar
+				local nabiz = (math.sin(os.clock() * 5) + 1) / 2
+				kontur.Color = Color3.fromRGB(255, 215, 40):Lerp(Color3.new(1, 1, 1), nabiz * 0.6)
+				kontur.Thickness = 2 + nabiz * 2.5
+			else
+				kontur.Color = Color3.fromRGB(0, 0, 0)
+				kontur.Thickness = 2
+			end
+		end
+	end
+
+	DetectiveDurumOlayi.OnClientEvent:Connect(function(ozet)
+		local oncekiBitti = takipIs ~= nil and takipIs.bitti == true
+		takipIs = if type(ozet) == "table" then ozet else nil
+		takipBitis = os.clock() + (if takipIs then tonumber(takipIs.kalan) or 0 else 0)
+
+		local simdiBitti = takipIs ~= nil and takipIs.bitti == true
+		if takipPanel.Visible then
+			takipListeCiz()
+			takipYaziCiz()
+		elseif simdiBitti ~= oncekiBitti then
+			takipListeCiz()
+		end
+		butonCiz()
+	end)
+
+	-- Dolum ve nabiz her karede, yazilar yarim saniyede bir
+	local sonYazi = 0
+	game:GetService("RunService").RenderStepped:Connect(function()
+		if not takipIs then
+			return
+		end
+		butonCiz()
+		local simdi = os.clock()
+		if takipPanel.Visible and simdi - sonYazi > 0.5 then
+			sonYazi = simdi
+			takipYaziCiz()
+		end
+	end)
+
+	takipListeCiz()
+	takipYaziCiz()
+	butonCiz()
+	DetectiveTakip:FireServer()
 end

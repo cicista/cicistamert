@@ -6,7 +6,7 @@
 
 	KULLANIM
 	  Seviye.xpVer(player, Seviye.XP.ore)
-	  Seviye.xpVer(player, Seviye.XP.beam)
+	  Seviye.xpVer(player, Seviye.rarityXp("Epic"))
 	  Seviye.carpan(player)   -- kazi sansina carpilan kalici level bonusu
 
 	XP yalnizca sunucuda verilir; istemci sadece gosterir (SeviyeDurum,
@@ -39,6 +39,7 @@ local Seviye = {}
 
 -- Diger scriptler ayarlara ayrica require yazmadan ulassin
 Seviye.XP = SeviyeAyar.XP
+Seviye.rarityXp = SeviyeAyar.rarityXp
 
 ------------------------------------------------------------------
 -- BAS USTU YAZISI  ("Lv. 12", altinda daha kucuk "Speed 57")
@@ -176,9 +177,10 @@ function Seviye.xpVer(player: Player, amount: number)
 			rotCoins = coin,
 			luck = SeviyeAyar.sansYuzdesi(data.level),
 		})
+		local coinYazi = if coin > 0 then `+{coin} Rot Coin, ` else ""
 		Bildirim:FireClient(
 			player,
-			`LEVEL UP! Level {data.level}  (+{coin} Rot Coin, +{SeviyeAyar.sansYuzdesi(data.level)}% Luck)`,
+			`LEVEL UP! Level {data.level}  ({coinYazi}+{SeviyeAyar.sansYuzdesi(data.level)}% Luck)`,
 			Color3.fromRGB(255, 215, 40)
 		)
 	end

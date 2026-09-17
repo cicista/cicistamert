@@ -197,6 +197,13 @@ end
 	listede gorunen her sey gercekten konabilir.
 ]]
 -- Fuse havuzunun adasi: kazi yapilan ya da kaptandan acilan en ileri ada
+-- Basarili fuse'u butun oyunculara duyurulan kademeler
+local DUYURU_KADEMELERI: { [string]: boolean } = {
+	Gizli = true, -- Secret
+	Infernal = true,
+	Abyssal = true,
+}
+
 local function fuseAdasi(player: Player): string
 	local ulasilan = PlayerData.reachedIsland(player)
 	local data = PlayerData.get(player)
@@ -510,6 +517,21 @@ local function completeFuse(player: Player)
 		kazanilan.name = info.name
 		kazanilan.revealed = true
 		GorevTakip.ilerlet(player, "collect", 1, nextRarity)
+
+		--[[
+			DUYURU: Secret, Infernal ve Abyssal fuse'lari butun sunucuya
+			yazilir. Gosteri bittikten sonra: oyuncunun kendi surprizi bozulmasin.
+		]]
+		if DUYURU_KADEMELERI[nextRarity] then
+			local ad = info.name
+			local kademe = nextRarity
+			task.delay(Fuse.mergeTime(), function()
+				Bildirim:FireAllClients(
+					`{player.DisplayName} fused a {Rarity.displayName(kademe)} {ad}!`,
+					Rarity.color(kademe)
+				)
+			end)
+		end
 	end
 
 	-- Gorev panosu: makinede bir birlestirme yapildi (tutsa da tutmasa da)

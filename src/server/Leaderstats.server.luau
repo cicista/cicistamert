@@ -23,6 +23,8 @@ local Net = require(Shared:WaitForChild("Net"))
 local Assets = require(Shared:WaitForChild("Assets"))
 local Icons = require(Shared:WaitForChild("Icons"))
 
+local Hiz = require(Shared:WaitForChild("Hiz"))
+
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 
@@ -63,16 +65,25 @@ local function setupStats(player: Player)
 	rot.Value = data.rot
 	rot.Parent = stats
 
-	local brainrot = Instance.new("IntValue")
-	brainrot.Name = "Brainrot"
-	brainrot.Value = #data.inventory
-	brainrot.Parent = stats
-
 	-- Rot ilk sutun kalir (liste Rot'a gore siralanir)
 	local level = Instance.new("IntValue")
 	level.Name = "Level"
 	level.Value = data.level
 	level.Parent = stats
+
+	--[[
+		Speed: rebirth'ler dahil TOPLAM hiz seviyesi. Rebirth hizi Speed 1'e
+		dondursede burada sifirlanmaz: her rebirth 100 sayilir.
+		Ornek: 2 rebirth + Speed 50  ->  250
+	]]
+	local function toplamHiz(d: any): number
+		return (d.speedRebirth or 0) * Hiz.Max + (d.speedLevel or 0) + 1
+	end
+
+	local speed = Instance.new("IntValue")
+	speed.Name = "Speed"
+	speed.Value = toplamHiz(data)
+	speed.Parent = stats
 
 	stats.Parent = player
 
@@ -82,8 +93,8 @@ local function setupStats(player: Player)
 			local current = PlayerData.get(player)
 			if current then
 				rot.Value = current.rot
-				brainrot.Value = #current.inventory
 				level.Value = current.level
+				speed.Value = toplamHiz(current)
 			end
 			task.wait(0.5)
 		end

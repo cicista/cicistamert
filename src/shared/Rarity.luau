@@ -163,7 +163,8 @@ Rarity.Info = {
 		displayName = "Divine",
 		order = 6,
 		color = Color3.fromRGB(255, 190, 60),
-		beamChance = 0.2,
+		-- 1.5 kati (0.2 idi)
+		beamChance = 0.3,
 		luckExp = 1.2,
 		incomeMin = 500_000,
 		incomeMax = 2_500_000,
@@ -188,7 +189,8 @@ Rarity.Info = {
 		displayName = "Cosmic",
 		order = 7,
 		color = Color3.fromRGB(138, 43, 226),
-		beamChance = 0.0168,
+		-- 3 kati (0.0168 idi)
+		beamChance = 0.0504,
 		luckExp = 1.4,
 		incomeMin = 5_000_000,
 		incomeMax = 25_000_000,
@@ -208,7 +210,8 @@ Rarity.Info = {
 		displayName = "Secret",
 		order = 8,
 		color = Color3.fromRGB(24, 24, 28),
-		beamChance = 0.0044,
+		-- 3 kati (0.0044 idi)
+		beamChance = 0.0132,
 		luckExp = 1.6,
 		incomeMin = 50_000_000,
 		incomeMax = 250_000_000,
@@ -222,7 +225,8 @@ Rarity.Info = {
 		displayName = "Infernal",
 		order = 9,
 		color = Color3.fromRGB(255, 102, 20),
-		beamChance = 0.00103,
+		-- 3 kati (0.00103 idi)
+		beamChance = 0.00309,
 		luckExp = 1.8,
 		incomeMin = 500_000_000,
 		incomeMax = 2_500_000_000,
@@ -236,7 +240,8 @@ Rarity.Info = {
 		displayName = "Abyssal",
 		order = 10,
 		color = Color3.fromRGB(12, 62, 140),
-		beamChance = 0.0000494,
+		-- 3 kati (0.0000494 idi)
+		beamChance = 0.0001482,
 		luckExp = 2.0,
 		incomeMin = 5_000_000_000,
 		incomeMax = 25_000_000_000,

@@ -177,7 +177,11 @@ local function levelUpOynat(data: any)
 	local sira = gosteriSirasi
 
 	levelUpAlt.Text = `Level {data.level}`
-	levelUpOdul.Text = `+{data.rotCoins or 0} Rot Coin   +{data.luck or 0}% Luck`
+	-- Rot Coin her levelde gelmiyor (bkz. Shared > Seviye); gelmediyse yazilmaz
+	local coin = tonumber(data.rotCoins) or 0
+	levelUpOdul.Text = if coin > 0
+		then `+{coin} Rot Coin   +{data.luck or 0}% Luck`
+		else `+{data.luck or 0}% Luck`
 
 	for _, yazi in { levelUpYazi, levelUpAlt, levelUpOdul } do
 		yazi.TextTransparency = 0

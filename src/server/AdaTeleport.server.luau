@@ -294,7 +294,7 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 		if data.rot < island.price then
 			Bildirim:FireClient(
 				player,
-				`Not enough Rot! {island.name} costs {Format.short(island.price)} Rot.`,
+				`Not enough Rot! You need {Format.short(island.price - data.rot)} more Rot for {island.name}.`,
 				Color3.fromRGB(255, 90, 90)
 			)
 			return

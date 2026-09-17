@@ -23,6 +23,7 @@ local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Rods = require(Shared:WaitForChild("Rods"))
+local Shovels = require(Shared:WaitForChild("Shovels"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -35,10 +36,17 @@ local RodAl = Net.event("RodAl")
 ------------------------------------------------------------------
 -- PANEL VERISI
 ------------------------------------------------------------------
+-- Oyuncunun en iyi kureginin seviyesi (ilk oltanin sarti icin)
+local function kurekSeviyesi(data: any): number
+	local info = data and Shovels.Info[data.shovelMax]
+	return if info then info.level else 1
+end
+
 local function payload(player: Player)
 	local data = PlayerData.get(player)
 	local kusanilan = data and data.rod or nil
 	local enYuksek = Rods.level(data and data.rodMax or nil)
+	local kurekYetmiyor = kurekSeviyesi(data) < Rods.RequiredShovelLevel
 
 	local liste = {}
 	for _, id in Rods.Order do
@@ -56,6 +64,10 @@ local function payload(player: Player)
 			equipped = kusanilan == info.id,
 			-- Sirayla alinir: yalnizca bir sonraki kademe satin alinabilir
 			next = enYuksek + 1 == info.level,
+			-- Ilk olta: Lv20 kurek sarti karsilanmadiysa yazilir
+			needs = if info.level == 1 and enYuksek < 1 and kurekYetmiyor
+				then `Requires a Lv{Rods.RequiredShovelLevel} shovel`
+				else nil,
 		})
 	end
 
@@ -110,10 +122,19 @@ RodAl.OnServerEvent:Connect(function(player, id)
 		return
 	end
 
+	if info.level == 1 and kurekSeviyesi(data) < Rods.RequiredShovelLevel then
+		Bildirim:FireClient(
+			player,
+			`You need a Lv{Rods.RequiredShovelLevel} shovel before your first rod! (yours: Lv{kurekSeviyesi(data)})`,
+			Color3.fromRGB(255, 90, 90)
+		)
+		return
+	end
+
 	if data.rot < info.price then
 		Bildirim:FireClient(
 			player,
-			`Not enough Rot! {info.displayName} costs {Format.short(info.price)} Rot.`,
+			`Not enough Rot! You need {Format.short(info.price - data.rot)} more Rot for {info.displayName}.`,
 			Color3.fromRGB(255, 90, 90)
 		)
 		return

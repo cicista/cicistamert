@@ -76,7 +76,8 @@ screen.Parent = playerGui
 ------------------------------------------------------------------
 -- RENKLER VE OLCULER
 ------------------------------------------------------------------
-local W, H = 640, 548
+-- Boy, alttaki iki ayrinti kutusu icin 548'den buyutuldu
+local W, H = 640, 690
 local BASLIK_BOY = 58
 
 local MOR_A = Color3.fromRGB(150, 60, 230)
@@ -167,6 +168,42 @@ local sansYazi = UI.text({
 	parent = pencere,
 	name = "Sans",
 })
+
+--[[
+	AYRINTI KUTULARI  (sonuc kutusunun altinda, FUSE dugmesinin ustunde)
+
+	Sol: basari sansi -- hepsi ayni brainrot %40, degilse %25, su anki sans.
+	Sag: mutasyon aktarimi -- konan her mutasyonlu brainrot kendi
+	mutasyonunu %10 ihtimalle kazanilan brainrota gecirir.
+]]
+local function bilgiKutusu(x: number, ad: string): TextLabel
+	local kutuB = Instance.new("Frame")
+	kutuB.Name = ad
+	kutuB.Position = UDim2.fromOffset(x, 478)
+	kutuB.Size = UDim2.fromOffset(292, 118)
+	kutuB.BackgroundColor3 = Color3.fromRGB(58, 56, 84)
+	kutuB.BorderSizePixel = 0
+	kutuB.Parent = pencere
+	UI.corner(kutuB, 10)
+	UI.stroke(kutuB, Color3.fromRGB(0, 0, 0), 2)
+
+	local yazi = UI.text({
+		text = "",
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		frameSize = UDim2.new(1, -16, 1, -12),
+		position = UDim2.fromOffset(8, 6),
+		parent = kutuB,
+		wrapped = true,
+	})
+	yazi.RichText = true
+	yazi.TextYAlignment = Enum.TextYAlignment.Top
+	return yazi
+end
+
+local sansBilgi = bilgiKutusu(20, "SansBilgisi")
+local mutasyonBilgi = bilgiKutusu(328, "MutasyonBilgisi")
 
 -- Slot resimleri ve sonuc kutusu siluetinin 3B onizlemeleri
 local onizleme = BrainrotOnizleme.seritPencere(pencere)
@@ -622,12 +659,40 @@ local function pencereCiz()
 	local sayi = #slots
 
 	yonerge.Text = `Bring <font color="#FF4040">{gerekli}</font> Brainrots of the same tier`
+	local sanslar = durum.chances or Fuse.Chances
 	if durum.chance then
 		sansYazi.Text = `{durum.chance}% chance for a better Brainrot!`
 	else
-		local sanslar = durum.chances or Fuse.Chances
-		sansYazi.Text = `{sanslar.mixed}-{sanslar.same3}% chance  -  same names = higher!`
+		sansYazi.Text = `{sanslar.mixed}-{sanslar.same3}% chance  -  same brainrots = higher!`
 	end
+
+	-- Ayrintilar
+	local simdiki = if durum.chance then `<font color="#46D250">{durum.chance}%</font>` else "-"
+	sansBilgi.Text = table.concat({
+		`<font color="#FFD629">SUCCESS CHANCE</font>`,
+		`3 same brainrots: <b>{sanslar.same3}%</b>`,
+		`Different brainrots: <b>{sanslar.mixed}%</b>`,
+		`Now: <b>{simdiki}</b>`,
+		`If it fails, the brainrots are lost.`,
+	}, "\n")
+
+	local mutSatirlari = {
+		`<font color="#FFD629">MUTATION TRANSFER</font>`,
+		`Each mutated brainrot: <b>{Fuse.Mutation.chancePerItem}%</b> to pass its mutation on`,
+	}
+	local mutasyonlar = durum.mutations or {}
+	if #mutasyonlar == 0 then
+		table.insert(mutSatirlari, "No mutated brainrots in the machine")
+	else
+		for _, m in mutasyonlar do
+			local info = Mutations.get(m.id)
+			table.insert(
+				mutSatirlari,
+				`<font color="#{info.color:ToHex()}">{info.displayName}</font> x{m.count}: <b>{m.chance}%</b>`
+			)
+		end
+	end
+	mutasyonBilgi.Text = table.concat(mutSatirlari, "\n")
 
 	onizleme.temizle()
 	for i = 1, gerekli do
@@ -681,7 +746,12 @@ local function pencereCiz()
 	end
 
 	if secim.Visible then
-		secimCiz()
+		-- Makine doldu: secim listesi kapanir, FUSE sayfasi gorunur
+		if makineDolu then
+			secim.Visible = false
+		else
+			secimCiz()
+		end
 	end
 end
 

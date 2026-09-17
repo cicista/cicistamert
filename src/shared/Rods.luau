@@ -55,6 +55,14 @@ export type RodInfo = {
 	color: Color3,
 }
 
+--[[
+	ILK OLTANIN SARTI
+
+	Deniz adalarin devami: ilk olta ancak son ada kuregi (Lv20) alininca
+	satin alinabilir. Sonraki oltalarda sart yok (zaten sirayla alinir).
+]]
+Rods.RequiredShovelLevel = 20
+
 Rods.Order = { "Bamboo", "Steel", "Carbon", "Abyssal", "Leviathan" } :: { RodId }
 
 Rods.Info = {

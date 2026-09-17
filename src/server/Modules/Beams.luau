@@ -883,6 +883,94 @@ end
 -- SUZME OLUSTURMA
 ------------------------------------------------------------------
 
+--[[
+	ZEMIN ARAMA  --  YUKARIDAN ASAGI
+
+	Eskiden isin oyuncunun 6 stud ustunden 12 stud asagi atiliyordu:
+	  - egimli adalarda (Volcano) zemin bu araligin disinda kaliyordu,
+	    suzme hic dogmuyordu
+	  - bir yapinin (ev, kaya, cati) ICINDEKI kum da bulunabiliyordu
+
+	Artik isin 80 stud yukaridan atiliyor. Ilk carpilan KATI ve GORUNUR
+	parca kum degilse (cati, kaya, duvar) o nokta reddedilir. Carpismasiz
+	ya da gorunmez parcalar (efekt kutulari, bolge isaretleri) atlanip isin
+	yeniden atilir. Kum bulunursa ustunde bos yer olup olmadigina da
+	bakilir: suzme bir duvarin icine dogmasin.
+]]
+local ARAMA_YUKSEKLIK = 80
+local ARAMA_DERINLIK = 200
+local ATLANABILIR_EN_FAZLA = 8
+
+local function kumBul(x: number, ustY: number, z: number, haric: { Instance }): Sand.GroundInfo?
+	local liste = table.clone(haric)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+
+	for _ = 1, ATLANABILIR_EN_FAZLA do
+		params.FilterDescendantsInstances = liste
+		local sonuc = Workspace:Raycast(Vector3.new(x, ustY, z), Vector3.new(0, -ARAMA_DERINLIK, 0), params)
+		if not sonuc then
+			return nil
+		end
+
+		local parca = sonuc.Instance
+		if parca:IsA("BasePart") and (not parca.CanCollide or parca.Transparency >= 0.95) then
+			-- Carpismasiz / gorunmez: yok say, tekrar at
+			table.insert(liste, parca)
+			continue
+		end
+
+		-- Kum hemen ustten gelen isinla dogrulanir (Sand kurallari ayni kalsin)
+		local zemin = Sand.probe(sonuc.Position + Vector3.new(0, 0.5, 0), liste)
+		if zemin and zemin.isSand then
+			return zemin
+		end
+		return nil
+	end
+
+	return nil
+end
+
+--[[
+	Kumun ustunde suzme kadar bos yer var mi (duvar, kaya, dag icinde degil).
+
+	Sinir kutusuyla degil GERCEK sekille bakilir (GetPartsInPart): buyuk
+	bir dag mesh'inin kutusu butun adayi kapliyor, kutuyla bakilsa hicbir
+	yerde suzme dogmazdi. Yukaridan atilan isin bir parcanin ICINDEN
+	baslarsa o parcayi goremez; bu kontrol o durumu da yakalar.
+]]
+local sorguParcasi = Instance.new("Part")
+sorguParcasi.Name = "SuzmeYerSorgusu"
+sorguParcasi.Size = Vector3.new(2.5, 4.5, 2.5)
+sorguParcasi.Anchored = true
+sorguParcasi.CanCollide = false
+sorguParcasi.CanQuery = false
+sorguParcasi.CanTouch = false
+sorguParcasi.Transparency = 1
+
+local function ustuBosMu(konum: Vector3, zeminParcasi: BasePart?, haric: { Instance }): boolean
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Exclude
+	local liste = table.clone(haric)
+	if zeminParcasi then
+		table.insert(liste, zeminParcasi)
+	end
+	overlap.FilterDescendantsInstances = liste
+
+	-- Zeminin 0.4 stud ustunden baslar: kumun kendisine degmesin
+	sorguParcasi.CFrame = CFrame.new(konum + Vector3.new(0, 0.4 + sorguParcasi.Size.Y / 2, 0))
+	if not sorguParcasi.Parent then
+		sorguParcasi.Parent = Workspace
+	end
+
+	for _, parca in Workspace:GetPartsInPart(sorguParcasi, overlap) do
+		if parca ~= sorguParcasi and parca.CanCollide and parca.Transparency < 0.95 then
+			return false
+		end
+	end
+	return true
+end
+
 -- Oyuncunun etrafinda kumlu bir nokta arar.
 local function findSandSpot(player: Player): (Vector3?, string?)
 	local char = player.Character
@@ -892,14 +980,23 @@ local function findSandSpot(player: Player): (Vector3?, string?)
 	end
 
 	local origin = root.Position
+	local haric: { Instance } = { folder }
+	-- Butun oyuncularin karakterleri disarida (baska oyuncunun ustune dogmasin diye degil,
+	-- isin onlara takilmasin diye)
+	for _, diger in Players:GetPlayers() do
+		if diger.Character then
+			table.insert(haric, diger.Character)
+		end
+	end
 
-	for _ = 1, 12 do
+	for _ = 1, 16 do
 		local angle = math.random() * math.pi * 2
 		local distance = math.random() * (G.maxSpawnDistance - G.minSpawnDistance) + G.minSpawnDistance
-		local candidate = origin + Vector3.new(math.cos(angle) * distance, 6, math.sin(angle) * distance)
+		local x = origin.X + math.cos(angle) * distance
+		local z = origin.Z + math.sin(angle) * distance
 
-		local ground = Sand.probe(candidate, { char, folder })
-		if ground and ground.isSand then
+		local ground = kumBul(x, origin.Y + ARAMA_YUKSEKLIK, z, haric)
+		if ground and ground.isSand and ustuBosMu(ground.position, ground.part, haric) then
 			--[[
 				Ada kimligi da doner. Parca adi ya da ust ada modeli
 				(MainIsland, CandyIsland...) uzerinden cozuluyor; taninmayan

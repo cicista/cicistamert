@@ -942,7 +942,7 @@ FlyboardAl.OnServerEvent:Connect(function(player, id)
 	if data.rot < info.price then
 		Bildirim:FireClient(
 			player,
-			`Not enough Rot! {info.displayName} costs {Format.short(info.price)} Rot.`,
+			`Not enough Rot! You need {Format.short(info.price - data.rot)} more Rot for {info.displayName}.`,
 			Color3.fromRGB(255, 90, 90)
 		)
 		return

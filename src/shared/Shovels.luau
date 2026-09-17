@@ -68,7 +68,7 @@ Shovels.Order = { "Wooden", "Iron", "Golden", "Diamond", "Celestial" } :: { Shov
 Shovels.Info = {
 	Wooden = {
 		id = "Wooden",
-		displayName = "Wooden Shovel",
+		displayName = "Basic Shovel",
 		level = 1,
 		rarity = "Common",
 		price = 0,
@@ -82,7 +82,7 @@ Shovels.Info = {
 
 	Iron = {
 		id = "Iron",
-		displayName = "Iron Shovel",
+		displayName = "Emerald Shovel",
 		level = 2,
 		rarity = "Rare",
 		price = 1_000_000,
@@ -96,7 +96,7 @@ Shovels.Info = {
 
 	Golden = {
 		id = "Golden",
-		displayName = "Golden Shovel",
+		displayName = "Diamond Shovel",
 		level = 3,
 		rarity = "Epic",
 		price = 2_000_000,
@@ -110,7 +110,7 @@ Shovels.Info = {
 
 	Diamond = {
 		id = "Diamond",
-		displayName = "Diamond Shovel",
+		displayName = "Amethyst Shovel",
 		level = 4,
 		rarity = "Legendary",
 		price = 15_000_000,

@@ -41,17 +41,15 @@ Fuse.Required = 3
 --[[
 	BASARI SANSI (yuzde)  --  makineye konan brainrotlarin ISIMLERINE gore
 
-	Ayni kademeden FARKLI isimli brainrotlar da konabilir; ayni isim ne kadar
-	coksa sans o kadar yuksek:
-	    3'u ayni isim   -> same3
-	    2'si ayni isim  -> same2
-	    hepsi farkli    -> mixed
+	Ayni kademeden FARKLI isimli brainrotlar da konabilir:
+	    3'u de ayni brainrot  -> same3  (%40)
+	    diger her durum       -> %25
 	Tutmazsa hicbir sey cikmaz.
 ]]
 Fuse.Chances = {
-	same3 = 25,
-	same2 = 20,
-	mixed = 15,
+	same3 = 40,
+	same2 = 25,
+	mixed = 25,
 }
 
 -- En yuksek sans (arayuzde "en fazla" olarak yazar)

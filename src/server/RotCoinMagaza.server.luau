@@ -85,7 +85,7 @@ local function satinAl(player: Player, id: string)
 	end
 
 	if data.rotCoins < urun.price then
-		Bildirim:FireClient(player, `Not enough Rot Coin! {urun.name} costs {urun.price} Rot Coin.`, KIRMIZI)
+		Bildirim:FireClient(player, `Not enough Rot Coin! You need {urun.price - data.rotCoins} more Rot Coin for {urun.name}.`, KIRMIZI)
 		return
 	end
 

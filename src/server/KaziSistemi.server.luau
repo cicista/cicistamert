@@ -42,6 +42,8 @@ local Ores = require(Shared:WaitForChild("Ores"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
+-- Maden kirilinca renkli taslar + FuseExplosion sesi
+local MadenPatlamasi = require(Modules:WaitForChild("MadenPatlamasi"))
 local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
 local Seviye = require(Modules:WaitForChild("Seviye"))
 
@@ -318,6 +320,7 @@ local function finishDig(player: Player, won: boolean)
 	-- Maden: hesaba eklenir, brainrot akisina girmez
 	if maden then
 		local adet = PlayerData.addOre(player, maden.id, Ores.MineAmount)
+		MadenPatlamasi.oynat(beam.position, maden.color)
 		Seviye.xpVer(player, Seviye.XP.ore)
 		Envanter.push(player)
 		Bildirim:FireClient(player, `+{Ores.MineAmount} {maden.displayName} (x{adet})`, maden.color)
@@ -359,8 +362,8 @@ local function finishDig(player: Player, won: boolean)
 	-- Gorev panosu: hem "kaz" hem de kademe gorevleri bu kazidan sayar
 	GorevTakip.ilerlet(player, "dig", 1)
 	GorevTakip.ilerlet(player, "collect", 1, beam.kind)
-	-- Level: kademeden bagimsiz; denizde balik 100, kumda isik 30 XP
-	Seviye.xpVer(player, if session.sea then Seviye.XP.fish else Seviye.XP.beam)
+	-- Level: kazilan / tutulan brainrotun kademesine gore XP (Shared > Seviye)
+	Seviye.xpVer(player, Seviye.rarityXp(beam.kind))
 end
 
 local function startDig(player: Player, beamId: string)
@@ -683,7 +686,12 @@ task.spawn(function()
 				local sonGirdap = lastWhirl[player] or 0
 
 				if simdi - sonGirdap >= GIRDAP_ARASI and rng:NextNumber() * 100 <= rod.spawnChance then
-					if Beams.trySpawnSea(player, rod.luck * (G.seaLuck or 1), rng, rod.maxWhirls, rod.scanRadius) then
+					local denizSansi = rod.luck
+						* (G.seaLuck or 1)
+						* PlayerData.luckBonus(player)
+						* Arkadaslar.carpan(player)
+						* Seviye.carpan(player)
+					if Beams.trySpawnSea(player, denizSansi, rng, rod.maxWhirls, rod.scanRadius) then
 						lastWhirl[player] = simdi
 						girdapBildirildi = true
 					elseif not girdapBildirildi then

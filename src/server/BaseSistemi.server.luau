@@ -1297,7 +1297,7 @@ function buyUpgrade(player: Player, baseIndex: number)
 	if data.rot < up.cost then
 		Bildirim:FireClient(
 			player,
-			`Not enough Rot! {up.label} costs {Format.short(up.cost)} Rot.`,
+			`Not enough Rot! You need {Format.short(up.cost - data.rot)} more Rot for {up.label}.`,
 			Color3.fromRGB(255, 120, 120)
 		)
 		return
