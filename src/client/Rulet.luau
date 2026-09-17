@@ -20,21 +20,24 @@
 	    Rulet.run(reel, {
 	        rarityCells = { "Epic", "Mythic", ... },   -- 1. asama
 	        rarityWinner = 36,
-	        rarityTime = 3,
+	        rarityTime = 4,
 	        pause = 0.7,
 	        cells = { { text = "Tralalero", color = ... }, ... },  -- 2. asama
 	        winner = 24,
-	        time = 2.6,
+	        time = 4,
 	        onRarity = function(rarityId) ... end,   -- 1. cark durunca
 	        onFinish = function() ... end,           -- 2. cark durunca
 	    })
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 -- 2. asama bolmelerinde brainrot resmi (bkz. BrainrotOnizleme.seritPencere)
@@ -359,6 +362,54 @@ end
 	buna bakip arayuzunu kilitlemeli: yoksa baslamayan bir cevirim yuzunden
 	buton sonsuza dek kapali kalabilir.
 ]]
+--[[
+	CARK SESI (bkz. LuckyBlock.Wheel.spinSounds)
+	Bulunan ses saklanir; bulunamazsa her cevirmede yeniden aranir
+	(ses Studio'ya sonradan konmus olabilir).
+]]
+local carkSesi: Sound? = nil
+
+local function carkSesiBul(): Sound?
+	if carkSesi and carkSesi.Parent then
+		return carkSesi
+	end
+
+	local sesler: { Sound } = {}
+	for _, kok in { SoundService :: Instance, Workspace, ReplicatedStorage } do
+		for _, d in kok:GetDescendants() do
+			if d:IsA("Sound") then
+				table.insert(sesler, d)
+			end
+		end
+	end
+
+	for _, ad in LuckyBlock.Wheel.spinSounds or {} do
+		for _, s in sesler do
+			if s.Name == ad then
+				carkSesi = s
+				return s
+			end
+		end
+	end
+
+	for _, s in sesler do
+		local kucuk = string.lower(s.Name)
+		if string.find(kucuk, "spin", 1, true) or string.find(kucuk, "wheel", 1, true) then
+			carkSesi = s
+			return s
+		end
+	end
+
+	return nil
+end
+
+local function carkSesiCal()
+	local ses = carkSesiBul()
+	if ses then
+		SoundService:PlayLocalSound(ses)
+	end
+end
+
 function Rulet.run(reel: Reel, plan: Plan): boolean
 	if reel.busy then
 		return false
@@ -383,6 +434,7 @@ function Rulet.run(reel: Reel, plan: Plan): boolean
 			local winnerIndex = plan.rarityWinner or 1
 
 			buildStrip(reel, rarityCells, RARITY_CELL_WIDTH, false)
+			carkSesiCal()
 			slideTo(reel, winnerIndex, plan.rarityTime or 2.5)
 
 			local winnerRarity = stageOne[winnerIndex] or "Common"
@@ -402,6 +454,7 @@ function Rulet.run(reel: Reel, plan: Plan): boolean
 		-- 2. ASAMA: o kademeden cikabilecekler, adiyla
 		------------------------------------------------------------------
 		buildStrip(reel, plan.cells, NAME_CELL_WIDTH, true)
+		carkSesiCal()
 		slideTo(reel, plan.winner, plan.time)
 
 		local winnerCell = plan.cells[plan.winner]

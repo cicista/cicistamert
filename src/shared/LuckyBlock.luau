@@ -151,18 +151,31 @@ LuckyBlock.Event = {
 	istemci de ayni degerlerle ciziyor -- ikisi ayrisamasin diye tek kaynak.
 ]]
 LuckyBlock.Wheel = {
+	--[[
+		IKI CARK DA 4 SANIYE: carkin donme sesi 4 saniyelik, her cark sesle
+		birlikte baslayip sesle birlikte durur. Sure uzadigi icin seritler de
+		uzatildi: cark daha cok bolme gecirerek doner, yavaslama uzun surer.
+	]]
 	-- 1. asama: kademe carki
-	cellCount = 44,
-	winnerIndex = 36,
-	spinTime = 3,
+	cellCount = 58,
+	winnerIndex = 48,
+	spinTime = 4,
 
 	-- Iki cark arasindaki bekleme (kademe rengi okunacak kadar)
 	pause = 0.7,
 
 	-- 2. asama: o kademedeki brainrotlarin carki
-	revealCellCount = 30,
-	revealWinnerIndex = 24,
-	revealSpinTime = 2.6,
+	revealCellCount = 40,
+	revealWinnerIndex = 33,
+	revealSpinTime = 4,
+
+	--[[
+		CARK SESI: her cark donmeye baslarken bir kez calar (yalnizca acan
+		oyuncu duyar). Studio'daki Sound'un adi; SoundService, Workspace ya
+		da ReplicatedStorage icinde aranir. Listedeki ilk bulunan calar;
+		hicbiri yoksa adinda "spin" ya da "wheel" gecen ilk Sound denenir.
+	]]
+	spinSounds = { "WheelSpin", "SpinWheel", "SpinSound", "Wheel Spin", "Spin" },
 
 	-- Cark durduktan sonra odulun cantaya girmesi icin beklenen ek sure
 	settle = 0.4,
