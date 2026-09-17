@@ -1531,7 +1531,8 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		task.wait(math.min(girisSuresi, 6))
 	end
 	Net.event("LuckyBlockBasladi"):FireServer()
-	YerelSes.cal("LuckyBlockOpening")
+	-- Iki carkta da calar: 2. cark baslarken ayni ses bastan
+	local acilisSesi = YerelSes.cal("LuckyBlockOpening")
 
 	--[[
 		2. ASAMA bolmeleri.
@@ -1576,6 +1577,12 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		cells = cells,
 		winner = tonumber(data.winnerIndex) or W.revealWinnerIndex,
 		time = tonumber(data.spinTime) or W.revealSpinTime,
+
+		-- 2. cark baslarken acilis sesi bastan
+		onSecondSpin = function()
+			YerelSes.durdur(acilisSesi)
+			acilisSesi = YerelSes.cal("LuckyBlockOpening")
+		end,
 
 		-- 1. cark durdu: yalnizca kademe aciklanir, brainrot hala gizli
 		onRarity = function(rarityId: string)

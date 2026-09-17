@@ -91,6 +91,8 @@ export type Plan = {
 	time: number,
 	-- Yalnizca iki asamali cevirimde cagrilir
 	onRarity: ((rarityId: string) -> ())?,
+	-- 2. cark donmeye baslarken (ses tekrarlamak icin)
+	onSecondSpin: (() -> ())?,
 	onFinish: (() -> ())?,
 }
 
@@ -455,6 +457,9 @@ function Rulet.run(reel: Reel, plan: Plan): boolean
 		------------------------------------------------------------------
 		buildStrip(reel, plan.cells, NAME_CELL_WIDTH, true)
 		carkSesiCal()
+		if plan.onSecondSpin then
+			plan.onSecondSpin()
+		end
 		slideTo(reel, plan.winner, plan.time)
 
 		local winnerCell = plan.cells[plan.winner]
