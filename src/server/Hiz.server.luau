@@ -153,6 +153,35 @@ hizYenile.Event:Connect(function(player: Player)
 	Seviye.etiketGuncelle(player)
 end)
 
+--[[
+	ESITLEME DONGUSU
+
+	Hiz seviyesi ya da rebirth sayisi bu script disinda degisirse (admin
+	paneli, ileride baska bir odul) oyuncunun niteligi, yurume hizi, izi ve
+	bas ustu yazisi yarim saniye icinde kendiliginden guncellenir. Admin
+	paneli bu scripti bulamasa bile hiz yine uygulanir.
+]]
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for _, player in Players:GetPlayers() do
+			local data = PlayerData.get(player)
+			if not data then
+				continue
+			end
+			local seviyeFarkli = player:GetAttribute(Hiz.Nitelik) ~= data.speedLevel
+			local rebirthFarkli = player:GetAttribute(Hiz.RebirthNitelik) ~= data.speedRebirth
+			if seviyeFarkli or rebirthFarkli then
+				hiziUygula(player)
+				if rebirthFarkli then
+					iziKur(player)
+				end
+				Seviye.etiketGuncelle(player)
+			end
+		end
+	end
+end)
+
 HizRebirth.OnServerEvent:Connect(function(player)
 	local data = PlayerData.get(player)
 	if not data then

@@ -864,6 +864,30 @@ function commands.togglePass(player, data, arg)
 	return `{info.ad}: {if yeni then "VERILDI" else "ALINDI"} (bu oturum)`
 end
 
+--[[
+	Hiz scriptine "yeniden uygula" der. Script bulunamazsa sorun degil:
+	Hiz scripti yarim saniyede bir veriyi kontrol edip kendisi uygular.
+	Yurume hizi burada da hemen yazilir ki fark aninda hissedilsin.
+]]
+local function hiziYenile(player: Player)
+	local data = PlayerData.get(player)
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if data and humanoid then
+		local hiz = Hiz.hiz(data.speedLevel)
+		if humanoid:GetAttribute("FlyboardTabanHiz") ~= nil then
+			humanoid:SetAttribute("FlyboardTabanHiz", hiz)
+		else
+			humanoid.WalkSpeed = hiz
+		end
+	end
+
+	local betik = script.Parent:FindFirstChild("Hiz")
+	local olay = betik and betik:FindFirstChild("HizYenile")
+	if olay and olay:IsA("BindableEvent") then
+		olay:Fire(player)
+	end
+end
+
 -- Hiz rebirth sayisini ayarla (0..Hiz.MaxRebirth)
 function commands.setRebirth(player, data, arg)
 	local adet = tonumber(arg)
@@ -871,11 +895,7 @@ function commands.setRebirth(player, data, arg)
 		return nil
 	end
 	data.speedRebirth = math.clamp(math.floor(adet), 0, Hiz.MaxRebirth)
-	local yenile = script.Parent:FindFirstChild("Hiz")
-	local olay = yenile and yenile:FindFirstChild("HizYenile")
-	if olay and olay:IsA("BindableEvent") then
-		olay:Fire(player)
-	end
+	hiziYenile(player)
 	return `Hiz rebirth: {data.speedRebirth}`
 end
 
@@ -886,11 +906,7 @@ function commands.setSpeed(player, data, arg)
 		return nil
 	end
 	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
-	local yenile = script.Parent:FindFirstChild("Hiz")
-	local olay = yenile and yenile:FindFirstChild("HizYenile")
-	if olay and olay:IsA("BindableEvent") then
-		olay:Fire(player)
-	end
+	hiziYenile(player)
 	return `Hiz: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
 end
 
