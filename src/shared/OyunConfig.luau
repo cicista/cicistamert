@@ -282,7 +282,8 @@ Config.Dig = {
 	]]
 	seaMoveDistance = 30,
 	-- Minigame icin sunucunun taniyacagi en uzun sure (guvenlik siniri)
-	minigameTimeout = 60,
+	-- Balik tutma 5 kat uzadigi icin 60'tan 120'ye cikti
+	minigameTimeout = 120,
 
 	--[[
 		OTOMATIK EKIPMAN

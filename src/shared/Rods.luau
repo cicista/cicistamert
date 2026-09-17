@@ -79,8 +79,9 @@ Rods.Info = {
 		digSpeed = 1,
 		barSize = 0.22,
 		barAcceleration = 1.15,
-		progressRate = 0.42,
-		drainRate = 0.16,
+		-- 5 kat uzun (eski 0.42 / 0.16): oran ayni, zorluk degismez
+		progressRate = 0.084,
+		drainRate = 0.032,
 		color = Color3.fromRGB(190, 160, 95),
 	},
 
@@ -97,8 +98,9 @@ Rods.Info = {
 		digSpeed = 0.85,
 		barSize = 0.26,
 		barAcceleration = 1.25,
-		progressRate = 0.48,
-		drainRate = 0.14,
+		-- 5 kat uzun (eski 0.48 / 0.14): oran ayni, zorluk degismez
+		progressRate = 0.096,
+		drainRate = 0.028,
 		color = Color3.fromRGB(150, 170, 195),
 	},
 
@@ -115,8 +117,9 @@ Rods.Info = {
 		digSpeed = 0.7,
 		barSize = 0.30,
 		barAcceleration = 1.40,
-		progressRate = 0.55,
-		drainRate = 0.12,
+		-- 5 kat uzun (eski 0.55 / 0.12): oran ayni, zorluk degismez
+		progressRate = 0.11,
+		drainRate = 0.024,
 		color = Color3.fromRGB(120, 90, 220),
 	},
 
@@ -133,8 +136,9 @@ Rods.Info = {
 		digSpeed = 0.55,
 		barSize = 0.34,
 		barAcceleration = 1.55,
-		progressRate = 0.62,
-		drainRate = 0.10,
+		-- 5 kat uzun (eski 0.62 / 0.1): oran ayni, zorluk degismez
+		progressRate = 0.124,
+		drainRate = 0.02,
 		color = Color3.fromRGB(255, 225, 130),
 	},
 
@@ -151,8 +155,9 @@ Rods.Info = {
 		digSpeed = 0.4,
 		barSize = 0.40,
 		barAcceleration = 1.75,
-		progressRate = 0.72,
-		drainRate = 0.08,
+		-- 5 kat uzun (eski 0.72 / 0.08): oran ayni, zorluk degismez
+		progressRate = 0.144,
+		drainRate = 0.016,
 		color = Color3.fromRGB(255, 70, 90),
 	},
 } :: { [RodId]: RodInfo }
