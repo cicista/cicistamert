@@ -194,20 +194,34 @@ end
 
 local function gizliSahne(model: Model, kamera: Camera): boolean
 	--[[
-		Modelin TAMAMI sahnede kalir (parca silmek kupu da kaybettiriyordu).
-		Kadraj gorunen parcalarin kutusuna gore: kutu kamera eksenlerine
-		izdusurulur, hem ortalanir hem kareye sigar.
+		HiddenPart modeli (Output raporundan):
+		  Cube          3x3x3 "?" blogu -- elde gorunen asil model (keepPart)
+		  Cube.014/.003 ~6 stud yanda koyu kutu + ince plaka
+		  FakeRootPart, VfxInstance  gorunmez
+		Kamera YALNIZCA "?" blogunu kadrajlar ve -Z yonunden (onden) bakar;
+		"?" o yonden okunuyor. Yandaki parcalar silinmez, gorunmez yapilir
+		(silmek bir onceki denemede kupu da kaybettirmisti).
 	]]
-	local enAz, enCok = gorunenSinir(model)
+	local kup = gizliKupu(model)
+	local enAz, enCok = nil, nil
+	if kup then
+		enAz, enCok = gorunenSinir(model, Assets.HiddenBrainrot.keepAttribute)
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") and not d:GetAttribute(Assets.HiddenBrainrot.keepAttribute) then
+				d.LocalTransparencyModifier = 1
+				d.Transparency = 1
+			end
+		end
+	end
+	if not enAz or not enCok then
+		enAz, enCok = gorunenSinir(model)
+	end
 	if not enAz or not enCok then
 		return false
 	end
 	local merkez = (enAz + enCok) / 2
 
-	-- Bakis yonu: kupun "?" yazili yuzu biliniyorsa o, yoksa brainrotlarla ayni on yon
-	local kup = gizliKupu(model)
-	local yazili = kup ~= nil and (kup:FindFirstChildWhichIsA("Decal") ~= nil or kup:FindFirstChildWhichIsA("SurfaceGui") ~= nil)
-	local normal = if kup and yazili then yaziliYuz(kup) else BAKIS_YONU
+	local normal = BAKIS_YONU
 
 	local yukari = Vector3.yAxis
 	if math.abs(normal.Y) > 0.9 then
