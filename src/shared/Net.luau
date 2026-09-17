@@ -47,6 +47,7 @@ Net.Events = {
 	"EtkinlikSayaci",   -- server -> client: sonraki blok yagmuruna kalan saniye
 	"LuckyBlockAc",     -- client -> server: bir blok acmak istiyorum
 	"LuckyBlockSonuc",  -- server -> client: cark verisi + kazanan
+	"LuckyBlockBasladi", -- client -> server: acilis sesi bitti, cark donmeye basladi
 
 	-- Gunluk odul
 	"OdulDurum",        -- server -> client: takvimde hangi gun, alinabilir mi, kalan sure

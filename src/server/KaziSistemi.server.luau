@@ -22,6 +22,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Assets = require(Shared:WaitForChild("Assets"))
 local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
@@ -306,6 +307,14 @@ local function finishDig(player: Player, won: boolean)
 
 	if won and not session.sea and not maden then
 		Patlama.oynat(player, beam.kind)
+	elseif won and session.sea then
+		-- Denizde: Catch sesi + kademe renginde FuseVFX (FuseExplosion calmaz)
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			Assets.playSoundAt({ "Catch" }, root)
+		end
+		Patlama.oynat(player, beam.kind, false)
 	end
 
 	if not won then

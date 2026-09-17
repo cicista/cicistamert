@@ -41,11 +41,28 @@ local GorevTakip = require(script.Parent:WaitForChild("GorevTakip"))
 local Seviye = require(script.Parent:WaitForChild("Seviye"))
 local Tools = require(script.Parent:WaitForChild("Tools"))
 local Sand = require(script.Parent:WaitForChild("Sand"))
+local Patlama = require(script.Parent:WaitForChild("Patlama"))
 
 local Bildirim = Net.event("Bildirim")
 local EtkinlikSayaci = Net.event("EtkinlikSayaci")
 local LuckyBlockAc = Net.event("LuckyBlockAc")
 local LuckyBlockSonuc = Net.event("LuckyBlockSonuc")
+local LuckyBlockBasladi = Net.event("LuckyBlockBasladi")
+
+--[[
+	ACILIS SESI BEKLEMESI
+
+	Istemci once "LuckyBlock" sesini calar, bitince LuckyBlockBasladi yollar
+	ve cark o an donmeye baslar. Odul ve patlama o andan itibaren sayilir.
+	Istemci hic yollamazsa (ses yok, baglanti koptu) en fazla bu kadar
+	beklenir.
+]]
+local GIRIS_EN_FAZLA = 8
+local carkBasladi: { [Player]: boolean } = {}
+
+LuckyBlockBasladi.OnServerEvent:Connect(function(player)
+	carkBasladi[player] = true
+end)
 
 local LuckyBlockOdul = {}
 
@@ -668,6 +685,7 @@ local function openBlock(player: Player, tierId: string)
 
 	local W = LuckyBlock.Wheel
 
+	carkBasladi[player] = nil
 	LuckyBlockSonuc:FireClient(player, {
 		-- 1. asama: kademe carki ("?" bolmeler, sadece renk)
 		rarityCells = buildRarityCells(tierId, W.winnerIndex, rarityId, ada),
@@ -692,7 +710,22 @@ local function openBlock(player: Player, tierId: string)
 		istemci de ayni degerlerle ciziyor, boylece bildirim cark durmadan
 		once cikip sonucu ele veremez.
 	]]
-	task.delay(LuckyBlock.totalSpinTime(), function()
+	task.spawn(function()
+		-- Istemcinin acilis sesi bitene kadar bekle
+		local basla = os.clock()
+		while not carkBasladi[player] and player.Parent and os.clock() - basla < GIRIS_EN_FAZLA do
+			task.wait(0.05)
+		end
+		carkBasladi[player] = nil
+
+		-- Ikinci cark durdugu an: FuseExplosion + kademe renginde FuseVFX
+		task.delay(W.spinTime + W.pause + W.revealSpinTime, function()
+			if player.Parent then
+				Patlama.oynat(player, rarityId)
+			end
+		end)
+
+		task.wait(LuckyBlock.totalSpinTime())
 		opening[player] = false
 		if not player.Parent then
 			return

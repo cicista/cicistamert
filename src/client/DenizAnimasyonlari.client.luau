@@ -44,6 +44,49 @@ local Net = require(Shared:WaitForChild("Net"))
 local MinigameBasla = Net.event("MinigameBasla")
 local KaziBitti = Net.event("KaziBitti")
 
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	OLTA SESLERI  (Workspace'teki Sound'lar)
+
+	    Rodcast  -- savurma animasyonunun 0.5. saniyesinde bir kez
+	    Fishing  -- Rodcast bitince baslar, minigame bitene kadar dongude
+	    Catch    -- minigame KAZANILINCA (sunucu calar, FuseVFX ile birlikte)
+
+	Her atisin bir numarasi var: sesin sonu geldiginde atis degismisse ya da
+	minigame zaten bittiyse Fishing baslamaz.
+]]
+local RODCAST_GECIKME = 0.5
+local atisNo = 0
+local atisBitti = true
+local balikSesi: Sound? = nil
+
+local function balikSesiniDurdur()
+	YerelSes.durdur(balikSesi)
+	balikSesi = nil
+end
+
+local function oltaSesleri()
+	atisNo += 1
+	local no = atisNo
+	atisBitti = false
+	balikSesiniDurdur()
+
+	task.delay(RODCAST_GECIKME, function()
+		if no ~= atisNo or atisBitti then
+			return
+		end
+		local ses, sure = YerelSes.cal("Rodcast")
+		if ses and sure > 0 then
+			task.wait(sure)
+		end
+		if no ~= atisNo or atisBitti then
+			return
+		end
+		balikSesi = YerelSes.cal("Fishing", true)
+	end)
+end
+
 type Izler = {
 	idle: AnimationTrack?,
 	cast: AnimationTrack?,
@@ -137,6 +180,9 @@ local function karakterGeldi(character: Model)
 			if denizde() and izler.cast then
 				izler.cast:Play(0.1)
 			end
+			if denizde() then
+				oltaSesleri()
+			end
 		end)
 	)
 
@@ -173,6 +219,17 @@ end)
 KaziBitti.OnClientEvent:Connect(function()
 	if izler.fishing and izler.fishing.IsPlaying then
 		izler.fishing:Stop(0.2)
+	end
+	-- Minigame bitti: Fishing susar (kazanildiysa sunucu Catch'i calar)
+	atisBitti = true
+	balikSesiniDurdur()
+end)
+
+-- Tahtadan inince de susar
+player:GetAttributeChangedSignal("Flyboarding"):Connect(function()
+	if not denizde() then
+		atisBitti = true
+		balikSesiniDurdur()
 	end
 end)
 

@@ -1525,6 +1525,21 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	end
 
 	--[[
+		ACILIS SESLERI
+		  1. "LuckyBlock" calar; bitene kadar rulet ekrani GELMEZ
+		  2. sunucuya "basladi" denir (odul zamanlamasi buradan sayilir)
+		  3. "LuckyBlockOpening" calar ve rulet doner
+		  4. brainrot gelince sunucu FuseExplosion + FuseVFX oynatir
+	]]
+	local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+	local _, girisSuresi = YerelSes.cal("LuckyBlock")
+	if girisSuresi > 0 then
+		task.wait(math.min(girisSuresi, 6))
+	end
+	Net.event("LuckyBlockBasladi"):FireServer()
+	YerelSes.cal("LuckyBlockOpening")
+
+	--[[
 		2. ASAMA bolmeleri.
 		Kademe o asamada zaten belli oldugu icin serit tek renktir; oyuncu
 		"bu kirmizidan hangisi cikacak" diye bekler.
