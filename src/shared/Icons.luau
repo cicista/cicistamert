@@ -93,11 +93,14 @@ local Map: { [string]: IconEntry } = {
 	},
 	shop = { "Menus", "Shop" },
 	--[[
-		Sagdaki Teleporter butonu: paketteki portal (Menus > Teleport).
-		Yedek emoji YOK -- paket gec yuklenince once emoji gorunuyordu ve
-		kumanda gibi duruyordu.
+		Sagdaki Teleporter butonu. Once Assets > Icons icindeki "Teleporter"
+		(adi birebir), yoksa paketteki Menus > Teleport. Buton bir kez ikon
+		aldiktan sonra bir daha degismez (bkz. Menuler > menuButonu).
 	]]
-	teleporter = { "Menus", "Teleport" },
+	teleporter = {
+		{ "AssetsTam", "Teleporter" },
+		{ "Menus", "Teleport" },
+	},
 	--[[
 		Sagdaki base'e don butonu ve soldaki hiz butonu. Pakette adi kesin
 		bilinmiyor; sirayla denenir. Hicbiri yoksa butonda emoji gorunur.
@@ -122,7 +125,11 @@ local Map: { [string]: IconEntry } = {
 	},
 	settings = { "Menus", "Settings" },
 	seller = { "Cash", "CashBag" },
-	detective = { "Misc", "Question" },
+	-- Soldaki Detective butonu: Assets > Icons > "detective"
+	detective = {
+		{ "AssetsTam", "Detective" },
+		{ "Misc", "Question" },
+	},
 	luckyBlock = { "RNG", "? Box" },
 	upgrade = { "Arrows", "GoldUpgrade" },
 	lockClosed = { "Misc", "LockClosed" },
@@ -214,6 +221,16 @@ function Icons.get(category: string, name: string): string?
 	-- Oyunun kendi ikonlari paketten degil Assets > Icons klasorunden okunur
 	if category == ASSET_KATEGORI then
 		return Icons.asset(name)
+	end
+
+	--[[
+		"AssetsTam": Assets > Icons icinde ADI BIREBIR (buyuk/kucuk harf ve
+		bosluk farki gozetmeden) tutan ikon. "Assets" kategorisi ada yakin
+		isimleri de kabul ediyor ("Teleport" -> "TeleportKumanda"); menu
+		butonlarinda yanlis ikon gelmesin diye bu kullaniliyor.
+	]]
+	if category == "AssetsTam" then
+		return Icons.assetTam(name)
 	end
 
 	--[[
@@ -404,6 +421,23 @@ end
 	Bulunan onbellege alinir; BULUNAMAYAN alinmaz (Icons.get ile ayni
 	sebep: istemci acilirken klasor henuz replike edilmemis olabilir).
 ]]
+function Icons.assetTam(ad: string): string?
+	local klasor = assetKlasoru()
+	if not klasor then
+		return nil
+	end
+	local aranan = sadelestir(ad)
+	for _, node in klasor:GetDescendants() do
+		if sadelestir(node.Name) == aranan then
+			local bulunan = goruntu(node)
+			if bulunan then
+				return bulunan
+			end
+		end
+	end
+	return nil
+end
+
 function Icons.asset(ad: string): string?
 	local cached = assetCache[ad]
 	if cached then

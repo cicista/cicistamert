@@ -2045,6 +2045,20 @@ local function menuButonu(
 		if ok then
 			ikon.Visible = true
 			yedek.Visible = false
+
+			--[[
+				IKON SABITLENIR: bir kez gelen resim bir daha degismez.
+				Teleporter butonunda iki farkli resim arasinda gidip gelme
+				vardi; artik ilk gelen resim kalir.
+			]]
+			local sabit = ikon.Image
+			if sabit ~= "" then
+				ikon:GetPropertyChangedSignal("Image"):Connect(function()
+					if ikon.Image ~= sabit then
+						ikon.Image = sabit
+					end
+				end)
+			end
 		end
 	end)
 
