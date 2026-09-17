@@ -1332,7 +1332,7 @@ local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order
 		frameSize = UDim2.new(1, -160, 0, 20),
 		position = UDim2.fromOffset(14, 32),
 		parent = row,
-	})
+	}).RichText = true
 
 	if detail2 then
 		local satir3 = UI.text({
@@ -1414,16 +1414,10 @@ MagazaAc.OnClientEvent:Connect(function(payload)
 
 	for _, entry in payload.shovels or {} do
 		order += 1
-		shopRow(
-			magazaKurekler,
-			entry,
-			`Bar {math.floor(entry.barSize * 100)}%  -  Dig speed {string.format("%.2f", 1 / entry.digSpeed)}x`,
-			order,
-			function()
-				KurekAl:FireServer(entry.id)
-			end,
-			kazabilir(entry.id)
-		)
+		-- Ikinci satir yalnizca kazabildigi en yuksek kademe; GPS satirlariyla ayni boy
+		shopRow(magazaKurekler, entry, kazabilir(entry.id) or "", order, function()
+			KurekAl:FireServer(entry.id)
+		end)
 	end
 
 	------------------------------------------------------------------
@@ -4721,6 +4715,8 @@ do
 		-- Parlama bandinin (3) altinda, ikonun (5) altinda
 		dolum.ZIndex = 2
 		dolum.Parent = takipYuz
+		-- Butonun yuzuyle ayni kose yuvarlakligi
+		UI.corner(dolum, 10)
 		butonDolum = dolum
 	end
 	if takipButon then

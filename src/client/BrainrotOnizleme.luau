@@ -69,8 +69,14 @@ local ISIK = Color3.fromRGB(255, 255, 255)
 local ISIK_YONU = Vector3.new(-0.4, -0.7, -0.6)
 -- Kutunun kosegeninin bu kati kadar geri cekilir; 1'in alti kadraji doldurur
 local CERCEVE = 0.9
--- Kimligi acilmamis kup daha yakindan (karede daha buyuk)
-local GIZLI_CERCEVE = 0.62
+--[[
+	Kimligi acilmamis kup: kamera kupun on yuzunu kareye SIGDIRACAK kadar
+	geri cekilir (goruş acisi 70 derece). Eskiden kosegenin bir katiyla
+	yaklasiliyordu; kup cok yakin kaliyor, yalnizca "?" isaretinin ortasi
+	gorunuyordu. GIZLI_PAY buyudukce kup kucuk gorunur.
+]]
+local GORUS_YARI_ACI = math.rad(35)
+local GIZLI_PAY = 1.3
 
 ------------------------------------------------------------------
 
@@ -178,10 +184,19 @@ local function kur(k: Kaynak): ViewportFrame?
 		karenin kosesinde kucucuk kaliyordu.
 	]]
 	local enAz, enCok = nil, nil
-	local cerceve = CERCEVE
-	if not (k.revealed and k.name) then
+	local gizli = not (k.revealed and k.name)
+	if gizli then
 		enAz, enCok = gorunenSinir(model, Assets.HiddenBrainrot.keepAttribute)
-		cerceve = GIZLI_CERCEVE
+	end
+	if gizli and enAz and enCok then
+		local merkez = (enAz + enCok) / 2
+		local boyut = enCok - enAz
+		-- On yuz (X-Y) kareye sigsin; derinligin yarisi kadar da geri
+		local yari = math.max(boyut.X, boyut.Y) / 2
+		local mesafe = yari / math.tan(GORUS_YARI_ACI) * GIZLI_PAY + boyut.Z / 2
+		kamera.FieldOfView = 70
+		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * mesafe, merkez)
+		return vp
 	end
 	if not enAz or not enCok then
 		enAz, enCok = gorunenSinir(model)
@@ -189,7 +204,7 @@ local function kur(k: Kaynak): ViewportFrame?
 	if enAz and enCok then
 		local merkez = (enAz + enCok) / 2
 		local kosegen = (enCok - enAz).Magnitude
-		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * kosegen * cerceve, merkez)
+		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * kosegen * CERCEVE, merkez)
 	else
 		local ok, cf, boyut = pcall(function()
 			return model:GetBoundingBox()
