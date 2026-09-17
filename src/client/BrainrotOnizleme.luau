@@ -141,6 +141,108 @@ local function gorunenSinir(model: Model, yalnizcaNitelik: string?): (Vector3?, 
 	return enAz, enCok
 end
 
+--[[
+	KIMLIGI ACILMAMIS BRAINROT: "?" KUPU, TAM KARSIDAN
+
+	Sahnede YALNIZCA kup (keepPart) kalir; modelin diger parcalari
+	silinir ya da gizlenir. Kamera kupun "?" yazan yuzune (uzerindeki
+	Decal / Texture / SurfaceGui'nin yuzu) dik ve tam karsidan bakar,
+	kup kareye sigacak kadar geri cekilir. Yazili yuz bulunamazsa kupun
+	on yuzu (Front) kullanilir.
+]]
+local gizliRaporVerildi = false
+
+local function gizliKupu(model: Model): BasePart?
+	local adaylar: { BasePart } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d:GetAttribute(Assets.HiddenBrainrot.keepAttribute) then
+			table.insert(adaylar, d)
+		end
+	end
+	if #adaylar == 0 then
+		return nil
+	end
+
+	-- Uzerinde yazi/resim olan parca oncelikli, sonra en buyugu
+	local secilen: BasePart? = nil
+	local enBuyuk = -1
+	for _, p in adaylar do
+		local yazili = p:FindFirstChildWhichIsA("Decal") or p:FindFirstChildWhichIsA("SurfaceGui")
+		local hacim = p.Size.X * p.Size.Y * p.Size.Z + (if yazili then 1e9 else 0)
+		if hacim > enBuyuk then
+			enBuyuk = hacim
+			secilen = p
+		end
+	end
+	return secilen
+end
+
+local function yaziliYuz(kup: BasePart): Vector3
+	for _, d in kup:GetChildren() do
+		local yuz: Enum.NormalId? = nil
+		if d:IsA("Decal") then -- Texture da Decal sayilir
+			yuz = d.Face
+		elseif d:IsA("SurfaceGui") then
+			yuz = d.Face
+		end
+		if yuz then
+			return kup.CFrame:VectorToWorldSpace(Vector3.FromNormalId(yuz))
+		end
+	end
+	return kup.CFrame:VectorToWorldSpace(Vector3.FromNormalId(Enum.NormalId.Front))
+end
+
+local function gizliSahne(model: Model, kamera: Camera): boolean
+	local kup = gizliKupu(model)
+	if not kup then
+		return false
+	end
+
+	-- Kupten baska parca kalmasin (kupun ata parcasi silinemez, gorunmez olur)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d ~= kup and not d:IsDescendantOf(kup) then
+			if kup:IsDescendantOf(d) then
+				d.Transparency = 1
+				for _, c in d:GetChildren() do
+					if (c:IsA("Decal") or c:IsA("SurfaceGui")) then
+						c:Destroy()
+					end
+				end
+			else
+				d:Destroy()
+			end
+		end
+	end
+
+	local normal = yaziliYuz(kup)
+	local boy = kup.Size
+	local yari = math.max(boy.X, boy.Y, boy.Z) / 2
+	local mesafe = yari / math.tan(GORUS_YARI_ACI) * GIZLI_PAY + yari
+	-- Kameranin "yukarisi": yazili yuz yere/goge bakiyorsa kupun kendi ekseninden secilir
+	local yukari = Vector3.yAxis
+	if math.abs(normal.Y) > 0.9 then
+		yukari = kup.CFrame.LookVector
+		if math.abs(yukari:Dot(normal)) > 0.9 then
+			yukari = kup.CFrame.UpVector
+		end
+	end
+	kamera.FieldOfView = 70
+	kamera.CFrame = CFrame.lookAt(kup.Position + normal * mesafe, kup.Position, yukari)
+
+	if not gizliRaporVerildi then
+		gizliRaporVerildi = true
+		local yazilar = {}
+		for _, c in kup:GetChildren() do
+			table.insert(yazilar, `{c.ClassName}:{c.Name}`)
+		end
+		print(
+			`[BrainrotOnizleme] Gizli kup: {kup:GetFullName()} ({kup.ClassName}) boy {boy}, `
+				.. `yazili yuz yonu {normal}, cocuklar: {table.concat(yazilar, ", ")}`
+		)
+	end
+	return true
+end
+
 local function kur(k: Kaynak): ViewportFrame?
 	-- Iki fonksiyon da zaten Clone() donduruyor; bir daha klonlanmiyor
 	local model = if k.revealed and k.name
@@ -183,24 +285,11 @@ local function kur(k: Kaynak): ViewportFrame?
 		daha yakindan cekilir. Modelin geri kalani kadraja katilinca kup
 		karenin kosesinde kucucuk kaliyordu.
 	]]
-	local enAz, enCok = nil, nil
 	local gizli = not (k.revealed and k.name)
-	if gizli then
-		enAz, enCok = gorunenSinir(model, Assets.HiddenBrainrot.keepAttribute)
-	end
-	if gizli and enAz and enCok then
-		local merkez = (enAz + enCok) / 2
-		local boyut = enCok - enAz
-		-- On yuz (X-Y) kareye sigsin; derinligin yarisi kadar da geri
-		local yari = math.max(boyut.X, boyut.Y) / 2
-		local mesafe = yari / math.tan(GORUS_YARI_ACI) * GIZLI_PAY + boyut.Z / 2
-		kamera.FieldOfView = 70
-		kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * mesafe, merkez)
+	if gizli and gizliSahne(model, kamera) then
 		return vp
 	end
-	if not enAz or not enCok then
-		enAz, enCok = gorunenSinir(model)
-	end
+	local enAz, enCok = gorunenSinir(model)
 	if enAz and enCok then
 		local merkez = (enAz + enCok) / 2
 		local kosegen = (enCok - enAz).Magnitude
