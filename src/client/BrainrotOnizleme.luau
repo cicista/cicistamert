@@ -193,52 +193,60 @@ local function yaziliYuz(kup: BasePart): Vector3
 end
 
 local function gizliSahne(model: Model, kamera: Camera): boolean
-	local kup = gizliKupu(model)
-	if not kup then
+	--[[
+		Modelin TAMAMI sahnede kalir (parca silmek kupu da kaybettiriyordu).
+		Kadraj gorunen parcalarin kutusuna gore: kutu kamera eksenlerine
+		izdusurulur, hem ortalanir hem kareye sigar.
+	]]
+	local enAz, enCok = gorunenSinir(model)
+	if not enAz or not enCok then
 		return false
 	end
+	local merkez = (enAz + enCok) / 2
 
-	-- Kupten baska parca kalmasin (kupun ata parcasi silinemez, gorunmez olur)
-	for _, d in model:GetDescendants() do
-		if d:IsA("BasePart") and d ~= kup and not d:IsDescendantOf(kup) then
-			if kup:IsDescendantOf(d) then
-				d.Transparency = 1
-				for _, c in d:GetChildren() do
-					if (c:IsA("Decal") or c:IsA("SurfaceGui")) then
-						c:Destroy()
-					end
-				end
-			else
-				d:Destroy()
+	-- Bakis yonu: kupun "?" yazili yuzu biliniyorsa o, yoksa brainrotlarla ayni on yon
+	local kup = gizliKupu(model)
+	local yazili = kup ~= nil and (kup:FindFirstChildWhichIsA("Decal") ~= nil or kup:FindFirstChildWhichIsA("SurfaceGui") ~= nil)
+	local normal = if kup and yazili then yaziliYuz(kup) else BAKIS_YONU
+
+	local yukari = Vector3.yAxis
+	if math.abs(normal.Y) > 0.9 then
+		yukari = Vector3.new(0, 0, -1)
+	end
+	local sag = normal:Cross(yukari).Unit
+	local ust = sag:Cross(normal).Unit
+
+	local yariEn, yariBoy, derinlik = 0, 0, 0
+	for _, x in { enAz.X, enCok.X } do
+		for _, y in { enAz.Y, enCok.Y } do
+			for _, z in { enAz.Z, enCok.Z } do
+				local fark = Vector3.new(x, y, z) - merkez
+				yariEn = math.max(yariEn, math.abs(fark:Dot(sag)))
+				yariBoy = math.max(yariBoy, math.abs(fark:Dot(ust)))
+				derinlik = math.max(derinlik, fark:Dot(normal))
 			end
 		end
 	end
 
-	local normal = yaziliYuz(kup)
-	local boy = kup.Size
-	local yari = math.max(boy.X, boy.Y, boy.Z) / 2
-	local mesafe = yari / math.tan(GORUS_YARI_ACI) * GIZLI_PAY + yari
-	-- Kameranin "yukarisi": yazili yuz yere/goge bakiyorsa kupun kendi ekseninden secilir
-	local yukari = Vector3.yAxis
-	if math.abs(normal.Y) > 0.9 then
-		yukari = kup.CFrame.LookVector
-		if math.abs(yukari:Dot(normal)) > 0.9 then
-			yukari = kup.CFrame.UpVector
-		end
-	end
+	local mesafe = math.max(yariEn, yariBoy) / math.tan(GORUS_YARI_ACI) * GIZLI_PAY + derinlik
 	kamera.FieldOfView = 70
-	kamera.CFrame = CFrame.lookAt(kup.Position + normal * mesafe, kup.Position, yukari)
+	kamera.CFrame = CFrame.lookAt(merkez + normal * mesafe, merkez, ust)
 
 	if not gizliRaporVerildi then
 		gizliRaporVerildi = true
-		local yazilar = {}
-		for _, c in kup:GetChildren() do
-			table.insert(yazilar, `{c.ClassName}:{c.Name}`)
+		local satirlar = {}
+		for _, d in model:GetDescendants() do
+			if #satirlar >= 25 then
+				break
+			end
+			if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("SurfaceGui") then
+				local ek = if d:IsA("BasePart")
+					then ` boy={d.Size} konum={d.Position} saydam={d.Transparency} kup={d:GetAttribute(Assets.HiddenBrainrot.keepAttribute) == true}`
+					else ` yuz={(d :: any).Face}`
+				table.insert(satirlar, `  {d.ClassName} {d.Name}{ek}`)
+			end
 		end
-		print(
-			`[BrainrotOnizleme] Gizli kup: {kup:GetFullName()} ({kup.ClassName}) boy {boy}, `
-				.. `yazili yuz yonu {normal}, cocuklar: {table.concat(yazilar, ", ")}`
-		)
+		print(`[BrainrotOnizleme] Gizli model ({model.Name}) bakis {normal}, kutu {enCok - enAz}:\n{table.concat(satirlar, "\n")}`)
 	end
 	return true
 end
