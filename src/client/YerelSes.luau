@@ -32,14 +32,25 @@ function YerelSes.bul(ad: string): Sound?
 		return var
 	end
 
-	-- Ayni adli baska nesneler olabilir (LuckyBlock modelleri gibi): yalnizca Sound sayilir
+	-- Ayni adli baska nesneler olabilir (LuckyBlock modelleri gibi): yalnizca Sound sayilir.
+	-- Once birebir ad, yoksa buyuk/kucuk harf farki gozetmeden ("Rodcast" = "RodCast").
+	local kucuk = string.lower(ad)
+	local benzer: Sound? = nil
 	for _, kok in { Workspace :: Instance, SoundService, ReplicatedStorage } do
 		for _, d in kok:GetDescendants() do
-			if d:IsA("Sound") and d.Name == ad then
-				onbellek[ad] = d
-				return d
+			if d:IsA("Sound") then
+				if d.Name == ad then
+					onbellek[ad] = d
+					return d
+				elseif not benzer and string.lower(d.Name) == kucuk then
+					benzer = d
+				end
 			end
 		end
+	end
+	if benzer then
+		onbellek[ad] = benzer
+		return benzer
 	end
 
 	if not uyarilan[ad] then

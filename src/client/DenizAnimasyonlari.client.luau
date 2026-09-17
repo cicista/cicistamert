@@ -49,8 +49,8 @@ local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
 --[[
 	OLTA SESLERI  (Workspace'teki Sound'lar)
 
-	    Rodcast  -- savurma animasyonunun 0.5. saniyesinde bir kez
-	    Fishing  -- Rodcast bitince baslar, minigame bitene kadar dongude
+	    RodCast  -- savurma animasyonunun 0.5. saniyesinde bir kez
+	    Fishing  -- RodCast BITINCE baslar, minigame bitene kadar dongude
 	    Catch    -- minigame KAZANILINCA (sunucu calar, FuseVFX ile birlikte)
 
 	Her atisin bir numarasi var: sesin sonu geldiginde atis degismisse ya da
@@ -76,9 +76,16 @@ local function oltaSesleri()
 		if no ~= atisNo or atisBitti then
 			return
 		end
-		local ses, sure = YerelSes.cal("Rodcast")
-		if ses and sure > 0 then
+		local ses, sure = YerelSes.cal("RodCast")
+		if not ses then
+			-- RodCast yoksa Fishing de baslamaz (bkz. Output uyarisi)
+			return
+		end
+		-- Uzunluk bilinmiyorsa sesin bitmesi beklenir
+		if sure > 0 then
 			task.wait(sure)
+		elseif ses.Parent then
+			ses.Ended:Wait()
 		end
 		if no ~= atisNo or atisBitti then
 			return
