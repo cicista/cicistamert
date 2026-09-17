@@ -76,8 +76,13 @@ screen.Parent = playerGui
 ------------------------------------------------------------------
 -- RENKLER VE OLCULER
 ------------------------------------------------------------------
--- Boy, alttaki iki ayrinti kutusu icin 548'den buyutuldu
-local W, H = 640, 690
+--[[
+	ANA_W: makinenin kendisi (slotlar, borular, sonuc kutusu, FUSE dugmesi).
+	Pencere sagdan SAG_EN kadar genis: ayrinti kutulari orada durur.
+]]
+local ANA_W = 640
+local SAG_EN = 250
+local W, H = ANA_W + SAG_EN, 548
 local BASLIK_BOY = 58
 
 local MOR_A = Color3.fromRGB(150, 60, 230)
@@ -95,7 +100,7 @@ local SLOT_Y = 128
 local SLOT_X = { 30, 230, 430 }
 
 local KUTU_EN, KUTU_BOY = 172, 116
-local KUTU_X = (W - KUTU_EN) / 2
+local KUTU_X = (ANA_W - KUTU_EN) / 2
 local KUTU_Y = 330
 
 ------------------------------------------------------------------
@@ -150,7 +155,7 @@ local yonerge = UI.text({
 	font = UI.Fonts.bold,
 	color = Color3.new(1, 1, 1),
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 30),
+	frameSize = UDim2.fromOffset(ANA_W - 20, 30),
 	position = UDim2.fromOffset(10, BASLIK_BOY + 10),
 	parent = pencere,
 	name = "Yonerge",
@@ -163,24 +168,26 @@ local sansYazi = UI.text({
 	font = UI.Fonts.bold,
 	color = YESIL,
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 24),
+	frameSize = UDim2.fromOffset(ANA_W - 20, 24),
 	position = UDim2.fromOffset(10, BASLIK_BOY + 40),
 	parent = pencere,
 	name = "Sans",
 })
 
 --[[
-	AYRINTI KUTULARI  (sonuc kutusunun altinda, FUSE dugmesinin ustunde)
+	AYRINTI KUTULARI  (pencerenin sag seridinde, alt alta)
 
 	Sol: basari sansi -- hepsi ayni brainrot %40, degilse %25, su anki sans.
 	Sag: mutasyon aktarimi -- konan her mutasyonlu brainrot kendi
 	mutasyonunu %10 ihtimalle kazanilan brainrota gecirir.
 ]]
-local function bilgiKutusu(x: number, ad: string): TextLabel
+local BILGI_BOY = 208
+
+local function bilgiKutusu(y: number, ad: string): TextLabel
 	local kutuB = Instance.new("Frame")
 	kutuB.Name = ad
-	kutuB.Position = UDim2.fromOffset(x, 478)
-	kutuB.Size = UDim2.fromOffset(292, 118)
+	kutuB.Position = UDim2.fromOffset(ANA_W, y)
+	kutuB.Size = UDim2.fromOffset(SAG_EN - 20, BILGI_BOY)
 	kutuB.BackgroundColor3 = Color3.fromRGB(58, 56, 84)
 	kutuB.BorderSizePixel = 0
 	kutuB.Parent = pencere
@@ -202,8 +209,8 @@ local function bilgiKutusu(x: number, ad: string): TextLabel
 	return yazi
 end
 
-local sansBilgi = bilgiKutusu(20, "SansBilgisi")
-local mutasyonBilgi = bilgiKutusu(328, "MutasyonBilgisi")
+local sansBilgi = bilgiKutusu(BASLIK_BOY + 14, "SansBilgisi")
+local mutasyonBilgi = bilgiKutusu(BASLIK_BOY + 14 + BILGI_BOY + 14, "MutasyonBilgisi")
 
 -- Slot resimleri ve sonuc kutusu siluetinin 3B onizlemeleri
 local onizleme = BrainrotOnizleme.seritPencere(pencere)
@@ -312,7 +319,7 @@ local uyari = UI.text({
 	font = UI.Fonts.bold,
 	color = Color3.fromRGB(255, 120, 120),
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 18),
+	frameSize = UDim2.fromOffset(ANA_W - 20, 18),
 	position = UDim2.fromOffset(10, KUTU_Y + KUTU_BOY + 6),
 	parent = pencere,
 	name = "Uyari",
@@ -324,7 +331,7 @@ local uyari = UI.text({
 local fuseDugme = Instance.new("TextButton")
 fuseDugme.Name = "Fuse"
 fuseDugme.AnchorPoint = Vector2.new(0.5, 1)
-fuseDugme.Position = UDim2.new(0.5, 0, 1, -16)
+fuseDugme.Position = UDim2.new(0, ANA_W / 2, 1, -16)
 fuseDugme.Size = UDim2.fromOffset(300, 58)
 fuseDugme.BackgroundColor3 = YESIL
 fuseDugme.AutoButtonColor = false
