@@ -84,6 +84,8 @@ export type Kaynak = {
 	name: string?,
 	mutation: string?,
 	revealed: boolean,
+	-- Kimligi kapali olanin kademesi: Gold Ore bu renge boyanir
+	rarity: string?,
 }
 
 local havuz: { [string]: { ViewportFrame } } = {}
@@ -96,8 +98,8 @@ local function anahtarOf(k: Kaynak): string
 	if k.revealed and k.name then
 		return `{k.name}|{k.mutation or "Normal"}`
 	end
-	-- Kimligi kapali olanlarin hepsi ayni siyah model: tek anahtar
-	return "__gizli"
+	-- Kimligi kapali olanlar kademe renginde boyaniyor: kademe basina bir anahtar
+	return `__gizli|{k.rarity or ""}`
 end
 
 --[[
@@ -273,6 +275,11 @@ local function kur(k: Kaynak): ViewportFrame?
 
 	if not model then
 		return nil
+	end
+
+	-- Gold Ore elde tasinanla ayni kademe renginde
+	if not (k.revealed and k.name) then
+		Assets.tintHidden(model, k.rarity)
 	end
 
 	-- Onizlemede script/ses/parcacik calismasin: sahne sessiz ve sabit olsun

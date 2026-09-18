@@ -208,6 +208,10 @@ local function buildPanel(info: any)
 	section("HIZLI")
 	actionButton("Butun toollari ver (en ust seviye)", "giveAllTools", nil, UI.Colors.good)
 	actionButton(`Rot ver  (+{Format.short(info.rotGrant or 0)})`, "giveRot", nil, UI.Colors.gold)
+	-- Rot Coin (Rot Coin Shop parasi)
+	for _, miktar in { 10, 100, 1000 } do
+		actionButton(`Rot Coin ver  (+{miktar})`, "giveRotCoins", miktar, Color3.fromRGB(120, 226, 150))
+	end
 	actionButton(
 		`Blok yagmuru baslat  ({LuckyBlock.Event.count} blok)`,
 		"luckyEvent",

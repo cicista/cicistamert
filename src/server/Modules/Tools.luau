@@ -811,6 +811,114 @@ local function releaseHead(tool: Tool)
 end
 
 --[[
+	KIMLIGI BELIRLENMEMIS BRAINROTUN EFEKTLERI  --  degerine gore
+
+	Elde tasinan Gold Ore kademesi yukseldikce daha gosterisli olur:
+
+	  Common      yalnizca kademe rengi (efekt yok)
+	  Rare        kademe renginde hafif isik
+	  Epic        + etrafinda goz kirpan yildiz kivilcimlari
+	  Legendary   + daha parlak isik, daha cok kivilcim
+	  Mythic      + yukari suzulen parlak aura bulutu, govde hafif parlar
+	  Divine ve ustu
+	              + buyuk donen yildizlar; isik ve renkler kademenin iki
+	                rengi arasinda parildar (Shared > Divine > Flashes)
+
+	boy: modelin yari yuksekligi; parcaciklar cevherin boyuna gore olceklenir
+	(kucuk Common ile devasa Abyssal ayni efektle gulunc durmasin).
+	Dokular Roblox'un yerlesik parcacik dokulari; disaridan asset gerekmez.
+]]
+local KIVILCIM_DOKU = "rbxasset://textures/particles/sparkles_main.dds"
+local BULUT_DOKU = "rbxasset://textures/particles/smoke_main.dds"
+
+local function gizliEfektler(handle: BasePart, rarityId: string, boy: number)
+	local info = Rarity.Info[rarityId :: any]
+	if not info then
+		return
+	end
+
+	local seviye = info.order
+	local parilti = Divine.Flashes[rarityId]
+	local renkA: Color3 = if parilti then parilti.colorA else info.color
+	local renkB: Color3 = if parilti then parilti.colorB else info.color:Lerp(Color3.new(1, 1, 1), 0.5)
+	local renkler = ColorSequence.new(renkA, renkB)
+
+	if seviye >= 2 then
+		local isik = Instance.new("PointLight")
+		isik.Name = "KademeIsigi"
+		isik.Color = renkA
+		isik.Range = 4 + seviye * 2 + boy
+		isik.Brightness = 0.5 + seviye * 0.3
+		isik.Shadows = false
+		isik.Parent = handle
+		Divine.tagIf(isik, rarityId)
+	end
+
+	if seviye >= 3 then
+		local k = Instance.new("ParticleEmitter")
+		k.Name = "KademeKivilcim"
+		k.Texture = KIVILCIM_DOKU
+		k.Color = renkler
+		k.LightEmission = 1
+		k.LightInfluence = 0
+		k.Rate = 3 + (seviye - 3) * 4
+		k.Lifetime = NumberRange.new(0.6, 1.2)
+		k.Speed = NumberRange.new(1, 2.5)
+		k.SpreadAngle = Vector2.new(180, 180)
+		k.Drag = 2
+		k.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.35 * boy),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		k.Transparency = NumberSequence.new(0, 1)
+		k.Parent = handle
+	end
+
+	if seviye >= 5 then
+		local a = Instance.new("ParticleEmitter")
+		a.Name = "KademeAura"
+		a.Texture = BULUT_DOKU
+		a.Color = renkler
+		a.LightEmission = 1
+		a.LightInfluence = 0
+		a.Rate = 6 + (seviye - 5) * 3
+		a.Lifetime = NumberRange.new(0.8, 1.4)
+		a.Speed = NumberRange.new(1.5, 3)
+		a.EmissionDirection = Enum.NormalId.Top
+		a.SpreadAngle = Vector2.new(25, 25)
+		a.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.8 * boy),
+			NumberSequenceKeypoint.new(1, 1.6 * boy),
+		})
+		a.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.55),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		a.Parent = handle
+	end
+
+	if seviye >= 6 then
+		local y = Instance.new("ParticleEmitter")
+		y.Name = "KademeYildiz"
+		y.Texture = KIVILCIM_DOKU
+		y.Color = renkler
+		y.LightEmission = 1
+		y.LightInfluence = 0
+		y.Rate = 3 + (seviye - 6) * 2
+		y.Lifetime = NumberRange.new(0.5, 0.9)
+		y.Speed = NumberRange.new(0, 0.5)
+		y.Rotation = NumberRange.new(0, 360)
+		y.RotSpeed = NumberRange.new(-120, 120)
+		y.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.3, 1.3 * boy),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		y.Parent = handle
+	end
+end
+
+--[[
 	Envanterdeki bir brainrot'u tutulabilir Tool'a cevirir.
 
 	Acilmamis (siyah) hal: butun parcalar simsiyah, isim "??? (Rarity)"
@@ -888,11 +996,15 @@ function Tools.buildBrainrot(item: any): Tool
 				Acilmis brainrot boyut sinifina gore olceklenir
 				(Tiny ceyrek .. Huge iki kat).
 
-				Kimligi belirlenmemis olan ise HER ZAMAN AYNI boyda:
-				kutunun buyuklugu icindekini ele vermesin, hepsi tek tip
-				gorunsun. Bu yuzden carpan 1 sabit.
+				Kimligi belirlenmemis olan (Gold Ore) KADEMESINE gore: degersiz
+				kademeler ufak, degerliler devasa (bkz. Assets.HiddenBrainrot
+				.rarityScale). Kademe zaten suzmenin renginden belliydi;
+				boyut yalnizca heyecani buyutuyor, brainrotun adini ele vermiyor.
 			]]
-			local sizeScale = if revealed then Condition.scale(item.condition) else 1
+			local gizli = Assets.HiddenBrainrot
+			local sizeScale = if revealed
+				then Condition.scale(item.condition)
+				else (gizli.rarityScale[item.rarity or ""] or gizli.default)
 			Assets.fitModel(prepared, Assets.BrainrotSize.toolSize, sizeScale)
 
 			--[[
@@ -972,6 +1084,9 @@ function Tools.buildBrainrot(item: any): Tool
 					part.Color = if Mutations.isSpecial(item.mutation) then mutationInfo.color else rarityInfo.color
 					part.Material = Enum.Material.Neon
 				end
+			elseif model and Assets.HiddenBrainrot.keepAll then
+				-- Gold Ore: dongu disinda Assets.tintHidden boyuyor (asagida)
+				continue
 			elseif not part:GetAttribute(Assets.HiddenBrainrot.keepAttribute) then
 				--[[
 					KIMLIGI BELIRLENMEMIS: KADEME RENGINE BOYA
@@ -998,11 +1113,18 @@ function Tools.buildBrainrot(item: any): Tool
 		end
 	end
 
+	-- Gold Ore kendi dokusunu korur, rengi kademeye kayar
+	if not revealed and model then
+		Assets.tintHidden(tool, item.rarity)
+	end
+
 	-- Kademeyi uzaktan belli eden kontur (Adornee sart: Toola cizilmez)
 	if not revealed and handle then
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "RarityHighlight"
-		highlight.FillTransparency = 1
+		-- Mythic ve ustunde govde de hafifce kademe renginde parlar
+		highlight.FillColor = rarityInfo.color
+		highlight.FillTransparency = if rarityInfo.order >= 5 then 0.78 else 1
 		highlight.OutlineColor = rarityInfo.color
 		highlight.OutlineTransparency = 0
 		highlight.Adornee = handle
@@ -1010,6 +1132,11 @@ function Tools.buildBrainrot(item: any): Tool
 
 		-- Divine konturu sabit degil: sari <-> beyaz parildar
 		Divine.tagIf(highlight, item.rarity)
+
+		-- Degeri arttikca isik ve parcacik efektleri (bkz. gizliEfektler)
+		if model then
+			gizliEfektler(handle, item.rarity, (tool:GetAttribute("YariYukseklik") :: number?) or 1)
+		end
 	end
 
 	local mutationTip = if Mutations.isSpecial(item.mutation)

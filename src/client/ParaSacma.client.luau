@@ -6,6 +6,13 @@
 	Base'in TOPLA butonundan rot toplandiginda para desteleri etrafa sacilir,
 	yerde bir an durur, sonra toplayan oyuncuya ucup kaybolur.
 
+	ROT COIN: oyuncu NE SEKILDE OLURSA OLSUN Rot Coin kazandiginda (odul,
+	gorev, Robux paketi, admin...) ayni animasyon altin paralarla oyuncunun
+	ETRAFINDA oynar. Tetik istemcide: EnvanterGuncelle'deki rotCoins bir
+	oncekinden buyukse fark kadar para sacilir. Boylece kazanc yolu ne olursa
+	olsun sunucuda ayrica bir sey yazmak gerekmiyor. Yalnizca kazanan oyuncu
+	kendi paralarini gorur.
+
 	AKIS  (her deste icin)
 	  gecikme : desteler ayni karede degil, pes pese firlar -- patlama hissi
 	  sac     : gercek yercekimiyle ucar, yere carpip 1-2 kez seker
@@ -60,6 +67,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 
 local ParaSac = Net.event("ParaSac")
+-- Rot Coin bakiyesi buradan izleniyor (bkz. ust aciklama)
+local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 
 ------------------------------------------------------------------
 -- AYARLAR
@@ -155,13 +164,63 @@ local DESTE_YUKSEKLIK = 0.54
 	biraz kaymis/donuk: tek kalip blok gibi degil, gelisiguzel istiflenmis
 	para gibi duruyor. Bant hepsini ortadan sariyor.
 ]]
-type KatmanTanim = { ad: string, boy: Vector3, konum: Vector3, aci: number, renk: Color3 }
+type KatmanTanim = {
+	ad: string,
+	boy: Vector3,
+	konum: Vector3,
+	aci: number,
+	renk: Color3,
+	-- Silindir parca (Rot Coin); ekseni don ile dikeye cevrilir
+	silindir: boolean?,
+	-- Isik izi bu katmana takilir
+	iz: boolean?,
+}
 
 local KATMAN_TANIM: { KatmanTanim } = {
 	{ ad = "Alt", boy = Vector3.new(1.6, 0.18, 0.9), konum = Vector3.new(0, -0.18, 0), aci = 0, renk = KOYU },
-	{ ad = "Orta", boy = Vector3.new(1.56, 0.18, 0.88), konum = Vector3.new(0.03, 0, 0.01), aci = 3, renk = ORTA },
+	{ ad = "Orta", boy = Vector3.new(1.56, 0.18, 0.88), konum = Vector3.new(0.03, 0, 0.01), aci = 3, renk = ORTA, iz = true },
 	{ ad = "Ust", boy = Vector3.new(1.52, 0.18, 0.86), konum = Vector3.new(-0.04, 0.18, 0.02), aci = -6, renk = ACIK },
 	{ ad = "Bant", boy = Vector3.new(0.32, 0.58, 0.94), konum = Vector3.new(0, 0, 0), aci = 0, renk = BANT },
+}
+
+--[[
+	ROT COIN  --  yere yatmis altin para
+
+	Silindirin ekseni X; boy.X kalinlik, Y ve Z cap. Katmanlar ayni merkezde:
+	koyu altin kenar, parlak yuz, ortada acik kabartma. Hepsi yatirilarak
+	(eksen dikeye) kuruluyor, bkz. desteKur.
+]]
+local COIN_KENAR = Color3.fromRGB(205, 130, 15)
+local COIN_YUZ = Color3.fromRGB(255, 205, 45)
+local COIN_ORTA = Color3.fromRGB(255, 240, 150)
+
+local COIN_TANIM: { KatmanTanim } = {
+	{ ad = "Kenar", boy = Vector3.new(0.22, 1.3, 1.3), konum = Vector3.zero, aci = 0, renk = COIN_KENAR, silindir = true },
+	{ ad = "Yuz", boy = Vector3.new(0.27, 1.0, 1.0), konum = Vector3.zero, aci = 0, renk = COIN_YUZ, silindir = true, iz = true },
+	{ ad = "Kabartma", boy = Vector3.new(0.31, 0.46, 0.46), konum = Vector3.zero, aci = 0, renk = COIN_ORTA, silindir = true },
+}
+
+--[[
+	TURLER
+
+	para : base toplama (yesil deste), sunucu tetikler (ParaSac)
+	coin : Rot Coin kazanci (altin para), istemci tetikler
+
+	yukseklik: zemine yatarken kapladigi dikey boy
+	adetMin/Max, adetCarpan: miktara gore kac tane sacilacagi (log10)
+]]
+type Tur = {
+	katmanlar: { KatmanTanim },
+	yukseklik: number,
+	izRenk: Color3,
+	adetMin: number,
+	adetMax: number,
+	adetCarpan: number,
+}
+
+local TURLER: { [string]: Tur } = {
+	para = { katmanlar = KATMAN_TANIM, yukseklik = DESTE_YUKSEKLIK, izRenk = ACIK, adetMin = ADET_EN_AZ, adetMax = ADET_EN_COK, adetCarpan = 3 },
+	coin = { katmanlar = COIN_TANIM, yukseklik = 0.32, izRenk = COIN_YUZ, adetMin = 6, adetMax = 16, adetCarpan = 4 },
 }
 
 ------------------------------------------------------------------
@@ -176,6 +235,8 @@ klasor.Parent = Workspace
 type Katman = { parca: Part, boy: Vector3, konum: Vector3, don: CFrame }
 
 type Deste = {
+	-- "para" ya da "coin" (kivilcim rengi)
+	tur: string,
 	katmanlar: { Katman },
 	iz: Trail,
 	oyuncu: Player,
@@ -205,9 +266,14 @@ type Deste = {
 
 local aktif: { Deste } = {}
 
-local function parca(ad: string, boy: Vector3, renk: Color3): Part
+local function parca(ad: string, boy: Vector3, renk: Color3, silindir: boolean?): Part
 	local p = Instance.new("Part")
 	p.Name = ad
+	if silindir then
+		p.Shape = Enum.PartType.Cylinder
+		-- Hafif parlaklik: altin para metal gibi isik alsin
+		p.Reflectance = 0.12
+	end
 	p.Size = boy
 	p.Color = renk
 	p.Material = Enum.Material.SmoothPlastic
@@ -256,33 +322,48 @@ kivilcim.Transparency = NumberSequence.new({
 kivilcim.Color = ColorSequence.new(Color3.fromRGB(190, 255, 150), Color3.fromRGB(255, 240, 140))
 kivilcim.Parent = kivilcimParca
 
-local function kivilcimAt(nokta: Vector3, adet: number)
+-- Rot Coin icin ayni kivilcimin altin renklisi
+local altinKivilcim = kivilcim:Clone()
+altinKivilcim.Color = ColorSequence.new(Color3.fromRGB(255, 250, 190), Color3.fromRGB(255, 190, 40))
+altinKivilcim.Parent = kivilcimParca
+
+local function kivilcimAt(nokta: Vector3, adet: number, altin: boolean?)
 	kivilcimParca.CFrame = CFrame.new(nokta)
-	kivilcim:Emit(adet)
+	if altin then
+		altinKivilcim:Emit(adet)
+	else
+		kivilcim:Emit(adet)
+	end
 end
 
 ------------------------------------------------------------------
 -- DESTE KURULUMU
 ------------------------------------------------------------------
-local function desteKur(baslangic: Vector3): ({ Katman }, Trail)
+local function desteKur(baslangic: Vector3, tur: Tur): ({ Katman }, Trail)
 	local katmanlar: { Katman } = {}
 	local ortaParca: Part? = nil
 
-	for _, tanim in KATMAN_TANIM do
-		local p = parca(tanim.ad, tanim.boy, tanim.renk)
+	for _, tanim in tur.katmanlar do
+		local p = parca(tanim.ad, tanim.boy, tanim.renk, tanim.silindir)
 		-- Firlama anina kadar gorunmez ve olacagi yerde bekler
 		p.Transparency = 1
 		p.CFrame = CFrame.new(baslangic)
 		p.Parent = klasor
 
+		-- Silindirin ekseni (X) dikeye cevrilir: para yere yatar
+		local don = CFrame.Angles(0, math.rad(tanim.aci), 0)
+		if tanim.silindir then
+			don *= CFrame.Angles(0, 0, math.pi / 2)
+		end
+
 		table.insert(katmanlar, {
 			parca = p,
 			boy = tanim.boy,
 			konum = tanim.konum,
-			don = CFrame.Angles(0, math.rad(tanim.aci), 0),
+			don = don,
 		})
 
-		if tanim.ad == "Orta" then
+		if tanim.iz then
 			ortaParca = p
 		end
 	end
@@ -308,7 +389,7 @@ local function desteKur(baslangic: Vector3): ({ Katman }, Trail)
 	iz.MinLength = 0.02
 	iz.FaceCamera = true
 	iz.LightEmission = 0.6
-	iz.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), ACIK)
+	iz.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), tur.izRenk)
 	iz.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.25),
 		NumberSequenceKeypoint.new(1, 1),
@@ -410,14 +491,18 @@ local function zemin(nokta: Vector3, yedek: number): number
 	return if sonuc then sonuc.Position.Y else yedek
 end
 
-local function sac(oyuncu: Player, nokta: Vector3, miktar: number)
+local function sac(oyuncu: Player, nokta: Vector3, miktar: number, turAdi: string?)
 	local kamera = Workspace.CurrentCamera
 	if kamera and (kamera.CFrame.Position - nokta).Magnitude > GORUNME_MESAFESI then
 		return
 	end
 
-	local adet = ADET_EN_AZ + math.floor(math.log10(math.max(miktar, 1)) * 3)
-	adet = math.clamp(adet, ADET_EN_AZ, ADET_EN_COK)
+	local ad = turAdi or "para"
+	local tur = TURLER[ad] or TURLER.para
+	local yukseklik = tur.yukseklik
+
+	local adet = tur.adetMin + math.floor(math.log10(math.max(miktar, 1)) * tur.adetCarpan)
+	adet = math.clamp(adet, tur.adetMin, tur.adetMax)
 	adet = math.min(adet, AKTIF_TAVAN - #aktif)
 	if adet <= 0 then
 		return
@@ -432,10 +517,10 @@ local function sac(oyuncu: Player, nokta: Vector3, miktar: number)
 	end
 	isin.FilterDescendantsInstances = haric
 
-	local baslangic = nokta + Vector3.new(0, DESTE_YUKSEKLIK, 0)
+	local baslangic = nokta + Vector3.new(0, yukseklik, 0)
 
 	-- Butonda kivilcim patlamasi: desteler firlamadan hemen once
-	kivilcimAt(baslangic, 16)
+	kivilcimAt(baslangic, 16, ad == "coin")
 
 	for i = 1, adet do
 		--[[
@@ -445,7 +530,7 @@ local function sac(oyuncu: Player, nokta: Vector3, miktar: number)
 		local yon = (i / adet) * math.pi * 2 + rng:NextNumber(-0.35, 0.35)
 		local r = rng:NextNumber(YARICAP_MIN, YARICAP_MAX)
 		local yatay = nokta + Vector3.new(math.cos(yon) * r, 0, math.sin(yon) * r)
-		local zeminY = zemin(yatay, nokta.Y) + DESTE_YUKSEKLIK * 0.5
+		local zeminY = zemin(yatay, nokta.Y) + yukseklik * 0.5
 
 		--[[
 			ATIS HIZI
@@ -461,9 +546,10 @@ local function sac(oyuncu: Player, nokta: Vector3, miktar: number)
 		local dikey = ((zeminY - baslangic.Y) + 0.5 * g * sure * sure) / sure
 		local hiz = Vector3.new((yatay.X - baslangic.X) / sure, dikey, (yatay.Z - baslangic.Z) / sure)
 
-		local katmanlar, iz = desteKur(baslangic)
+		local katmanlar, iz = desteKur(baslangic, tur)
 
 		local d: Deste = {
+			tur = ad,
 			katmanlar = katmanlar,
 			iz = iz,
 			oyuncu = oyuncu,
@@ -626,7 +712,7 @@ RunService.RenderStepped:Connect(function(ham)
 				d.kucul = if u > 0.55 then 1 - 0.7 * ((u - 0.55) / 0.45) else 1
 
 				if u >= 1 then
-					kivilcimAt(d.konum, 3)
+					kivilcimAt(d.konum, 3, d.tur == "coin")
 					bitti = true
 				end
 			else
@@ -671,4 +757,41 @@ ParaSac.OnClientEvent:Connect(function(oyuncu, nokta, miktar)
 	end
 
 	sac(oyuncu :: Player, nokta, miktar)
+end)
+
+------------------------------------------------------------------
+-- ROT COIN KAZANCI
+--
+-- Ilk gelen veri yalnizca baslangic degeri (oyuna girerken para sacilmaz).
+-- Sonrasinda bakiye artarsa, fark kadar altin para oyuncunun ayaginin
+-- dibinden etrafa sacilip ona geri ucar. Harcama (azalma) sessiz.
+------------------------------------------------------------------
+local oyuncu = Players.LocalPlayer
+local sonCoin: number? = nil
+
+EnvanterGuncelle.OnClientEvent:Connect(function(veri)
+	if type(veri) ~= "table" or type(veri.rotCoins) ~= "number" then
+		return
+	end
+
+	local yeni = veri.rotCoins
+	local once = sonCoin
+	sonCoin = yeni
+
+	if not once or yeni <= once then
+		return
+	end
+
+	local karakter = oyuncu.Character
+	local kok = karakter and karakter:FindFirstChild("HumanoidRootPart")
+	local insan = karakter and karakter:FindFirstChildOfClass("Humanoid")
+	if not kok or not kok:IsA("BasePart") then
+		return
+	end
+
+	local govde = kok :: BasePart
+
+	-- Ayak hizasi: kok parcanin altindaki bacak boyu kadar asagi
+	local bacak = if insan then insan.HipHeight + govde.Size.Y * 0.5 else 3
+	sac(oyuncu, govde.Position - Vector3.new(0, bacak, 0), yeni - once, "coin")
 end)

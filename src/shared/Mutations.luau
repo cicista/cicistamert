@@ -47,6 +47,13 @@ local Mutations = {}
 
 Mutations.Order = { "Normal", "Gold", "Lava", "Diamond", "Galaxy", "Rainbow", "Hacker" } :: { MutationId }
 
+--[[
+	Index'te ayri alt kategori olarak gosterilen mutasyonlar (bu sirayla).
+	Oyuncunun bu mutasyonlarla buldugu brainrotlar ayrica kaydedilir
+	(PlayerData.discoveredMut). Listeye ekleme yapmak yeterli.
+]]
+Mutations.IndexOrder = { "Gold", "Diamond", "Galaxy" } :: { MutationId }
+
 Mutations.Info = {
 	Normal = {
 		id = "Normal",

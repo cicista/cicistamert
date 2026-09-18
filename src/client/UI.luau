@@ -452,6 +452,13 @@ function UI.closeButton(parent: Instance): TextButton
 	-- Kendi merkezinden buyuyebilir: sag ust koseye sabit
 	UI.hover(button, nil, button)
 
+	-- Panelde renkli baslik cubugu varsa dugme onun sag ucuna oturur
+	if parent:GetAttribute("RenkliBaslik") then
+		button.Position = UDim2.new(1, -18, 0, 18)
+		button.ZIndex = 6
+		UI.stroke(button, Color3.fromRGB(0, 0, 0), 2)
+	end
+
 	return button
 end
 
@@ -837,5 +844,282 @@ task.spawn(function()
 	hepsineUygula()
 	playerGui.ChildAdded:Connect(guiIzle)
 end)
+
+--[[
+	=====================================================================
+	RENKLI PANEL PARCALARI  --  cocuklara hitap eden cizgi film gorunumu
+	=====================================================================
+
+	Magaza (STORE) paneliyle ayni dil: kalin siyah kontur, cilali renkli
+	baslik cubugu, renkli kartlar ve 3B basilan dugmeler. Her panel kendi
+	rengini verir, gerisi ayni.
+
+	    UI.baslikCubugu(panel, "Quests", renkA, renkB, "quests")
+	    UI.renkliKart(satir, renk)
+	    local dugme, yuz, yazi = UI.dugme3B(parent, "Buy", boyut, renk)
+	    UI.dugme3BRenk(dugme, yeniRenk)   -- durum degisince (para yetti/yetmedi)
+	    UI.cubukCilasi(dolgu)             -- ilerleme cubugunun dolgusu
+]]
+local SIYAH = Color3.fromRGB(0, 0, 0)
+local BEYAZ = Color3.fromRGB(255, 255, 255)
+-- 3B dugmenin altinda birakilan kabartma payi
+local DUGME_LIP = 5
+
+-- Para yetmeyen / kilitli dugmelerin rengi
+UI.KapaliRenk = Color3.fromRGB(105, 110, 124)
+
+-- Desen ve parlaklik katmanlarinin koselerini de yuvarlar
+local function katmanKoseleri(yuz: GuiObject, yaricap: number)
+	for _, cocuk in yuz:GetChildren() do
+		if cocuk:IsA("Frame") and (cocuk.Name == "Desen" or cocuk.Name == "Parlaklik") then
+			UI.corner(cocuk, yaricap)
+		end
+	end
+end
+
+--[[
+	PANEL BASLIGI
+
+	Panelin ustune cilali, soldan saga renk gecisli bir cubuk koyar; ustune
+	(varsa) ikon ve beyaz baslik gelir. Panelin kendisi de hafifce o renge
+	boyanir ve kalin siyah kontur alir. Kapatma dugmesi cubugun sag ucuna
+	tasinir. Cubuk 62. piksele kadar yer kaplar; icerik 70'ten baslamali.
+]]
+function UI.baslikCubugu(panel: Frame, yazi: string, renkA: Color3, renkB: Color3, ikonId: string?): (Frame, TextLabel)
+	local kontur = panel:FindFirstChildOfClass("UIStroke")
+	if kontur then
+		kontur.Color = SIYAH
+		kontur.Thickness = 3
+	end
+
+	-- Zemin: ust kisim baslik renginde hafif isik alir, alta dogru koyulasir
+	panel.BackgroundColor3 = BEYAZ
+	local zemin = Instance.new("UIGradient")
+	zemin.Name = "PanelRengi"
+	zemin.Rotation = 90
+	zemin.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, UI.Colors.panel:Lerp(renkA, 0.22)),
+		ColorSequenceKeypoint.new(0.45, UI.Colors.panel:Lerp(renkB, 0.08)),
+		ColorSequenceKeypoint.new(1, UI.Colors.panel),
+	})
+	zemin.Parent = panel
+
+	local cubuk = Instance.new("Frame")
+	cubuk.Name = "Baslik"
+	cubuk.Position = UDim2.fromOffset(8, 8)
+	cubuk.Size = UDim2.new(1, -16, 0, 54)
+	cubuk.BackgroundColor3 = BEYAZ
+	cubuk.BorderSizePixel = 0
+	cubuk.ClipsDescendants = true
+	cubuk.Parent = panel
+	UI.corner(cubuk, 10)
+	UI.stroke(cubuk, SIYAH, 2)
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Color = ColorSequence.new(renkA, renkB)
+	gecis.Parent = cubuk
+
+	UI.diamondGrid(cubuk)
+	UI.gloss(cubuk, 0.7)
+	katmanKoseleri(cubuk, 10)
+
+	local baslik = UI.text({
+		text = yazi,
+		size = UI.Sizes.title,
+		font = BOLD,
+		color = BEYAZ,
+		frameSize = UDim2.new(1, -80, 1, 0),
+		position = UDim2.fromOffset(16, 0),
+		parent = cubuk,
+		zIndex = 5,
+	})
+	baslik.Name = "Yazi"
+
+	-- Ikon bulunursa yazi saga kayar; bulunamazsa yazi solda kalir
+	if ikonId then
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "Ikon"
+		ikon.BackgroundTransparency = 1
+		ikon.Position = UDim2.fromOffset(8, 4)
+		ikon.Size = UDim2.fromOffset(46, 46)
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.ZIndex = 5
+		ikon.Visible = false
+		ikon.Parent = cubuk
+
+		local Icons = require(Shared:WaitForChild("Icons")) :: any
+		Icons.bind(ikon, ikonId, function(ok: boolean)
+			if ok then
+				ikon.Visible = true
+				baslik.Position = UDim2.fromOffset(62, 0)
+			end
+		end)
+	end
+
+	panel:SetAttribute("RenkliBaslik", true)
+	local kapat = panel:FindFirstChild("Kapat")
+	if kapat and kapat:IsA("GuiObject") then
+		kapat.Position = UDim2.new(1, -18, 0, 18)
+		kapat.ZIndex = 6
+		UI.stroke(kapat, SIYAH, 2)
+	end
+
+	return cubuk, baslik
+end
+
+--[[
+	RENKLI KART  --  liste satirlari icin
+
+	Soldan saga: renkli -> koyu. Yazilar sagdaki koyu kisimda da okunur.
+	Kalin siyah kontur verir (baska bir renk istenirse sonradan degistir).
+]]
+function UI.renkliKart(kart: GuiObject, renk: Color3): UIStroke
+	kart.BackgroundColor3 = BEYAZ
+	local gecis = Instance.new("UIGradient")
+	gecis.Name = "KartRengi"
+	gecis.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, renk:Lerp(SIYAH, 0.2)),
+		ColorSequenceKeypoint.new(0.5, renk:Lerp(UI.Colors.panelLight, 0.7)),
+		ColorSequenceKeypoint.new(1, UI.Colors.panelLight),
+	})
+	gecis.Parent = kart
+
+	local kontur = kart:FindFirstChildOfClass("UIStroke")
+	if kontur then
+		kontur.Color = SIYAH
+		kontur.Thickness = 2
+		return kontur
+	end
+	return UI.stroke(kart, SIYAH, 2)
+end
+
+-- Ilerleme cubugu dolgusuna ustten parlak, alttan koyu cila
+function UI.cubukCilasi(dolgu: GuiObject)
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, BEYAZ),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(235, 235, 235)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 170, 170)),
+	})
+	gecis.Parent = dolgu
+end
+
+--[[
+	3B DUGME
+
+	Koyu govde + ustte cilali yuz. Basilinca yuz asagi iner, fare ustune
+	gelince aydinlanir. Rengi sonradan UI.dugme3BRenk ile degisebilir
+	(fare etkisi her seferinde guncel rengi okur; UI.hover ilk rengi
+	hafizada tuttugu icin burada kullanilmiyor).
+
+	buyusun = true: fare ustune gelince merkezinden buyur. Liste icindeki
+	dugmelerde kapali birak, komsularinin ustune tasar.
+]]
+function UI.dugme3B(parent: Instance, yazi: string?, boyut: UDim2, renk: Color3, buyusun: boolean?): (TextButton, Frame, TextLabel?)
+	local dugme = Instance.new("TextButton")
+	dugme.Name = "Dugme"
+	dugme.Text = ""
+	dugme.AutoButtonColor = false
+	dugme.Size = boyut
+	dugme.BackgroundColor3 = UI.shade(renk, -0.3)
+	dugme.BorderSizePixel = 0
+	dugme.Parent = parent
+	UI.corner(dugme, 10)
+	UI.stroke(dugme, SIYAH, 2)
+	dugme:SetAttribute("Renk", renk)
+
+	local yuz = Instance.new("Frame")
+	yuz.Name = "Yuz"
+	yuz.AnchorPoint = Vector2.new(0.5, 0)
+	yuz.Position = UDim2.new(0.5, 0, 0, 3)
+	yuz.Size = UDim2.new(1, -6, 1, -6 - DUGME_LIP)
+	yuz.BackgroundColor3 = renk
+	yuz.BorderSizePixel = 0
+	yuz.ClipsDescendants = true
+	yuz.Parent = dugme
+	UI.corner(yuz, 8)
+
+	-- Gri tonlu gecis: rengi carpar, yani her renkte ayni cila
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Color = ColorSequence.new(BEYAZ, Color3.fromRGB(205, 205, 205))
+	gecis.Parent = yuz
+
+	UI.diamondGrid(yuz)
+	UI.gloss(yuz, 0.75)
+	katmanKoseleri(yuz, 8)
+
+	local etiket: TextLabel? = nil
+	if yazi then
+		etiket = UI.text({
+			text = yazi,
+			size = UI.Sizes.body,
+			font = BOLD,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, -6, 1, 0),
+			position = UDim2.fromOffset(3, 0),
+			parent = yuz,
+			zIndex = 5,
+			name = "Label",
+		})
+	end
+
+	local olcek: UIScale? = nil
+	if buyusun then
+		local yeni = Instance.new("UIScale")
+		yeni.Name = "FareOlcegi"
+		yeni.Parent = dugme
+		olcek = yeni
+	end
+
+	local ustunde = false
+	local function ciz(basili: boolean)
+		local temel = dugme:GetAttribute("Renk")
+		local c: Color3 = if typeof(temel) == "Color3" then temel else renk
+		local bilgi = TweenInfo.new(UI.HoverTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(yuz, bilgi, {
+			BackgroundColor3 = if ustunde then UI.shade(c, UI.HoverLift) else c,
+		}):Play()
+		yuz.Position = UDim2.new(0.5, 0, 0, if basili then 3 + DUGME_LIP / 2 else 3)
+		if olcek then
+			TweenService:Create(
+				olcek,
+				TweenInfo.new(UI.HoverTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+				{ Scale = if basili then UI.PressPop elseif ustunde then UI.HoverPop else 1 }
+			):Play()
+		end
+	end
+
+	dugme.MouseEnter:Connect(function()
+		ustunde = true
+		ciz(false)
+	end)
+	dugme.MouseLeave:Connect(function()
+		ustunde = false
+		ciz(false)
+	end)
+	dugme.MouseButton1Down:Connect(function()
+		ciz(true)
+	end)
+	dugme.MouseButton1Up:Connect(function()
+		ciz(false)
+	end)
+
+	return dugme, yuz, etiket
+end
+
+-- 3B dugmenin rengini degistirir (govde + yuz)
+function UI.dugme3BRenk(dugme: GuiObject, renk: Color3)
+	if dugme:GetAttribute("Renk") == renk then
+		return
+	end
+	dugme:SetAttribute("Renk", renk)
+	dugme.BackgroundColor3 = UI.shade(renk, -0.3)
+	local yuz = dugme:FindFirstChild("Yuz")
+	if yuz and yuz:IsA("GuiObject") then
+		yuz.BackgroundColor3 = renk
+	end
+end
 
 return UI

@@ -52,6 +52,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Mutations = require(script.Parent.Mutations)
+-- Gizli brainrotun (Gold Ore) kademe boyamasi icin (ikisi de Assets'i require etmiyor)
+local Rarity = require(script.Parent.Rarity)
+local Divine = require(script.Parent.Divine)
 
 local Assets = {}
 
@@ -841,14 +844,54 @@ end
 --
 -- Kazidan cikan brainrot, Detective onu acana kadar gercek modeliyle
 -- gosterilmez. Onun yerine Studio'ya elle konulmus hazir bir model
--- kullanilir (Workspace > HiddenPart): kendi VFX'i ve gorunumu vardir.
+-- kullanilir: GOLD ORE (19 Eylul 2026'da eski "HiddenPart" kupunun yerini
+-- aldi; eskisi artik hic aranmiyor).
 --
--- Model BEYAZ hazirlanmistir; parcalari calisma aninda suzmenin kademe
--- rengine boyanir. Yalnizca keepPart adli parca kendi gorunumunde kalir.
+-- keepAll = true: modelin HICBIR parcasi boyanmaz, Studio'daki gorunumuyle
+-- (altin rengi, dokusu, VFX'i) aynen kullanilir. false yapilirsa eski
+-- davranis: parcalar kademe rengine boyanir, yalnizca keepPart korunur.
 ------------------------------------------------------------------
 Assets.HiddenBrainrot = {
-	-- Modelin adi. Yeri: ReplicatedStorage > Assets (ya da Workspace).
-	name = "HiddenPart",
+	-- Modelin adi. Yeri: ReplicatedStorage > Assets (ya da Workspace, herhangi bir servis).
+	name = "Gold Ore",
+	-- Adi bunlardan biri de olsa bulunur (bosluk/harf farki zaten yok sayiliyor)
+	altNames = { "GoldOre", "Gold_Ore" },
+
+	-- Butun parcalar kendi renginde kalsin (bkz. ust aciklama)
+	keepAll = true,
+
+	--[[
+		KADEME RENGI: modelin kendi rengi bu oranda kademe rengine kayar
+		(0 = hic, 1 = tamamen). Doku ve malzeme korunur; Common grimsi,
+		Rare mavimsi, Mythic kirmizimsi bir cevher olur. Divine ve ustu
+		sabit renk degil: kendi iki rengi arasinda parildar (Shared > Divine).
+		Bkz. Assets.tintHidden.
+	]]
+	tint = 0.6,
+
+	--[[
+		ELDEKI BOYUT KADEMEYE GORE
+
+		Carpan Assets.BrainrotSize.toolSize (4.5 stud) ile carpilir ve
+		modelin EN UZUN kenari o boya getirilir. Degersiz kademeler ufak
+		tefek, degerliler devasa: oyuncu elindekinin ne kadar degerli
+		oldugunu bakinca anlasin. Listede olmayan kademe: default.
+
+		  Common 0.35 -> ~1.6 stud      Abyssal 1.6 -> ~7.2 stud
+	]]
+	rarityScale = {
+		Common = 0.35,
+		Rare = 0.42,
+		Epic = 0.5,
+		Legendary = 0.62,
+		Mythic = 0.75,
+		Secret = 0.9, -- ekranda "Divine"
+		Cosmic = 1.05,
+		Gizli = 1.2, -- ekranda "Secret"
+		Infernal = 1.4,
+		Abyssal = 1.6,
+	} :: { [string]: number },
+	default = 0.5,
 
 	-- Bu adli parca BOYANMAZ; modelin kendi gorunumunde kalir
 	keepPart = "Cube",
@@ -883,9 +926,38 @@ Assets.HiddenBrainrot = {
 		rotation -- derece cinsinden donus
 		            Y = 180 kupu arkaya cevirir
 	]]
-	offset = Vector3.new(1.4, 0, -0.2),
-	rotation = Vector3.new(0, 180, 0),
+	--[[
+		Gold Ore kafanin TAM USTUNDE, dimdik: eski kup yana kaydirilip
+		arkaya cevriliyordu (1.4, 0, -0.2 / 180 derece); cevher o ayarla
+		yan duruyordu.
+	]]
+	offset = Vector3.new(0, 0, 0),
+	rotation = Vector3.new(0, 0, 0),
 }
+
+--[[
+	Gizli brainrot modelini kademesine gore boyar. Elde tasinan tool'da
+	(sunucu) ve liste onizlemelerinde (istemci) AYNI boyama kullanilsin
+	diye burada. Gorunmez parcalara dokunulmaz.
+]]
+function Assets.tintHidden(root: Instance, rarityId: string?)
+	local cfg = Assets.HiddenBrainrot
+	if not cfg.keepAll or type(rarityId) ~= "string" then
+		return
+	end
+	local info = Rarity.Info[rarityId :: any]
+	if not info then
+		return
+	end
+
+	for _, node in root:GetDescendants() do
+		if node:IsA("BasePart") and node.Transparency < 1 then
+			node.Color = node.Color:Lerp(info.color, cfg.tint)
+			-- Divine ve ustu: kendi iki rengi arasinda parildar (IlahiRenk cizer)
+			Divine.tagIf(node, rarityId)
+		end
+	end
+end
 
 --[[
 	Gelen nesneyi Model'e cevirir.
@@ -1032,6 +1104,14 @@ function Assets.hiddenBrainrotModel(): Model?
 	end
 
 	local found = findHidden(cfg.name)
+	if not found then
+		for _, ad in cfg.altNames do
+			found = findHidden(ad)
+			if found then
+				break
+			end
+		end
+	end
 
 	if not found then
 		--[[
@@ -1064,13 +1144,13 @@ function Assets.hiddenBrainrotModel(): Model?
 	-- Rengi korunacak parcalari, yeniden adlandirilmadan once isaretle
 	local kept = 0
 	for _, node in model:GetDescendants() do
-		if node:IsA("BasePart") and string.lower(node.Name) == string.lower(cfg.keepPart) then
+		if node:IsA("BasePart") and (cfg.keepAll or string.lower(node.Name) == string.lower(cfg.keepPart)) then
 			node:SetAttribute(cfg.keepAttribute, true)
 			kept += 1
 		end
 	end
 
-	if kept == 0 then
+	if kept == 0 and not cfg.keepAll then
 		Assets.warnOnce(
 			`gizli brainrot keepPart: {cfg.keepPart}`,
 			`[Assets] "{cfg.name}" icinde "{cfg.keepPart}" adli parca yok -- her sey kademe rengine boyanacak.`

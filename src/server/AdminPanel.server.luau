@@ -111,6 +111,18 @@ function commands.giveRot(player, data)
 	return `+{Format.short(A.rotGrant)} Rot`
 end
 
+-- Rot Coin: panelde +10 / +100 / +1000 dugmeleri (baska miktar kabul edilmez)
+local ROT_COIN_MIKTARLARI = { [10] = true, [100] = true, [1000] = true }
+
+function commands.giveRotCoins(player, data, arg)
+	local miktar = tonumber(arg)
+	if not miktar or not ROT_COIN_MIKTARLARI[miktar] then
+		return nil
+	end
+	PlayerData.addRotCoins(player, miktar)
+	return `+{miktar} Rot Coin  (toplam {data.rotCoins})`
+end
+
 -- Etkinligi beklemeden tetikler (normalde saatte bir)
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()

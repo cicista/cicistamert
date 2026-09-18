@@ -54,6 +54,10 @@ function Envanter.push(player: Player)
 	for _, item in data.inventory do
 		if item.revealed and item.name then
 			PlayerData.discover(player, item.name)
+			-- Gold / Diamond / Galaxy Index'te ayrica isaretlenir
+			if item.mutation then
+				PlayerData.discoverMutation(player, item.name, item.mutation)
+			end
 		end
 	end
 

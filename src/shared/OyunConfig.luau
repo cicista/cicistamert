@@ -19,12 +19,17 @@ local Config = {}
 -- GEMI / ADA NPC AYARLARI
 ------------------------------------------------------------------
 Config.NPC = {
-	-- Workspace icindeki NPC modelinin ADI
-	name = "Kaptan",
-	-- Modeli bu adla da arar; ikisinden biri yeterli
+	--[[
+		Workspace icindeki NPC modelinin ADI. Bu adli BUTUN modellere ada
+		menusu takilir (her adaya bir tane koyabilirsin). Kaptanlarin yerini
+		Teleporter NPC'leri aldi; eski adlar da hala taniniyor.
+	]]
+	name = "Teleporter",
+	-- Eski adlar: haritada kalan kaptan varsa o da calismaya devam eder
 	altName = "Captain",
+	altNames = { "Captain", "Kaptan" },
 	promptText = "Travel",
-	promptSubText = "Captain",
+	promptSubText = "Teleporter",
 	promptDistance = 12,
 }
 

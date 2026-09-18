@@ -70,6 +70,19 @@ local Map: { [string]: IconEntry } = {
 	-- Para birimleri
 	rot = { "Cash", "CashIcon" },
 	--[[
+		Sol alttaki buyuk Rot gostergesinin para destesi ikonu. Kendi
+		ikonunu Assets > Icons icine "Rot" (ya da "Money" / "Cash") adiyla
+		koyarsan o kullanilir; yoksa paketteki para ikonlari denenir.
+	]]
+	rotPara = {
+		{ "AssetsTam", "Rot" },
+		{ "AssetsTam", "Money" },
+		{ "AssetsTam", "Cash" },
+		{ "Cash", "CashStack" },
+		{ "Cash", "Cash" },
+		{ "Cash", "CashIcon" },
+	},
+	--[[
 		Rot Coin (sol menudeki Rot Coin Shop butonu): paketteki altin coin
 		(Coins > CoinIcon). Pakette aranmiyor, resim kimligi dogrudan
 		yaziliyor: paket Workspace'te ve streaming yuzunden istemciye

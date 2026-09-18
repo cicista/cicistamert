@@ -134,6 +134,8 @@ local GorevAl = Net.event("GorevAl")
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "OyunMenuleri"
+-- Paneller XP barinin (DisplayOrder 0) ustunde kalsin; sira RobuxMagaza'daki notta
+screen.DisplayOrder = 5
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
@@ -261,6 +263,7 @@ local function brainrotRow(
 		pencere.ekle(icon, {
 			name = item.name,
 			mutation = item.mutation,
+			rarity = item.rarity,
 			revealed = if revealed then true else false,
 		}, soru)
 	end
@@ -391,27 +394,8 @@ local envanter = UI.panel(screen, UDim2.fromOffset(600, 580), "Envanter")
 
 	Base'deki bir brainrota tiklamak onu cantaya geri alir.
 ]]
-local envanterBaslik = Instance.new("Frame")
-envanterBaslik.Name = "Baslik"
-envanterBaslik.Size = UDim2.new(1, 0, 0, 60)
-envanterBaslik.BackgroundColor3 = Color3.new(1, 1, 1)
-envanterBaslik.BorderSizePixel = 0
-envanterBaslik.Parent = envanter
-UI.corner(envanterBaslik, 14)
-
-local envanterBaslikGecis = Instance.new("UIGradient")
-envanterBaslikGecis.Color = ColorSequence.new(Color3.fromRGB(50, 150, 255), Color3.fromRGB(170, 90, 255))
-envanterBaslikGecis.Parent = envanterBaslik
-
-UI.text({
-	text = "Inventory",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = Color3.new(1, 1, 1),
-	frameSize = UDim2.new(1, -80, 1, 0),
-	position = UDim2.fromOffset(18, 0),
-	parent = envanterBaslik,
-})
+-- Cilali mavi-mor baslik cubugu (bkz. UI.baslikCubugu)
+UI.baslikCubugu(envanter, "Inventory", Color3.fromRGB(50, 150, 255), Color3.fromRGB(170, 90, 255), "inventory")
 
 UI.closeButton(envanter).MouseButton1Click:Connect(function()
 	envanter.Visible = false
@@ -439,6 +423,8 @@ local function cip(renk: Color3, sira: number): TextLabel
 	kutu.Parent = envanterCipler
 	UI.corner(kutu, 15)
 	UI.stroke(kutu, Color3.fromRGB(0, 0, 0), 2)
+	-- Ustu parlak, alti koyu: dugme gibi kabarik dursun
+	UI.cubukCilasi(kutu)
 
 	return UI.text({
 		text = "",
@@ -448,6 +434,7 @@ local function cip(renk: Color3, sira: number): TextLabel
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.fromScale(1, 1),
 		parent = kutu,
+		zIndex = 5,
 	})
 end
 
@@ -471,9 +458,7 @@ local function sectionHeader(parent: Instance, text: string, order: number, renk
 	UI.corner(holder, 10)
 	UI.stroke(holder, Color3.fromRGB(0, 0, 0), 2)
 
-	local gecis = Instance.new("UIGradient")
-	gecis.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
-	gecis.Parent = holder
+	UI.cubukCilasi(holder)
 
 	UI.text({
 		text = text,
@@ -483,6 +468,7 @@ local function sectionHeader(parent: Instance, text: string, order: number, renk
 		frameSize = UDim2.new(1, -20, 1, 0),
 		position = UDim2.fromOffset(12, 0),
 		parent = holder,
+		zIndex = 5,
 	})
 end
 
@@ -715,65 +701,165 @@ rotKutu.AnchorPoint = Vector2.new(0, 1)
 -- Zemin, cerceve ve ikon yok: ekranda yalnizca beyaz rakam durur
 rotKutu.Position = UDim2.new(0, 16, 1, -16)
 -- Ustte Rot (96), hemen altinda ikonlu Rot Coin satiri (44)
-local ROT_SATIR = 96
-local COIN_SATIR = 44
+-- Satir yukseklikleri: ustte Rot, hemen altinda Rot Coin. IKISI AYNI olcude
+-- (ikon, yazi boyu, bosluk) ki gosterge dengeli dursun.
+local ROT_SATIR = 66
+local COIN_SATIR = 66
 rotKutu.Size = UDim2.fromOffset(460, ROT_SATIR + COIN_SATIR)
 rotKutu.BackgroundTransparency = 1
 rotKutu.BorderSizePixel = 0
 rotKutu.Parent = screen
 
 --[[
-	Tek satir, yalnizca yazi: "12.4K Rot".
+	PARA SATIRLARI  --  solda ikon, yaninda gradyanli kalin rakam
 
-	Once solda bir para ikonu vardi; kaldirildi. Yazinin yuksekligi kutuyu
-	dolduruyor, boylece dikey ortalama kutunun kendisinden geliyor.
+	Simulator oyunlarindaki para gostergesi gibi: rakam ustten acik
+	tondan alta koyu tona gecen gradyanli, kalin koyu konturlu. Para
+	birimi yazisi yok ("5.6M"), neyin sayildigini ikon soyluyor.
+
+	  Rot       yesil rakam, para destesi ikonu (Icons "rotPara")
+	  Rot Coin  altin rakam, oyunun Rot Coin ikonu (Icons "rotCoin")
+
+	Deger artinca rakam kisa bir "zipla" animasyonu yapar.
+
+	DIKKAT: Bu script Luau'nun 200 ust seviye yerel sinirinda. Buradaki
+	yardimcilar bu yuzden tek tabloda (rotAnim); yeni ust seviye yerel
+	eklemek butun menuyu kirar ("Out of local registers").
 ]]
-local function paraSatiri(yaziBoyu: number): TextLabel
+local rotAnim = {
+	-- satir anahtari -> zipla olcegi ve son deger
+	olcek = {} :: { [string]: UIScale },
+	son = {} :: { [string]: number },
+	satir = nil :: any,
+	zipla = nil :: any,
+}
+
+function rotAnim.satir(
+	ad: string,
+	y: number,
+	yukseklik: number,
+	yaziBoyu: number,
+	ikonId: string,
+	yedekYazi: string,
+	renkler: { Color3 },
+	konturRengi: Color3,
+	konturKalinligi: number
+): TextLabel
+	local ikonBoyu = yukseklik - 8
+
+	local ikon = Instance.new("ImageLabel")
+	ikon.Name = `{ad}Ikon`
+	ikon.BackgroundTransparency = 1
+	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- Iki satirin ikonlari ayni dikey eksende ortalansin
+	ikon.Position = UDim2.fromOffset(34, y + yukseklik / 2)
+	ikon.Size = UDim2.fromOffset(ikonBoyu, ikonBoyu)
+	ikon.ScaleType = Enum.ScaleType.Fit
+	ikon.Parent = rotKutu
+
+	-- Ikon gelmezse yerinde emoji durur
+	local yedek = UI.text({
+		text = yedekYazi,
+		size = math.floor(ikonBoyu * 0.7),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = ikon,
+		outline = false,
+	})
+	Icons.bind(ikon, ikonId, function(ok)
+		if ok then
+			yedek.Visible = false
+		end
+	end)
+
 	local yazi = UI.text({
 		text = "",
 		size = yaziBoyu,
 		font = UI.Fonts.bold,
-		-- Rakam beyaz; sari ton yalnizca panellerde kaldi
+		-- Beyaz taban: rengi gradyan veriyor (gradyan yaziyla carpilir)
 		color = Color3.fromRGB(255, 255, 255),
 		align = Enum.TextXAlignment.Left,
 		--[[
-			Oyunun standart konturu kapali; yerine asagida sabit kalinlikta
-			bir kontur var: applyOutline kalinligi yazi boyuyla buyudugu icin
-			rakam 3 katina cikinca kontur de asiri kalinlasiyordu.
+			Oyunun standart konturu kapali; yerine sabit kalinlikta kontur:
+			applyOutline kalinligi yazi boyuyla buyudugu icin buyuk rakamda
+			kontur asiri kalinlasiyordu.
 		]]
 		outline = false,
-		frameSize = UDim2.new(1, 0, 0, ROT_SATIR),
+		frameSize = UDim2.new(1, -76, 0, yukseklik),
+		position = UDim2.fromOffset(76, y),
 		parent = rotKutu,
+		name = `{ad}Yazi`,
 	})
 
-	-- Kalinlik yazi boyundan bagimsiz sabit: 60px rakamda 3px kontur
-	-- (Fonts.applyOutline kalinligi TextSize ile buyutur, burada istenmiyor)
-	UI.stroke(yazi, Color3.fromRGB(0, 0, 0), 3)
+	local gecis = Instance.new("UIGradient")
+	gecis.Name = "ParaRengi"
+	gecis.Rotation = 90
+	gecis.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, renkler[1]),
+		ColorSequenceKeypoint.new(0.5, renkler[2]),
+		ColorSequenceKeypoint.new(1, renkler[3]),
+	})
+	gecis.Parent = yazi
+
+	local kontur = UI.stroke(yazi, konturRengi, konturKalinligi)
+	kontur.LineJoinMode = Enum.LineJoinMode.Round
+
+	-- Yazinin sol kenarindan buyuyen zipla olcegi
+	local olcek = Instance.new("UIScale")
+	olcek.Name = "Zipla"
+	olcek.Parent = yazi
+	rotAnim.olcek[ad] = olcek
 
 	return yazi
 end
 
--- 60px: eski olcunun (20) 3 kati
-local rotYazi = paraSatiri(UI.Sizes.label * 3)
+-- Deger artmissa rakami ziplatir, son degeri saklar
+function rotAnim.zipla(ad: string, deger: number)
+	local olcek = rotAnim.olcek[ad]
+	local once = rotAnim.son[ad]
+	if olcek and once and deger > once then
+		olcek.Scale = 1.12
+		TweenService:Create(
+			olcek,
+			TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		):Play()
+	end
+	rotAnim.son[ad] = deger
+end
 
--- ROT COIN  --  Rot'un hemen altinda, sade sari yazi: "1.2K Rot Coin"
-local coinYazi = UI.text({
-	text = "0 Rot Coin",
-	size = math.floor(UI.Sizes.label * 1.6),
-	font = UI.Fonts.bold,
-	color = Color3.fromRGB(255, 215, 40),
-	align = Enum.TextXAlignment.Left,
-	outline = false,
-	frameSize = UDim2.new(1, 0, 0, COIN_SATIR),
-	position = UDim2.fromOffset(0, ROT_SATIR),
-	parent = rotKutu,
-	name = "RotCoinYazi",
-})
-UI.stroke(coinYazi, Color3.fromRGB(0, 0, 0), 2.5)
+-- ROT: yesil, 48px (ayarlardaki %100'de ekranda 60px)
+local rotYazi = rotAnim.satir(
+	"Rot",
+	0,
+	ROT_SATIR,
+	48,
+	"rotPara",
+	"\u{1F4B5}",
+	{ Color3.fromRGB(190, 255, 110), Color3.fromRGB(90, 235, 60), Color3.fromRGB(35, 175, 45) },
+	Color3.fromRGB(12, 45, 12),
+	4
+)
+
+-- ROT COIN: altin sarisi, Rot ile ayni boy
+local coinYazi = rotAnim.satir(
+	"RotCoin",
+	ROT_SATIR,
+	COIN_SATIR,
+	48,
+	"rotCoin",
+	"\u{1FA99}",
+	{ Color3.fromRGB(255, 245, 150), Color3.fromRGB(255, 205, 40), Color3.fromRGB(235, 140, 20) },
+	Color3.fromRGB(70, 35, 0),
+	4
+)
 
 local function refreshRot(rot: number?, rotCoins: number?)
-	rotYazi.Text = `{Format.short(rot or 0)} Rot`
-	coinYazi.Text = `{Format.short(rotCoins or 0)} Rot Coin`
+	rotYazi.Text = Format.short(rot or 0)
+	coinYazi.Text = Format.short(rotCoins or 0)
+
+	rotAnim.zipla("Rot", rot or 0)
+	rotAnim.zipla("RotCoin", rotCoins or 0)
 end
 
 refreshRot(inventory.rot, inventory.rotCoins)
@@ -1073,7 +1159,7 @@ local function detektifKarti(item: any, sira: number)
 		frameSize = UDim2.fromScale(1, 1),
 		parent = resim,
 	})
-	detectivePencere.ekle(resim, { mutation = item.mutation, revealed = false }, soru)
+	detectivePencere.ekle(resim, { mutation = item.mutation, revealed = false, rarity = item.rarity }, soru)
 
 	local ad = UI.text({
 		text = rarityInfo.displayName,
@@ -1458,26 +1544,28 @@ end)
 -- Cark yalnizca GOSTERIM: iki asamanin da nerede duracagini sunucu daha
 -- cark donmeye baslamadan secmis olur.
 ------------------------------------------------------------------
-local luckyPanel = UI.panel(screen, UDim2.fromOffset(470, 300), "LuckyBlock")
+--[[
+	GORUNUM
+	  - Cilali baslik cubugu; rengi acilan blogun turune boyanir
+	  - Panelin arkasinda yavasca donen isik huzmeleri + ekran karartmasi
+	  - Parlak kart bolmeler ve kazananda kutlama (bkz. Rulet)
 
-UI.text({
-	text = "LUCKY BLOCK",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = Rarity.LuckyBlock.colorA,
-	frameSize = UDim2.new(1, -80, 0, 36),
-	position = UDim2.fromOffset(18, 14),
-	parent = luckyPanel,
-})
+	DIKKAT: bu script 200 ust seviye yerel sinirinda. Asagidaki suslemeler
+	bu yuzden do-blogunda; yeni ust seviye yerel ekleme.
+]]
+local luckyPanel = UI.panel(screen, UDim2.fromOffset(540, 360), "LuckyBlock")
+
+UI.baslikCubugu(luckyPanel, "LUCKY BLOCK", Color3.fromRGB(255, 215, 40), Color3.fromRGB(255, 120, 40), "luckyBlock")
 
 -- Hangi turden blok acildi (Lucky Block / Altin / Elmas)
 local luckyTier = UI.text({
 	text = "",
-	size = UI.Sizes.small,
+	size = UI.Sizes.label,
 	font = UI.Fonts.bold,
 	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -80, 0, 20),
-	position = UDim2.fromOffset(18, 50),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -36, 0, 26),
+	position = UDim2.fromOffset(18, 68),
 	parent = luckyPanel,
 })
 
@@ -1486,32 +1574,109 @@ UI.closeButton(luckyPanel).MouseButton1Click:Connect(function()
 end)
 
 local luckyReel = Rulet.new(luckyPanel, {
-	position = UDim2.new(0.5, 0, 0, 78),
-	width = 408,
-	height = 96,
+	position = UDim2.new(0.5, 0, 0, 108),
+	width = 496,
+	height = 124,
 	color = Rarity.LuckyBlock.colorA,
 	name = "Cark",
 })
 
 local luckyResult = UI.text({
 	text = "",
-	size = UI.Sizes.label,
+	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 26),
-	position = UDim2.fromOffset(10, 186),
+	frameSize = UDim2.new(1, -20, 0, 38),
+	position = UDim2.fromOffset(10, 250),
 	parent = luckyPanel,
 })
 
 local luckyDetail = UI.text({
 	text = "",
-	size = UI.Sizes.small,
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
 	color = UI.Colors.textDim,
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.fromOffset(10, 214),
+	frameSize = UDim2.new(1, -20, 0, 24),
+	position = UDim2.fromOffset(10, 292),
 	parent = luckyPanel,
 })
+
+do
+	--[[
+		ISIK HUZMELERI + KARARTMA
+
+		Panelin arkasinda: once ekrani hafifce karartan bir ortu, ustunde
+		merkezden disa uzanan ve yavasca donen isik huzmeleri. Huzmeler
+		panelin ortasindan gecen uzun seritler; kapsayici cerceve dondukce
+		cocuklari da onunla doner. Panel acikken gorunur.
+	]]
+	local karartma = Instance.new("Frame")
+	karartma.Name = "LuckyKarartma"
+	karartma.AnchorPoint = Vector2.new(0.5, 0.5)
+	karartma.Position = UDim2.fromScale(0.5, 0.5)
+	karartma.Size = UDim2.fromScale(3, 3)
+	karartma.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	karartma.BackgroundTransparency = 0.45
+	karartma.BorderSizePixel = 0
+	karartma.ZIndex = 0
+	karartma.Visible = false
+	karartma.Parent = screen
+
+	local isik = Instance.new("Frame")
+	isik.Name = "LuckyIsik"
+	isik.AnchorPoint = Vector2.new(0.5, 0.5)
+	isik.Position = UDim2.fromScale(0.5, 0.5)
+	isik.Size = UDim2.fromOffset(10, 10)
+	isik.BackgroundTransparency = 1
+	isik.ZIndex = 0
+	isik.Visible = false
+	isik.Parent = screen
+
+	local HUZME = 8
+	for i = 1, HUZME do
+		local huzme = Instance.new("Frame")
+		huzme.Name = "Huzme"
+		huzme.AnchorPoint = Vector2.new(0.5, 0.5)
+		huzme.Position = UDim2.fromScale(0.5, 0.5)
+		huzme.Size = UDim2.fromOffset(90, 1400)
+		huzme.Rotation = (i - 1) * (180 / HUZME)
+		huzme.BackgroundColor3 = Rarity.LuckyBlock.colorA
+		huzme.BorderSizePixel = 0
+		huzme.ZIndex = 0
+		huzme.Parent = isik
+
+		-- Ortada parlak, uclara dogru eriyen serit
+		local gecis = Instance.new("UIGradient")
+		gecis.Rotation = 90
+		gecis.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.32, 0.55),
+			NumberSequenceKeypoint.new(0.5, 0.3),
+			NumberSequenceKeypoint.new(0.68, 0.55),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		gecis.Parent = huzme
+	end
+
+	local donus = TweenService:Create(
+		isik,
+		TweenInfo.new(14, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Rotation = 360 }
+	)
+
+	luckyPanel:GetPropertyChangedSignal("Visible"):Connect(function()
+		local acik = luckyPanel.Visible
+		karartma.Visible = acik
+		isik.Visible = acik
+		if acik then
+			isik.Rotation = 0
+			donus:Play()
+		else
+			donus:Cancel()
+		end
+	end)
+end
 
 LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" or type(data.rarityCells) ~= "table" or type(data.cells) ~= "table" then
@@ -1552,6 +1717,8 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		table.insert(cells, {
 			text = entry.name,
 			color = Rarity.color(entry.rarity),
+			-- Cercevedeki canli efekt kademeye gore (bkz. Rulet > KADEME EFEKTLERI)
+			rarity = entry.rarity,
 			brainrot = if type(entry.name) == "string"
 				then {
 					name = entry.name,
@@ -1586,6 +1753,8 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 
 		-- 1. cark durdu: yalnizca kademe aciklanir, brainrot hala gizli
 		onRarity = function(rarityId: string)
+			-- Kademe belli oldu: kucuk bir kutlama, asil patlama brainrotta
+			Rulet.kutla(luckyReel, Rarity.color(rarityId))
 			luckyResult.Text = string.upper(Rarity.displayName(rarityId))
 			UI.rarityStyle(luckyResult, rarityId)
 			luckyDetail.Text = "Tier locked in, now which brainrot?"
@@ -1600,6 +1769,8 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			end
 
 			Rulet.shake(luckyPanel)
+			-- Halka + yildizlar kazananin kademe renginde
+			Rulet.kutla(luckyReel, Rarity.color(winner.rarity))
 
 			local mutationInfo = Mutations.get(winner.mutation)
 			local special = Mutations.isSpecial(winner.mutation)
@@ -1628,10 +1799,31 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	luckyTier.Text = if type(data.tierName) == "string" then string.upper(data.tierName) else ""
 	luckyTier.TextColor3 = if typeof(data.tierColor) == "Color3" then data.tierColor else UI.Colors.textDim
 
+	--[[
+		TURUN RENGI: baslik cubugu, isik huzmeleri ve rulet cercevesi acilan
+		blogun renginde (Lucky sari, Golden turuncu, Diamond mavi).
+	]]
+	do
+		local turRengi: Color3 = if typeof(data.tierColor) == "Color3" then data.tierColor else Rarity.LuckyBlock.colorA
+		local cubuk = luckyPanel:FindFirstChild("Baslik")
+		local cubukGecis = cubuk and cubuk:FindFirstChildOfClass("UIGradient")
+		if cubukGecis then
+			cubukGecis.Color = ColorSequence.new(turRengi, UI.shade(turRengi, -0.3))
+		end
+		local huzmeler = screen:FindFirstChild("LuckyIsik")
+		if huzmeler then
+			for _, huzme in huzmeler:GetChildren() do
+				if huzme:IsA("Frame") then
+					huzme.BackgroundColor3 = turRengi
+				end
+			end
+		end
+	end
+
 	luckyResult.Text = "..."
 	UI.plainStyle(luckyResult, UI.Colors.text)
 	luckyDetail.Text = ""
-	Rulet.tint(luckyReel, Rarity.LuckyBlock.colorA)
+	Rulet.tint(luckyReel, if typeof(data.tierColor) == "Color3" then data.tierColor else Rarity.LuckyBlock.colorA)
 
 	luckyPanel.Visible = true
 end)
@@ -3283,17 +3475,9 @@ do
 	------------------------------------------------------------------
 	local RC_SARI = Color3.fromRGB(255, 215, 40)
 
-	local rcPanel = UI.panel(screen, UDim2.fromOffset(500, 500), "RotCoinMagaza")
+	local rcPanel = UI.panel(screen, UDim2.fromOffset(520, 540), "RotCoinMagaza")
 
-	UI.text({
-		text = "Rot Coin Shop",
-		size = UI.Sizes.title,
-		font = UI.Fonts.bold,
-		color = RC_SARI,
-		frameSize = UDim2.new(1, -80, 0, 34),
-		position = UDim2.fromOffset(18, 14),
-		parent = rcPanel,
-	})
+	UI.baslikCubugu(rcPanel, "Rot Coin Shop", RC_SARI, Color3.fromRGB(255, 130, 40), "rotCoin")
 
 	UI.closeButton(rcPanel).MouseButton1Click:Connect(function()
 		rcPanel.Visible = false
@@ -3305,7 +3489,7 @@ do
 		font = UI.Fonts.bold,
 		color = RC_SARI,
 		frameSize = UDim2.new(1, -36, 0, 24),
-		position = UDim2.fromOffset(18, 50),
+		position = UDim2.fromOffset(18, 72),
 		parent = rcPanel,
 	})
 
@@ -3315,11 +3499,11 @@ do
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
 		frameSize = UDim2.new(1, -36, 0, 20),
-		position = UDim2.fromOffset(18, 76),
+		position = UDim2.fromOffset(18, 98),
 		parent = rcPanel,
 	})
 
-	local rcListe = makeScroll(rcPanel, UDim2.fromOffset(14, 104), UDim2.new(1, -28, 1, -118))
+	local rcListe = makeScroll(rcPanel, UDim2.fromOffset(14, 126), UDim2.new(1, -28, 1, -140))
 
 	-- Sunucudan gelen son durum
 	local rcBakiye = inventory.rotCoins or 0
@@ -3362,21 +3546,25 @@ do
 
 			local satir = Instance.new("Frame")
 			satir.Name = urun.id
-			satir.Size = UDim2.new(1, -6, 0, 72)
+			satir.Size = UDim2.new(1, -6, 0, 78)
 			satir.BackgroundColor3 = UI.Colors.panelLight
 			satir.BorderSizePixel = 0
 			satir.LayoutOrder = sira
 			satir.Parent = rcListe
-			UI.corner(satir, 10)
-			UI.stroke(satir, urun.color, 1)
+			UI.corner(satir, 12)
+			-- Urunun renginde kart: soldan renkli, saga dogru koyu
+			UI.renkliKart(satir, urun.color)
 
 			local ikon = Instance.new("ImageLabel")
 			ikon.Name = "Ikon"
-			ikon.Position = UDim2.fromOffset(8, 8)
-			ikon.Size = UDim2.fromOffset(56, 56)
-			ikon.BackgroundTransparency = 1
+			ikon.Position = UDim2.fromOffset(9, 9)
+			ikon.Size = UDim2.fromOffset(60, 60)
+			-- Ikon koyu yuvarlak bir rozetin icinde: renkli zeminde kaybolmasin
+			ikon.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+			ikon.BackgroundTransparency = 0.55
 			ikon.ScaleType = Enum.ScaleType.Fit
 			ikon.Parent = satir
+			UI.corner(ikon, 30)
 			Icons.bind(ikon, urun.icon)
 			if urun.tint then
 				ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
@@ -3386,31 +3574,31 @@ do
 				text = urun.name,
 				size = UI.Sizes.body,
 				font = UI.Fonts.bold,
-				color = urun.color,
-				frameSize = UDim2.new(1, -214, 0, 24),
-				position = UDim2.fromOffset(74, 10),
+				color = Color3.new(1, 1, 1),
+				frameSize = UDim2.new(1, -226, 0, 24),
+				position = UDim2.fromOffset(80, 12),
 				parent = satir,
 			})
 
 			UI.text({
 				text = urun.desc,
 				size = UI.Sizes.tiny,
-				color = UI.Colors.textDim,
-				frameSize = UDim2.new(1, -214, 0, 30),
-				position = UDim2.fromOffset(74, 34),
+				color = Color3.fromRGB(225, 230, 240),
+				frameSize = UDim2.new(1, -226, 0, 30),
+				position = UDim2.fromOffset(80, 38),
 				parent = satir,
 				wrapped = true,
 			})
 
-			local buton = UI.button(
+			-- Para yetiyorsa yesil, yetmiyorsa gri 3B dugme
+			local buton = UI.dugme3B(
 				satir,
 				`{urun.price} Rot Coin`,
-				UDim2.fromOffset(124, 44),
-				if yeter then UI.Colors.good else UI.Colors.panel
+				UDim2.fromOffset(134, 54),
+				if yeter then Color3.fromRGB(70, 205, 85) else UI.KapaliRenk
 			)
 			buton.AnchorPoint = Vector2.new(1, 0.5)
-			buton.Position = UDim2.new(1, -10, 0.5, 0)
-			UI.stroke(buton, Color3.fromRGB(0, 0, 0), 2)
+			buton.Position = UDim2.new(1, -12, 0.5, 0)
 			buton.MouseButton1Click:Connect(function()
 				RotCoinMagazaAl:FireServer(urun.id)
 			end)
@@ -3853,23 +4041,17 @@ do
 	-- burada geri sayilir. Sifira inince yeni pano istenir; sunucu da dilim
 	-- degisince kendiliginden yolladigi icin iki taraf ayni yerde bulusur.
 	------------------------------------------------------------------
-	local gorevPanel = UI.panel(screen, UDim2.fromOffset(520, 470), "Gorevler")
+	local gorevPanel = UI.panel(screen, UDim2.fromOffset(540, 500), "Gorevler")
 
-	UI.text({
-		text = "Quests",
-		size = UI.Sizes.title,
-		font = UI.Fonts.bold,
-		frameSize = UDim2.new(1, -80, 0, 36),
-		position = UDim2.fromOffset(18, 14),
-		parent = gorevPanel,
-	})
+	UI.baslikCubugu(gorevPanel, "Quests", Color3.fromRGB(255, 170, 50), Color3.fromRGB(255, 90, 110), "quests")
 
 	local gorevSayacYazi = UI.text({
 		text = "",
-		size = UI.Sizes.small,
-		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -80, 0, 20),
-		position = UDim2.fromOffset(18, 50),
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 225, 140),
+		frameSize = UDim2.new(1, -36, 0, 22),
+		position = UDim2.fromOffset(18, 70),
 		parent = gorevPanel,
 	})
 
@@ -3877,7 +4059,7 @@ do
 		gorevPanel.Visible = false
 	end)
 
-	local gorevListe = makeScroll(gorevPanel, UDim2.fromOffset(14, 82), UDim2.new(1, -28, 1, -96))
+	local gorevListe = makeScroll(gorevPanel, UDim2.fromOffset(14, 100), UDim2.new(1, -28, 1, -114))
 
 	-- Sunucudan gelen son pano
 	local gorevVerisi: { remaining: number, quests: { any } } = { remaining = 0, quests = {} }
@@ -3892,17 +4074,19 @@ do
 		local row = Instance.new("Frame")
 		row.Name = quest.id
 		row.Size = UDim2.new(1, -6, 0, 84)
-		row.BackgroundColor3 = UI.Colors.panelLight
 		row.BorderSizePixel = 0
 		row.LayoutOrder = order
 		row.Parent = parent
-		UI.corner(row, 10)
-		-- Biten gorev kendi odulunun renginde cerceve alir
-		UI.stroke(
-			row,
-			if hazir then UI.Colors.gold elseif bitti then UI.Colors.good else UI.Colors.panel,
-			if hazir or bitti then 2 else 1
-		)
+		UI.corner(row, 12)
+		-- Odulun renginde kart; hazir gorev altin, biten yesil kalin cerceve alir
+		local kontur = UI.renkliKart(row, renk)
+		if hazir then
+			kontur.Color = UI.Colors.gold
+			kontur.Thickness = 3
+		elseif bitti then
+			kontur.Color = UI.Colors.good
+			kontur.Thickness = 3
+		end
 
 		UI.text({
 			text = quest.text,
@@ -3959,6 +4143,7 @@ do
 		oluk.BorderSizePixel = 0
 		oluk.Parent = row
 		UI.corner(oluk, 6)
+		UI.stroke(oluk, Color3.fromRGB(0, 0, 0), 2)
 
 		local oran = if quest.target > 0 then math.clamp(quest.progress / quest.target, 0, 1) else 0
 		if oran > 0 then
@@ -3969,6 +4154,7 @@ do
 			dolgu.BorderSizePixel = 0
 			dolgu.Parent = oluk
 			UI.corner(dolgu, 6)
+			UI.cubukCilasi(dolgu)
 		end
 
 		--[[
@@ -3981,19 +4167,16 @@ do
 			arayuzun arkasinda kalmaz.
 		]]
 		if hazir then
-			local topla = UI.button(row, "Collect", UDim2.fromOffset(100, 26), UI.Colors.gold)
+			local topla = UI.dugme3B(row, "Collect", UDim2.fromOffset(106, 36), UI.Colors.gold)
 			topla.AnchorPoint = Vector2.new(1, 0)
-			-- Cubukla ayni hizada: cubuk 62..74, dugme 55..81
-			topla.Position = UDim2.new(1, -14, 0, 55)
-			-- Menu butonlariyla ayni imza: kalin siyah kontur
-			UI.stroke(topla, Color3.fromRGB(0, 0, 0), 2)
+			-- Cubugun sagi: cubuk 62..74, dugme 44..80
+			topla.Position = UDim2.new(1, -12, 0, 44)
 
 			topla.MouseButton1Click:Connect(function()
 				GorevAl:FireServer(quest.id)
 				gorevPanel.Visible = false
 			end)
 
-			UI.hover(topla)
 		end
 	end
 
@@ -4194,7 +4377,7 @@ do
 			})
 
 			UI.text({
-				text = if acildi then ada.desc else "Unlock it at the captain first.",
+				text = if acildi then ada.desc else "Unlock it at a Teleporter first.",
 				size = UI.Sizes.tiny,
 				color = UI.Colors.textDim,
 				frameSize = UDim2.new(1, -170, 0, 26),
@@ -4293,6 +4476,19 @@ do
 			task.defer(tpCiz)
 		end
 	end)
+end
+
+
+--[[
+	HIZ PANELI: kendi blogunda. Isinlayiciyla ayni bloktayken ikisinin
+	yerelleri toplanip 200 yerel sinirini asiyordu (bkz. tools/check.luau).
+]]
+do
+	local Hiz = require(Shared:WaitForChild("Hiz"))
+	local HizAl = Net.event("HizAl")
+	local HizRebirth = Net.event("HizRebirth")
+	-- Para birimi sarisi (Shared > Bases.RotColor ile ayni)
+	local ROT_SARI = Color3.fromRGB(255, 214, 41)
 
 	------------------------------------------------------------------
 	-- HIZ  (soldaki ayakkabi butonu)
@@ -4300,17 +4496,9 @@ do
 	-- 100 yukseltme; her biri Rot ister ve fiyati katlanarak artar
 	-- (bkz. Shared > Hiz). Seviye sunucudan oyuncu niteligiyle gelir.
 	------------------------------------------------------------------
-	local hzPanel = UI.panel(screen, UDim2.fromOffset(440, 440), "Hiz")
+	local hzPanel = UI.panel(screen, UDim2.fromOffset(440, 460), "Hiz")
 
-	UI.text({
-		text = "Speed",
-		size = UI.Sizes.title,
-		font = UI.Fonts.bold,
-		color = Color3.fromRGB(110, 230, 255),
-		frameSize = UDim2.new(1, -80, 0, 34),
-		position = UDim2.fromOffset(18, 14),
-		parent = hzPanel,
-	})
+	UI.baslikCubugu(hzPanel, "Speed", Color3.fromRGB(110, 230, 255), Color3.fromRGB(60, 120, 255), "speed")
 
 	UI.closeButton(hzPanel).MouseButton1Click:Connect(function()
 		hzPanel.Visible = false
@@ -4322,7 +4510,7 @@ do
 		font = UI.Fonts.bold,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -36, 0, 50),
-		position = UDim2.fromOffset(18, 58),
+		position = UDim2.fromOffset(18, 72),
 		parent = hzPanel,
 	})
 
@@ -4333,19 +4521,20 @@ do
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -36, 0, 24),
-		position = UDim2.fromOffset(18, 110),
+		position = UDim2.fromOffset(18, 124),
 		parent = hzPanel,
 	})
 
 	-- Ilerleme cubugu: alinan / 100
 	local hzOluk = Instance.new("Frame")
 	hzOluk.Name = "Cubuk"
-	hzOluk.Position = UDim2.fromOffset(18, 146)
+	hzOluk.Position = UDim2.fromOffset(18, 160)
 	hzOluk.Size = UDim2.new(1, -36, 0, 16)
 	hzOluk.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
 	hzOluk.BorderSizePixel = 0
 	hzOluk.Parent = hzPanel
 	UI.corner(hzOluk, 8)
+	UI.stroke(hzOluk, Color3.fromRGB(0, 0, 0), 2)
 
 	local hzDolgu = Instance.new("Frame")
 	hzDolgu.Name = "Dolgu"
@@ -4353,6 +4542,7 @@ do
 	hzDolgu.BorderSizePixel = 0
 	hzDolgu.Parent = hzOluk
 	UI.corner(hzDolgu, 8)
+	UI.cubukCilasi(hzDolgu)
 
 	local hzSayac = UI.text({
 		text = "",
@@ -4360,7 +4550,7 @@ do
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -36, 0, 20),
-		position = UDim2.fromOffset(18, 166),
+		position = UDim2.fromOffset(18, 180),
 		parent = hzPanel,
 	})
 
@@ -4371,34 +4561,30 @@ do
 		color = ROT_SARI,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -36, 0, 20),
-		position = UDim2.fromOffset(18, 192),
+		position = UDim2.fromOffset(18, 206),
 		parent = hzPanel,
 	})
 
 	--[[
-		Iki dugme: +1 ve +10. Renkleri para yetip yetmemesine gore degisiyor;
-		UI.hover rengi ilk temasta sakladigi icin hover'i elle kuruyoruz.
+		Iki dugme: +1 ve +10. Para yetiyorsa yesil, yetmiyorsa gri 3B dugme
+		(UI.dugme3BRenk; fare etkisi her seferinde guncel rengi okur).
 	]]
+	local HZ_YESIL = Color3.fromRGB(70, 205, 85)
+
 	local function hzDugmesi(x: number, adet: number)
-		local dugme = Instance.new("TextButton")
+		local dugme, yuz = UI.dugme3B(hzPanel, nil, UDim2.new(0.5, -24, 0, 72), UI.KapaliRenk)
 		dugme.Name = `Al{adet}`
-		dugme.Position = UDim2.new(x, if x == 0 then 18 else 6, 0, 226)
-		dugme.Size = UDim2.new(0.5, -24, 0, 70)
-		dugme.AutoButtonColor = false
-		dugme.BorderSizePixel = 0
-		dugme.Text = ""
-		dugme.Parent = hzPanel
-		UI.corner(dugme, 12)
-		UI.stroke(dugme, Color3.fromRGB(0, 0, 0), 2)
+		dugme.Position = UDim2.new(x, if x == 0 then 18 else 6, 0, 240)
 
 		local ust = UI.text({
 			text = `+{adet} SPEED`,
-			size = UI.Sizes.body,
+			size = UI.Sizes.label,
 			font = UI.Fonts.bold,
 			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, 0, 0, 32),
-			position = UDim2.fromOffset(0, 6),
-			parent = dugme,
+			frameSize = UDim2.new(1, 0, 0, 30),
+			position = UDim2.fromOffset(0, 4),
+			parent = yuz,
+			zIndex = 5,
 		})
 
 		local alt = UI.text({
@@ -4407,18 +4593,12 @@ do
 			font = UI.Fonts.bold,
 			color = ROT_SARI,
 			align = Enum.TextXAlignment.Center,
-			frameSize = UDim2.new(1, 0, 0, 24),
-			position = UDim2.fromOffset(0, 38),
-			parent = dugme,
+			frameSize = UDim2.new(1, 0, 0, 22),
+			position = UDim2.fromOffset(0, 34),
+			parent = yuz,
+			zIndex = 5,
 		})
 
-		local renk = UI.Colors.panel
-		dugme.MouseEnter:Connect(function()
-			dugme.BackgroundColor3 = UI.shade(renk, UI.HoverLift)
-		end)
-		dugme.MouseLeave:Connect(function()
-			dugme.BackgroundColor3 = renk
-		end)
 		dugme.MouseButton1Click:Connect(function()
 			HizAl:FireServer(adet)
 		end)
@@ -4428,14 +4608,13 @@ do
 			if kalan <= 0 then
 				ust.Text = "MAXED"
 				alt.Text = ""
-				renk = UI.Colors.panel
+				UI.dugme3BRenk(dugme, UI.KapaliRenk)
 			else
 				local fiyat = Hiz.topluFiyat(alinan, kalan)
 				ust.Text = `+{kalan} SPEED`
 				alt.Text = `{Format.short(fiyat)} Rot`
-				renk = if rot >= fiyat then UI.Colors.good else UI.Colors.panel
+				UI.dugme3BRenk(dugme, if rot >= fiyat then HZ_YESIL else UI.KapaliRenk)
 			end
-			dugme.BackgroundColor3 = renk
 		end
 	end
 
@@ -4446,16 +4625,9 @@ do
 		REBIRTH: Speed 101'de acilir. Hiz basa doner, arkadaki iz uzar ve
 		bir sonraki hiz rengine gecer (Shared > Hiz). Kirmizidan sonra biter.
 	]]
-	local hzRebirth = Instance.new("TextButton")
+	local hzRebirth, hzRebirthYuz = UI.dugme3B(hzPanel, nil, UDim2.new(1, -36, 0, 58), UI.KapaliRenk)
 	hzRebirth.Name = "Rebirth"
-	hzRebirth.Position = UDim2.fromOffset(18, 308)
-	hzRebirth.Size = UDim2.new(1, -36, 0, 54)
-	hzRebirth.AutoButtonColor = false
-	hzRebirth.BorderSizePixel = 0
-	hzRebirth.Text = ""
-	hzRebirth.Parent = hzPanel
-	UI.corner(hzRebirth, 12)
-	UI.stroke(hzRebirth, Color3.fromRGB(0, 0, 0), 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	hzRebirth.Position = UDim2.fromOffset(18, 322)
 
 	local hzRebirthYazi = UI.text({
 		text = "",
@@ -4463,7 +4635,8 @@ do
 		font = UI.Fonts.bold,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.fromScale(1, 1),
-		parent = hzRebirth,
+		parent = hzRebirthYuz,
+		zIndex = 5,
 	})
 
 	hzRebirth.MouseButton1Click:Connect(function()
@@ -4480,7 +4653,7 @@ do
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -36, 0, 20),
-		position = UDim2.fromOffset(18, 370),
+		position = UDim2.fromOffset(18, 388),
 		parent = hzPanel,
 	})
 
@@ -4508,16 +4681,17 @@ do
 		local rebirth = tonumber(player:GetAttribute(Hiz.RebirthNitelik)) or 0
 		if rebirth >= Hiz.MaxRebirth then
 			hzRebirthYazi.Text = "ALL REBIRTHS DONE"
-			hzRebirth.BackgroundColor3 = UI.Colors.panel
+			UI.dugme3BRenk(hzRebirth, UI.KapaliRenk)
 			hzRebirthYazi.TextColor3 = Hiz.rebirthRengi(rebirth) or UI.Colors.text
 		elseif alinan >= Hiz.Max then
 			hzRebirthYazi.Text = `REBIRTH  ({rebirth + 1}/{Hiz.MaxRebirth})`
-			hzRebirth.BackgroundColor3 = UI.Colors.good
+			-- Rebirth hazir: gozden kacmasin diye mor
+			UI.dugme3BRenk(hzRebirth, Color3.fromRGB(190, 90, 255))
 			hzRebirthYazi.TextColor3 = Color3.new(1, 1, 1)
 		else
 			hzRebirthYazi.Text = `Rebirth at Speed {Hiz.Max + 1}  ({rebirth}/{Hiz.MaxRebirth})`
-			hzRebirth.BackgroundColor3 = UI.Colors.panel
-			hzRebirthYazi.TextColor3 = UI.Colors.textDim
+			UI.dugme3BRenk(hzRebirth, UI.KapaliRenk)
+			hzRebirthYazi.TextColor3 = Color3.fromRGB(225, 228, 236)
 		end
 		hzRebirthBilgi.Text = if rebirth >= Hiz.MaxRebirth
 			then "Your trail is at its longest."
@@ -4568,17 +4742,9 @@ do
 	local takipIs: any = nil
 	local takipBitis = 0
 
-	local takipPanel = UI.panel(screen, UDim2.fromOffset(560, 520), "DetektifTakip")
+	local takipPanel = UI.panel(screen, UDim2.fromOffset(560, 540), "DetektifTakip")
 
-	UI.text({
-		text = "Detective",
-		size = UI.Sizes.title,
-		font = UI.Fonts.bold,
-		color = TAKIP_SARI,
-		frameSize = UDim2.new(1, -80, 0, 34),
-		position = UDim2.fromOffset(18, 14),
-		parent = takipPanel,
-	})
+	UI.baslikCubugu(takipPanel, "Detective", Color3.fromRGB(150, 110, 255), Color3.fromRGB(50, 170, 230), "detective")
 
 	UI.closeButton(takipPanel).MouseButton1Click:Connect(function()
 		takipPanel.Visible = false
@@ -4590,13 +4756,13 @@ do
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
 		frameSize = UDim2.new(1, -36, 0, 24),
-		position = UDim2.fromOffset(18, 54),
+		position = UDim2.fromOffset(18, 72),
 		parent = takipPanel,
 		wrapped = true,
 	})
 
 	local takipOluk = Instance.new("Frame")
-	takipOluk.Position = UDim2.fromOffset(18, 86)
+	takipOluk.Position = UDim2.fromOffset(18, 104)
 	takipOluk.Size = UDim2.new(1, -36, 0, 26)
 	takipOluk.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
 	takipOluk.BorderSizePixel = 0
@@ -4610,6 +4776,7 @@ do
 	takipDolgu.BorderSizePixel = 0
 	takipDolgu.Parent = takipOluk
 	UI.corner(takipDolgu, 13)
+	UI.cubukCilasi(takipDolgu)
 
 	local takipBarYazi = UI.text({
 		text = "",
@@ -4621,7 +4788,7 @@ do
 	})
 	takipBarYazi.ZIndex = 3
 
-	local takipListe = makeScroll(takipPanel, UDim2.fromOffset(14, 124), UDim2.new(1, -28, 1, -138))
+	local takipListe = makeScroll(takipPanel, UDim2.fromOffset(14, 142), UDim2.new(1, -28, 1, -156))
 	local takipPencere = BrainrotOnizleme.pencere(takipListe, takipPanel)
 
 	local function takipKalan(): number

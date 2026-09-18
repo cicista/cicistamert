@@ -32,6 +32,7 @@ local Detectors = require(Shared:WaitForChild("Detectors"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Rods = require(Shared:WaitForChild("Rods"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
+local Mutations = require(Shared:WaitForChild("Mutations"))
 -- Gunluk odul takviminin gun sayisi (rewardDay sinirlari)
 local Rewards = require(Shared:WaitForChild("Rewards"))
 local Ores = require(Shared:WaitForChild("Ores"))
@@ -142,6 +143,22 @@ export type Data = {
 		brainrotun katalogdaki tam adi.
 	]]
 	discovered: { [string]: boolean },
+	--[[
+		MUTASYONLU INDEX  --  { Gold = { [brainrot adi] = true }, ... }
+
+		Yalnizca Mutations.IndexOrder'daki mutasyonlar tutulur. Normal
+		kesif (discovered) mutasyondan bagimsiz; bu tablo ayrica "Gold
+		haliyle de buldu mu" bilgisini tasir.
+	]]
+	discoveredMut: { [string]: { [string]: boolean } },
+	--[[
+		ISLENMIS ROBUX SATIN ALMALARI  --  { [PurchaseId] = os.time }
+
+		Roblox ayni fisi (receipt) birden fazla kez yollayabiliyor. Fis
+		burada kayitliysa urun ikinci kez VERILMEZ. Eski kayitlar yuklenirken
+		budaniyor (bkz. SATIN_ALMA_OMRU).
+	]]
+	purchases: { [string]: number },
 }
 
 local PlayerData = {}
@@ -193,6 +210,8 @@ local function defaultData(): Data
 		speedRebirth = 0,
 		quests = { cycle = 0, progress = {}, done = {} },
 		discovered = {},
+		discoveredMut = {},
+		purchases = {},
 	}
 end
 
@@ -209,6 +228,9 @@ end
 	oyunda hicbir yerde gorunmuyor.
 ]]
 local degistirmeRng = Random.new()
+
+-- Islenmis Robux fisleri bu kadar saniye saklanir (30 gun)
+local SATIN_ALMA_OMRU = 30 * 24 * 3600
 
 local function gecerliAd(name: any, rarity: any): string?
 	if type(name) ~= "string" then
@@ -500,6 +522,33 @@ local function migrate(raw: any): Data
 		end
 	end
 
+	-- Mutasyonlu Index: yalnizca Index'te gosterilen mutasyonlar ve katalogdaki adlar
+	if type(raw.discoveredMut) == "table" then
+		for _, mutasyon in Mutations.IndexOrder do
+			local kayit = raw.discoveredMut[mutasyon]
+			if type(kayit) == "table" then
+				local hedef = {}
+				for name, var in kayit do
+					if var == true and type(name) == "string" and Brainrots.get(name) then
+						hedef[name] = true
+					end
+				end
+				data.discoveredMut[mutasyon] = hedef
+			end
+		end
+	end
+
+	-- Robux fisleri: Roblox en fazla birkac gun tekrar dener, eskileri tutulmaz
+	data.purchases = {}
+	if type(raw.purchases) == "table" then
+		local sinir = os.time() - SATIN_ALMA_OMRU
+		for fis, zaman in raw.purchases do
+			if type(fis) == "string" and type(zaman) == "number" and zaman >= sinir then
+				data.purchases[fis] = zaman
+			end
+		end
+	end
+
 	return data
 end
 
@@ -534,10 +583,14 @@ function PlayerData.get(player: Player): Data?
 	return cache[player]
 end
 
-function PlayerData.save(player: Player)
+-- Kayit basarili mi doner (Studio'da store yok: true). Robux satin alma buna bakar.
+function PlayerData.save(player: Player): boolean
 	local data = cache[player]
-	if not data or not store then
-		return
+	if not data then
+		return false
+	end
+	if not store then
+		return true
 	end
 
 	local ok, err = pcall(function()
@@ -546,6 +599,7 @@ function PlayerData.save(player: Player)
 	if not ok then
 		warn(`[PlayerData] {player.Name} kaydedilemedi: {tostring(err)}`)
 	end
+	return ok
 end
 
 --[[
@@ -682,6 +736,42 @@ end
 function PlayerData.discovered(player: Player): { [string]: boolean }
 	local data = cache[player]
 	return if data then data.discovered else {}
+end
+
+-- Index'te gosterilen mutasyonlar (Mutations.IndexOrder) kume olarak
+local indexMutasyonu: { [string]: boolean } = {}
+for _, mutasyon in Mutations.IndexOrder do
+	indexMutasyonu[mutasyon] = true
+end
+
+-- Brainrotu bu mutasyonla bulunmus olarak isaretler; yeni kesifse true
+function PlayerData.discoverMutation(player: Player, name: string?, mutation: string?): boolean
+	if type(name) ~= "string" or type(mutation) ~= "string" or not indexMutasyonu[mutation] then
+		return false
+	end
+
+	local data = cache[player]
+	if not data or not Brainrots.get(name) then
+		return false
+	end
+
+	local kayit = data.discoveredMut[mutation]
+	if not kayit then
+		kayit = {}
+		data.discoveredMut[mutation] = kayit
+	end
+	if kayit[name] then
+		return false
+	end
+
+	kayit[name] = true
+	return true
+end
+
+-- Mutasyonlu kesif tablosu; salt okunur kullanilmali
+function PlayerData.discoveredMutations(player: Player): { [string]: { [string]: boolean } }
+	local data = cache[player]
+	return if data then data.discoveredMut else {}
 end
 
 function PlayerData.findItem(player: Player, uid: string): InventoryItem?

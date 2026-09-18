@@ -46,8 +46,9 @@ local IndexDurum = Net.event("IndexDurum")
 local BEKLEME = 0.25
 local sonIstek: { [Player]: number } = {}
 
+-- Iki tablo: normal kesifler ve mutasyonlu kesifler ({ Gold = {...}, ... })
 local function gonder(player: Player)
-	IndexDurum:FireClient(player, PlayerData.discovered(player))
+	IndexDurum:FireClient(player, PlayerData.discovered(player), PlayerData.discoveredMutations(player))
 end
 
 IndexAc.OnServerEvent:Connect(function(player)

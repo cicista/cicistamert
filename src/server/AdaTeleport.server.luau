@@ -145,22 +145,27 @@ end
 	yalnizca ilk buldugu modele prompt takiyordu, bu yuzden diger adalardaki
 	kaptanlarla konusulamiyordu.
 
-	Artik "Kaptan" ya da "Captain" adli TUM modeller bulunur ve her birine
-	ayri prompt takilir. Her kaptan hangi adada durdugunu bilir; ilk ada
-	disindaki kaptanlar menude bedava donus secenegi sunar.
+	Artik "Teleporter" adli (eskiden "Kaptan" / "Captain") TUM modeller
+	bulunur ve her birine ayri prompt takilir. Her NPC hangi adada
+	durdugunu bilir; ilk ada disindakiler menude bedava donus sunar.
+
+	Haritaya SONRADAN eklenen Teleporter da yakalanir (DescendantAdded).
 ]]
+local npcAdlari: { [string]: boolean } = { [Config.NPC.name] = true }
+for _, ad in Config.NPC.altNames or { Config.NPC.altName } do
+	npcAdlari[ad] = true
+end
+
+local function npcMi(obj: Instance): boolean
+	return obj:IsA("Model") and npcAdlari[obj.Name] == true
+end
+
 local function findNPCs(): { Model }
-	local names = { Config.NPC.name, Config.NPC.altName }
 	local found: { Model } = {}
 
 	for _, obj in Workspace:GetDescendants() do
-		if obj:IsA("Model") then
-			for _, name in names do
-				if name and obj.Name == name then
-					table.insert(found, obj)
-					break
-				end
-			end
+		if npcMi(obj) then
+			table.insert(found, obj :: Model)
 		end
 	end
 
@@ -233,7 +238,21 @@ local function setupNPC(npc: Model)
 		AdaMenusuAc:FireClient(player, buildIslandList(player, homeIndex))
 	end)
 
-	print(`[AdaTeleport] Kaptan hazir: {npc:GetFullName()} (ada {homeIndex})`)
+	print(`[AdaTeleport] Teleporter hazir: {npc:GetFullName()} (ada {homeIndex})`)
+end
+
+-- Ayni NPC'ye iki kez prompt takilmasin
+local kurulan: { [Model]: boolean } = {}
+
+local function kur(npc: Model)
+	if kurulan[npc] then
+		return
+	end
+	kurulan[npc] = true
+	npc.Destroying:Connect(function()
+		kurulan[npc] = nil
+	end)
+	setupNPC(npc)
 end
 
 local function setupAllNPCs()
@@ -241,15 +260,25 @@ local function setupAllNPCs()
 
 	if #npcs == 0 then
 		warn(
-			`[AdaTeleport] '{Config.NPC.name}' ya da '{Config.NPC.altName}' adli NPC bulunamadi. `
-				.. `NPC modelinin adini bunlardan biri yap.`
+			`[AdaTeleport] '{Config.NPC.name}' adli NPC bulunamadi. `
+				.. `NPC modelinin adini '{Config.NPC.name}' yap.`
 		)
-		return
 	end
 
 	for _, npc in npcs do
-		setupNPC(npc)
+		kur(npc)
 	end
+
+	-- Sonradan eklenen Teleporter (parcalari bir kare sonra gelebilir)
+	Workspace.DescendantAdded:Connect(function(obj)
+		if npcMi(obj) then
+			task.delay(1, function()
+				if obj.Parent then
+					kur(obj :: Model)
+				end
+			end)
+		end
+	end)
 end
 
 task.defer(setupAllNPCs)
@@ -340,7 +369,7 @@ IsinlayiciGit.OnServerEvent:Connect(function(player, index)
 	end
 
 	if index > data.islands then
-		Bildirim:FireClient(player, `Unlock {island.name} at the captain first!`, Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, `Unlock {island.name} at a Teleporter first!`, Color3.fromRGB(255, 200, 90))
 		return
 	end
 

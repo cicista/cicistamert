@@ -2,8 +2,14 @@
 --[[
 	INDEX  --  brainrot kesif defteri
 
-	Soldaki mavi kitap dugmesi burayi acar. Katalogdaki BUTUN brainrotlar
-	kademeye gore gruplanmis bir izgarada durur:
+	Soldaki mavi kitap dugmesi burayi acar. Iki sira sekme var:
+
+	  ADA        Main / Candy / Snow / Lava / Sea -- yalnizca o adanin
+	             brainrotlari, kademeye gore gruplanmis izgarada
+	  MUTASYON   Normal / Gold / Diamond / Galaxy -- ayni brainrotlar o
+	             mutasyonla bulundu mu (Shared > Mutations.IndexOrder)
+
+	Hucrelerde:
 
 	  bulunmus   ->  modelin 3B onizlemesi + adi + saniyelik geliri
 	  bulunmamis ->  koyu silueti ve "???"
@@ -44,12 +50,18 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Mutations = require(Shared:WaitForChild("Mutations"))
+-- Isimler base'teki etiketle ayni: font, kademe rengi, parilti, Divine parildamasi
+local Fonts = require(Shared:WaitForChild("Fonts"))
+local Divine = require(Shared:WaitForChild("Divine"))
 local Assets = require(Shared:WaitForChild("Assets"))
 local Format = require(Shared:WaitForChild("Format"))
 local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
+-- Degerli brainrotlarin canli cercevesi (Lucky Block carkiyla ayni)
+local KademeEfekti = require(script.Parent:WaitForChild("KademeEfekti"))
 
 local IndexAc = Net.event("IndexAc")
 local IndexDurum = Net.event("IndexDurum")
@@ -58,7 +70,7 @@ local Index = {}
 
 -- Hucre olculeri
 -- Ada satiri eklenince yukseklik 156'dan buyutuldu; yoksa yazi tasiyordu
-local HUCRE = Vector2.new(132, 176)
+local HUCRE = Vector2.new(132, 186)
 local BOSLUK = 10
 
 -- Gorus penceresinin ustune/altina birakilan pay (piksel)
@@ -161,25 +173,29 @@ local KILITLI_SALINIM_ACI = math.rad(10)
 local KILITLI_SALINIM_HIZ = 0.9
 
 --[[
-	ISIM RENKLERI
+	ISIM RENKLERI  --  base'teki dunya etiketiyle AYNI
 
-	Kademe sirasi DEGERLI_SIRA ve ustu olanlarin adi gokkusagi gibi kayar
-	(diger brainrot oyunlarindaki degerli isimler gibi). Varsayilan 5:
-	Mythic ve Divine. Legendary'yi de katmak icin 4 yap.
-
-	Digerlerinin adi siyah ile gri arasinda gidip gelir. Bu isimlerin
-	siyah konturu ACIK_KONTUR'a cekiliyor: siyaha yaklasan yazi siyah
-	konturla koyu zeminde tamamen kayboluyordu.
+	Eskiden isimler gokkusagi / siyah-gri arasinda kayiyordu ve okunmuyordu.
+	Artik base'e konan brainrotun ustundeki kademe yazisiyla ayni kurallar
+	(bkz. Shared > Etiket):
+	  - font ve siyah kontur Shared > Fonts'tan
+	  - renk kademenin rengi (Rarity.textColor)
+	  - Epic ve ustu parlak gradyan (Fonts.applyGlow)
+	  - Divine ve ust kademeler parildar (Divine.tagIf; IlahiRenk cizer)
 ]]
-local DEGERLI_SIRA = 5
--- Gokkusaginin saniyede ne kadar kaydigi (1 = bir tam renk turu)
-local GOKKUSAGI_HIZ = 0.35
--- Isim boyunca kac renk tonu gorunsun (1 = butun gokkusagi tek isimde)
-local GOKKUSAGI_YAYILIM = 0.6
-local SIYAH = Color3.fromRGB(28, 28, 34)
-local GRI = Color3.fromRGB(170, 172, 182)
-local SIYAHGRI_HIZ = 1.6
-local ACIK_KONTUR = Color3.fromRGB(215, 218, 228)
+local function kademeYazisi(label: TextLabel, rarityId: string)
+	local renk = Rarity.textColor(rarityId)
+	Fonts.apply(label)
+	Divine.untag(label)
+	if Rarity.isDivine(rarityId) then
+		Fonts.applyGlow(label, renk)
+		Divine.tagIf(label, rarityId)
+	elseif Rarity.isGlowing(rarityId) then
+		Fonts.applyGlow(label, renk)
+	else
+		Fonts.clearGlow(label, renk)
+	end
+end
 
 --[[
 	ACILMIS HUCRENIN ZEMINI
@@ -215,13 +231,41 @@ local ADA_ADI: { [string]: string } = {
 	deniz = "The Sea",
 }
 
-local function siraliKademeler(): { string }
+-- Sekme dugmelerindeki kisa ad ve renk (sira Brainrots.IslandOrder)
+local ADA_SEKME: { [string]: { ad: string, renk: Color3 } } = {
+	kum = { ad = "Main", renk = Color3.fromRGB(95, 200, 90) },
+	sekerkum = { ad = "Candy", renk = Color3.fromRGB(255, 110, 190) },
+	snowkum = { ad = "Snow", renk = Color3.fromRGB(110, 190, 255) },
+	alevkum = { ad = "Lava", renk = Color3.fromRGB(255, 110, 45) },
+	deniz = { ad = "Sea", renk = Color3.fromRGB(40, 130, 240) },
+}
+
+-- Mutasyon sekmeleri: once Normal, sonra Index'te gosterilenler
+local MUTASYON_SEKMELERI: { string } = { "Normal" }
+for _, mutasyon in Mutations.IndexOrder do
+	table.insert(MUTASYON_SEKMELERI, mutasyon)
+end
+
+local function mutasyonRengi(id: string): Color3
+	if id == "Normal" then
+		return Color3.fromRGB(150, 155, 170)
+	end
+	return Mutations.color(id)
+end
+
+-- Brainrotun adasi (bilinmeyen ya da eksik ada ilk adaya sayilir)
+local function adasi(info: any): string
+	return Brainrots.normalizeIsland(info.island)
+end
+
+-- Adada bulunan kademeler, Rarity.Order sirasiyla
+local function siraliKademeler(ada: string): { string }
 	local sirali = {}
 	local gorulen: { [string]: boolean } = {}
 
 	for _, id in Rarity.Order do
 		for _, info in Brainrots.List do
-			if info.rarity == id and not gorulen[id] then
+			if info.rarity == id and adasi(info) == ada and not gorulen[id] then
 				gorulen[id] = true
 				table.insert(sirali, id)
 			end
@@ -229,7 +273,7 @@ local function siraliKademeler(): { string }
 	end
 
 	for _, info in Brainrots.List do
-		if not gorulen[info.rarity] then
+		if adasi(info) == ada and not gorulen[info.rarity] then
 			gorulen[info.rarity] = true
 			table.insert(sirali, info.rarity)
 		end
@@ -243,30 +287,25 @@ end
 ------------------------------------------------------------------
 local ekran = Instance.new("ScreenGui")
 ekran.Name = "IndexDefteri"
+-- XP barinin (DisplayOrder 0) ustunde; sira RobuxMagaza'daki notta
+ekran.DisplayOrder = 10
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ekran.Parent = playerGui
 
-local panel = UI.panel(ekran, UDim2.fromOffset(620, 560), "Index")
+local panel = UI.panel(ekran, UDim2.fromOffset(640, 620), "Index")
 
-UI.text({
-	text = "INDEX",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -120, 0, 36),
-	position = UDim2.fromOffset(20, 16),
-	parent = panel,
-	name = "Baslik",
-})
+-- Renkli baslik cubugu (bkz. UI.baslikCubugu)
+UI.baslikCubugu(panel, "Index", Color3.fromRGB(186, 120, 255), Color3.fromRGB(80, 150, 255), "index")
 
 local sayac = UI.text({
 	text = "",
-	size = UI.Sizes.label,
-	color = UI.Colors.textDim,
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(255, 225, 140),
 	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -120, 0, 22),
-	position = UDim2.fromOffset(20, 52),
+	frameSize = UDim2.new(1, -36, 0, 22),
+	position = UDim2.fromOffset(18, 68),
 	parent = panel,
 	name = "Sayac",
 })
@@ -275,10 +314,37 @@ UI.closeButton(panel).Activated:Connect(function()
 	panel.Visible = false
 end)
 
+--[[
+	SEKME SIRALARI
+
+	Ustte adalar, altinda mutasyonlar. Secili sekme kendi renginde,
+	digerleri gri 3B dugme. Secim degisince izgara yeniden kurulmaz:
+	ada sekmesi yalnizca o adanin kutusunu gosterir, mutasyon sekmesi
+	hucrelerin durumunu (bulundu mu, gelir, model) degistirir.
+]]
+local function sekmeSirasi(y: number, yukseklik: number): Frame
+	local sira = Instance.new("Frame")
+	sira.BackgroundTransparency = 1
+	sira.Position = UDim2.fromOffset(14, y)
+	sira.Size = UDim2.new(1, -28, 0, yukseklik)
+	sira.Parent = panel
+
+	local yerlesim = Instance.new("UIListLayout")
+	yerlesim.FillDirection = Enum.FillDirection.Horizontal
+	yerlesim.Padding = UDim.new(0, 8)
+	yerlesim.SortOrder = Enum.SortOrder.LayoutOrder
+	yerlesim.Parent = sira
+
+	return sira
+end
+
+local adaSirasi = sekmeSirasi(96, 42)
+local mutasyonSirasi = sekmeSirasi(144, 36)
+
 local liste = Instance.new("ScrollingFrame")
 liste.Name = "Liste"
-liste.Position = UDim2.fromOffset(14, 84)
-liste.Size = UDim2.new(1, -28, 1, -98)
+liste.Position = UDim2.fromOffset(14, 190)
+liste.Size = UDim2.new(1, -28, 1, -204)
 liste.BackgroundTransparency = 1
 liste.BorderSizePixel = 0
 liste.ScrollBarThickness = 6
@@ -292,12 +358,18 @@ dizilim.Padding = UDim.new(0, 12)
 dizilim.SortOrder = Enum.SortOrder.LayoutOrder
 dizilim.Parent = liste
 
+-- Secili sekmeler
+local seciliAda = Brainrots.IslandOrder[1]
+local seciliMutasyon = "Normal"
+
 ------------------------------------------------------------------
 -- HUCRELER
 ------------------------------------------------------------------
 type Hucre = {
 	name: string,
 	rarity: string,
+	-- Brainrotun adasi (hangi ada sekmesinde durdugu)
+	ada: string,
 	renk: Color3,
 	-- Izgara hucresi: gorunmez buton, yalnizca fareyi yakalar
 	kutu: TextButton,
@@ -332,12 +404,16 @@ type Hucre = {
 	modelYok: boolean,
 	-- Gorus penceresinde mi: canlilik yalnizca bunlara uygulanir
 	gorunur: boolean,
-	-- Isimdeki gokkusagi gecisi (yalnizca degerli kademelerde, digerlerinde nil)
-	adGecis: UIGradient?,
 	-- Acilmis hucrenin zeminindeki akan renk gecisi
 	zeminGecis: UIGradient,
 	-- Hucreler ayni anda ayni yone sallanmasin / ayni renkte olmasin diye
 	faz: number,
+	--[[
+		Epic ve ustunde canli cerceve (bkz. KademeEfekti). Bulunmamis
+		brainrotta KILITLI modda sonuk calisir: degerli oldugu belli,
+		ama kapali oldugu da.
+	]]
+	efekt: KademeEfekti.Efekt?,
 }
 
 local hucreler: { Hucre } = {}
@@ -345,7 +421,7 @@ local hucreler: { Hucre } = {}
 -- Kilit ikonu tek sefer cozulup buradaki butun rozetlere yaziliyor
 local kilitRozetleri: { ImageLabel } = {}
 
--- Kademe basligindaki kesif sayaclari: rarityId -> yazi
+-- Kademe basligindaki kesif sayaclari: "ada/rarityId" -> yazi
 local kademeSayaclari: { [string]: TextLabel } = {}
 
 --[[
@@ -381,7 +457,9 @@ local function onizlemeKur(hucre: Hucre)
 		return
 	end
 
-	local model = Assets.brainrotModel(hucre.name)
+	-- Mutasyon sekmesinde o mutasyonun modeli (Gold Tralalero ...)
+	local model = Assets.brainrotModel(hucre.name, if seciliMutasyon ~= "Normal" then seciliMutasyon else nil)
+		or Assets.brainrotModel(hucre.name)
 	if not model then
 		--[[
 			Katalogda olup modeli olmayan brainrot. Isaretleniyor ki her
@@ -504,6 +582,17 @@ local function hucreCiz(hucre: Hucre)
 	-- Kontur rengi hover sirasinda aydinlatiliyor; burada tabanina doner
 	hucre.cizgi.Color = hucre.renk
 
+	--[[
+		EFEKTLI HUCRE: konturun kalinligini, saydamligini ve (donen isik
+		varsa) rengini efekt yonetiyor. Asagidaki kontur ayarlari yalnizca
+		efektsiz hucrelere; zemin ve onizleme ayrimi herkese.
+	]]
+	local efekt = hucre.efekt
+	if efekt then
+		efekt.kilitli = not hucre.kesif
+		KademeEfekti.yenile(efekt)
+	end
+
 	if hucre.kesif then
 		--[[
 			Zemin BEYAZ, rengi gecis veriyor: UIGradient nesnenin rengiyle
@@ -513,8 +602,10 @@ local function hucreCiz(hucre: Hucre)
 		hucre.yuva.BackgroundColor3 = Color3.new(1, 1, 1)
 		hucre.yuva.BackgroundTransparency = 0.12
 		hucre.zeminGecis.Enabled = true
-		hucre.cizgi.Thickness = 3
-		hucre.cizgi.Transparency = 0
+		if not efekt then
+			hucre.cizgi.Thickness = 3
+			hucre.cizgi.Transparency = 0
+		end
 
 		--[[
 			Kilitliyken salinan kamera, acildigi anda o egik acida donup
@@ -528,8 +619,10 @@ local function hucreCiz(hucre: Hucre)
 		hucre.yuva.BackgroundColor3 = KILITLI_ZEMIN
 		hucre.yuva.BackgroundTransparency = 0.25
 		hucre.zeminGecis.Enabled = false
-		hucre.cizgi.Thickness = 1.5
-		hucre.cizgi.Transparency = 0.45
+		if not efekt then
+			hucre.cizgi.Thickness = 1.5
+			hucre.cizgi.Transparency = 0.45
+		end
 	end
 
 	onizlemeTonla(hucre)
@@ -552,10 +645,14 @@ local function hoverBaslat(hucre: Hucre)
 		{ Scale = hedef }
 	):Play()
 
+	local isikli = hucre.efekt ~= nil and hucre.efekt.gecis ~= nil
+
 	if hucre.kesif then
 		hucre.parilti.Position = UDim2.fromScale(PARILTI_BAS, 0.5)
 		hucre.parilti.Visible = true
-		hucre.cizgi.Color = UI.shade(hucre.renk, 0.3)
+		if not isikli then
+			hucre.cizgi.Color = UI.shade(hucre.renk, 0.3)
+		end
 	else
 		-- Kilitlide tek degisiklik: kontur biraz belirginlesir
 		hucre.cizgi.Transparency = 0.1
@@ -772,39 +869,17 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 
 	local ad = UI.text({
 		text = info.name,
-		size = UI.Sizes.tiny,
+		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, -8, 0, 28),
-		position = UDim2.fromOffset(4, 108),
+		frameSize = UDim2.new(1, -8, 0, 36),
+		position = UDim2.fromOffset(4, 107),
 		parent = ic,
 		wrapped = true,
 		name = "Ad",
 	})
-	--[[
-		ISIM RENGI  (bkz. DEGERLI_SIRA)
-
-		rarityStyle KULLANILMIYOR: o isme kendi parilti gradyanini koyuyor
-		ve ust kademeleri IlahiRenk'e etiketliyor; IlahiRenk de her karede
-		TextColor3'u yazip buradaki animasyonu eziyordu. plainStyle ikisini
-		de temizliyor, renk tamamen asagidaki surucude.
-	]]
-	local degerli = Rarity.get(info.rarity).order >= DEGERLI_SIRA
-	UI.plainStyle(ad, if degerli then Color3.new(1, 1, 1) else GRI)
-
-	local adGecis: UIGradient? = nil
-	if degerli then
-		-- Gradyan yazi rengiyle carpildigi icin taban beyaz (yukarida)
-		local gecis = Instance.new("UIGradient")
-		gecis.Name = "Gokkusagi"
-		gecis.Parent = ad
-		adGecis = gecis
-	else
-		local kontur = ad:FindFirstChildOfClass("UIStroke")
-		if kontur then
-			kontur.Color = ACIK_KONTUR
-		end
-	end
+	-- Base'te modelin ustundeki kademe yazisiyla ayni renk ve efekt
+	kademeYazisi(ad, info.rarity)
 
 	local gelir = UI.text({
 		text = Format.perSecond(Brainrots.income(info.name, "Normal")),
@@ -812,7 +887,7 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -8, 0, 18),
-		position = UDim2.fromOffset(4, 136),
+		position = UDim2.fromOffset(4, 145),
 		parent = ic,
 		name = "Gelir",
 	})
@@ -833,7 +908,7 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, -8, 0, 16),
-		position = UDim2.fromOffset(4, 155),
+		position = UDim2.fromOffset(4, 164),
 		parent = ic,
 		name = "Ada",
 	})
@@ -841,6 +916,7 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	local hucre: Hucre = {
 		name = info.name,
 		rarity = info.rarity,
+		ada = adasi(info),
 		renk = renk,
 		kutu = kutu,
 		ic = ic,
@@ -859,11 +935,21 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		uzaklik = nil,
 		modelYok = false,
 		gorunur = false,
-		adGecis = adGecis,
 		zeminGecis = zeminGecis,
 		-- Katalog sirasindan turuyor: komsu hucreler hep farkli fazda
 		faz = #hucreler * 0.77,
+		efekt = nil,
 	}
+
+	-- Canli cerceve: yalnizca panel acik ve hucre gorus penceresindeyken isler
+	hucre.efekt = KademeEfekti.tak(ic, cizgi, renk, info.rarity, {
+		aura = "ic",
+		-- Legendary ve ustunde zemine alttan kademe rengi yukselir
+		zemin = true,
+		etkin = function()
+			return panel.Visible and hucre.gorunur
+		end,
+	})
 
 	kutu.MouseEnter:Connect(function()
 		hoverBaslat(hucre)
@@ -881,109 +967,128 @@ end
 -- Katalog oyun boyunca degismiyor, yani hucreler tek sefer kurulup
 -- sonra yalnizca durumlari guncelleniyor.
 ------------------------------------------------------------------
-local kademeSirasi = 0
+-- Her adanin kendi kutusu; ada sekmesi yalnizca secili olani gosterir
+local adaKutulari: { [string]: Frame } = {}
 
-for _, rarityId in siraliKademeler() do
-	kademeSirasi += 1
+for adaSira, ada in Brainrots.IslandOrder do
+	local kutu = Instance.new("Frame")
+	kutu.Name = `Ada_{ada}`
+	kutu.Size = UDim2.new(1, 0, 0, 0)
+	kutu.AutomaticSize = Enum.AutomaticSize.Y
+	kutu.BackgroundTransparency = 1
+	kutu.LayoutOrder = adaSira
+	kutu.Visible = ada == seciliAda
+	kutu.Parent = liste
+	adaKutulari[ada] = kutu
 
-	local baslik = Instance.new("Frame")
-	baslik.Name = `Kademe_{rarityId}`
-	baslik.Size = UDim2.new(1, -10, 0, 26)
-	baslik.BackgroundTransparency = 1
-	baslik.LayoutOrder = kademeSirasi * 10
-	baslik.Parent = liste
-	-- Doku basligin arkasinda kalsin, yazi onde olsun
-	baslik.ZIndex = 1
+	local kutuDizilim = Instance.new("UIListLayout")
+	kutuDizilim.Padding = UDim.new(0, 12)
+	kutuDizilim.SortOrder = Enum.SortOrder.LayoutOrder
+	kutuDizilim.Parent = kutu
 
-	--[[
-		KADEME BASLIGI
+	local kademeSirasi = 0
 
-		Solda kademe adi, sagda o kademenin kesif sayaci (3 / 17).
-		Ustteki genel sayacin ayni bilgiyi kademe kademe verdigi hali --
-		oyuncu hangi kademede eksigi oldugunu bir bakista goruyor.
-	]]
-	local etiket = UI.text({
-		text = Rarity.displayName(rarityId),
-		size = UI.Sizes.label,
-		font = UI.Fonts.bold,
-		align = Enum.TextXAlignment.Left,
-		frameSize = UDim2.new(1, -90, 1, 0),
-		parent = baslik,
-		name = "Etiket",
-	})
-	etiket.ZIndex = 2
-	UI.rarityStyle(etiket, rarityId)
+	for _, rarityId in siraliKademeler(ada) do
+		kademeSirasi += 1
 
-	local kademeSayac = UI.text({
-		text = "",
-		size = UI.Sizes.small,
-		color = UI.Colors.textDim,
-		align = Enum.TextXAlignment.Right,
-		frameSize = UDim2.fromOffset(86, 26),
-		position = UDim2.new(1, -86, 0, 0),
-		parent = baslik,
-		name = "Sayac",
-	})
-	kademeSayac.ZIndex = 2
-	kademeSayaclari[rarityId] = kademeSayac
+		local baslik = Instance.new("Frame")
+		baslik.Name = `Kademe_{rarityId}`
+		baslik.Size = UDim2.new(1, -10, 0, 30)
+		baslik.BackgroundTransparency = 1
+		baslik.LayoutOrder = kademeSirasi * 10
+		baslik.Parent = kutu
+		-- Doku basligin arkasinda kalsin, yazi onde olsun
+		baslik.ZIndex = 1
 
-	--[[
-		KADEMENIN KENDI DOKUSU
+		--[[
+			KADEME BASLIGI
 
-		Baslik duz ve sade duruyordu. Arkasina kademe renginde egik bir
-		serit dokusu biniyor: her kademe kendi temasinda gorunuyor, liste
-		bolumlere ayrilmis gibi okunuyor.
+			Solda kademe adi (base'teki kademe yazisiyla ayni efekt), sagda
+			o kademenin kesif sayaci (3 / 17).
+		]]
+		local etiket = UI.text({
+			text = Rarity.labelText(rarityId),
+			size = UI.Sizes.label,
+			font = UI.Fonts.bold,
+			align = Enum.TextXAlignment.Left,
+			frameSize = UDim2.new(1, -100, 1, 0),
+			position = UDim2.fromOffset(10, 0),
+			parent = baslik,
+			name = "Etiket",
+		})
+		etiket.ZIndex = 2
+		kademeYazisi(etiket, rarityId)
 
-		Doku disaridan resim gerektirmiyor -- gecise bol sayida ANI
-		saydamlik duragi konarak kesik seritler olusturuluyor.
-	]]
-	local doku = Instance.new("Frame")
-	doku.Name = "Doku"
-	doku.Size = UDim2.fromScale(1, 1)
-	doku.BackgroundColor3 = Rarity.color(rarityId)
-	doku.BackgroundTransparency = 0.78
-	doku.BorderSizePixel = 0
-	doku.ZIndex = 0
-	doku.Parent = baslik
-	UI.corner(doku, 6)
+		local kademeSayac = UI.text({
+			text = "",
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = Color3.fromRGB(235, 238, 245),
+			align = Enum.TextXAlignment.Right,
+			frameSize = UDim2.fromOffset(86, 30),
+			position = UDim2.new(1, -96, 0, 0),
+			parent = baslik,
+			name = "Sayac",
+		})
+		kademeSayac.ZIndex = 2
+		kademeSayaclari[`{ada}/{rarityId}`] = kademeSayac
 
-	do
-		local stops = {}
-		local sikilik = 13
-		for i = 0, sikilik do
-			table.insert(
-				stops,
-				NumberSequenceKeypoint.new(i / sikilik, if i % 2 == 0 then 0 else 1)
-			)
+		--[[
+			KADEMENIN KENDI DOKUSU
+
+			Arkada kademe renginde egik serit dokusu; liste bolumlere
+			ayrilmis gibi okunuyor. Doku gecisteki ANI saydamlik duraklariyla
+			yapiliyor, disaridan resim gerekmiyor.
+		]]
+		local doku = Instance.new("Frame")
+		doku.Name = "Doku"
+		doku.Size = UDim2.fromScale(1, 1)
+		doku.BackgroundColor3 = Rarity.color(rarityId)
+		doku.BackgroundTransparency = 0.7
+		doku.BorderSizePixel = 0
+		doku.ZIndex = 0
+		doku.Parent = baslik
+		UI.corner(doku, 8)
+		UI.stroke(doku, Color3.fromRGB(0, 0, 0), 2)
+
+		do
+			local stops = {}
+			local sikilik = 13
+			for i = 0, sikilik do
+				table.insert(
+					stops,
+					NumberSequenceKeypoint.new(i / sikilik, if i % 2 == 0 then 0 else 0.45)
+				)
+			end
+
+			local gecis = Instance.new("UIGradient")
+			gecis.Rotation = 24
+			gecis.Transparency = NumberSequence.new(stops)
+			gecis.Parent = doku
 		end
 
-		local gecis = Instance.new("UIGradient")
-		gecis.Rotation = 24
-		gecis.Transparency = NumberSequence.new(stops)
-		gecis.Parent = doku
-	end
+		local izgara = Instance.new("Frame")
+		izgara.Name = `Izgara_{rarityId}`
+		izgara.Size = UDim2.new(1, -10, 0, 0)
+		izgara.AutomaticSize = Enum.AutomaticSize.Y
+		izgara.BackgroundTransparency = 1
+		izgara.LayoutOrder = kademeSirasi * 10 + 1
+		izgara.Parent = kutu
 
-	local izgara = Instance.new("Frame")
-	izgara.Name = `Izgara_{rarityId}`
-	izgara.Size = UDim2.new(1, -10, 0, 0)
-	izgara.AutomaticSize = Enum.AutomaticSize.Y
-	izgara.BackgroundTransparency = 1
-	izgara.LayoutOrder = kademeSirasi * 10 + 1
-	izgara.Parent = liste
+		local yerlesim = Instance.new("UIGridLayout")
+		yerlesim.CellSize = UDim2.fromOffset(HUCRE.X, HUCRE.Y)
+		yerlesim.CellPadding = UDim2.fromOffset(BOSLUK, BOSLUK)
+		yerlesim.SortOrder = Enum.SortOrder.LayoutOrder
+		yerlesim.Parent = izgara
 
-	local yerlesim = Instance.new("UIGridLayout")
-	yerlesim.CellSize = UDim2.fromOffset(HUCRE.X, HUCRE.Y)
-	yerlesim.CellPadding = UDim2.fromOffset(BOSLUK, BOSLUK)
-	yerlesim.SortOrder = Enum.SortOrder.LayoutOrder
-	yerlesim.Parent = izgara
-
-	local sira = 0
-	for _, info in Brainrots.List do
-		if info.rarity == rarityId then
-			sira += 1
-			local hucre = hucreKur(izgara, info, sira)
-			hucreCiz(hucre)
-			table.insert(hucreler, hucre)
+		local sira = 0
+		for _, info in Brainrots.List do
+			if info.rarity == rarityId and adasi(info) == ada then
+				sira += 1
+				local hucre = hucreKur(izgara, info, sira)
+				hucreCiz(hucre)
+				table.insert(hucreler, hucre)
+			end
 		end
 	end
 end
@@ -1028,7 +1133,10 @@ local function pencereyiTazele()
 
 	for _, hucre in hucreler do
 		local y = hucre.kutu.AbsolutePosition.Y
-		local icinde = y + hucre.kutu.AbsoluteSize.Y >= ustSinir and y <= altSinir
+		-- Gizli ada kutusundakiler hic cizilmez
+		local icinde = hucre.ada == seciliAda
+			and y + hucre.kutu.AbsoluteSize.Y >= ustSinir
+			and y <= altSinir
 
 		hucre.gorunur = icinde
 
@@ -1079,7 +1187,7 @@ end)
 -- acmak yerine. Isler yalnizca GORUS PENCERESINDEKI hucrelere uygulanir
 -- (gorunur bayragi): ekran disindaki isimlere, zeminlere dokunulmuyor.
 --
---   isim     : degerli kademede gokkusagi kayar, digerleri siyah <-> gri
+--   isim     : base etiketiyle ayni; parildamayi IlahiRenk ciziyor
 --   zemin    : acilmis hucrede renkler akar ve doner
 --   kilitli  : fare degmeden de model hafifce sallanir
 --   fare     : acilmis hucrede parilti + belirgin salinim
@@ -1092,19 +1200,6 @@ local function kameraCevir(hucre: Hucre, aci: number)
 		local yon = CFrame.Angles(0, aci, 0):VectorToWorldSpace(BAKIS_YONU)
 		kamera.CFrame = CFrame.lookAt(merkez + yon * uzaklik, merkez)
 	end
-end
-
--- Isim boyunca GOKKUSAGI_YAYILIM kadar tonu kaplayan bes duraklik gecis
-local function gokkusagi(bas: number): ColorSequence
-	local duraklar = {}
-	for i = 0, 4 do
-		local t = i / 4
-		table.insert(
-			duraklar,
-			ColorSequenceKeypoint.new(t, Color3.fromHSV((bas + t * GOKKUSAGI_YAYILIM) % 1, 0.85, 1))
-		)
-	end
-	return ColorSequence.new(duraklar)
 end
 
 -- Zeminin uc tonu: ayni doygunlukta, birbirinden 0.22 ton uzakta
@@ -1127,15 +1222,6 @@ RunService.RenderStepped:Connect(function(dt)
 	for _, hucre in hucreler do
 		if not hucre.gorunur then
 			continue
-		end
-
-		-- ISIM
-		local adGecis = hucre.adGecis
-		if adGecis then
-			adGecis.Color = gokkusagi(zaman * GOKKUSAGI_HIZ + hucre.faz * 0.05)
-		else
-			local karisim = (math.sin(zaman * SIYAHGRI_HIZ + hucre.faz) + 1) * 0.5
-			hucre.ad.TextColor3 = SIYAH:Lerp(GRI, karisim)
 		end
 
 		if hucre.kesif then
@@ -1171,42 +1257,175 @@ end)
 ------------------------------------------------------------------
 -- SUNUCUDAN GELEN KESIF TABLOSU
 ------------------------------------------------------------------
-IndexDurum.OnClientEvent:Connect(function(kesfedilen)
-	if type(kesfedilen) ~= "table" then
-		return
+-- Sunucudan gelen son tablolar
+local sonKesif: { [string]: boolean } = {}
+local sonMutasyonKesif: { [string]: { [string]: boolean } } = {}
+
+local function kesifMi(hucre: Hucre): boolean
+	if seciliMutasyon == "Normal" then
+		return sonKesif[hucre.name] == true
 	end
+	local kayit = sonMutasyonKesif[seciliMutasyon]
+	return kayit ~= nil and kayit[hucre.name] == true
+end
 
-	local bulunan = 0
+-- Sekme dugmeleri: id -> dugme (renkleri secime gore degisir)
+local adaDugmeleri: { [string]: TextButton } = {}
+local mutasyonDugmeleri: { [string]: TextButton } = {}
+-- Sekme yazisindaki sayac: "Main 4/20"
+local adaYazilari: { [string]: TextLabel } = {}
 
-	-- Kademe basina: rarityId -> { bulunan, toplam }
+local SEKME_KAPALI = Color3.fromRGB(78, 84, 100)
+
+-- Butun hucreleri, sayaclari ve sekme renklerini secime gore yeniden yazar
+local function durumuCiz()
+	local bulunan, toplam = 0, 0
 	local kademe: { [string]: { number } } = {}
+	local adaSayi: { [string]: { number } } = {}
 
 	for _, hucre in hucreler do
-		hucre.kesif = kesfedilen[hucre.name] == true
+		hucre.kesif = kesifMi(hucre)
 
-		local sayi = kademe[hucre.rarity]
+		local mutasyon = if seciliMutasyon ~= "Normal" then seciliMutasyon else nil
+		hucre.gelir.Text = Format.perSecond(Brainrots.income(hucre.name, "Normal", mutasyon :: any))
+
+		local anahtar = `{hucre.ada}/{hucre.rarity}`
+		local sayi = kademe[anahtar]
 		if not sayi then
 			sayi = { 0, 0 }
-			kademe[hucre.rarity] = sayi
+			kademe[anahtar] = sayi
 		end
 		sayi[2] += 1
 
+		local adaninki = adaSayi[hucre.ada]
+		if not adaninki then
+			adaninki = { 0, 0 }
+			adaSayi[hucre.ada] = adaninki
+		end
+		adaninki[2] += 1
+
 		if hucre.kesif then
-			bulunan += 1
 			sayi[1] += 1
+			adaninki[1] += 1
+		end
+
+		if hucre.ada == seciliAda then
+			toplam += 1
+			if hucre.kesif then
+				bulunan += 1
+			end
 		end
 
 		hucreCiz(hucre)
 	end
 
-	sayac.Text = `{bulunan} / {#hucreler} kesfedildi`
+	local adaAdi = ADA_ADI[seciliAda] or seciliAda
+	local mutasyonAdi = if seciliMutasyon == "Normal" then "" else `{seciliMutasyon} `
+	sayac.Text = `{adaAdi}  -  {bulunan} / {toplam} {mutasyonAdi}discovered`
 
-	-- Her kademe basligi kendi payini yaziyor
-	for rarityId, etiket in kademeSayaclari do
-		local sayi = kademe[rarityId]
+	for anahtar, etiket in kademeSayaclari do
+		local sayi = kademe[anahtar]
 		etiket.Text = if sayi then `{sayi[1]} / {sayi[2]}` else ""
 	end
 
+	for ada, yazi in adaYazilari do
+		local sayi = adaSayi[ada]
+		local sekme = ADA_SEKME[ada]
+		yazi.Text = `{if sekme then sekme.ad else ada}  {if sayi then sayi[1] else 0}/{if sayi then sayi[2] else 0}`
+	end
+
+	for ada, dugme in adaDugmeleri do
+		local sekme = ADA_SEKME[ada]
+		UI.dugme3BRenk(dugme, if ada == seciliAda and sekme then sekme.renk else SEKME_KAPALI)
+	end
+	for id, dugme in mutasyonDugmeleri do
+		UI.dugme3BRenk(dugme, if id == seciliMutasyon then mutasyonRengi(id) else SEKME_KAPALI)
+	end
+end
+
+local function sekmeSec(ada: string?, mutasyon: string?)
+	local mutasyonDegisti = mutasyon ~= nil and mutasyon ~= seciliMutasyon
+
+	if ada then
+		seciliAda = ada
+	end
+	if mutasyon then
+		seciliMutasyon = mutasyon
+	end
+
+	for id, kutu in adaKutulari do
+		kutu.Visible = id == seciliAda
+	end
+
+	-- Mutasyon degisince modeller o mutasyonun modeliyle yeniden kurulur
+	if mutasyonDegisti then
+		for _, hucre in hucreler do
+			onizlemeYik(hucre)
+			hucre.modelYok = false
+		end
+	end
+
+	local acik = ustundeki
+	if acik then
+		hoverBitir(acik)
+	end
+
+	liste.CanvasPosition = Vector2.zero
+	durumuCiz()
+	task.defer(pencereyiTazele)
+end
+
+-- Ada sekmeleri
+for sira, ada in Brainrots.IslandOrder do
+	local sekme = ADA_SEKME[ada] or { ad = ada, renk = UI.Colors.accent }
+	local dugme, yuz = UI.dugme3B(adaSirasi, nil, UDim2.new(1 / #Brainrots.IslandOrder, -7, 1, 0), SEKME_KAPALI)
+	dugme.Name = `Ada_{ada}`
+	dugme.LayoutOrder = sira
+	adaYazilari[ada] = UI.text({
+		text = sekme.ad,
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = yuz,
+		zIndex = 5,
+	})
+	adaDugmeleri[ada] = dugme
+	dugme.MouseButton1Click:Connect(function()
+		sekmeSec(ada, nil)
+	end)
+end
+
+-- Mutasyon sekmeleri
+for sira, id in MUTASYON_SEKMELERI do
+	local dugme = UI.dugme3B(
+		mutasyonSirasi,
+		if id == "Normal" then "Normal" else Mutations.get(id).displayName,
+		UDim2.new(1 / #MUTASYON_SEKMELERI, -6, 1, 0),
+		SEKME_KAPALI
+	)
+	dugme.Name = `Mutasyon_{id}`
+	dugme.LayoutOrder = sira
+	mutasyonDugmeleri[id] = dugme
+	dugme.MouseButton1Click:Connect(function()
+		sekmeSec(nil, id)
+	end)
+end
+
+durumuCiz()
+
+------------------------------------------------------------------
+-- SUNUCUDAN GELEN KESIF TABLOLARI
+------------------------------------------------------------------
+IndexDurum.OnClientEvent:Connect(function(kesfedilen, mutasyonlar)
+	if type(kesfedilen) ~= "table" then
+		return
+	end
+
+	sonKesif = kesfedilen
+	sonMutasyonKesif = if type(mutasyonlar) == "table" then mutasyonlar else {}
+
+	durumuCiz()
 	pencereyiTazele()
 
 	--[[

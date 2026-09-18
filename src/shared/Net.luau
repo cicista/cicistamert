@@ -126,6 +126,8 @@ Net.Events = {
 
 	-- Robux gecisleri (bkz. Shared > Passler); sahiplik oyuncu niteligiyle gelir
 	"PassSatinAl",       -- client -> server: bu gecisin satin alma penceresini ac (ad)
+	-- Robux magazasi (sag ust STORE; bkz. Shared > RobuxMagaza)
+	"RobuxUrunAl",       -- client -> server: bu Developer Product'in satin alma penceresini ac (anahtar)
 
 	-- Sagdaki butonlar
 	"BaseyeIsinlan",     -- client -> server: beni base'imin onune isinla
