@@ -56,7 +56,6 @@ local Fonts = require(Shared:WaitForChild("Fonts"))
 local Divine = require(Shared:WaitForChild("Divine"))
 local Assets = require(Shared:WaitForChild("Assets"))
 local Format = require(Shared:WaitForChild("Format"))
-local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -77,16 +76,18 @@ local BOSLUK = 10
 local PAY = 260
 
 --[[
-	BULUNMAMIS BRAINROTUN ONIZLEME TONU
+	BULUNMAMIS BRAINROT SIMSIYAH SILUET
 
-	Onizleme siyaha boyanip silue yapilmiyor: oyuncu brainrotun NE
-	OLDUGUNU gorsun, yalnizca "henuz bende yok" bilgisini alsin. Bu ton
-	modeli taninir birakip acikca soluklastiriyor.
+	Oyuncu brainrotu elde etmeden NE OLDUGUNU bilemesin: modelin sekli
+	gorunur ama tamamen siyah; adi ve saniyelik getirisi "???" yazar.
+	Buldugu an renklenir, adi ve getirisi aciga cikar. Kilit rozetine
+	gerek kalmadi (siyah siluet zaten "henuz bende yok" diyor).
 
-	1'e yaklastirdikca kilitli hucre bulunmus gibi gorunur, 0'a
-	yaklastirdikca siluete doner.
+	ViewportFrame.ImageColor3 cizilen sahneyi carpar; siyah = siluet.
 ]]
-local KILITLI_TON = Color3.fromRGB(120, 120, 132)
+local KILITLI_TON = Color3.fromRGB(0, 0, 0)
+-- Kilitli hucrede ad ve getiri yerine yazan
+local GIZLI_YAZI = "???"
 
 --[[
 	KAMERANIN BAKTIGI YON  --  dunya ekseninde, TAM KARSIDAN
@@ -385,8 +386,6 @@ type Hucre = {
 	gelir: TextLabel,
 	-- Modeli bulunamayan brainrotta onizleme yerine bu gorunur
 	yedek: TextLabel,
-	-- Bulunmamis brainrotun kosesindeki kilit rozeti
-	kilit: ImageLabel,
 	kesif: boolean,
 	-- Kurulmus 3B onizleme; pencereden cikinca yikilip nil'e doner
 	onizleme: ViewportFrame?,
@@ -418,8 +417,6 @@ type Hucre = {
 
 local hucreler: { Hucre } = {}
 
--- Kilit ikonu tek sefer cozulup buradaki butun rozetlere yaziliyor
-local kilitRozetleri: { ImageLabel } = {}
 
 -- Kademe basligindaki kesif sayaclari: "ada/rarityId" -> yazi
 local kademeSayaclari: { [string]: TextLabel } = {}
@@ -450,7 +447,7 @@ end
 	Once yalnizca bulunanlara kuruluyordu ve panel bastan sona "?" ile
 	doluydu -- Index'in asil isi olan "neler var, neye benziyorlar"
 	sorusunu cevaplamiyordu. Artik hepsi ciziliyor, bulunmamis olanlar
-	KILITLI_TON ile soluk ve kosesinde kilit rozetiyle duruyor.
+	KILITLI_TON ile simsiyah siluet olarak, adsiz ve getirisiz duruyor.
 ]]
 local function onizlemeKur(hucre: Hucre)
 	if hucre.onizleme or hucre.modelYok then
@@ -562,11 +559,12 @@ end
 	sorusunun cevabi olmali.
 
 	Bulundu/bulunmadi ayrimi artik uc yerden okunuyor: onizlemenin tonu,
-	kosedeki kilit rozeti ve ustteki sayac.
+	adin/getirinin "???" olmasi ve ustteki sayac.
 ]]
 local function hucreCiz(hucre: Hucre)
 	hucre.gelir.Visible = true
-	hucre.kilit.Visible = not hucre.kesif
+	-- Kilitli brainrotun adi gizli (efekt ve kademe rengi kalir)
+	hucre.ad.Text = if hucre.kesif then hucre.name else GIZLI_YAZI
 
 	--[[
 		BULUNAN HUCRE PARLAR, KILITLI OLAN SOLAR
@@ -577,7 +575,7 @@ local function hucreCiz(hucre: Hucre)
 
 		  zemin  : bulunan kademe renginde ve canli, kilitli olu gri
 		  kontur : bulunanda kalin, kilitlide ince
-		  model  : bulunan kendi renginde, kilitli KILITLI_TON ile soluk
+		  model  : bulunan kendi renginde, kilitli simsiyah siluet
 	]]
 	-- Kontur rengi hover sirasinda aydinlatiliyor; burada tabanina doner
 	hucre.cizgi.Color = hucre.renk
@@ -843,30 +841,6 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 	})
 	yedek.Visible = false
 
-	--[[
-		KILIT ROZETI
-
-		Bulunmamis brainrotun isareti.
-
-		Image BOS kuruluyor, ikon sonradan yaziliyor: hucreler script
-		yuklenirken kuruluyor ve Icons modulu kendi yorumunda "istemci
-		acilirken paket henuz replike edilmemis olabilir" diyor. Burada
-		Icons.of cagirsak 87 rozetin hepsi bos donerdi.
-
-		Ikonsuz rozet hicbir sey cizmez (arka plani saydam), yani ikon
-		gelene kadar gorsel bir bozukluk olmuyor.
-	]]
-	local kilit = Instance.new("ImageLabel")
-	kilit.Name = "Kilit"
-	kilit.AnchorPoint = Vector2.new(1, 0)
-	kilit.Position = UDim2.new(1, -4, 0, 4)
-	kilit.Size = UDim2.fromOffset(20, 20)
-	kilit.BackgroundTransparency = 1
-	kilit.Image = ""
-	kilit.ZIndex = 4
-	kilit.Parent = yuva
-	table.insert(kilitRozetleri, kilit)
-
 	local ad = UI.text({
 		text = info.name,
 		size = UI.Sizes.small,
@@ -927,7 +901,6 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 		ad = ad,
 		gelir = gelir,
 		yedek = yedek,
-		kilit = kilit,
 		kesif = false,
 		onizleme = nil,
 		kamera = nil,
@@ -1090,28 +1063,6 @@ for adaSira, ada in Brainrots.IslandOrder do
 				table.insert(hucreler, hucre)
 			end
 		end
-	end
-end
-
-------------------------------------------------------------------
--- KILIT IKONUNU TEK SEFERDE COZ
---
--- Icons.bind her cagrisinda kendi yeniden deneme dongusunu aciyor; 87
--- rozet icin 87 dongu olurdu. Bir rozete baglanip sonucu digerlerine
--- kopyalamak tek dongude ayni isi yapiyor.
-------------------------------------------------------------------
-do
-	local ilk = kilitRozetleri[1]
-	if ilk then
-		Icons.bind(ilk, "lockClosed", function(ok)
-			if not ok then
-				-- Ikon gelmedi: rozetler bos kalir, ayrim onizleme tonundan okunur
-				return
-			end
-			for sira = 2, #kilitRozetleri do
-				kilitRozetleri[sira].Image = ilk.Image
-			end
-		end)
 	end
 end
 
@@ -1287,7 +1238,10 @@ local function durumuCiz()
 		hucre.kesif = kesifMi(hucre)
 
 		local mutasyon = if seciliMutasyon ~= "Normal" then seciliMutasyon else nil
-		hucre.gelir.Text = Format.perSecond(Brainrots.income(hucre.name, "Normal", mutasyon :: any))
+		-- Kilitli brainrotun getirisi gizli
+		hucre.gelir.Text = if hucre.kesif
+			then Format.perSecond(Brainrots.income(hucre.name, "Normal", mutasyon :: any))
+			else GIZLI_YAZI
 
 		local anahtar = `{hucre.ada}/{hucre.rarity}`
 		local sayi = kademe[anahtar]

@@ -430,6 +430,42 @@ local function dismount(player: Player, sessiz: boolean?)
 	end
 end
 
+--[[
+	UCMA SESI  --  Workspace > FlyboardSound (ruzgar sesi)
+
+	Tahtaya binince sesin bir kopyasi tahtanin govdesine konur ve DONGUDE
+	calar. Tahtanin icinde durdugu icin inildigi anda tahtayla birlikte
+	silinir, ses de o an kesilir. Govdede caldigi icin 3B ses: yakindaki
+	oyuncular da duyar. Asil ses Workspace'te sessiz bekler.
+]]
+local UCMA_SESI = "FlyboardSound"
+
+local function ucmaSesiBul(): Sound?
+	local ses = Workspace:FindFirstChild(UCMA_SESI, true)
+	if ses and ses:IsA("Sound") then
+		return ses
+	end
+	for _, d in Workspace:GetDescendants() do
+		if d:IsA("Sound") and string.lower(d.Name) == string.lower(UCMA_SESI) then
+			return d
+		end
+	end
+	return nil
+end
+
+local function ucmaSesiTak(anchor: BasePart)
+	local sablon = ucmaSesiBul()
+	if not sablon then
+		warn(`[Flyboard] Workspace'te "{UCMA_SESI}" adli Sound yok; tahta sessiz`)
+		return
+	end
+	local ses = sablon:Clone()
+	ses.Name = "UcmaSesi"
+	ses.Looped = true
+	ses.Parent = anchor
+	ses:Play()
+end
+
 local function mount(player: Player, info: Flyboard.FlyboardInfo)
 	if rides[player] then
 		return
@@ -465,6 +501,9 @@ local function mount(player: Player, info: Flyboard.FlyboardInfo)
 	end
 
 	board.Parent = Workspace
+
+	-- Ruzgar sesi tahtayla yasar, tahtayla gider (bkz. ucmaSesiTak)
+	ucmaSesiTak(anchor)
 
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = root

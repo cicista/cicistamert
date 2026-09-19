@@ -660,18 +660,34 @@ do
 end
 
 ------------------------------------------------------------------
--- SAG UST: STORE BUTONU
+-- STORE BUTONU  --  sol menunun USTUNDE
+--
+-- Sol menu (Menuler > SolMenu) 2 sutunlu ikon izgarasi. STORE butonu
+-- onun hemen ustunde durur: yatayda 2 ikon (izgaranin tam genisligi),
+-- dikeyde 1 ikon boyunda. Solda paketteki Store ikonu, yaninda yazi.
+--
+-- Izgaranin yeri sabit degil (Rot gostergesi, arkadas/iksir yazilari ve
+-- arayuz olcegiyle kayiyor); buton her degisimde onun ust kenarina
+-- yeniden oturtuluyor. Iki ekran da ust cubugu yok saymiyor
+-- (IgnoreGuiInset kapali), yani ayni koordinat duzlemindeler.
 ------------------------------------------------------------------
+-- Menuler ile ayni olculer: ikon 52, alttaki kabartma 5, aradaki bosluk 14
+local MENU_IKON = 52
+local MENU_BOSLUK = 14
+
 --[[
 	Dis cerceve (tutucu) UI modulunun arayuz olcegini alir; fare etkisinin
 	buyumesi ise icteki butonda. Ikisi ayni nesnede olsaydi UI modulu
 	olcegi koymuyordu (bir nesnede iki UIScale olmaz).
+
+	AnchorPoint sol-alt: olcek buyurken buton yukari dogru buyur, izgarayla
+	ayni sol kenarda kalir.
 ]]
 local tutucu = Instance.new("Frame")
 tutucu.Name = "StoreButonu"
-tutucu.AnchorPoint = Vector2.new(1, 0)
-tutucu.Position = UDim2.new(1, -16, 0, 10)
-tutucu.Size = UDim2.fromOffset(150, 58 + LIP)
+tutucu.AnchorPoint = Vector2.new(0, 1)
+tutucu.Position = UDim2.new(0, 16, 0.5, 0)
+tutucu.Size = UDim2.fromOffset(MENU_IKON * 2 + MENU_BOSLUK, MENU_IKON + LIP)
 tutucu.BackgroundTransparency = 1
 tutucu.Parent = screen
 
@@ -685,19 +701,19 @@ local storeIkon = Instance.new("ImageLabel")
 storeIkon.Name = "Ikon"
 storeIkon.BackgroundTransparency = 1
 storeIkon.AnchorPoint = Vector2.new(0, 0.5)
-storeIkon.Position = UDim2.new(0, 4, 0.5, 0)
-storeIkon.Size = UDim2.fromOffset(46, 46)
+storeIkon.Position = UDim2.new(0, 2, 0.5, 0)
+storeIkon.Size = UDim2.fromOffset(40, 40)
 storeIkon.ScaleType = Enum.ScaleType.Fit
 storeIkon.ZIndex = 5
 storeIkon.Parent = storeYuz
 --[[
-	Yazi butonun TAM ORTASINDA baslar. Magaza ikonu bulunursa solda ikona
+	Yazi butonun TAM ORTASINDA baslar. Store ikonu bulunursa solda ikona
 	yer acilir ve yazi kalan alanda ortalanir; ikon yoksa (paket gelmediyse)
 	solda bos yer kalip yazi saga yaslanmis gorunmesin.
 ]]
 local storeYazi = UI.text({
 	text = "STORE",
-	size = UI.Sizes.heading + 2,
+	size = UI.Sizes.label,
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
 	frameSize = UDim2.fromScale(1, 1),
@@ -706,12 +722,31 @@ local storeYazi = UI.text({
 })
 
 storeIkon.Visible = false
-Icons.bind(storeIkon, "shop", function(ok)
+Icons.bind(storeIkon, "store", function(ok)
 	if ok then
 		storeIkon.Visible = true
-		storeYazi.Size = UDim2.new(1, -52, 1, 0)
-		storeYazi.Position = UDim2.fromOffset(50, 0)
+		storeYazi.Size = UDim2.new(1, -42, 1, 0)
+		storeYazi.Position = UDim2.fromOffset(40, 0)
 	end
+end)
+
+-- Sol menunun ust kenarina oturt
+task.spawn(function()
+	local menuler = playerGui:WaitForChild("OyunMenuleri")
+	local sol = menuler:WaitForChild("SolMenu") :: GuiObject
+
+	local function yerlestir()
+		local carpan = UI.getScale() / 100 * UI.ScaleBase
+		tutucu.Position = UDim2.fromOffset(
+			sol.AbsolutePosition.X,
+			sol.AbsolutePosition.Y - MENU_BOSLUK * carpan
+		)
+	end
+
+	yerlestir()
+	sol:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
+	sol:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
+	UI.onScaleChanged(yerlestir)
 end)
 
 storeButon.MouseButton1Click:Connect(function()

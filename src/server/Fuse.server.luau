@@ -579,9 +579,11 @@ local function completeFuse(player: Player)
 			charge:Stop()
 			charge:Destroy()
 		end
-		-- Patlama yalnizca basarida; basarisizlikta gosteri sessizce soner
+		-- Patlama yalnizca basarida; basarisizlikta brainrotlar yanar (FuseFail sesi)
 		if basari and player.Parent then
 			Patlama.oynat(player, nextRarity :: string)
+		elseif not basari and player.Parent then
+			playFuseSound(player, Fuse.VFX.fail)
 		end
 	end)
 

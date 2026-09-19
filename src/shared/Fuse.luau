@@ -118,9 +118,11 @@ Fuse.VFX = {
 		SESLER (Workspace ya da Assets > Sounds icindeki Sound adlari)
 		charge    -> ruhlar toplanmaya baslarken
 		explosion -> basari patlamasi aninda
+		fail      -> basarisizlikta, patlama aninda (esyalar yanar)
 	]]
 	charge = { "FuseCharge", "FuseCarge" },
 	explosion = { "FuseExplosion" },
+	fail = { "FuseFail" },
 	-- true: parcaciklarin parlaklik yapisi korunur, yalnizca renk tonu degisir
 	preserveShading = true,
 }

@@ -584,6 +584,12 @@ end
 	rotation: seritlerin acisi, count: kac serit, alpha: koyuluk (0..1)
 ]]
 function UI.stripeLayer(parent: GuiObject, tint: Color3, rotation: number, count: number, alpha: number): Frame
+	--[[
+		NumberSequence en fazla 20 durak alir; serit basina 4 durak + 2 uc.
+		5 serit 22 durak eder ve Roblox hata verip cagiran scripti durdurur
+		(19 Eylul 2026: XP bari bu yuzden hic gorunmedi). Ust sinir 4.
+	]]
+	count = math.clamp(count, 1, 4)
 	local layer = Instance.new("Frame")
 	layer.Name = "Desen"
 	layer.Size = UDim2.fromScale(1, 1)

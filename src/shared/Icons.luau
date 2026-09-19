@@ -83,12 +83,14 @@ local Map: { [string]: IconEntry } = {
 		{ "Cash", "CashIcon" },
 	},
 	--[[
-		Rot Coin (sol menudeki Rot Coin Shop butonu): paketteki altin coin
-		(Coins > CoinIcon). Pakette aranmiyor, resim kimligi dogrudan
-		yaziliyor: paket Workspace'te ve streaming yuzunden istemciye
-		gelmeyince buton yalnizca "ROT" yazisi gosteriyordu.
+		Rot Coin: paketteki LowPolyCoin (hangi kategoride durdugu fark etmez,
+		"*" butun paketi arar). Paket istemciye hic gelmezse eski altin coin
+		resmi (dogrudan kimlik) kullanilir.
 	]]
-	rotCoin = { "Id", "rbxassetid://17368060122" },
+	rotCoin = {
+		{ "*", "LowPolyCoin" },
+		{ "Id", "rbxassetid://17368060122" },
+	},
 
 	-- Mevcut sistemler
 	--[[
@@ -105,6 +107,11 @@ local Map: { [string]: IconEntry } = {
 		{ "Menus", "Inventory" },
 	},
 	shop = { "Menus", "Shop" },
+	-- STORE butonunun yanindaki ikon: paketteki "Store" (yoksa "Shop")
+	store = {
+		{ "*", "Store" },
+		{ "*", "Shop" },
+	},
 	--[[
 		Sagdaki Teleporter butonu. Once Assets > Icons icindeki "Teleporter"
 		(adi birebir), yoksa paketteki Menus > Teleport. Buton bir kez ikon
@@ -162,7 +169,11 @@ local Map: { [string]: IconEntry } = {
 	index = { "Menus", "Index" },
 	trade = { "Arrows", "Trade" },
 	quests = { "Menus", "Quests" },
-	rewards = { "Menus", "Rewards" },
+	-- Gunluk odul butonu: paketteki PurpleGift (yoksa eski Rewards ikonu)
+	rewards = {
+		{ "*", "PurpleGift" },
+		{ "Menus", "Rewards" },
+	},
 	vip = { "Menus", "VIP" },
 	friends = { "Menus", "Friends" },
 	playtime = { "Stats", "Playtime" },
@@ -253,6 +264,36 @@ function Icons.get(category: string, name: string): string?
 	]]
 	if category == "Id" then
 		return name
+	end
+
+	--[[
+		"*" kategorisi: ikon paketin HANGI klasorunde olursa olsun adiyla
+		bulunur (buyuk/kucuk harf farki yok). Kategorisi bilinmeyen ikonlar
+		icin: LowPolyCoin, PurpleGift, Store gibi.
+	]]
+	if category == "*" then
+		local anahtar = `*/{name}`
+		local bulunan = cache[anahtar]
+		if bulunan then
+			return bulunan
+		end
+
+		local paket = findPack()
+		if not paket then
+			return nil
+		end
+
+		local hedef = string.lower(name)
+		for _, node in paket:GetDescendants() do
+			if string.lower(node.Name) == hedef then
+				local decal = if node:IsA("Decal") then node else node:FindFirstChildOfClass("Decal")
+				if decal and decal.Texture ~= "" then
+					cache[anahtar] = decal.Texture
+					return decal.Texture
+				end
+			end
+		end
+		return nil
 	end
 
 	local key = `{category}/{name}`

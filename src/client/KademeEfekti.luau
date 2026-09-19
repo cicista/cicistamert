@@ -22,8 +22,8 @@
 
 	KILITLI MOD (Index'te henuz bulunmamis brainrot)
 	Cerceve BUTUN gosterisiyle calisir -- oyuncu neyi kacirdigini gorsun,
-	heveslensin. Kapali oldugunu kilit rozeti ve gri onizleme soyluyor;
-	burada yalnizca aura biraz daha sonuk.
+	heveslensin. Kapali oldugunu simsiyah siluet ve "???" yazan ad/getiri
+	soyluyor; burada yalnizca aura biraz daha sonuk.
 
 	KULLANIM
 	    local e = KademeEfekti.tak(kart, kartinKonturu, renk, rarityId, {

@@ -4073,7 +4073,8 @@ do
 
 		local row = Instance.new("Frame")
 		row.Name = quest.id
-		row.Size = UDim2.new(1, -6, 0, 84)
+		-- Collect dugmesi cikacaksa satir uzar: dugme XP yazisinin ALTINA oturur
+		row.Size = UDim2.new(1, -6, 0, if hazir then 100 else 84)
 		row.BorderSizePixel = 0
 		row.LayoutOrder = order
 		row.Parent = parent
@@ -4169,8 +4170,11 @@ do
 		if hazir then
 			local topla = UI.dugme3B(row, "Collect", UDim2.fromOffset(106, 36), UI.Colors.gold)
 			topla.AnchorPoint = Vector2.new(1, 0)
-			-- Cubugun sagi: cubuk 62..74, dugme 44..80
-			topla.Position = UDim2.new(1, -12, 0, 44)
+			--[[
+				Cubugun sagi, XP yazisinin (36..56) ALTI: 58..94. Eskiden 44'te
+				basliyordu ve "+10 XP" yazisinin ustune biniyordu.
+			]]
+			topla.Position = UDim2.new(1, -12, 0, 58)
 
 			topla.MouseButton1Click:Connect(function()
 				GorevAl:FireServer(quest.id)
