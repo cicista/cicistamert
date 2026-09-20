@@ -40,21 +40,30 @@ echo     ###########################################################
 echo     #  DIKKAT: GITHUB'A GONDERILMEMIS ISIN VAR                #
 echo     ###########################################################
 echo.
+echo     Degisen dosyalar:
 git status --short
 for /f "delims=" %%A in ('git log origin/main..HEAD --oneline 2^>nul') do echo     gonderilmemis commit: %%A
 echo.
 echo     Bunlar GitHub'da YOK. Arkadasin BASLA.bat calistirip Connect
 echo     ederse Studio'ya KENDI kopyasini basar ve bu is kaybolur.
 echo.
-echo     Yapilacak: bu pencereyi kapat, BITIR.bat calistir, sonra
-echo     buraya geri don.
+echo     ---------------------------------------------------------
+echo     GERCEKTEN SEN MI DEGISTIRDIN?
+echo.
+echo     Yukaridaki listede KENDI yaptigin bir sey varsa:
+echo         pencereyi kapat, BITIR.bat calistir, sonra buraya don.
+echo.
+echo     Listede dokunmadigin dosyalar varsa (ozellikle .bat dosyalari)
+echo     bu yalnizca satir sonu farkidir, gercek bir degisiklik degil.
+echo     Temizlemek icin su komutu yaz ve BASLA.bat'i tekrar calistir:
+echo         git checkout -- .
+echo     ---------------------------------------------------------
 echo.
 
 set "DEVAM="
 set /p DEVAM="Yine de devam edeyim mi? (E/H): "
 if /I not "%DEVAM%"=="E" exit /b 1
 echo.
-
 :CEK
 echo.
 echo [2/3] Kod cekiliyor...
