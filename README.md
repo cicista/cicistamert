@@ -17,6 +17,11 @@ Team Create'te yasar, Rojo onlara dokunmaz.
 
 `YENILE.bat`: Rojo calisirken arkadasinin son kodunu cekmek icin.
 
+`KURTAR.bat`: git takildiginda ("you have unmerged files", "unresolved
+conflict", ya da BASLA/BITIR "YARIM KALMIS BIRLESTIRME" diyorsa). Yarim
+kalan birlestirmeyi geri alir; istersen kendi commit'lerini bir yedek
+dala tasiyip GitHub'daki hale dondurur.
+
 ## ONEMLI: Rojo'ya AYNI ANDA TEK KISI baglanir
 
 Ikiniz birden Connect ederseniz son baglanan digerinin kodunu ezer.

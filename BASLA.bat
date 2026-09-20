@@ -20,6 +20,37 @@ rem  isin gitmis gibi gorunuyor -- aslinda hic gonderilmemisti.
 rem
 rem  Bu yuzden artik en basta uyariliyor.
 rem ------------------------------------------------------------------
+rem ------------------------------------------------------------------
+rem  YARIM KALMIS BIRLESTIRME
+rem
+rem  Bir onceki denemede git, iki tarafin ayni satirlarini birlestiremeyip
+rem  ortada kalmis olabilir. O haldeyken ne pull ne push calisir; git
+rem  "you have unmerged files" deyip her seferinde durur.
+rem
+rem  Bunu en basta yakalayip KURTAR.bat'a yonlendiriyoruz, yoksa asagidaki
+rem  "senin kaydedilmemis degisikligin var" mesaji yanlis yere baktiriyor.
+rem ------------------------------------------------------------------
+if exist ".git\MERGE_HEAD" goto YARIM
+if exist ".git\rebase-merge" goto YARIM
+if exist ".git\rebase-apply" goto YARIM
+goto YARIMDEGIL
+
+:YARIM
+echo.
+echo     ###########################################################
+echo     #  YARIM KALMIS BIRLESTIRME VAR                           #
+echo     ###########################################################
+echo.
+echo     Onceki denemede git iki tarafin degisikligini birlestiremeden
+echo     ortada kalmis. Bu haldeyken kod ne cekilebilir ne gonderilebilir.
+echo.
+echo     Cozum: bu pencereyi kapat, KURTAR.bat calistir.
+echo.
+pause
+exit /b 1
+
+:YARIMDEGIL
+
 echo [1/3] Gonderilmemis is kontrolu...
 
 set "DEGISIKLIK="

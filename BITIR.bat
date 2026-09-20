@@ -7,6 +7,29 @@ echo   BITIR - degisiklikleri kaydet ve gonder
 echo ============================================
 echo.
 
+rem Yarim kalmis birlestirme varken ne commit ne push calisir; en basta
+rem yakalanip KURTAR.bat'a yonlendiriliyor (ayni kontrol BASLA.bat'ta da var).
+if exist ".git\MERGE_HEAD" goto YARIM
+if exist ".git\rebase-merge" goto YARIM
+if exist ".git\rebase-apply" goto YARIM
+goto YARIMDEGIL
+
+:YARIM
+echo.
+echo     ###########################################################
+echo     #  YARIM KALMIS BIRLESTIRME VAR                           #
+echo     ###########################################################
+echo.
+echo     Onceki denemede git iki tarafin degisikligini birlestiremeden
+echo     ortada kalmis. Bu haldeyken kod gonderilemez.
+echo.
+echo     Cozum: bu pencereyi kapat, KURTAR.bat calistir.
+echo.
+pause
+exit /b 1
+
+:YARIMDEGIL
+
 rem Kaydedilmemis degisiklik var mi?
 rem git status --porcelain kullaniliyor: git diff'in aksine YENI dosyalari
 rem da gorur. Eskiden yeni bir dosya eklenince "degisiklik yok" deniyordu.
