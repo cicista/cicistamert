@@ -43,6 +43,32 @@ local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
+--[[
+	OGRETICI ISTEGE BAGLI  --  modul yoksa bu sistem yine calisir.
+
+	Sert bir WaitForChild ile baglanirsa ve modul Studio'ya henuz
+	senkronize olmadiysa script o satirda SONSUZA KADAR bekler; sistemin
+	tamami (GPS'i cantaya koyan kod dahil) hic kurulmaz. Ogretici oyunun
+	yan islevi: yoksa oyun kendi bildigini okumali.
+
+	Bes saniye beklenmesinin sebebi Rojo: dosyalar sirayla geliyor, modul
+	scriptten birkac kare sonra dusebilir.
+]]
+local Ogretici = {
+	olay = function(_player: Player, _olay: string) end,
+	ucKontrol = function(_player: Player) end,
+}
+do
+	local modul = Modules:WaitForChild("Ogretici", 5)
+	if modul and modul:IsA("ModuleScript") then
+		local ok, sonuc = pcall(require, modul)
+		if ok then
+			Ogretici = sonuc
+		else
+			warn(`[Ogretici] modul yuklenemedi: {tostring(sonuc)}`)
+		end
+	end
+end
 local Seviye = require(Modules:WaitForChild("Seviye"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
 
@@ -557,6 +583,14 @@ local function completeFuse(player: Player)
 	pending[player] = nil
 	fusing[player] = true
 	pushStatus(player)
+
+	--[[
+		OGRETICI: son adim birlestirme BASLAYINCA biter, sonucu beklemeden.
+		Ogreticinin ogrettigi sey makineyi kullanmak; ust kademe cikip
+		cikmamasi sansa bagli ve oyuncu basarisiz bir birlestirmede
+		ogreticide takili kalmamali.
+	]]
+	Ogretici.olay(player, "fuseYapti")
 
 	FuseSonuc:FireClient(player, {
 		success = basari,

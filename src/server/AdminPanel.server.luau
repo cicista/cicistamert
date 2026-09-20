@@ -123,6 +123,28 @@ function commands.giveRotCoins(player, data, arg)
 	return `+{miktar} Rot Coin  (toplam {data.rotCoins})`
 end
 
+--[[
+	OGRETICIYI BASA SAR
+
+	Ogretici bir kere bitince (ya da eski bir kayitta hic baslamayinca) bir
+	daha gorunmuyor; test etmek icin her seferinde yeni hesap acmak gerekirdi.
+	Bu komut oyuncuyu ilk adima dondurur ve istemciye yeni durumu yollar.
+]]
+function commands.ogreticiSifirla(player, data)
+	data.tutorial = { adim = 1, bitti = false }
+
+	local modul = script.Parent:FindFirstChild("Modules")
+	local ogretici = modul and modul:FindFirstChild("Ogretici")
+	if ogretici and ogretici:IsA("ModuleScript") then
+		local ok, sonuc = pcall(require, ogretici)
+		if ok then
+			sonuc.gonder(player)
+		end
+	end
+
+	return "Ogretici basa sarildi: 1. adim"
+end
+
 -- Etkinligi beklemeden tetikler (normalde saatte bir)
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()

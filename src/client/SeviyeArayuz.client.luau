@@ -100,9 +100,10 @@ do
 	})
 	zemin.Parent = panel
 
-	UI.diamondGrid(panel) -- en fazla 4 serit: 5 seritte gecis 22 durak olur, Roblox 20 kabul ediyor
+	UI.caprazDesen(panel)
 	for _, cocuk in panel:GetChildren() do
-		if cocuk:IsA("Frame") and cocuk.Name == "Desen" then
+		-- Desen artik bir CanvasGroup (bkz. UI.stripeLayer), Frame degil
+		if cocuk:IsA("GuiObject") and cocuk.Name == "Desen" then
 			UI.corner(cocuk, 12)
 		end
 	end

@@ -43,6 +43,32 @@ local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Tools = require(Modules:WaitForChild("Tools"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
+--[[
+	OGRETICI ISTEGE BAGLI  --  modul yoksa bu sistem yine calisir.
+
+	Sert bir WaitForChild ile baglanirsa ve modul Studio'ya henuz
+	senkronize olmadiysa script o satirda SONSUZA KADAR bekler; sistemin
+	tamami (GPS'i cantaya koyan kod dahil) hic kurulmaz. Ogretici oyunun
+	yan islevi: yoksa oyun kendi bildigini okumali.
+
+	Bes saniye beklenmesinin sebebi Rojo: dosyalar sirayla geliyor, modul
+	scriptten birkac kare sonra dusebilir.
+]]
+local Ogretici = {
+	olay = function(_player: Player, _olay: string) end,
+	ucKontrol = function(_player: Player) end,
+}
+do
+	local modul = Modules:WaitForChild("Ogretici", 5)
+	if modul and modul:IsA("ModuleScript") then
+		local ok, sonuc = pcall(require, modul)
+		if ok then
+			Ogretici = sonuc
+		else
+			warn(`[Ogretici] modul yuklenemedi: {tostring(sonuc)}`)
+		end
+	end
+end
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 
 local Bildirim = Net.event("Bildirim")
@@ -1935,6 +1961,9 @@ function collectRot(player: Player, baseIndex: number)
 	Envanter.push(player)
 
 	Bildirim:FireClient(player, `+{Format.short(payout)} Rot collected!`, Bases.RotColor)
+
+	-- Ogretici: "base'den parayi topla" adimini bitirir
+	Ogretici.olay(player, "parayiAldi")
 end
 
 function pushBase(player: Player)
@@ -2169,6 +2198,9 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 
 	-- Gorev panosu: base'e yerlestirme sayilir (takas da bir yerlestirmedir)
 	GorevTakip.ilerlet(player, "place", 1)
+
+	-- Ogretici: "brainrotu slota koy" adimini bitirir
+	Ogretici.olay(player, "slotladi")
 
 	local income = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
 	--[[

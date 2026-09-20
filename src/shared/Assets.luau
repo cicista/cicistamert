@@ -212,6 +212,8 @@ Assets.Categories = {
 	rods = "Rods",
 	detectors = "Detectors",
 	vfx = "VFX",
+	-- Pencere arka planlari (Store kartlari); icinde Decal/ImageLabel tasiyan nesneler
+	backgrounds = "Backgrounds",
 	sounds = "Sounds",
 }
 
@@ -399,6 +401,24 @@ function Assets.luckyBlockModel(modelName: string?, order: number?): Model?
 			if model.Name == modelName then
 				found = model
 				break
+			end
+		end
+
+		--[[
+			TAM AD TUTMADIYSA: adinda GECEN ilk model.
+
+			Cagiran taraf kademenin kimligini ("Diamond", "Golden") da
+			verebilsin diye: klasordeki modeller genelde "Diamond Lucky
+			Block" gibi adlandiriliyor, sira numarasina guvenmek ise
+			klasore yeni bir model girince yanlis blogu getiriyordu.
+		]]
+		if not found then
+			local aranan = string.lower(modelName)
+			for _, model in list do
+				if string.find(string.lower(model.Name), aranan, 1, true) then
+					found = model
+					break
+				end
 			end
 		end
 	end

@@ -219,6 +219,97 @@ function UI.padding(parent: Instance, amount: number): UIPadding
 end
 
 --[[
+	=====================================================================
+	PANEL KATMANI  --  acilan pencere HER ZAMAN ustte
+	=====================================================================
+
+	Paneller eskiden onlari acan scriptin kendi ScreenGui'sinde duruyordu ve
+	iki ayri sebepten butonlarin ALTINDA kaliyorlardi:
+
+	  1. Cogu ScreenGui'nin DisplayOrder'i 0. Roblox esit DisplayOrder'li
+	     ekranlarin sirasini garanti etmez, yani NPC penceresi HUD'un altina
+	     dusebiliyordu.
+	  2. Menuler'de menu butonlari ile paneller AYNI ScreenGui'de. Orada sira
+	     ZIndex'e kaliyor ve ZIndexBehavior.Sibling'de hiyerarsi sayilmaz:
+	     menu butonunun ikonu (ZIndex 5) panel zemininin (ZIndex 1) onune
+	     geciyordu.
+
+	Cozum: panel hangi ekrana verilirse verilsin TEK ve YUKSEK DisplayOrder'li
+	ortak bir ScreenGui'ye konur. Yuksek DisplayOrder'li bir ekranin ICINDEKI
+	her sey, dusuk olanin her seyinin ustunde cizilir -- ZIndex'e hic
+	bakilmadan. Boylece panel her zaman ustte kalir, panelin KENDI icindeki
+	ZIndex duzeni de bozulmaz (hepsi ayni ekranda kaldigi icin).
+
+	KATMAN SIRASI (ScreenGui.DisplayOrder)
+
+	    0    HUD            XP bari, maden sayaci, kazi bari, ada menusu
+	    5    menu butonlari sol/sag menu cubuklari
+	   19    panel fonu     panelin arkasina serilen tam ekran perdeler
+	   20    PANELLER       butun UI.panel pencereleri
+	   50    mutasyon gosterisi
+	  100    hata ekrani
+
+	Yeni bir tam ekran ekran eklerken sirayi buraya isle.
+]]
+UI.FonKatmani = 19
+UI.PanelKatmani = 20
+
+-- Ortak bir katman ekranini bulur, yoksa kurar
+local function katmanKur(ad: string, sira: number): ScreenGui?
+	local player = Players.LocalPlayer
+	if not player then
+		return nil
+	end
+
+	local playerGui = player:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return nil
+	end
+
+	local mevcut = playerGui:FindFirstChild(ad)
+	if mevcut and mevcut:IsA("ScreenGui") then
+		return mevcut
+	end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = ad
+	gui.DisplayOrder = sira
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = playerGui
+	return gui
+end
+
+local panelKatmani: ScreenGui? = nil
+local fonKatmani: ScreenGui? = nil
+
+--[[
+	Butun panellerin durdugu ortak ekran. Ilk panel kurulurken olusur.
+	PlayerGui henuz yoksa nil doner; o durumda UI.panel cagiranin verdigi
+	ekranda birakir, yani eski davranisa duser.
+]]
+function UI.panelEkrani(): ScreenGui?
+	if panelKatmani and panelKatmani.Parent then
+		return panelKatmani
+	end
+	panelKatmani = katmanKur("PanelKatmani", UI.PanelKatmani)
+	return panelKatmani
+end
+
+--[[
+	Panelin ARKASINA serilen tam ekran perdeler icin ekran (Lucky Block'un
+	karartmasi ve isik huzmeleri gibi). Panelin hemen altinda, butonlarin
+	ustunde durur -- perde acilinca arkadaki butonlar da kararir.
+]]
+function UI.fonEkrani(): ScreenGui?
+	if fonKatmani and fonKatmani.Parent then
+		return fonKatmani
+	end
+	fonKatmani = katmanKur("PanelFonKatmani", UI.FonKatmani)
+	return fonKatmani
+end
+
+--[[
 	TEK PANEL KURALI
 
 	Butun paneller ekranin TAM ORTASINDA duruyor; ikisi ayni anda acik olursa
@@ -375,7 +466,16 @@ function UI.panel(parent: Instance, size: UDim2, name: string?): Frame
 	frame.BackgroundColor3 = UI.Colors.panel
 	frame.BorderSizePixel = 0
 	frame.Visible = false
-	frame.Parent = parent
+	--[[
+		Panel dogrudan bir ekrana veriliyorsa ortak PANEL KATMANINA alinir --
+		cagiran tarafin bir sey yapmasi gerekmez, pencere kendiliginden en
+		uste cikar. Baska bir cercevenin icine konuyorsa oraya birakilir.
+	]]
+	if parent:IsA("ScreenGui") then
+		frame.Parent = UI.panelEkrani() or parent
+	else
+		frame.Parent = parent
+	end
 	UI.corner(frame, 14)
 	UI.stroke(frame, UI.Colors.accent, 1)
 
@@ -583,43 +683,73 @@ end
 	Tek yonlu serit katmani.
 	rotation: seritlerin acisi, count: kac serit, alpha: koyuluk (0..1)
 ]]
-function UI.stripeLayer(parent: GuiObject, tint: Color3, rotation: number, count: number, alpha: number): Frame
-	--[[
-		NumberSequence en fazla 20 durak alir; serit basina 4 durak + 2 uc.
-		5 serit 22 durak eder ve Roblox hata verip cagiran scripti durdurur
-		(19 Eylul 2026: XP bari bu yuzden hic gorunmedi). Ust sinir 4.
-	]]
-	count = math.clamp(count, 1, 4)
-	local layer = Instance.new("Frame")
+--[[
+	SERIT KATMANI  --  zeminin uzerinden gecen egik isik seritleri
+
+	SERITLER AYRI BIRER CERCEVE, GRADYAN DEGIL.
+
+	Eskiden tek bir UIGradient'in Transparency duraklariyla ciziliyorlardi.
+	Roblox dondurulmus bir gradyani nesnenin KUTUSUNA sigdiriyor: gradyan
+	ekseni nesnenin genisligi kadar uzun kaliyor ama 32 derece egik duruyor,
+	yani yatayda ancak genisligin cos(32) kadarini kapsiyor. Kare kutularda
+	fark edilmiyordu; uzun bir barda (XP bari, Store baslik cubugu) seritler
+	ortada topaklanip iki uc bos kaliyordu.
+
+	Artik her serit kendi cercevesi: konumu ORAN olarak veriliyor, yani kutu
+	ne kadar uzarsa seritler de o kadar yayiliyor. Egiklik Frame.Rotation ile.
+
+	KATMAN BIR CANVASGROUP, DUZ FRAME DEGIL.
+	Roblox'ta ClipsDescendants DONDURULMUS cocuklari kirpmaz; duz bir Frame
+	kullaninca seritler pencerenin disina, oyun ekranina tasiyordu.
+	CanvasGroup cocuklarini once kendi yuzeyine cizdigi icin rotasyonlu
+	olanlar da o yuzeyin disina cikamiyor. Boyu da (asagida) kutuya ancak
+	yetecek kadar: kirpma bir sekilde devre disi kalsa bile tasma gozukmesin.
+
+	ZINDEX PARENT'INKIYLE AYNI. Eskiden sabit 2 idi ve ZIndexBehavior.Sibling'de
+	hiyerarsi sayilmadigi icin PANELIN deseni, panelin uzerindeki BUTONLARIN
+	(ZIndex 1) onune geciyordu. Ayni ZIndex'te sira ekleme sirasina kaliyor ve
+	desen her zaman once eklendigi icin artik butonlarin altinda kaliyor.
+]]
+function UI.stripeLayer(parent: GuiObject, tint: Color3, rotation: number, count: number, alpha: number): CanvasGroup
+	local layer = Instance.new("CanvasGroup")
 	layer.Name = "Desen"
 	layer.Size = UDim2.fromScale(1, 1)
-	layer.BackgroundColor3 = tint
+	layer.BackgroundTransparency = 1
 	layer.BorderSizePixel = 0
-	layer.ZIndex = 2
+	layer.ClipsDescendants = true
+	layer.ZIndex = parent.ZIndex
 	layer.Parent = parent
 
-	local step = 1 / count
-	local band = step * 0.42
+	--[[
+		SERIT ENLERI AYNI DEGIL: kalin ve ince sirayla geliyor. Hepsi esit
+		olunca desen tarama cizgisi gibi duruyordu. Deger kutu genisliginin
+		orani, yani her boyutta ayni dengede gorunur.
+	]]
+	local ENLER = { 0.075, 0.025, 0.05, 0.02, 0.04 }
 
-	local points: { NumberSequenceKeypoint } = { NumberSequenceKeypoint.new(0, 1) }
+	--[[
+		Egik duran seridin kutuyu bastan basa kesmesi icin boyu kutunun
+		yuksekliginden UZUN olmali: cos(32) kadar kisaliyor, 1.25 kat yetiyor
+		ve artani da neredeyse hic tasmiyor.
+	]]
+	local BOY = 1 / math.cos(math.rad(rotation)) + 0.07
+
+	local step = 1 / count
 
 	for i = 0, count - 1 do
-		local start = step * 0.3 + i * step
-		local finish = start + band
-		if finish < 0.99 then
-			table.insert(points, NumberSequenceKeypoint.new(start, 1))
-			table.insert(points, NumberSequenceKeypoint.new(start + 0.002, alpha))
-			table.insert(points, NumberSequenceKeypoint.new(finish, alpha))
-			table.insert(points, NumberSequenceKeypoint.new(finish + 0.002, 1))
-		end
+		local serit = Instance.new("Frame")
+		serit.Name = "Serit"
+		serit.AnchorPoint = Vector2.new(0.5, 0.5)
+		-- Her serit kendi diliminin ORTASINDA: iki uca da esit pay kalir
+		serit.Position = UDim2.fromScale((i + 0.5) * step, 0.5)
+		serit.Size = UDim2.new(ENLER[(i % #ENLER) + 1], 0, BOY, 0)
+		serit.Rotation = rotation
+		serit.BackgroundColor3 = tint
+		serit.BackgroundTransparency = alpha
+		serit.BorderSizePixel = 0
+		serit.ZIndex = parent.ZIndex
+		serit.Parent = layer
 	end
-
-	table.insert(points, NumberSequenceKeypoint.new(1, 1))
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Rotation = rotation
-	gradient.Transparency = NumberSequence.new(points)
-	gradient.Parent = layer
 
 	return layer
 end
@@ -629,12 +759,16 @@ end
 	Iki serit katmani zit acilarla ust uste binince capraz kafes olusur --
 	referans butonlardaki doku tam olarak budur.
 ]]
-function UI.diamondGrid(parent: GuiObject, tint: Color3?, count: number?)
-	local color = tint or Color3.fromRGB(255, 255, 255)
-	local n = count or 4
+--[[
+	CAPRAZ DESEN  --  zeminin uzerinden gecen egik isik seritleri
 
-	UI.stripeLayer(parent, color, 32, n, 0.86)
-	UI.stripeLayer(parent, color, -32, n, 0.9)
+	TEK YONLU. Eskiden iki katman vardi (+32 ve -32 derece) ve kesistikleri
+	yerde elmas izgara cikiyordu; her pencerede ayni sik desen goze batiyordu.
+	Simdi tek yon, daha az serit ve daha soluk: zemine doku katar, dikkat
+	cekmez. Enler kalin-ince karisik, bkz. UI.stripeLayer.
+]]
+function UI.caprazDesen(parent: GuiObject, tint: Color3?, count: number?)
+	UI.stripeLayer(parent, tint or Color3.fromRGB(255, 255, 255), 32, count or 5, 0.88)
 end
 
 --[[
@@ -647,7 +781,8 @@ function UI.gloss(parent: GuiObject, strength: number?): Frame
 	layer.Size = UDim2.new(1, 0, 0.5, 0)
 	layer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	layer.BorderSizePixel = 0
-	layer.ZIndex = 3
+	-- Parlaklik da parent ile ayni katmanda; bkz. UI.stripeLayer
+	layer.ZIndex = parent.ZIndex
 	layer.Parent = parent
 
 	local gradient = Instance.new("UIGradient")
@@ -677,13 +812,14 @@ function UI.polish(face: GuiObject, color: Color3, radius: number?)
 	})
 	gradient.Parent = face
 
-	UI.diamondGrid(face)
+	UI.caprazDesen(face)
 	UI.gloss(face)
 
 	if radius then
 		-- Desen ve parlaklik katmanlarinin koseleri de yuvarlansin
 		for _, child in face:GetChildren() do
-			if child:IsA("Frame") and (child.Name == "Desen" or child.Name == "Parlaklik") then
+			-- Desen bir CanvasGroup, Parlaklik duz Frame: ikisi de GuiObject
+			if child:IsA("GuiObject") and (child.Name == "Desen" or child.Name == "Parlaklik") then
 				UI.corner(child, radius)
 			end
 		end
@@ -877,7 +1013,8 @@ UI.KapaliRenk = Color3.fromRGB(105, 110, 124)
 -- Desen ve parlaklik katmanlarinin koselerini de yuvarlar
 local function katmanKoseleri(yuz: GuiObject, yaricap: number)
 	for _, cocuk in yuz:GetChildren() do
-		if cocuk:IsA("Frame") and (cocuk.Name == "Desen" or cocuk.Name == "Parlaklik") then
+		-- Desen bir CanvasGroup, Parlaklik duz Frame: ikisi de GuiObject
+		if cocuk:IsA("GuiObject") and (cocuk.Name == "Desen" or cocuk.Name == "Parlaklik") then
 			UI.corner(cocuk, yaricap)
 		end
 	end
@@ -925,7 +1062,7 @@ function UI.baslikCubugu(panel: Frame, yazi: string, renkA: Color3, renkB: Color
 	gecis.Color = ColorSequence.new(renkA, renkB)
 	gecis.Parent = cubuk
 
-	UI.diamondGrid(cubuk)
+	UI.caprazDesen(cubuk)
 	UI.gloss(cubuk, 0.7)
 	katmanKoseleri(cubuk, 10)
 
@@ -1052,7 +1189,7 @@ function UI.dugme3B(parent: Instance, yazi: string?, boyut: UDim2, renk: Color3,
 	gecis.Color = ColorSequence.new(BEYAZ, Color3.fromRGB(205, 205, 205))
 	gecis.Parent = yuz
 
-	UI.diamondGrid(yuz)
+	UI.caprazDesen(yuz)
 	UI.gloss(yuz, 0.75)
 	katmanKoseleri(yuz, 8)
 
@@ -1125,6 +1262,355 @@ function UI.dugme3BRenk(dugme: GuiObject, renk: Color3)
 	local yuz = dugme:FindFirstChild("Yuz")
 	if yuz and yuz:IsA("GuiObject") then
 		yuz.BackgroundColor3 = renk
+	end
+end
+
+
+------------------------------------------------------------------
+-- IKON CANLANDIRMALARI
+------------------------------------------------------------------
+
+--[[
+	SALLANMA
+
+	Magaza ikonlari kendi etrafinda DONMEZ, sagli sollu sallanir: urunun
+	yuzu her zaman ekrana bakar, goz yine de hareketi yakalar. Donen bir
+	urun kartin icinde kendi arkasini gosterdigi icin garip duruyordu.
+
+	Salinim SIFIR MERKEZLI: nesne -aci'da baslar, +aci'ya gider ve geri
+	doner, yani ortalama durusu dimdik. Tween kendi tersine dondugu icin
+	(TweenInfo'nun son alani) ayrica zamanlayici gerekmiyor.
+
+	ORTAK RITIM: butun magaza ikonlari ayni acida ve ayni hizda sallanir,
+	boylece Store ile Rot Coin Shop birbirinden kopuk gorunmez. Hizli ve
+	genis tutuldu -- kart listesinde goz ilk buraya takilsin.
+]]
+UI.SallanmaAci = 17
+UI.SallanmaSuresi = 0.75
+
+function UI.sallan(nesne: GuiObject, aci: number?, sure: number?): Tween
+	local genlik = aci or UI.SallanmaAci
+	nesne.Rotation = -genlik
+	local sallanma = TweenService:Create(
+		nesne,
+		TweenInfo.new(sure or UI.SallanmaSuresi, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Rotation = genlik }
+	)
+	sallanma:Play()
+	return sallanma
+end
+
+export type HuzmeAyari = {
+	-- Kac serit (cift sayi verilince desen simetrik olur)
+	sayi: number,
+	-- Seridin boyu ve eni, piksel
+	uzunluk: number,
+	kalinlik: number,
+	-- Tam tur suresi, saniye
+	tur: number,
+	-- Ortadaki en parlak noktanin seffafligi (0 = tam parlak)
+	parlaklik: number,
+	-- Huzmelerin ZIndex'i; ONUNDE duracak ikondan KUCUK olmali
+	zIndex: number,
+	--[[
+		Efektin rengi. Bos birakilirsa kademenin kendi rengi kullanilir; ama
+		Golden gibi kartin zeminiyle ayni tonda olan kademelerde efekt o
+		zeminde kayboluyor, orada acik bir renk veriliyor.
+	]]
+	renk: Color3?,
+}
+
+--[[
+	ISIK HUZMELERI
+
+	Bir ikonun ARKASINDAN disari uzanan, yavasca donen isik seritleri.
+	Seritler ortak bir cercevenin cocugu: cerceve dondukce hepsi birlikte
+	doner, tek tek dondurmek gerekmez.
+
+	Her serit ortasi parlak, iki ucu seffaf bir gradyan tasir; boylece
+	dikdortgen degil, merkezden disa suzulen bir isin gibi gorunur.
+
+	ZIndex CAGIRANDAN GELIYOR. ZIndexBehavior.Sibling'de cocuk olmak one
+	gecirmez, sira yalnizca ZIndex'e bakar -- huzmeler ikondan kucuk bir
+	deger almazsa ikonun ONUNE gecer ve urunu ortarlar.
+]]
+function UI.isikHuzmeleri(parent: GuiObject, renk: Color3, ayar: HuzmeAyari): Frame
+	local isik = Instance.new("Frame")
+	isik.Name = "Huzmeler"
+	isik.AnchorPoint = Vector2.new(0.5, 0.5)
+	isik.Position = UDim2.fromScale(0.5, 0.5)
+	isik.Size = UDim2.fromOffset(10, 10)
+	isik.BackgroundTransparency = 1
+	isik.ZIndex = ayar.zIndex
+	isik.Parent = parent
+
+	for i = 1, ayar.sayi do
+		local huzme = Instance.new("Frame")
+		huzme.Name = "Huzme"
+		huzme.AnchorPoint = Vector2.new(0.5, 0.5)
+		huzme.Position = UDim2.fromScale(0.5, 0.5)
+		huzme.Size = UDim2.fromOffset(ayar.kalinlik, ayar.uzunluk)
+		-- Seritler tam turu paylasir; 180 derece yeter, oburu yarisi ayni serit
+		huzme.Rotation = (i - 1) * (180 / ayar.sayi)
+		huzme.BackgroundColor3 = renk
+		huzme.BorderSizePixel = 0
+		huzme.ZIndex = ayar.zIndex
+		huzme.Parent = isik
+
+		local gecis = Instance.new("UIGradient")
+		gecis.Rotation = 90
+		gecis.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.34, math.clamp(ayar.parlaklik + 0.25, 0, 1)),
+			NumberSequenceKeypoint.new(0.5, ayar.parlaklik),
+			NumberSequenceKeypoint.new(0.66, math.clamp(ayar.parlaklik + 0.25, 0, 1)),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		gecis.Parent = huzme
+	end
+
+	--[[
+		Donus TEK YONLU oldugu icin tween tersine donmemeli; 360'a varinca
+		aci basa sarilir. Rotation 360 ile 0 ayni goruntu, yani sicrama
+		gozukmez.
+	]]
+	local donus = TweenService:Create(
+		isik,
+		TweenInfo.new(ayar.tur, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Rotation = 360 }
+	)
+	donus:Play()
+
+	return isik
+end
+
+--[[
+	YUMUSATILMIS ARKA PLAN RESMI
+
+	Roblox'ta UI icin gercek bir blur YOK: BlurEffect yalnizca 3B kamerada
+	calisir, bir ImageLabel'a uygulanamaz. Burada ayni resim birkac kez,
+	birbirine gore birkac piksel kaydirilmis ve daha soluk olarak ust uste
+	seriliyor. Kenarlar birbirine karisiyor, detay dagiliyor: goz bunu
+	bulaniklik olarak okuyor. `yayilma` buyudukce bulaniklik artar.
+
+	Resim kutuyu KIRPARAK dolduruyor (ScaleType.Crop): en-boy orani bozulmaz,
+	tasan kismi kap kirpar.
+
+	KAP BIR CANVASGROUP. Duz bir Frame'de ClipsDescendants dikdortgen kirpar
+	ve UICorner yalnizca kabin KENDI zeminini yuvarlar -- kap saydam oldugu
+	icin de hicbir ise yaramaz, resim kartin yuvarlak kosesinden disari
+	tasardi. CanvasGroup once kendi yuzeyine ciziyor, UICorner o yuzeye
+	uygulaniyor: kirpma da yuvarlak oluyor. Yaricapi cagiran veriyor.
+]]
+function UI.yumusakResim(
+	parent: GuiObject,
+	resim: string,
+	saydamlik: number,
+	yayilma: number,
+	zIndex: number
+): CanvasGroup
+	local kap = Instance.new("CanvasGroup")
+	kap.Name = "ArkaPlan"
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.BorderSizePixel = 0
+	kap.ClipsDescendants = true
+	kap.ZIndex = zIndex
+	kap.Parent = parent
+
+	-- Merkez katman + dort kosege kaydirilmis kopya
+	local KAYMALAR = {
+		Vector2.new(0, 0),
+		Vector2.new(-1, -1),
+		Vector2.new(1, -1),
+		Vector2.new(-1, 1),
+		Vector2.new(1, 1),
+	}
+
+	for i, yon in KAYMALAR do
+		local kat = Instance.new("ImageLabel")
+		kat.Name = "Katman"
+		kat.BackgroundTransparency = 1
+		kat.BorderSizePixel = 0
+		kat.Image = resim
+		kat.ScaleType = Enum.ScaleType.Crop
+		kat.Size = UDim2.fromScale(1, 1)
+		kat.Position = UDim2.fromOffset(yon.X * yayilma, yon.Y * yayilma)
+		--[[
+			Merkez katman verilen saydamlikta; kaydirilmislar daha soluk,
+			yoksa resim bes kat koyulasip bulanik degil KIRLI gorunur.
+		]]
+		kat.ImageTransparency = if i == 1 then saydamlik else saydamlik + (1 - saydamlik) * 0.6
+		kat.ZIndex = zIndex
+		kat.Parent = kap
+	end
+
+	return kap
+end
+
+--[[
+	PARLAMA  --  ViewportFrame'in cizemedigi isimayi UI ile yapmak
+
+	ViewportFrame post-processing uygulamaz: icindeki Neon parca parlak
+	RENKTE gorunur ama etrafina isik SACMAZ, ve ParticleEmitter / Beam /
+	Trail hic cizilmez. Yani modelin kendi efektleri onizlemede kayboluyor.
+
+	Buradaki hale onun yerini tutuyor: ic ice gecen yuvarlak katmanlar, her
+	biri ayni saydamlikta. Ust uste bindikce merkez koyulasiyor, disa dogru
+	acik kaliyor -- radyal bir gecisin ucuz ama ikna edici karsiligi
+	(UIGradient yalnizca dogrusal, radyal secenegi yok).
+
+	Hale yavasca nefes alir; sabit bir daire yapistirma gibi duruyordu.
+]]
+function UI.parlama(parent: GuiObject, renk: Color3, cap: number, zIndex: number): Frame
+	local KATMAN = 5
+
+	local kap = Instance.new("Frame")
+	kap.Name = "Parlama"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	kap.Position = UDim2.fromScale(0.5, 0.5)
+	kap.Size = UDim2.fromOffset(cap, cap)
+	kap.BackgroundTransparency = 1
+	kap.ZIndex = zIndex
+	kap.Parent = parent
+
+	for i = 1, KATMAN do
+		local halka = Instance.new("Frame")
+		halka.Name = "Halka"
+		halka.AnchorPoint = Vector2.new(0.5, 0.5)
+		halka.Position = UDim2.fromScale(0.5, 0.5)
+		halka.Size = UDim2.fromScale(i / KATMAN, i / KATMAN)
+		halka.BackgroundColor3 = renk
+		halka.BackgroundTransparency = 0.86
+		halka.BorderSizePixel = 0
+		halka.ZIndex = zIndex
+		halka.Parent = kap
+		-- Yaricap kenarin yarisindan buyuk olunca Roblox tam daireye kirpar
+		UI.corner(halka, 1000)
+	end
+
+	local nefes = Instance.new("UIScale")
+	nefes.Parent = kap
+	TweenService:Create(
+		nefes,
+		TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.12 }
+	):Play()
+
+	return kap
+end
+
+--[[
+	PARILTILAR  --  modelin onunde sonup yanan kivilcimlar
+
+	ViewportFrame parcacik cizmedigi icin blogun "canli" hissini bunlar
+	veriyor: kucuk, 45 derece cevrilmis kareler (elmas) rastgele yerlerde
+	kendi temposunda sonup yaniyor.
+
+	Konum ve tempo RASTGELE ama bir kez seciliyor; her karede oynatmak
+	gerekmiyor, sonme tween'i kendi basina donuyor.
+]]
+function UI.pariltilar(parent: GuiObject, renk: Color3, sayi: number, zIndex: number): Frame
+	local kap = Instance.new("Frame")
+	kap.Name = "Pariltilar"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	kap.Position = UDim2.fromScale(0.5, 0.5)
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.ZIndex = zIndex
+	kap.Parent = parent
+
+	local rastgele = Random.new()
+
+	for _ = 1, sayi do
+		local boy = rastgele:NextInteger(6, 12)
+
+		local kivilcim = Instance.new("Frame")
+		kivilcim.Name = "Kivilcim"
+		kivilcim.AnchorPoint = Vector2.new(0.5, 0.5)
+		kivilcim.Position = UDim2.fromScale(rastgele:NextNumber(0.1, 0.9), rastgele:NextNumber(0.1, 0.9))
+		kivilcim.Size = UDim2.fromOffset(boy, boy)
+		kivilcim.Rotation = 45
+		kivilcim.BackgroundColor3 = renk
+		kivilcim.BackgroundTransparency = 1
+		kivilcim.BorderSizePixel = 0
+		kivilcim.ZIndex = zIndex
+		kivilcim.Parent = kap
+
+		--[[
+			Her kivilcim kendi gecikmesiyle basliyor; hepsi ayni anda yanip
+			sonerse kivilcim degil, yanip sonen tek bir lamba gibi duruyor.
+		]]
+		TweenService:Create(
+			kivilcim,
+			TweenInfo.new(
+				rastgele:NextNumber(0.5, 1.1),
+				Enum.EasingStyle.Sine,
+				Enum.EasingDirection.InOut,
+				-1,
+				true,
+				rastgele:NextNumber(0, 1.2)
+			),
+			{ BackgroundTransparency = 0.1 }
+		):Play()
+	end
+
+	return kap
+end
+
+--[[
+	BILDIRIM NOKTASI
+
+	Hedefin sag ust kosesine oturan kirmizi nokta: "burada alinacak bir sey
+	var". Gorunur oldugu surece nabiz atar, kapaninca nabiz durur.
+
+	Doner deger noktayi acip kapatan fonksiyondur; cagiran tarafin nesneyi
+	saklamasi gerekmez.
+]]
+function UI.bildirimNoktasi(hedef: GuiObject, zIndex: number?): (acik: boolean) -> ()
+	local NOKTA = 16
+
+	local nokta = Instance.new("Frame")
+	nokta.Name = "Bildirim"
+	nokta.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- Kosenin BIRAZ DISINA tasar: butonun icindeki ikonu ortmesin
+	nokta.Position = UDim2.new(1, -3, 0, 3)
+	nokta.Size = UDim2.fromOffset(NOKTA, NOKTA)
+	nokta.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+	nokta.BorderSizePixel = 0
+	nokta.Visible = false
+	nokta.ZIndex = zIndex or 10
+	nokta.Parent = hedef
+	UI.corner(nokta, NOKTA / 2)
+	-- Kalin siyah kontur: acik renkli butonlarin uzerinde de secilir
+	UI.stroke(nokta, Color3.fromRGB(0, 0, 0), 2)
+
+	local nabiz: Tween? = nil
+
+	return function(acik: boolean)
+		if nokta.Visible == acik then
+			return
+		end
+		nokta.Visible = acik
+
+		local eski = nabiz
+		if eski then
+			eski:Cancel()
+			nabiz = nil
+			nokta.Size = UDim2.fromOffset(NOKTA, NOKTA)
+		end
+
+		if not acik then
+			return
+		end
+
+		local yeni = TweenService:Create(
+			nokta,
+			TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Size = UDim2.fromOffset(NOKTA + 5, NOKTA + 5) }
+		)
+		yeni:Play()
+		nabiz = yeni
 	end
 end
 

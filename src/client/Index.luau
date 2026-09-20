@@ -288,8 +288,8 @@ end
 ------------------------------------------------------------------
 local ekran = Instance.new("ScreenGui")
 ekran.Name = "IndexDefteri"
--- XP barinin (DisplayOrder 0) ustunde; sira RobuxMagaza'daki notta
-ekran.DisplayOrder = 10
+-- Index penceresi ortak panel katmaninda duruyor (bkz. UI.luau > PANEL
+-- KATMANI); bu ekran yalnizca ona bir yuva olarak veriliyor.
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ekran.Parent = playerGui

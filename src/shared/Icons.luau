@@ -427,9 +427,10 @@ end
 ------------------------------------------------------------------
 local assetCache: { [string]: string } = {}
 
-local function assetKlasoru(): Instance?
+-- Klasor adi verilmezse Assets > Icons; Backgrounds gibi baska klasorler de okunur
+local function assetKlasoru(klasorAdi: string?): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	return assets and assets:FindFirstChild(Icons.AssetKlasoru)
+	return assets and assets:FindFirstChild(klasorAdi or Icons.AssetKlasoru)
 end
 
 -- Isim eslesmesi icin sadelestirme (bkz. OYUNUN KENDI IKONLARI)
@@ -492,13 +493,22 @@ function Icons.assetTam(ad: string): string?
 	return nil
 end
 
-function Icons.asset(ad: string): string?
-	local cached = assetCache[ad]
+--[[
+	Assets altindaki HERHANGI bir klasorden adla resim.
+
+	Icons.asset bunun "Icons" klasorune sabitlenmis hali; Backgrounds gibi
+	baska klasorler icin klasor adi veriliyor. Tam ad tutmazsa, adi ARANANI
+	ICEREN ilk nesne kullanilir ("diamondbackground" ile "DiamondBackground
+	Blue" da bulunur).
+]]
+function Icons.assetKlasorden(klasorAdi: string, ad: string): string?
+	local anahtar = `{klasorAdi}/{ad}`
+	local cached = assetCache[anahtar]
 	if cached then
 		return cached
 	end
 
-	local klasor = assetKlasoru()
+	local klasor = assetKlasoru(klasorAdi)
 	if not klasor then
 		return nil
 	end
@@ -514,7 +524,7 @@ function Icons.asset(ad: string): string?
 		if kok == aranan then
 			local bulunan = goruntu(node)
 			if bulunan then
-				assetCache[ad] = bulunan
+				assetCache[anahtar] = bulunan
 				return bulunan
 			end
 		elseif not icerenden and string.find(kok, aranan, 1, true) then
@@ -523,9 +533,13 @@ function Icons.asset(ad: string): string?
 	end
 
 	if icerenden then
-		assetCache[ad] = icerenden
+		assetCache[anahtar] = icerenden
 	end
 	return icerenden
+end
+
+function Icons.asset(ad: string): string?
+	return Icons.assetKlasorden(Icons.AssetKlasoru, ad)
 end
 
 --[[

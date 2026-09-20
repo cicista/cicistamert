@@ -17,6 +17,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
@@ -25,6 +26,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 local Icons = require(Shared:WaitForChild("Icons"))
+local Assets = require(Shared:WaitForChild("Assets"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Passler = require(Shared:WaitForChild("Passler"))
@@ -56,6 +58,81 @@ local KIRMIZI = Color3.fromRGB(255, 70, 70)
 -- Butonun altinda birakilan 3B kabartma (Menuler'deki menu butonlariyla ayni)
 local LIP = 5
 
+--[[
+	KARTIN SOLUNDAKI GORSEL
+
+	Sira disi urunler (Lucky Block'lar) 3B modelleriyle ve buyuk duruyor;
+	gerisi duz ikon. Lucky kartlarda sol bosluk daha genis cunku modelin
+	arkasindaki isik huzmeleri ondan disari tasiyor -- dar biraksak huzmeler
+	kartin sol kenarindan cikardi.
+]]
+local IKON_X = 12
+local IKON_NORMAL = 88
+local LUCKY_X = 26
+local LUCKY_BOYU = 190
+-- Lucky kartlari daha uzun: buyuk model ve huzmeler sigsin
+local LUCKY_KART_BOYU = 240
+
+--[[
+	LUCKY BLOCK HUZMELERI
+
+	Modelin arkasindan cikan donen isik seritleri. Diamond en nadir kademe:
+	daha cok, daha uzun ve daha parlak serit alir. Golden'da ayni efektin
+	kisik hali. Normal kademe magazada satilmiyor, burada da yok.
+
+	UZUNLUK KARTIN BOYUNDAN UZUN OLMAMALI: seritler donerken kartin disina
+	tasar ve listede ust/alt komsusunun uzerine biner. Lucky karti
+	LUCKY_KART_BOYU piksel, modelin merkezi de onun tam ortasinda -- yani
+	uzunluk o degeri asmamali. Yatayda da ayni sinir: merkez soldan
+	LUCKY_X + LUCKY_BOYU/2 kadar iceride.
+]]
+local HUZME_AYARI: { [string]: UI.HuzmeAyari } = {
+	Diamond = { sayi = 12, uzunluk = 240, kalinlik = 34, tur = 16, parlaklik = 0.12, zIndex = 4 },
+	--[[
+		Golden'in kendi rengi (turuncu) kartin turuncu zemininde kayboluyordu;
+		efekti sicak beyaz cizdirip gorunur kildik.
+	]]
+	Golden = {
+		sayi = 8,
+		uzunluk = 180,
+		kalinlik = 26,
+		tur = 20,
+		parlaklik = 0.3,
+		zIndex = 4,
+		renk = Color3.fromRGB(255, 250, 230),
+	},
+}
+
+--[[
+	KART ARKA PLANLARI
+
+	Kademenin kendi arka plan resmi varsa kartin renkli zemininin uzerine
+	seriliyor. Resim ReplicatedStorage > Assets > Backgrounds icinden ADA
+	GORE bulunuyor (Decal, ImageLabel ya da StringValue tasiyan bir nesne
+	olabilir); yoksa kart eskisi gibi duz gradyanla kaliyor.
+]]
+local ARKA_PLAN: { [string]: string } = {
+	Diamond = "diamondbackground",
+	Golden = "goldenbackground",
+}
+
+-- Arka plan resminin saydamligi ve bulanikligi (bkz. UI.yumusakResim)
+local ARKA_PLAN_SAYDAM = 0.42
+local ARKA_PLAN_YAYILMA = 3
+
+--[[
+	URUN ADININ GORUNUMU
+
+	Varsayilan altin parilti (bkz. urunKarti). Bir kademenin kendi gorunumu
+	varsa o gecerli: Diamond magazanin en pahali urunu, adi kendi buz
+	mavisiyle ve digerlerinden bir boy buyuk yaziliyor. Arka plan resmi
+	geldigi icin mavi yazi artik mavi zeminde kaybolmuyor; yazinin kalin
+	siyah konturu da ayirmaya yetiyor.
+]]
+local BASLIK_GORUNUM: { [string]: { renk: Color3, boyutEk: number } } = {
+	Diamond = { renk = Color3.fromRGB(120, 235, 255), boyutEk = 8 },
+}
+
 -- Game Pass kartlarindaki ikonlar (Icons.Map kisa adi) ve renkleri
 local GECIS_GORUNUM = {
 	AutoClicker = { ikon = "shovel", renkA = Color3.fromRGB(255, 120, 60), renkB = Color3.fromRGB(230, 60, 110) },
@@ -65,11 +142,11 @@ local GECIS_GORUNUM = {
 local screen = Instance.new("ScreenGui")
 screen.Name = "RobuxMagazasi"
 --[[
-	Ustteki XP bari (SeviyeArayuzu, DisplayOrder 0) panelin ustune binmesin.
-	Katman sirasi: HUD 0 < menu panelleri 5 < Store / Index 10
-	< mutasyon gosterisi 50 < hata ekrani 100.
+	Buradaki tek sey Store BUTONU; panel ortak panel katmaninda duruyor
+	(bkz. UI.luau > PANEL KATMANI). Buton XP barinin ustunde, panellerin
+	altinda kalsin diye menu butonlariyla ayni katmanda.
 ]]
-screen.DisplayOrder = 10
+screen.DisplayOrder = 5
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
@@ -87,11 +164,12 @@ local function renkliZemin(frame: GuiObject, renkA: Color3, renkB: Color3, yaric
 	gecis.Rotation = 0
 	gecis.Parent = frame
 
-	UI.diamondGrid(frame)
+	UI.caprazDesen(frame)
 	UI.gloss(frame, 0.8)
 
 	for _, cocuk in frame:GetChildren() do
-		if cocuk:IsA("Frame") and (cocuk.Name == "Desen" or cocuk.Name == "Parlaklik") then
+		-- Desen bir CanvasGroup, Parlaklik duz Frame: ikisi de GuiObject
+		if cocuk:IsA("GuiObject") and (cocuk.Name == "Desen" or cocuk.Name == "Parlaklik") then
 			UI.corner(cocuk, yaricap)
 		end
 	end
@@ -114,7 +192,19 @@ local function satinAlmaDugmesi(parent: Instance, renk: Color3, buyusun: boolean
 	buton.BorderSizePixel = 0
 	buton.Parent = parent
 	UI.corner(buton, 10)
-	UI.stroke(buton, SIYAH, 2)
+	--[[
+		BEYAZ CERCEVE: kartlarla ayni dil.
+
+		ApplyStrokeMode.Border ACIKCA veriliyor. Varsayilan Contextual bir
+		TextButton'da yazinin KENDISINI konturlar; butonun yazisi burada bos
+		oldugu icin gorunur bir etkisi olmazdi ama kod ne yaptigini soylesin.
+
+		UI.hover yalnizca BackgroundColor3 ve UIScale oynatiyor, UIStroke'a
+		dokunmuyor: fare ustune gelince cerceve bozulmaz, rengi degismez.
+		Basilinca inen sey de butonun ICINDEKI yuz, cerceve butonda duruyor.
+	]]
+	local cerceve = UI.stroke(buton, BEYAZ, 3)
+	cerceve.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 	local yuz = Instance.new("Frame")
 	yuz.Name = "Yuz"
@@ -190,7 +280,7 @@ local function kartIkonu(kart: Frame, ikonAdi: string, boyut: number, renk: Colo
 	ikon.Name = "Ikon"
 	ikon.BackgroundTransparency = 1
 	ikon.AnchorPoint = Vector2.new(0, 0.5)
-	ikon.Position = UDim2.new(0, 12, 0.5, 0)
+	ikon.Position = UDim2.new(0, IKON_X, 0.5, 0)
 	ikon.Size = UDim2.fromOffset(boyut, boyut)
 	ikon.ScaleType = Enum.ScaleType.Fit
 	ikon.ZIndex = 5
@@ -221,7 +311,11 @@ end
 ------------------------------------------------------------------
 -- PANEL
 ------------------------------------------------------------------
-local panel = UI.panel(screen, UDim2.fromOffset(640, 540), "RobuxMagaza")
+--[[
+	Panel Lucky Block kartlari buyuyunce genisletildi: model + huzmeler
+	soldan 188 piksel yiyor, eski 640'ta uc satin alma dugmesi sikisiyordu.
+]]
+local panel = UI.panel(screen, UDim2.fromOffset(720, 540), "RobuxMagaza")
 do
 	local kontur = panel:FindFirstChildOfClass("UIStroke")
 	if kontur then
@@ -338,6 +432,180 @@ local function bolumBasligi(yazi: string)
 end
 
 ------------------------------------------------------------------
+-- LUCKY BLOCK ONIZLEMESI  --  gercek 3B model
+------------------------------------------------------------------
+--[[
+	Kartin solundaki kare bir ViewportFrame ve icinde blogun KENDI modeli
+	duruyor, resmi degil: Lucky Block magazanin sattigi asil urun, oyuncu
+	ne aldigini gormeli. Model bulunamazsa cagiran taraf ikona duser.
+
+	MODEL DONMEZ, SALLANIR. Yuzu ekrana bakar ve kendi dikey ekseninde iki
+	yana UI.SallanmaAci kadar gidip gelir -- ikonlarla ayni ritimde. Tam tur
+	atan bir blok vaktin yarisinda kendi arkasini gosteriyordu.
+
+	PAKETIN KENDI SCRIPTLERI SILINIYOR. Hazir Lucky Block paketleri modelin
+	icine dondurme, ses ve parcacik scriptleri koyuyor; onizlemede calisip
+	sahneyi kendi bildigince oynatirlardi (bkz. Assets.stripScripts, ayni
+	sebeple).
+
+	SALINIM RenderStepped'te, tween ile degil: CFrame tween'i icin araya bir
+	CFrameValue koymak gerekirdi ve panel kapaliyken de donerdi. Burada
+	panel gorunmuyorsa hic hesap yapilmiyor.
+]]
+
+-- Modeller yuzu -Z'ye bakacak sekilde hazirlanmis (bkz. BrainrotOnizleme)
+local BAKIS_YONU = Vector3.new(0, 0, -1)
+local ONIZLEME_ISIGI = Color3.fromRGB(255, 255, 255)
+local ONIZLEME_ISIK_YONU = Vector3.new(-0.4, -0.7, -0.6)
+--[[
+	Kamera kutunun kosegeninin bu kati kadar geri cekilir. 1'in altinda kare
+	dolar; pay birakildi cunku blok sallanirken kosesi kadraja giriyor.
+]]
+local ONIZLEME_CERCEVE = 0.78
+
+--[[
+	DURUS  --  blok tam karsidan degil, ucte-dortluk acidan gorunur
+
+	Tam karsidan bakan bir kup duz bir kareye benziyor ve sert duruyor.
+	Blok saga ve asagi cevrilince on yuzu hala okunur ama yan ve ust yuzleri
+	de girer: hacimli ve yumusak gorunur.
+
+	Isaretler kameraya gore -- model yuzu -Z'ye bakiyor, kamera da -Z'de:
+	yatayda ARTI aci yuzu SAGA cevirir, dikeyde EKSI aci ASAGI egdirir.
+]]
+local DURUS = CFrame.Angles(0, math.rad(28), 0) * CFrame.Angles(math.rad(-16), 0, 0)
+
+-- Sallanan onizlemeler; hepsi tek bir RenderStepped'te donuyor
+local onizlemeler: { { model: Model, merkez: Vector3, taban: CFrame } } = {}
+
+--[[
+	KADRAJ YALNIZCA GORUNEN PARCALARDAN
+
+	Model:GetBoundingBox() gorunmez parcalari da sayiyor -- efekt tasiyicilar,
+	carpisma kutulari, bos tutamaklar -- ve blok o yuzden karenin ortasinda
+	kucucuk kaliyor. Kutu burada yalnizca GORUNUR parcalardan ve DUNYA
+	eksenlerinde hesaplaniyor. Ayni cozum BrainrotOnizleme'de de var.
+
+	Merkez ve kutu boyutu doner; hic gorunur parca yoksa ikisi de nil.
+]]
+local function gorunenKutu(model: Model): (Vector3?, Vector3?)
+	local enAz: Vector3? = nil
+	local enCok: Vector3? = nil
+
+	for _, parca in model:GetDescendants() do
+		if not parca:IsA("BasePart") or parca.Transparency >= 0.99 then
+			continue
+		end
+
+		local cf, olcu = parca.CFrame, parca.Size
+		-- Parcanin sekiz kosesi: donuk parcalarda dunya kutusu boyle cikar
+		for _, sx in { -0.5, 0.5 } do
+			for _, sy in { -0.5, 0.5 } do
+				for _, sz in { -0.5, 0.5 } do
+					local kose = (cf * CFrame.new(olcu.X * sx, olcu.Y * sy, olcu.Z * sz)).Position
+					enAz = if enAz then enAz:Min(kose) else kose
+					enCok = if enCok then enCok:Max(kose) else kose
+				end
+			end
+		end
+	end
+
+	if not enAz or not enCok then
+		return nil, nil
+	end
+	return (enAz + enCok) / 2, enCok - enAz
+end
+
+--[[
+	Model kademenin KIMLIGIYLE araniyor ("Diamond", "Golden"): klasordeki
+	modeller genelde o adi tasiyor, sira numarasina guvenmek ise klasore yeni
+	bir model girince yanlis blogu getiriyordu. Ad tutmazsa Assets yine siraya
+	duser (bkz. Assets.luckyBlockModel).
+]]
+local function luckyOnizleme(kart: Frame, tier: any, x: number, boyut: number): ViewportFrame?
+	local model = Assets.luckyBlockModel(tier.modelName or tier.id, tier.order)
+	if not model then
+		return nil
+	end
+
+	--[[
+		MODELIN EFEKTLERI KALIYOR; yalnizca script ve ses siliniyor. Paketin
+		kendi scriptleri modeli kendi bildigince dondurur, sesleri de magaza
+		acikken calardi.
+
+		NOT: ViewportFrame ParticleEmitter, Beam, Trail ve isik kaynaklarini
+		CIZMEZ, bu Roblox'un sinirlamasi. Duruyorlar ama gorunmuyorlar;
+		kadraja giren sey modelin GORUNUR parcalari (neon halkalar, cam
+		yuzeyler, mesh'ler). Blogun etrafindaki parlamayi UI.isikHuzmeleri
+		yapiyor.
+	]]
+	for _, nesne in model:GetDescendants() do
+		if nesne:IsA("BaseScript") or nesne:IsA("Sound") then
+			nesne:Destroy()
+		end
+	end
+
+	local merkez, kutuBoyut = gorunenKutu(model)
+	if not merkez or not kutuBoyut then
+		model:Destroy()
+		return nil
+	end
+
+	local vp = Instance.new("ViewportFrame")
+	vp.Name = "Onizleme"
+	vp.AnchorPoint = Vector2.new(0, 0.5)
+	vp.Position = UDim2.new(0, x, 0.5, 0)
+	vp.Size = UDim2.fromOffset(boyut, boyut)
+	vp.BackgroundTransparency = 1
+	-- ViewportFrame sahnenin isigini KULLANMAZ; kendi isigi olmazsa model kararir
+	vp.Ambient = ONIZLEME_ISIGI
+	vp.LightColor = ONIZLEME_ISIGI
+	vp.LightDirection = ONIZLEME_ISIK_YONU
+	vp.ZIndex = 5
+	vp.Parent = kart
+
+	model.Parent = vp
+
+	local kamera = Instance.new("Camera")
+	kamera.Parent = vp
+	vp.CurrentCamera = kamera
+
+	kamera.CFrame = CFrame.lookAt(merkez + BAKIS_YONU * kutuBoyut.Magnitude * ONIZLEME_CERCEVE, merkez)
+
+	table.insert(onizlemeler, { model = model, merkez = merkez, taban = model:GetPivot() })
+
+	return vp
+end
+
+RunService.RenderStepped:Connect(function()
+	if not panel.Visible then
+		return
+	end
+
+	--[[
+		UI.sallan ile AYNI RITIM: tween -aci ile +aci arasinda gidip geliyor,
+		yani tam donem sallanma suresinin iki kati. Sinus de o donemde.
+	]]
+	local aci = math.rad(UI.SallanmaAci) * math.sin(os.clock() * math.pi / UI.SallanmaSuresi)
+
+	for _, kayit in onizlemeler do
+		if not kayit.model.Parent then
+			continue
+		end
+		--[[
+			Sabit DURUS'un uzerine salinim biniyor, ikisi de KUTUNUN MERKEZI
+			etrafinda: modelin pivotu baska bir yerdeyse blok salinirken
+			kadrajda kayardi.
+		]]
+		local donus = CFrame.new(kayit.merkez)
+			* CFrame.Angles(0, aci, 0)
+			* DURUS
+			* CFrame.new(-kayit.merkez)
+		kayit.model:PivotTo(donus * kayit.taban)
+	end
+end)
+
+------------------------------------------------------------------
 -- LUCKY BLOCK SANS ORANLARI
 ------------------------------------------------------------------
 local function tierBul(id: string): any
@@ -358,7 +626,7 @@ local function yuzdeYazisi(oran: number): string
 	return `{string.format("%g", math.floor(yuzde * 10 + 0.5) / 10)}%`
 end
 
-local function oranSatiri(parent: Instance, tierId: string, y: number)
+local function oranSatiri(parent: Instance, tierId: string, x: number, y: number)
 	local tier = tierBul(tierId)
 	if not tier then
 		return
@@ -372,12 +640,31 @@ local function oranSatiri(parent: Instance, tierId: string, y: number)
 		return
 	end
 
+	--[[
+		BEYAZ SERIT: oranlar arka plan resminin uzerinde okunsun diye altlarina
+		aciklik seriliyor. Yazilarin kendi siyah konturu var, bu yuzden serit
+		opak degil -- altindaki resim hafifce gecer, yazi yine de secilir.
+
+		Serit ICERIGE GORE UZUYOR (AutomaticSize): sabit genislikte olsaydi
+		son cipten sonra bos beyaz bir kuyruk kalirdi.
+	]]
 	local satir = Instance.new("Frame")
 	satir.Name = "Oranlar"
-	satir.BackgroundTransparency = 1
-	satir.Position = UDim2.fromOffset(112, y)
-	satir.Size = UDim2.new(1, -124, 0, 26)
+	satir.BackgroundColor3 = BEYAZ
+	satir.BackgroundTransparency = 0.25
+	satir.BorderSizePixel = 0
+	satir.AutomaticSize = Enum.AutomaticSize.X
+	satir.Position = UDim2.fromOffset(x, y)
+	satir.Size = UDim2.fromOffset(0, 26)
+	-- Arka plan resminin (ZIndex 1) ustunde, ciplerin (5) altinda
+	satir.ZIndex = 4
 	satir.Parent = parent
+	UI.corner(satir, 8)
+
+	local kenarPay = Instance.new("UIPadding")
+	kenarPay.PaddingLeft = UDim.new(0, 8)
+	kenarPay.PaddingRight = UDim.new(0, 8)
+	kenarPay.Parent = satir
 
 	local dizilim = Instance.new("UIListLayout")
 	dizilim.FillDirection = Enum.FillDirection.Horizontal
@@ -392,17 +679,16 @@ local function oranSatiri(parent: Instance, tierId: string, y: number)
 			continue
 		end
 
+		-- Cipin kendi zemini yok: aciklik satirin tamamina seriliyor (yukarida)
 		local cip = Instance.new("Frame")
 		cip.Name = rarityId
-		cip.BackgroundColor3 = SIYAH
-		cip.BackgroundTransparency = 0.45
+		cip.BackgroundTransparency = 1
 		cip.BorderSizePixel = 0
 		cip.Size = UDim2.fromOffset(0, 26)
 		cip.AutomaticSize = Enum.AutomaticSize.X
 		cip.LayoutOrder = siraNo
 		cip.ZIndex = 5
 		cip.Parent = satir
-		UI.corner(cip, 8)
 		local ic = Instance.new("UIPadding")
 		ic.PaddingLeft = UDim.new(0, 8)
 		ic.PaddingRight = UDim.new(0, 8)
@@ -460,8 +746,43 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 	local coklu = #kart.urunler > 1
 	local oranli = kart.tier ~= nil
 
-	-- Yukseklik: baslik alani + (oranlar) + (dugme sirasi)
-	local yukseklik = if coklu then 72 + (if oranli then 32 else 0) + 64 else 116
+	local tier = if kart.tier then tierBul(kart.tier) else nil
+
+	--[[
+		LUCKY BLOCK KARTLARI magazanin asil urunu: gercek 3B modelleriyle,
+		buyuk ve arkalarinda donen isik huzmeleriyle duruyorlar. Huzme ayari
+		kademeye gore degisir -- Diamond en nadiri, en gosterisli o.
+	]]
+	local huzme = if tier then HUZME_AYARI[tier.id] else nil
+	local gorselX = if huzme then LUCKY_X else IKON_X
+	local gorselBoyu = if huzme then LUCKY_BOYU else IKON_NORMAL
+	-- Yazilar ve dugmeler gorselin SAGINDA basliyor; gorsel buyuyunce kayarlar
+	local yaziX = gorselX + gorselBoyu + 12
+
+	--[[
+		SAG TARAFIN DIKEY DAGILIMI
+
+		Lucky karti normal kartin iki kati boyunda. Normal yerlesim oldugu
+		gibi kullanilinca baslik tepeye, dugmeler dibe yapisiyor ve ortada
+		kocaman bir bosluk kaliyor.
+
+		Lucky kartinda ACIKLAMA SATIRI DA YOK (asagida atlaniyor), yani uc
+		satir kaliyor: ad, oranlar, dugmeler. Degerler LUCKY_KART_BOYU = 240
+		icin ustte 44, altta 28 bosluk birakiyor.
+	]]
+	local baslikY = if huzme then 44 elseif coklu then 8 else 22
+	local altBaslikY = if coklu then 40 else 56
+	local oranY = if huzme then 106 else 72
+	local dugmeAlt = if huzme then 28 else 10
+
+	--[[
+		Yukseklik: baslik alani + (oranlar) + (dugme sirasi). Lucky kartlari
+		bundan bagimsiz ve sabit: icindeki modelle huzmelerin sigmasi lazim.
+	]]
+	local yukseklik = if huzme
+		then LUCKY_KART_BOYU
+		elseif coklu then 72 + (if oranli then 32 else 0) + 64
+		else 116
 
 	local cerceve = Instance.new("Frame")
 	cerceve.Name = kart.id
@@ -470,44 +791,141 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 	cerceve.LayoutOrder = sonraki()
 	cerceve.Parent = liste
 	UI.corner(cerceve, 12)
-	UI.stroke(cerceve, SIYAH, 3)
+	-- Store kartlarinin imzasi: kalin BEYAZ kontur, koyu panel zemininden ayirir
+	UI.stroke(cerceve, BEYAZ, 4)
 	renkliZemin(cerceve, kart.renkA, kart.renkB, 12)
 
-	local tier = if kart.tier then tierBul(kart.tier) else nil
-	local ikon = kartIkonu(cerceve, kart.ikon, 88, if tier then tier.color else nil)
+	--[[
+		Kademenin arka plan resmi varsa renkli zeminin UZERINE seriliyor:
+		gradyan altindan hafifce gecsin diye resim yari saydam. Resim yoksa
+		(klasor bos ya da ad tutmadi) kart eskisi gibi duz gradyanla kaliyor.
 
-	-- Lucky Block ikonu hafifce sallanir
-	if tier then
-		TweenService:Create(
-			ikon,
-			TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-			{ Rotation = 6 }
-		):Play()
-		ikon.Rotation = -6
+		ZINDEX KARTIN KENDISIYLE AYNI (1), 2 DEGIL. Butonlar ve kartin
+		govdesi de ZIndex 1'de; ZIndexBehavior.Sibling'de esit ZIndex'te sira
+		EKLEME SIRASINA kaliyor ve resim buradan, butonlardan once ekleniyor.
+		2 verildiginde resim butonlarin ve dugme yuzlerinin onune gecip
+		hepsini soldurmustu.
+	]]
+	local arkaPlanAdi = if tier then ARKA_PLAN[tier.id] else nil
+	local arkaPlan = if arkaPlanAdi
+		then Icons.assetKlasorden(Assets.Categories.backgrounds, arkaPlanAdi)
+		else nil
+	if arkaPlan then
+		local kap = UI.yumusakResim(cerceve, arkaPlan, ARKA_PLAN_SAYDAM, ARKA_PLAN_YAYILMA, 1)
+		-- Kartinkiyle ayni yaricap: CanvasGroup kirpmayi da yuvarlatiyor
+		UI.corner(kap, 12)
+	end
+
+	--[[
+		LUCKY BLOCK'UN GORSEL KATMANLARI, arkadan one:
+
+		  1  arka plan   kademenin kendi resmi (varsa), yumusatilmis
+		  1  pariltilar  arka planin uzerinde, kart boyunca sonup yanan kivilcimlar
+		  4  huzmeler    modelden disari uzanan donen seritler
+		  4  parlama     modelin arkasindaki hale
+		  5  MODEL       ViewportFrame
+
+		Esit ZIndex'tekilerin sirasini EKLEME SIRASI belirliyor: arka plan,
+		pariltilar, sonra (asagida) satin alma dugmeleri. Ayrintisi her birinin
+		kendi notunda.
+
+		Parlama ve pariltilar ViewportFrame'in cizemedigi seyin yerini
+		tutuyor: onizleme ne ParticleEmitter/Beam/Trail ciziyor ne de Neon
+		parcalarin isimasini (post-processing yok). Ayrintisi UI.parlama'da.
+	]]
+	local gorselMerkez = UDim2.fromOffset(gorselX + gorselBoyu / 2, yukseklik / 2)
+	-- Efektin rengi ayarda verilmisse ondan, yoksa kademenin kendi renginden
+	local efektRengi = if tier then (if huzme then huzme.renk else nil) or tier.color else nil
+
+	if huzme and tier and efektRengi then
+		UI.isikHuzmeleri(cerceve, efektRengi, huzme).Position = gorselMerkez
+		UI.parlama(cerceve, efektRengi, gorselBoyu, 4).Position = gorselMerkez
+	end
+
+	--[[
+		Lucky Block'lar 3B model; model bulunamazsa (Assets > LuckyBlocks bos)
+		karti bos birakmak yerine ikona duser. Model kendi ekseninde sallanir,
+		ikon ise 2B olarak -- ikisi de UI.sallan'in ritminde.
+	]]
+	local onizleme = if tier then luckyOnizleme(cerceve, tier, gorselX, gorselBoyu) else nil
+	if not onizleme then
+		local ikon = kartIkonu(cerceve, kart.ikon, gorselBoyu, if tier then tier.color else nil)
+		ikon.Position = UDim2.new(0, gorselX, 0.5, 0)
+		UI.sallan(ikon)
+	end
+
+	--[[
+		KIVILCIMLAR ARKA PLANIN UZERINE, KARTIN TAMAMINA yayiliyor -- eskiden
+		yalnizca modelin oturdugu kareyi kapliyorlardi ve arka plan resmi
+		gelince onun deseninde kayboluyorlardi.
+
+		ZINDEX 1, yani kartin kendisiyle ayni. Sibling davranisinda esit
+		ZIndex'te sira EKLEME SIRASINA kaliyor: kivilcimlar arka plandan SONRA
+		kuruldugu icin onun uzerinde, satin alma dugmelerinden ONCE kuruldugu
+		icin onlarin altinda kaliyor. 2 verilseydi dugme govdelerinin onune
+		gecerlerdi.
+	]]
+	if onizleme and tier then
+		local pariltiAlani = Instance.new("Frame")
+		pariltiAlani.Name = "PariltiAlani"
+		pariltiAlani.Size = UDim2.fromScale(1, 1)
+		pariltiAlani.BackgroundTransparency = 1
+		-- Kartin yuvarlak kenarindan tasmasinlar
+		pariltiAlani.ClipsDescendants = true
+		pariltiAlani.ZIndex = 1
+		pariltiAlani.Parent = cerceve
+		UI.corner(pariltiAlani, 12)
+
+		UI.pariltilar(pariltiAlani, efektRengi or tier.color, 16, 1)
 	end
 
 	-- Tek urunlu kartta dugme sagda; yazi alani ona gore daralir
-	local yaziEni = if coklu then UDim2.new(1, -124, 0, 32) else UDim2.new(1, -310, 0, 32)
+	local yaziEni = if coklu
+		then UDim2.new(1, -(yaziX + 12), 0, 32)
+		else UDim2.new(1, -(yaziX + 198), 0, 32)
+
+	--[[
+		URUNUN ADI: BUYUK HARF + PARILTI
+
+		Satilan seyin adi kartin en gorunur yazisi olsun diye buyuk harfle ve
+		Fonts.applyGlow'un gecisiyle yaziliyor (ustte ve altta acik, ortada
+		ana renk). Varsayilan altin: her kart renginde -- mavi, turuncu,
+		yesil -- okunuyor. Kademenin kendi gorunumu varsa o gecerli
+		(bkz. BASLIK_GORUNUM).
+
+		Cerceve yuksekligi yazi boyutundan TURETILIYOR: Diamond'in bir boy
+		buyuk adi sabit 32 pikselde kirpilirdi.
+	]]
+	local baslikGorunum = if tier then BASLIK_GORUNUM[tier.id] else nil
+	local baslikBoyu = UI.Sizes.heading + 2 + (if baslikGorunum then baslikGorunum.boyutEk else 0)
 
 	UI.text({
-		text = kart.baslik,
-		size = UI.Sizes.heading + 2,
+		text = string.upper(kart.baslik),
+		size = baslikBoyu,
 		font = UI.Fonts.bold,
-		frameSize = yaziEni,
-		position = UDim2.fromOffset(112, if coklu then 8 else 22),
+		glow = if baslikGorunum then baslikGorunum.renk else ALTIN,
+		frameSize = UDim2.new(yaziEni.X.Scale, yaziEni.X.Offset, 0, baslikBoyu + 12),
+		position = UDim2.fromOffset(yaziX, baslikY),
 		parent = cerceve,
 		zIndex = 5,
 	})
 
-	UI.text({
-		text = kart.altBaslik,
-		size = UI.Sizes.small,
-		font = UI.Fonts.bold,
-		frameSize = UDim2.new(yaziEni.X.Scale, yaziEni.X.Offset, 0, 22),
-		position = UDim2.fromOffset(112, if coklu then 40 else 56),
-		parent = cerceve,
-		zIndex = 5,
-	})
+	--[[
+		ACIKLAMA SATIRI LUCKY KARTLARINDA YOK: adin altindaki oran seridi
+		zaten "ne alacagini" soyluyor ve kart modeliyle, huzmeleriyle
+		fazlasiyla dolu. Diger kartlarda duruyor.
+	]]
+	if not huzme then
+		UI.text({
+			text = kart.altBaslik,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			frameSize = UDim2.new(yaziEni.X.Scale, yaziEni.X.Offset, 0, 22),
+			position = UDim2.fromOffset(yaziX, altBaslikY),
+			parent = cerceve,
+			zIndex = 5,
+		})
+	end
 
 	if kart.serit then
 		serit(cerceve, kart.serit)
@@ -522,15 +940,15 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 	end
 
 	if oranli and kart.tier then
-		oranSatiri(cerceve, kart.tier, 72)
+		oranSatiri(cerceve, kart.tier, yaziX, oranY)
 	end
 
 	local dugmeler = Instance.new("Frame")
 	dugmeler.Name = "Dugmeler"
 	dugmeler.BackgroundTransparency = 1
 	dugmeler.AnchorPoint = Vector2.new(0, 1)
-	dugmeler.Position = UDim2.new(0, 112, 1, -10)
-	dugmeler.Size = UDim2.new(1, -124, 0, 56)
+	dugmeler.Position = UDim2.new(0, yaziX, 1, -dugmeAlt)
+	dugmeler.Size = UDim2.new(1, -(yaziX + 12), 0, 56)
 	dugmeler.Parent = cerceve
 
 	local dizilim = Instance.new("UIListLayout")
@@ -566,17 +984,20 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 	kart.LayoutOrder = siraNo
 	kart.Parent = parent
 	UI.corner(kart, 12)
-	UI.stroke(kart, SIYAH, 3)
+	-- Urun kartlariyla ayni: kalin beyaz kontur
+	UI.stroke(kart, BEYAZ, 4)
 	renkliZemin(kart, gorunum.renkA, gorunum.renkB, 12)
 
 	local ikon = kartIkonu(kart, gorunum.ikon, 56)
 	ikon.AnchorPoint = Vector2.zero
 	ikon.Position = UDim2.fromOffset(10, 10)
 
+	-- Urun kartlariyla ayni: buyuk harf + altin parilti (bkz. urunKarti)
 	UI.text({
-		text = info.ad,
+		text = string.upper(info.ad),
 		size = UI.Sizes.label,
 		font = UI.Fonts.bold,
+		glow = ALTIN,
 		frameSize = UDim2.new(1, -80, 0, 26),
 		position = UDim2.fromOffset(72, 10),
 		parent = kart,
@@ -635,7 +1056,20 @@ end
 ------------------------------------------------------------------
 bolumBasligi("Items")
 for _, kart in RobuxMagaza.Kartlar do
-	urunKarti(kart)
+	--[[
+		HER KART KENDI BASINA CIZILIYOR.
+
+		Bir kart cizilemezse eskiden butun script o satirda duruyordu: magaza
+		yarim kaliyor ve ASAGIDA kurulan STORE BUTONU hic gelmiyordu -- yani
+		tek bir kartin derdi magazayi tumden yok ediyordu. Bir kez oldu da:
+		UI modulundeki bir fonksiyonun adi yanlis yazilmisti.
+
+		Artik hata o kartta kalir, sebebi Output'a dusurulur, gerisi kurulur.
+	]]
+	local ok, hata = pcall(urunKarti, kart)
+	if not ok then
+		warn(`[RobuxMagaza] "{kart.id}" karti cizilemedi: {hata}`)
+	end
 end
 
 bolumBasligi("Game Passes")

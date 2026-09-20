@@ -224,6 +224,8 @@ local function buildPanel(info: any)
 		actionButton(`{tier.displayName} ver  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end
 	actionButton("Envanterdeki brainrotlarin kimligini ac", "revealAll", nil, UI.Colors.accent)
+	-- Ogreticiyi basa sarar: test icin her seferinde yeni hesap gerekmesin
+	actionButton("Ogreticiyi basa sar (1. adim)", "ogreticiSifirla", nil, Color3.fromRGB(255, 215, 60))
 	actionButton("Mutasyon cekilisini test et (1000 kez, Output'a yazar)", "testMutation", nil, UI.Colors.textDim)
 	actionButton("Harita raporu (ada/base/NPC konumlari, Output'a yazar)", "haritaRaporu", nil, UI.Colors.textDim)
 	actionButton("Kum raporu (bastigin zemin, Output'a yazar)", "kumRaporu", nil, UI.Colors.textDim)

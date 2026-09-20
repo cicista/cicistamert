@@ -159,6 +159,17 @@ export type Data = {
 		budaniyor (bkz. SATIN_ALMA_OMRU).
 	]]
 	purchases: { [string]: number },
+	--[[
+		OGRETICI  --  yeni oyuncunun ilk turu (bkz. Shared > Ogretici)
+
+		adim  : SIRADAKI adimin sira numarasi (1 = ilk adim)
+		bitti : butun adimlar tamamlandi; bir daha hic baslamaz
+
+		Eski kayitlarda bu alan yok; o oyuncular ogreticiyi gormus SAYILIR
+		(bitti = true). Aylardir oynayan birine "kuma git" demek sacma
+		olurdu.
+	]]
+	tutorial: { adim: number, bitti: boolean },
 }
 
 local PlayerData = {}
@@ -209,6 +220,8 @@ local function defaultData(): Data
 		speedLevel = 0,
 		speedRebirth = 0,
 		quests = { cycle = 0, progress = {}, done = {} },
+		-- Yeni oyuncu ogreticinin ilk adiminda baslar
+		tutorial = { adim = 1, bitti = false },
 		discovered = {},
 		discoveredMut = {},
 		purchases = {},
@@ -286,6 +299,23 @@ local function migrate(raw: any): Data
 	data.rot = tonumber(raw.rot) or 0
 	-- Eski kayitlardaki Rot Coin bakiyesi de geri gelir
 	data.rotCoins = tonumber(raw.rotCoins) or 0
+
+	--[[
+		OGRETICI DURUMU
+
+		Alan YOKSA oyuncu ogreticiyi gormus sayilir: bu kayit ogretici
+		eklenmeden once acilmis, yani oyuncu oyunu zaten biliyor. Yalnizca
+		gercekten yeni kayitlar (defaultData) ogreticiye basliyor.
+	]]
+	local ogretici = if type(raw.tutorial) == "table" then raw.tutorial else nil
+	if ogretici then
+		data.tutorial = {
+			adim = math.max(1, math.floor(tonumber(ogretici.adim) or 1)),
+			bitti = ogretici.bitti == true,
+		}
+	else
+		data.tutorial = { adim = 1, bitti = true }
+	end
 	--[[
 		Eski kayitlarda luckyBlocks tek bir SAYIYDI (tur ayrimi yoktu).
 		O kayitlar Normal ture aktariliyor, yoksa oyuncunun bloklari ucardi.

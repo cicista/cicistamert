@@ -134,7 +134,8 @@ local GorevAl = Net.event("GorevAl")
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "OyunMenuleri"
--- Paneller XP barinin (DisplayOrder 0) ustunde kalsin; sira RobuxMagaza'daki notta
+-- Menu butonlari XP barinin (DisplayOrder 0) ustunde; paneller ortak panel
+-- katmaninda ve butonlarin ustunde (bkz. UI.luau > PANEL KATMANI).
 screen.DisplayOrder = 5
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -1621,7 +1622,7 @@ do
 	karartma.BorderSizePixel = 0
 	karartma.ZIndex = 0
 	karartma.Visible = false
-	karartma.Parent = screen
+	karartma.Parent = UI.fonEkrani() or screen
 
 	local isik = Instance.new("Frame")
 	isik.Name = "LuckyIsik"
@@ -1631,7 +1632,7 @@ do
 	isik.BackgroundTransparency = 1
 	isik.ZIndex = 0
 	isik.Visible = false
-	isik.Parent = screen
+	isik.Parent = UI.fonEkrani() or screen
 
 	local HUZME = 8
 	for i = 1, HUZME do
@@ -1810,7 +1811,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		if cubukGecis then
 			cubukGecis.Color = ColorSequence.new(turRengi, UI.shade(turRengi, -0.3))
 		end
-		local huzmeler = screen:FindFirstChild("LuckyIsik")
+		local huzmeler = (UI.fonEkrani() or screen):FindFirstChild("LuckyIsik")
 		if huzmeler then
 			for _, huzme in huzmeler:GetChildren() do
 				if huzme:IsA("Frame") then
@@ -2329,18 +2330,79 @@ local MenuRenk = {
 -- Sagdaki ev butonu: sunucu dogrular ve base'in onune isinlar
 local BaseyeIsinlan = Net.event("BaseyeIsinlan")
 
+
+--[[
+	=====================================================================
+	BILDIRIM NOKTALARI
+	=====================================================================
+
+	Sol menu butonunun -- ve Rewards panelindeki sekmenin -- sag ust
+	kosesindeki kirmizi nokta: "burada alinacak bir sey var". Oyuncu menuyu
+	hic acmadan gorur, acinca da hangi sekmede oldugunu bulur.
+
+	HEPSI TEK TABLODA. Bu script ust seviye yerel sinirina yakin (bkz.
+	tools/check.luau uyarisi), her nokta icin ayri bir yerel acilmiyor.
+
+	Anahtarlar:
+	  "quests" / "rewards"  sol menu butonlari
+	  "sekme_<id>"          Rewards panelindeki Playtime / Daily / Social
+
+	Noktalari kuran yer menu butonlarinin ve sekmelerin kuruldugu yer;
+	durumu besleyen yer sunucudan durum gelen her olay isleyicisi.
+]]
+local Bildirim = {
+	-- Nokta nesnesini acip kapatan fonksiyonlar (bkz. UI.bildirimNoktasi)
+	noktalar = {} :: { [string]: (acik: boolean) -> () },
+	-- Rewards sekmelerinin son durumu; menu butonu bunlarin toplami
+	odulSekmeleri = {} :: { [string]: boolean },
+}
+
+--[[
+	Noktayi acar/kapatir. Nokta henuz kurulmamissa sessizce gecer: sunucudan
+	durum, arayuz kurulmadan once gelebiliyor.
+]]
+function Bildirim.ayarla(anahtar: string, acik: boolean)
+	local nokta = Bildirim.noktalar[anahtar]
+	if nokta then
+		nokta(acik)
+	end
+end
+
+--[[
+	Bir Rewards sekmesinin durumunu yazar ve menu butonunu tazeler: sekmelerden
+	HERHANGI birinde alinacak bir sey varsa Rewards butonu da yanar.
+]]
+function Bildirim.odulSekmesi(id: string, acik: boolean)
+	Bildirim.odulSekmeleri[id] = acik
+	Bildirim.ayarla(`sekme_{id}`, acik)
+
+	local herhangi = false
+	for _, durum in Bildirim.odulSekmeleri do
+		if durum then
+			herhangi = true
+			break
+		end
+	end
+	Bildirim.ayarla("rewards", herhangi)
+end
+
 -- SOL: oyunun kendi sistemleri
 menuButonu(solSutun, "inventory", "Inventory", MenuRenk.inventory, toggleEnvanter)
 -- Pet sistemi iptal edildi; yerinde Rot Coin magazasi
 menuButonu(solSutun, "rotCoin", "Rot Coin Shop", MenuRenk.rotcoin, function()
 	rotCoinMagazaAc()
 end)
-menuButonu(solSutun, "quests", "Quests", MenuRenk.quests, function()
-	gorevPaneliniAc()
-end)
-menuButonu(solSutun, "rewards", "Rewards", MenuRenk.rewards, function()
-	odulPaneliniAc()
-end)
+-- Quests ve Rewards toplanacak bir sey olunca kirmizi nokta tasir
+Bildirim.noktalar.quests = UI.bildirimNoktasi(
+	menuButonu(solSutun, "quests", "Quests", MenuRenk.quests, function()
+		gorevPaneliniAc()
+	end)
+)
+Bildirim.noktalar.rewards = UI.bildirimNoktasi(
+	menuButonu(solSutun, "rewards", "Rewards", MenuRenk.rewards, function()
+		odulPaneliniAc()
+	end)
+)
 menuButonu(solSutun, "index", "Index", MenuRenk.index, function()
 	-- Ikinci tiklama kapatir
 	if Index.acikMi() then
@@ -2500,6 +2562,8 @@ do
 		})
 
 		odulSekmeDugmeleri[sekme.id] = dugme
+		-- Sekmenin kendi kirmizi noktasi: hangi sayfada alinacak sey var
+		Bildirim.noktalar[`sekme_{sekme.id}`] = UI.bildirimNoktasi(dugme)
 		dugme.MouseButton1Click:Connect(function()
 			odulSekmeSec(sekme.id)
 		end)
@@ -2779,6 +2843,8 @@ OdulDurum.OnClientEvent:Connect(function(data)
 
 	odulCiz()
 	nabizGuncelle()
+	-- Gunluk odul alinabilir durumdaysa Daily sekmesinde ve menu butonunda nokta
+	Bildirim.odulSekmesi("daily", odulHazir)
 end)
 
 -- Odulu alinan kart kisaca buyuyup yerine oturur
@@ -2999,6 +3065,25 @@ task.spawn(function()
 
 			ptKartlari[i] = { dugme = dugme, yazi = yazi }
 		end
+	end
+
+	--[[
+		Suresi dolmus ama henuz alinmamis bir Playtime odulu var mi.
+
+		PANEL KAPALIYKEN DE BILINMELI: nokta oyuncuyu panele cagiran sey,
+		panel acilana kadar bekleseydi hic gorunmezdi. Bu yuzden asagidaki
+		sayac her saniye bunu hesapliyor, cizimi ise yalnizca sayfa acikken
+		yapiyor.
+	]]
+	local function playtimeHazirMi(): boolean
+		local gecen = os.clock() - ptBaslangic
+		for i, odul in SosyalOdul.Playtime do
+			local bilgi = if ekDurum and ekDurum.playtime then ekDurum.playtime[i] else nil
+			if not (bilgi and bilgi.claimed) and odul.minutes * 60 - gecen <= 0 then
+				return true
+			end
+		end
+		return false
 	end
 
 	local function playtimeCiz()
@@ -3243,6 +3328,14 @@ task.spawn(function()
 			likeDugme.BackgroundColor3 = UI.Colors.good
 			likeYazi.Text = "Claim"
 		end
+
+		--[[
+			Grup ve like odulleri bir kereliktir: alinmamis biri varsa nokta
+			yanar ve oyuncu alana kadar yanik kalir. Grup kimligi 0 iken odul
+			"Coming Soon" demektir, sayilmaz.
+		]]
+		local grupAlinabilir = SosyalOdul.GroupId ~= 0 and not (grup and grup.claimed)
+		Bildirim.odulSekmesi("social", grupAlinabilir or not (like and like.claimed))
 	end
 
 	EkOdulDurum.OnClientEvent:Connect(function(data)
@@ -3252,16 +3345,22 @@ task.spawn(function()
 		ekDurum = data
 		ptBaslangic = os.clock() - (tonumber(data.elapsed) or 0)
 		playtimeCiz()
+		Bildirim.odulSekmesi("playtime", playtimeHazirMi())
 		socialCiz()
 	end)
 
 	playtimeCiz()
+	Bildirim.odulSekmesi("playtime", playtimeHazirMi())
 	socialCiz()
 
-	-- Playtime geri sayimi; panel kapaliyken bosuna cizilmez
+	--[[
+		Playtime geri sayimi. Cizim yalnizca sayfa acikken yapilir ama
+		BILDIRIM her saniye tazelenir: oyuncuyu panele cagiran sey o.
+	]]
 	task.spawn(function()
 		while true do
 			task.wait(1)
+			Bildirim.odulSekmesi("playtime", playtimeHazirMi())
 			if odulPanel.Visible and odulSayfalari.playtime.Visible then
 				playtimeCiz()
 			end
@@ -3565,6 +3664,8 @@ do
 			ikon.ScaleType = Enum.ScaleType.Fit
 			ikon.Parent = satir
 			UI.corner(ikon, 30)
+			-- Store'la ayni ritimde sallanir; donmez, urunun yuzu ekranda kalir
+			UI.sallan(ikon)
 			Icons.bind(ikon, urun.icon)
 			if urun.tint then
 				ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
@@ -4207,6 +4308,19 @@ do
 		gorevSayacYazi.Text = `New Quests In {sureMetni(gorevKalan)}`
 	end
 
+	--[[
+		Hedefi dolmus ama odulu alinmamis gorev var mi. Panelin acilmasini
+		beklemez: nokta oyuncuyu panele cagiran sey.
+	]]
+	local function gorevHazirMi(): boolean
+		for _, quest in gorevVerisi.quests do
+			if quest.ready == true then
+				return true
+			end
+		end
+		return false
+	end
+
 	GorevDurum.OnClientEvent:Connect(function(veri)
 		if type(veri) ~= "table" then
 			return
@@ -4215,6 +4329,7 @@ do
 		gorevVerisi = veri
 		gorevKalan = math.max(0, tonumber(veri.remaining) or 0)
 		gorevSayaciYaz()
+		Bildirim.ayarla("quests", gorevHazirMi())
 
 		-- Panel kapaliyken cizmeye gerek yok; acilirken zaten cizilecek
 		if gorevPanel.Visible then

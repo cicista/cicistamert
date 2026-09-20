@@ -37,11 +37,13 @@ end
 --[[
 	Kademeye gore renklenen patlama.
 
-	rarityId  -- efektin rengi ve buyuklugu bundan gelir
+	rarityId  -- efektin BUYUKLUGU bundan gelir; renk de verilmezse rengi de
 	sesli     -- false verilirse yalnizca gorsel oynar (ses baska yerde
 	             calindiysa iki kez duyulmasin diye)
+	renk      -- verilirse kademe rengini EZER. Ogretici odulu gibi bir
+	             kademeye bagli OLMAYAN kutlamalar icin (beyaz patlama).
 ]]
-function Patlama.oynat(player: Player, rarityId: string, sesli: boolean?)
+function Patlama.oynat(player: Player, rarityId: string, sesli: boolean?, renk: Color3?)
 	local cfg = Fuse.VFX
 
 	local root = bodyOf(player)
@@ -62,7 +64,7 @@ function Patlama.oynat(player: Player, rarityId: string, sesli: boolean?)
 	-- Sablonla karismasin diye ayri ad: arama bir daha ona takilmasin
 	template.Name = `{cfg.name}_Patlama`
 
-	Assets.tintEffects(template, Rarity.color(rarityId), cfg.preserveShading)
+	Assets.tintEffects(template, renk or Rarity.color(rarityId), cfg.preserveShading)
 	Assets.scaleEffects(template, cfg.scaleByRarity[rarityId] or 1)
 
 	local origin = root.CFrame * CFrame.new(0, cfg.height, 0)

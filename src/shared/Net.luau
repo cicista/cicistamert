@@ -138,8 +138,13 @@ Net.Events = {
 	"HizRebirth",        -- client -> server: Speed 101'de rebirth at
 
 	-- Admin
+	-- Admin
 	"AdminPanelAc",     -- server -> client: panel + yetki
 	"AdminKomut",       -- client -> server: komut calistir
+
+	-- Ogretici (bkz. Shared > Ogretici)
+	"OgreticiDurum",    -- server -> client: kacinci adimdayiz, bitti mi
+	"OgreticiIste",     -- client -> server: durumu yolla (arayuz hazir)
 }
 
 local function folder(): Folder
