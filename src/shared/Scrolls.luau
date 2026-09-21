@@ -43,7 +43,7 @@ Scrolls.Info = {
 		modelAdi = "HackerMutationScroll",
 		mutasyon = "Hacker",
 		sans = 0.4,
-		fiyat = 25,
+		fiyat = 30,
 		renk = Mutations.get("Hacker").color,
 	},
 } :: { [string]: ScrollInfo }

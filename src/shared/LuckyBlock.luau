@@ -35,6 +35,11 @@ export type Tier = {
 	dropWeight: number,
 	-- Carktan cikacak kademenin agirliklari
 	rarityWeights: { [string]: number },
+	--[[
+		Bu turden cikan HER brainrot bu mutasyonla gelir (cekilis yapilmaz).
+		Bos birakilirsa mutationRolls ile normal cekilis yapilir.
+	]]
+	zorunluMutasyon: string?,
 	-- Mutasyon kac kez cekilip en nadiri alinsin (buyudukce daha iyi mutasyon)
 	mutationRolls: number,
 }
@@ -101,12 +106,20 @@ LuckyBlock.Tiers = {
 		order = 4,
 		color = Color3.fromRGB(60, 255, 110),
 		dropWeight = 0,
+		--[[
+			En ust kademelere ulasan TEK blok: Cosmic ve Infernal yalnizca
+			buradan cikiyor. Kalan agirlik Legendary ve Mythic'e veriliyor,
+			yani "kotu" bir cekilis bile Legendary altina inmiyor.
+		]]
 		rarityWeights = {
-			Legendary = 26,
-			Mythic = 44,
-			Secret = 30,
+			Legendary = 35,
+			Mythic = 52,
+			Secret = 4,
+			Cosmic = 8,
+			Infernal = 1,
 		},
 		mutationRolls = 4,
+		zorunluMutasyon = "Hacker",
 	},
 } :: { Tier }
 

@@ -700,6 +700,8 @@ local function openBlock(player: Player, tierId: string)
 
 		winner = winner,
 		tierName = tier.displayName,
+		-- Hacker gibi turlerde carkin TUM bolmeleri bu mutasyonla cizilir
+		tierMutation = tier.zorunluMutasyon,
 		tierColor = tier.color,
 		remaining = PlayerData.luckyBlockCount(player, tierId),
 	})

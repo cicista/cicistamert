@@ -124,7 +124,7 @@ RobuxMagaza.Kartlar = {
 		urunler = {
 			{ anahtar = "Diamond1", id = 0, fiyat = 99, etiket = "x1", ad = "1 Diamond Lucky Block", tur = "luckyblock", tier = "Diamond", adet = 1 },
 			{ anahtar = "Diamond3", id = 0, fiyat = 249, etiket = "x3", ad = "3 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 3 },
-			{ anahtar = "Diamond8", id = 0, fiyat = 599, eskiFiyat = 792, etiket = "x8", ad = "8 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 8 },
+			{ anahtar = "Diamond5", id = 0, fiyat = 375, eskiFiyat = 495, etiket = "x5", ad = "5 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 5 },
 		},
 	},
 	{
@@ -139,7 +139,7 @@ RobuxMagaza.Kartlar = {
 		urunler = {
 			{ anahtar = "Golden1", id = 0, fiyat = 39, etiket = "x1", ad = "1 Golden Lucky Block", tur = "luckyblock", tier = "Golden", adet = 1 },
 			{ anahtar = "Golden3", id = 0, fiyat = 99, etiket = "x3", ad = "3 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 3 },
-			{ anahtar = "Golden10", id = 0, fiyat = 299, eskiFiyat = 390, etiket = "x10", ad = "10 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 10 },
+			{ anahtar = "Golden5", id = 0, fiyat = 150, eskiFiyat = 195, etiket = "x5", ad = "5 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 5 },
 		},
 	},
 	{

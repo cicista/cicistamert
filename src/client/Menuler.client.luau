@@ -1737,6 +1737,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	]]
 	local kazananSira = tonumber(data.winnerIndex) or LuckyBlock.Wheel.revealWinnerIndex
 	local kazanan = if type(data.winner) == "table" then data.winner else nil
+	local turMutasyonu = if type(data.tierMutation) == "string" then data.tierMutation else nil
 
 	local cells: { Rulet.Cell } = {}
 	for index, entry in data.cells do
@@ -1748,7 +1749,13 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			brainrot = if type(entry.name) == "string"
 				then {
 					name = entry.name,
-					mutation = if index == kazananSira and kazanan then kazanan.mutation else nil,
+					--[[
+						Turun zorunlu mutasyonu varsa (Hacker) BUTUN bolmeler
+						o mutasyonun modeliyle ciziliyor; yoksa yalnizca
+						kazanan bolme oyuncunun eline gececek haliyle.
+					]]
+					mutation = turMutasyonu
+						or (if index == kazananSira and kazanan then kazanan.mutation else nil),
 				}
 				else nil,
 		})

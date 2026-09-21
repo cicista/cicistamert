@@ -1225,9 +1225,7 @@ function Tools.buildScroll(scrollId: string, count: number): Tool?
 	local klasor = Assets.klasor(Assets.Categories.scrolls)
 	local sablon = klasor and klasor:FindFirstChild(info.modelAdi, true)
 	if not sablon or not sablon:IsA("Tool") then
-		warn(
-			`[Tools] Scroll bulunamadi: Assets > {Assets.Categories.scrolls} > {info.modelAdi}`
-		)
+		warn(`[Tools] Scroll bulunamadi: Assets > {Assets.Categories.scrolls} > {info.modelAdi}`)
 		return nil
 	end
 
@@ -1235,6 +1233,50 @@ function Tools.buildScroll(scrollId: string, count: number): Tool?
 	tool.Name = Scrolls.etiket(scrollId, count)
 	tool:SetAttribute(Scrolls.Nitelik, scrollId)
 	tool.CanBeDropped = false
+
+	--[[
+		ELDE DURMASI ICIN PARCALAR COZULUYOR.
+
+		Studio'daki Tool'un parcalari SABITLENMIS (Anchored) olabiliyor.
+		Sabit bir parca oyuncunun eline kaynaklanamaz: Tool kusanilir ama
+		model dunyada durdugu yerde kalir, oyuncu bos elle gezer. Kopyada
+		hepsi cozuluyor, carpisma kapatiliyor ve agirliksiz yapiliyor
+		(attachModel'deki ayni islem).
+	]]
+	for _, parca in tool:GetDescendants() do
+		if parca:IsA("BasePart") then
+			parca.Anchored = false
+			parca.CanCollide = false
+			parca.Massless = true
+		end
+	end
+
+	--[[
+		HANDLE SART: adi "Handle" olan bir parca yoksa Roblox Tool'u ele
+		almaz. Boyle bir durumda ilk parca Handle yapilip digerleri ona
+		kaynaklaniyor -- tutus yine Roblox'un varsayilani, Grip degerlerine
+		dokunulmuyor.
+	]]
+	local handle = tool:FindFirstChild("Handle")
+	if not (handle and handle:IsA("BasePart")) then
+		local ilk = tool:FindFirstChildWhichIsA("BasePart", true)
+		if ilk then
+			ilk.Name = "Handle"
+			ilk.Parent = tool
+			for _, parca in tool:GetDescendants() do
+				if parca:IsA("BasePart") and parca ~= ilk then
+					local weld = Instance.new("WeldConstraint")
+					weld.Part0 = ilk
+					weld.Part1 = parca
+					weld.Parent = ilk
+				end
+			end
+		else
+			-- Hic parcasi yok: en azindan kusanilabilir kalsin
+			tool.RequiresHandle = false
+		end
+	end
+
 	return tool
 end
 
