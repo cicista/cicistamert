@@ -116,10 +116,11 @@ serit.Parent = ekran
 UI.corner(serit, 16)
 UI.stroke(serit, SIYAH, 3)
 
--- Anlatici resminin boyu (seridin SOLUNDA durur, icinde degil)
-local ANLATICI = 128
--- Yazilarin seridin solundan boslugu
+-- Anlatici resminin boyu (seridin ICINDE, sag tarafta durur)
+local ANLATICI = 78
+-- Yazilarin seridin solundan boslugu ve sagda anlaticiya birakilan yer
 local YAZI_SOL = 22
+local YAZI_SAG = ANLATICI + 24
 
 do
 	local zemin = Instance.new("UIGradient")
@@ -153,21 +154,21 @@ do
 end
 
 --[[
-	ANLATICI RESMI  --  seridin SOLUNDA duran karakter
+	ANLATICI RESMI  --  seridin ICINDE, SAG tarafta duran karakter
 
 	Resimler Studio'ya elle konuyor: ReplicatedStorage > Assets > Icons
 	icine "hosgeldin", "dusunce", "tesvik", "dans" adlariyla (bkz.
 	Shared > Ogretici > Anlaticilar). Her adim kendi resmini gosteriyor.
 
-	Resim seridin DISINDA: serit metin icin genis kaliyor, karakter de
-	kirpilmadan tam boy duruyor. Arkasinda yumusak altin bir hale var,
-	kendisi de hafifce sagli sollu sallaniyor -- canli dursun.
+	Resim seridin ICINDE duruyor: disarida kalinca ekranin ortasinda bosta
+	asili gorunuyordu. Yazilar solda, karakter sagda; arkasinda yumusak
+	altin bir hale var ve hafifce sagli sollu sallaniyor -- canli dursun.
 ]]
 local anlaticiResim = Instance.new("ImageLabel")
 anlaticiResim.Name = "Anlatici"
-anlaticiResim.AnchorPoint = Vector2.new(1, 1)
--- Seridin sol kenarinin disinda, alt hizasinda
-anlaticiResim.Position = UDim2.new(0, 6, 1, 10)
+anlaticiResim.AnchorPoint = Vector2.new(1, 0.5)
+-- Seridin sag ucunda, dikeyde ortali
+anlaticiResim.Position = UDim2.new(1, -12, 0.5, 0)
 anlaticiResim.Size = UDim2.fromOffset(ANLATICI, ANLATICI)
 anlaticiResim.BackgroundTransparency = 1
 anlaticiResim.ScaleType = Enum.ScaleType.Fit
@@ -251,7 +252,7 @@ local sayacYazi = UI.text({
 	font = UI.Fonts.bold,
 	color = ISARET,
 	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -(YAZI_SOL + 16), 0, 18),
+	frameSize = UDim2.new(1, -(YAZI_SOL + YAZI_SAG), 0, 18),
 	position = UDim2.fromOffset(YAZI_SOL, 8),
 	parent = serit,
 	zIndex = 5,
@@ -263,7 +264,7 @@ local yonergeYazi = UI.text({
 	font = UI.Fonts.bold,
 	color = BEYAZ,
 	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -(YAZI_SOL + 16), 0, 30),
+	frameSize = UDim2.new(1, -(YAZI_SOL + YAZI_SAG), 0, 30),
 	position = UDim2.fromOffset(YAZI_SOL, 26),
 	parent = serit,
 	zIndex = 5,
@@ -274,7 +275,7 @@ local altYazi = UI.text({
 	size = UI.Sizes.tiny,
 	color = Color3.fromRGB(205, 210, 225),
 	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -(YAZI_SOL + 16), 0, 18),
+	frameSize = UDim2.new(1, -(YAZI_SOL + YAZI_SAG), 0, 18),
 	position = UDim2.fromOffset(YAZI_SOL, 58),
 	parent = serit,
 	zIndex = 5,
