@@ -272,6 +272,65 @@ local function yuzYazisi(yuz: Frame, yazi: string, boyut: number, y: number, yuk
 	})
 end
 
+--[[
+	ROBUX FIYATI  --  ikon + sayi
+
+	Ikon Assets > Icons > Robux'tan geliyor; MeshPart olarak konmus olsa da
+	dokusu okunuyor (bkz. Icons > goruntu). Ikon bulunamazsa eski "R$ 99"
+	yazisina duser, yani ikon konmadan once de dogru gorunur.
+
+	Ikon ve sayi birlikte ORTALANIYOR: ikisini tek bir yatay dizilime
+	koyup kutuyu icerigine gore buyutuyoruz (AutomaticSize), sonra kutuyu
+	yuzun ortasina oturtuyoruz.
+]]
+local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number, yukseklik: number): Frame?
+	local ikon = Icons.asset("Robux")
+	if not ikon then
+		yuzYazisi(yuz, `R$ {miktar}`, boyut, y, yukseklik)
+		return nil
+	end
+
+	local kutu = Instance.new("Frame")
+	kutu.Name = "Fiyat"
+	kutu.AnchorPoint = Vector2.new(0.5, 0)
+	kutu.Position = UDim2.new(0.5, 0, 0, y)
+	kutu.Size = UDim2.fromOffset(0, yukseklik)
+	kutu.AutomaticSize = Enum.AutomaticSize.X
+	kutu.BackgroundTransparency = 1
+	kutu.ZIndex = 5
+	kutu.Parent = yuz
+
+	local dizilim = Instance.new("UIListLayout")
+	dizilim.FillDirection = Enum.FillDirection.Horizontal
+	dizilim.VerticalAlignment = Enum.VerticalAlignment.Center
+	dizilim.Padding = UDim.new(0, 3)
+	dizilim.SortOrder = Enum.SortOrder.LayoutOrder
+	dizilim.Parent = kutu
+
+	local resim = Instance.new("ImageLabel")
+	resim.Name = "Ikon"
+	resim.BackgroundTransparency = 1
+	resim.Image = ikon
+	resim.ScaleType = Enum.ScaleType.Fit
+	resim.Size = UDim2.fromOffset(boyut, boyut)
+	resim.LayoutOrder = 1
+	resim.ZIndex = 5
+	resim.Parent = kutu
+
+	local sayi = UI.text({
+		text = tostring(miktar),
+		size = boyut,
+		font = UI.Fonts.bold,
+		frameSize = UDim2.fromOffset(0, yukseklik),
+		parent = kutu,
+		zIndex = 5,
+	})
+	sayi.AutomaticSize = Enum.AutomaticSize.X
+	sayi.LayoutOrder = 2
+
+	return kutu
+end
+
 -- Kartin sol ustundeki egik serit: "NEW!", "HOT!"
 local function serit(kart: Frame, yazi: string)
 	local etiket = UI.text({
@@ -736,7 +795,7 @@ end
 local function urunDugmesi(parent: Instance, urun: RobuxMagaza.Urun)
 	local buton, yuz = satinAlmaDugmesi(parent, YESIL)
 
-	yuzYazisi(yuz, `R$ {urun.fiyat}`, UI.Sizes.label, 2, 24)
+	robuxYazisi(yuz, urun.fiyat, UI.Sizes.label, 2, 24)
 	yuzYazisi(yuz, urun.etiket, UI.Sizes.small, 24, 18)
 
 	-- Indirimli urunde eski fiyat ustu cizili, dugmenin koseside egik
@@ -1061,12 +1120,25 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 	buton.Position = UDim2.new(0.5, 0, 1, -10)
 	buton.Size = UDim2.new(1, -20, 0, 50)
 
+	--[[
+		Fiyat ikonuyla, "OWNED" yalin yaziyla gosteriliyor: ikisi ayni
+		yerde durup birbirini kapatiyor, hangisi gerekiyorsa o aciliyor.
+	]]
 	local yazi = yuzYazisi(yuz, "", UI.Sizes.label, 0, 36)
 	yazi.Size = UDim2.new(1, -4, 1, 0)
 
+	local fiyatKutusu = robuxYazisi(yuz, info.fiyat, UI.Sizes.label, 8, 36)
+
 	local function ciz()
 		local sahip = Passler.sahip(player, ad)
-		yazi.Text = if sahip then "OWNED" else `R$ {info.fiyat}`
+
+		if fiyatKutusu then
+			fiyatKutusu.Visible = not sahip
+			yazi.Text = if sahip then "OWNED" else ""
+		else
+			yazi.Text = if sahip then "OWNED" else `R$ {info.fiyat}`
+		end
+
 		buton.Active = not sahip
 		buton.AutoButtonColor = false
 		-- Sahip olunan gecisin dugmesi gri; fare etkisi rengi tekrar okusun diye yuz degismiyor

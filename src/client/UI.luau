@@ -1468,6 +1468,103 @@ function UI.sayiYagmuru(
 end
 
 --[[
+	MODEL KARESI  --  bir nesneyi ikon yerine 3B gosterir
+
+	Envanterde ve magaza satirlarinda resim yerine nesnenin KENDISI
+	gorunsun diye: verilen model (ya da Tool) bir ViewportFrame'e konur ve
+	kamera onu kadraja sigdirir.
+
+	MODEL KOPYALANMAZ, sahiplenir: cagiran taraf zaten kendi kopyasini
+	veriyor (Assets modulleri Clone donduruyor).
+
+	ViewportFrame sahnenin isigini KULLANMAZ; kendi Ambient/LightColor'i
+	verilmezse nesne kapkara cikar.
+]]
+function UI.modelKaresi(parent: GuiObject, model: Instance, boyut: number, zIndex: number): ViewportFrame?
+	--[[
+		Tool verilirse icindeki parcalar kullanilir. Tool'un kendisi
+		ViewportFrame icinde cizilmez (Tool bir PVInstance degil), o yuzden
+		parcalari gecici bir Model'e tasiniyor.
+	]]
+	local govde: Instance = model
+	if model:IsA("Tool") then
+		local kap = Instance.new("Model")
+		for _, cocuk in model:GetChildren() do
+			if cocuk:IsA("BasePart") then
+				cocuk.Parent = kap
+			end
+		end
+		model:Destroy()
+		govde = kap
+	end
+
+	local kok: BasePart? = nil
+	if govde:IsA("BasePart") then
+		kok = govde
+	elseif govde:IsA("Model") then
+		kok = govde.PrimaryPart or govde:FindFirstChildWhichIsA("BasePart", true)
+	end
+
+	if not kok then
+		govde:Destroy()
+		return nil
+	end
+
+	-- Onizlemede script, ses ve parcacik calismasin
+	for _, node in govde:GetDescendants() do
+		if
+			node:IsA("BaseScript")
+			or node:IsA("Sound")
+			or node:IsA("ParticleEmitter")
+			or node:IsA("Beam")
+			or node:IsA("Trail")
+		then
+			node:Destroy()
+		end
+	end
+
+	for _, parca in govde:GetDescendants() do
+		if parca:IsA("BasePart") then
+			parca.Anchored = true
+			parca.CanCollide = false
+		end
+	end
+	if kok:IsA("BasePart") then
+		kok.Anchored = true
+		kok.CanCollide = false
+	end
+
+	local vp = Instance.new("ViewportFrame")
+	vp.Name = "ModelKaresi"
+	vp.Size = UDim2.fromOffset(boyut, boyut)
+	vp.BackgroundTransparency = 1
+	vp.Ambient = Color3.fromRGB(255, 255, 255)
+	vp.LightColor = Color3.fromRGB(255, 255, 255)
+	vp.LightDirection = Vector3.new(-0.4, -0.7, -0.6)
+	vp.ZIndex = zIndex
+	vp.Parent = parent
+
+	govde.Parent = vp
+
+	local kamera = Instance.new("Camera")
+	kamera.Parent = vp
+	vp.CurrentCamera = kamera
+
+	-- Kadraj: nesnenin sinir kutusunu kosegeni kadar geriden cekiyoruz
+	local merkez, olcu
+	if govde:IsA("Model") then
+		local cf, size = govde:GetBoundingBox()
+		merkez, olcu = cf.Position, size
+	else
+		merkez, olcu = kok.Position, kok.Size
+	end
+
+	kamera.CFrame = CFrame.lookAt(merkez + Vector3.new(0, 0, -1) * olcu.Magnitude * 0.85, merkez)
+
+	return vp
+end
+
+--[[
 	YUMUSATILMIS ARKA PLAN RESMI
 
 	Roblox'ta UI icin gercek bir blur YOK: BlurEffect yalnizca 3B kamerada

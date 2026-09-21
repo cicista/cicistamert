@@ -456,10 +456,18 @@ local function goruntu(node: Instance): string?
 		return if node.Image ~= "" then node.Image else nil
 	elseif node:IsA("StringValue") then
 		return if node.Value ~= "" then node.Value else nil
+	elseif node:IsA("MeshPart") then
+		-- Ikon bir MeshPart olarak konmus olabilir; dokusu ise yarar
+		return if node.TextureID ~= "" then node.TextureID else nil
 	end
 
 	for _, cocuk in node:GetDescendants() do
-		if cocuk:IsA("Decal") or cocuk:IsA("ImageLabel") or cocuk:IsA("ImageButton") then
+		if
+			cocuk:IsA("Decal")
+			or cocuk:IsA("ImageLabel")
+			or cocuk:IsA("ImageButton")
+			or cocuk:IsA("MeshPart")
+		then
 			local bulunan = goruntu(cocuk)
 			if bulunan then
 				return bulunan

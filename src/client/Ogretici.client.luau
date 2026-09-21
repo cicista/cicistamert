@@ -160,43 +160,48 @@ end
 	icine "hosgeldin", "dusunce", "tesvik", "dans" adlariyla (bkz.
 	Shared > Ogretici > Anlaticilar). Her adim kendi resmini gosteriyor.
 
-	Resim seridin ICINDE duruyor: disarida kalinca ekranin ortasinda bosta
-	asili gorunuyordu. Yazilar solda, karakter sagda; arkasinda yumusak
-	altin bir hale var ve hafifce sagli sollu sallaniyor -- canli dursun.
+	RESIM YUVARLAK BIR MADALYONUN ICINDE. Resimler dikdortgen; arkasindaki
+	hale yuvarlak oldugu icin kenarlari halenin disina tasiyor ve kirik
+	gorunuyordu. Artik kap bir CanvasGroup: yuvarlak kirpiliyor ve resim
+	ScaleType.Crop ile kirparak DOLDURUYOR, yani madalyonda bosluk da
+	kalmiyor.
+
+	Madalyon hafifce sagli sollu sallaniyor -- canli dursun.
 ]]
-local anlaticiResim = Instance.new("ImageLabel")
-anlaticiResim.Name = "Anlatici"
-anlaticiResim.AnchorPoint = Vector2.new(1, 0.5)
+local anlaticiKap = Instance.new("CanvasGroup")
+anlaticiKap.Name = "Anlatici"
+anlaticiKap.AnchorPoint = Vector2.new(1, 0.5)
 -- Seridin sag ucunda, dikeyde ortali
-anlaticiResim.Position = UDim2.new(1, -12, 0.5, 0)
-anlaticiResim.Size = UDim2.fromOffset(ANLATICI, ANLATICI)
+anlaticiKap.Position = UDim2.new(1, -12, 0.5, 0)
+anlaticiKap.Size = UDim2.fromOffset(ANLATICI, ANLATICI)
+-- Zemin: resim gelene kadar ve seffaf kenarlarinda goruneni hale rengi
+anlaticiKap.BackgroundColor3 = ISARET
+anlaticiKap.BackgroundTransparency = 0.82
+anlaticiKap.BorderSizePixel = 0
+anlaticiKap.ClipsDescendants = true
+anlaticiKap.ZIndex = 7
+anlaticiKap.Visible = false
+anlaticiKap.Parent = serit
+UI.corner(anlaticiKap, 1000)
+UI.stroke(anlaticiKap, ISARET, 3)
+
+local anlaticiResim = Instance.new("ImageLabel")
+anlaticiResim.Name = "Resim"
+anlaticiResim.Size = UDim2.fromScale(1, 1)
 anlaticiResim.BackgroundTransparency = 1
-anlaticiResim.ScaleType = Enum.ScaleType.Fit
+-- Crop: dikdortgen resim yuvarlagi bosluk birakmadan dolduruyor
+anlaticiResim.ScaleType = Enum.ScaleType.Crop
 anlaticiResim.ZIndex = 8
-anlaticiResim.Visible = false
-anlaticiResim.Parent = serit
+anlaticiResim.Parent = anlaticiKap
 
 do
-	-- Arkasinda yumusak hale: karakter koyu zeminde kaybolmasin
-	local hale = Instance.new("Frame")
-	hale.Name = "Hale"
-	hale.AnchorPoint = Vector2.new(0.5, 0.5)
-	hale.Position = UDim2.fromScale(0.5, 0.55)
-	hale.Size = UDim2.fromScale(0.78, 0.78)
-	hale.BackgroundColor3 = ISARET
-	hale.BackgroundTransparency = 0.82
-	hale.BorderSizePixel = 0
-	hale.ZIndex = 7
-	hale.Parent = anlaticiResim
-	UI.corner(hale, 1000)
-
 	-- Hafif sallanma
 	TweenService:Create(
-		anlaticiResim,
+		anlaticiKap,
 		TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
 		{ Rotation = 4 }
 	):Play()
-	anlaticiResim.Rotation = -4
+	anlaticiKap.Rotation = -4
 end
 
 --[[

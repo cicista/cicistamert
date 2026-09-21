@@ -66,6 +66,8 @@ function Envanter.push(player: Player)
 		rot = data.rot,
 		rotCoins = data.rotCoins,
 		luckyBlocks = data.luckyBlocks,
+		-- Mutasyon scroll sayaclari (envanter ekrani ve Rot Coin magazasi)
+		scrolls = data.scrolls,
 		shovel = data.shovel,
 		-- Envanter ekrani dedektor satirini bundan ciziyor; eksik olursa
 		-- oyuncu Divine tasisa bile ekranda Basic gorunur

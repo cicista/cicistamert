@@ -65,4 +65,22 @@ function Scrolls.etiket(id: string, adet: number): string
 	return if adet > 1 then `{ad} x{adet}` else ad
 end
 
+--[[
+	Scroll'un Tool kopyasi (istemci de kullanabilsin diye burada).
+
+	Assets > Scrolls altindan ADIYLA bulunur. Bulunamazsa nil doner ve
+	cagiran taraf ikona/yaziya duser.
+]]
+function Scrolls.model(id: string): Instance?
+	local info = Scrolls.get(id)
+	if not info then
+		return nil
+	end
+
+	local assets = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
+	local klasor = assets and assets:FindFirstChild("Scrolls")
+	local sablon = klasor and klasor:FindFirstChild(info.modelAdi, true)
+	return if sablon then sablon:Clone() else nil
+end
+
 return Scrolls
