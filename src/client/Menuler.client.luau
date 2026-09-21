@@ -3698,7 +3698,35 @@ do
 			UI.corner(ikon, 30)
 			-- Store'la ayni ritimde sallanir; donmez, urunun yuzu ekranda kalir
 			UI.sallan(ikon)
-			Icons.bind(ikon, urun.icon)
+			--[[
+				SCROLL'DA IKON YERINE MODEL
+
+				Parsomenin ikonu yok; onun yerine kendi Tool modeli kucuk bir
+				ViewportFrame'de gosteriliyor (hotbarda gorunenle ayni sey).
+				Model bulunamazsa Output'a yazilir ve ikona dusulur.
+			]]
+			local modelKondu = false
+			if urun.kind == "scroll" and urun.scroll then
+				local model = Scrolls.model(urun.scroll)
+				if model then
+					local kare = UI.modelKaresi(ikon, model, 54, 3)
+					if kare then
+						kare.AnchorPoint = Vector2.new(0.5, 0.5)
+						kare.Position = UDim2.fromScale(0.5, 0.5)
+						modelKondu = true
+					end
+				else
+					local info = Scrolls.get(urun.scroll)
+					warn(
+						`[RotCoinMagaza] Scroll modeli bulunamadi: ReplicatedStorage > Assets > `
+							.. `Scrolls > {if info then info.modelAdi else urun.scroll}`
+					)
+				end
+			end
+
+			if not modelKondu then
+				Icons.bind(ikon, urun.icon)
+			end
 			if urun.tint then
 				ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
 			end
