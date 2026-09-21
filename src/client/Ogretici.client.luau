@@ -160,25 +160,23 @@ end
 	icine "hosgeldin", "dusunce", "tesvik", "dans" adlariyla (bkz.
 	Shared > Ogretici > Anlaticilar). Her adim kendi resmini gosteriyor.
 
-	RESIM YUVARLAK BIR MADALYONUN ICINDE. Resimler dikdortgen; arkasindaki
-	hale yuvarlak oldugu icin kenarlari halenin disina tasiyor ve kirik
-	gorunuyordu. Artik kap bir CanvasGroup: yuvarlak kirpiliyor ve resim
-	ScaleType.Crop ile kirparak DOLDURUYOR, yani madalyonda bosluk da
-	kalmiyor.
-
-	Madalyon hafifce sagli sollu sallaniyor -- canli dursun.
+	YUVARLAK MADALYON + ICINE SIGAN RESIM.
+	Resimler dikdortgen. Bir ara madalyon CanvasGroup yapilip resim
+	Crop ile doldurulmustu ama o haliyle hic gorunmedi; simdi yapi en
+	sade haliyle duruyor: yuvarlak bir cerceve ve ICINDE, kenarlara
+	degmeyecek kadar kucuk (yaklasik dortte uc) bir resim. Resim kucuk
+	oldugu icin kirpmaya gerek kalmiyor, yuvarlagin disina tasmiyor.
 ]]
-local anlaticiKap = Instance.new("CanvasGroup")
+local anlaticiKap = Instance.new("Frame")
 anlaticiKap.Name = "Anlatici"
 anlaticiKap.AnchorPoint = Vector2.new(1, 0.5)
 -- Seridin sag ucunda, dikeyde ortali
 anlaticiKap.Position = UDim2.new(1, -12, 0.5, 0)
 anlaticiKap.Size = UDim2.fromOffset(ANLATICI, ANLATICI)
--- Zemin: resim gelene kadar ve seffaf kenarlarinda goruneni hale rengi
 anlaticiKap.BackgroundColor3 = ISARET
+-- Hafif altin zemin: karakter koyu seritte kaybolmasin
 anlaticiKap.BackgroundTransparency = 0.82
 anlaticiKap.BorderSizePixel = 0
-anlaticiKap.ClipsDescendants = true
 anlaticiKap.ZIndex = 7
 anlaticiKap.Visible = false
 anlaticiKap.Parent = serit
@@ -187,10 +185,13 @@ UI.stroke(anlaticiKap, ISARET, 3)
 
 local anlaticiResim = Instance.new("ImageLabel")
 anlaticiResim.Name = "Resim"
-anlaticiResim.Size = UDim2.fromScale(1, 1)
+anlaticiResim.AnchorPoint = Vector2.new(0.5, 0.5)
+anlaticiResim.Position = UDim2.fromScale(0.5, 0.5)
+-- Yuvarlagin icinde kalacak kadar: kose kose tasmasin
+anlaticiResim.Size = UDim2.fromScale(0.74, 0.74)
 anlaticiResim.BackgroundTransparency = 1
--- Crop: dikdortgen resim yuvarlagi bosluk birakmadan dolduruyor
-anlaticiResim.ScaleType = Enum.ScaleType.Crop
+-- Fit: en-boy orani bozulmadan kutuya sigar
+anlaticiResim.ScaleType = Enum.ScaleType.Fit
 anlaticiResim.ZIndex = 8
 anlaticiResim.Parent = anlaticiKap
 

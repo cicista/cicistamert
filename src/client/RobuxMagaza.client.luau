@@ -1120,25 +1120,12 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 	buton.Position = UDim2.new(0.5, 0, 1, -10)
 	buton.Size = UDim2.new(1, -20, 0, 50)
 
-	--[[
-		Fiyat ikonuyla, "OWNED" yalin yaziyla gosteriliyor: ikisi ayni
-		yerde durup birbirini kapatiyor, hangisi gerekiyorsa o aciliyor.
-	]]
 	local yazi = yuzYazisi(yuz, "", UI.Sizes.label, 0, 36)
 	yazi.Size = UDim2.new(1, -4, 1, 0)
 
-	local fiyatKutusu = robuxYazisi(yuz, info.fiyat, UI.Sizes.label, 8, 36)
-
 	local function ciz()
 		local sahip = Passler.sahip(player, ad)
-
-		if fiyatKutusu then
-			fiyatKutusu.Visible = not sahip
-			yazi.Text = if sahip then "OWNED" else ""
-		else
-			yazi.Text = if sahip then "OWNED" else `R$ {info.fiyat}`
-		end
-
+		yazi.Text = if sahip then "OWNED" else `R$ {info.fiyat}`
 		buton.Active = not sahip
 		buton.AutoButtonColor = false
 		-- Sahip olunan gecisin dugmesi gri; fare etkisi rengi tekrar okusun diye yuz degismiyor

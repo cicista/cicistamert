@@ -54,6 +54,7 @@ local Workspace = game:GetService("Workspace")
 local Mutations = require(script.Parent.Mutations)
 -- Gizli brainrotun (Gold Ore) kademe boyamasi icin (ikisi de Assets'i require etmiyor)
 local Rarity = require(script.Parent.Rarity)
+local LuckyBlock = require(script.Parent.LuckyBlock)
 local Divine = require(script.Parent.Divine)
 
 local Assets = {}
@@ -374,6 +375,34 @@ local function luckyModelList(): { Model }
 	return list
 end
 
+--[[
+	SIRAYA GIREN MODELLER  --  adi bir tiere SABITLENMIS olanlar haric
+
+	Sira numarasi (order) ada gore siralanmis listeden okunuyor. Bir tier
+	modelini ADIYLA istiyorsa (modelName) o model sirada yer TUTMAMALI:
+	yoksa klasore boyle bir model eklendiginde butun siralar kayiyor ve
+	digerleri yanlis blogu aliyor.
+
+	20 Eylul 2026: "Hacker Lucky Block" eklendi, ada gore sirada basa
+	gecti ve Golden'in modeli Diamond'inki oldu. Iste o yuzden.
+]]
+local function siraListesi(): { Model }
+	local sabitlenmis: { [string]: boolean } = {}
+	for _, tier in LuckyBlock.Tiers do
+		if tier.modelName and tier.modelName ~= "" then
+			sabitlenmis[string.lower(tier.modelName)] = true
+		end
+	end
+
+	local out: { Model } = {}
+	for _, model in luckyModelList() do
+		if not sabitlenmis[string.lower(model.Name)] then
+			table.insert(out, model)
+		end
+	end
+	return out
+end
+
 -- Bulunan modelleri bir kez Output'a yazar: hangi model kacinci sirada, gorunsun
 local luckyListed = false
 
@@ -434,9 +463,17 @@ function Assets.luckyBlockModel(modelName: string?, order: number?): Model?
 		end
 	end
 
-	if not found and #list > 0 then
-		local index = math.clamp(order or 1, 1, #list)
-		found = list[index]
+	--[[
+		Ad tutmadi: SIRAYA duseriz. Sira listesi, adi baska bir tiere
+		sabitlenmis modelleri disarida birakir (bkz. siraListesi).
+	]]
+	if not found then
+		local sira = siraListesi()
+		if #sira > 0 then
+			found = sira[math.clamp(order or 1, 1, #sira)]
+		elseif #list > 0 then
+			found = list[math.clamp(order or 1, 1, #list)]
+		end
 	end
 
 	if not found then
