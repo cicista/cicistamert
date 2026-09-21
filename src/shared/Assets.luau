@@ -876,6 +876,100 @@ local function grabTemplate(name: string, category: string, hint: string, quiet:
 end
 
 --[[
+	KADEME EFEKTI  --  Assets > VFX > <Kademe>VFX
+
+	En ust kademelerin brainrotlarinda kalici bir efekt duruyor:
+	CosmicVFX, SecretVFX, InfernalVFX, AbyssalVFX. Efektler saydam birer
+	MeshPart'a bagli; o parca modelin govdesine kaynaklaniyor, boylece
+	brainrot nereye giderse (oyuncunun elinde, base slotunda) efekt de
+	onunla gidiyor.
+
+	Efekti olmayan kademeler icin hicbir sey yapilmaz -- tablo yalnizca
+	burada sayilanlari tanir, gerisi sessizce gecer.
+
+	Ayni modele iki kez eklenmesin diye eklenen parca isaretleniyor.
+]]
+local RARITY_VFX: { [string]: string } = {
+	Cosmic = "CosmicVFX",
+	Secret = "SecretVFX",
+	Infernal = "InfernalVFX",
+	Abyssal = "AbyssalVFX",
+}
+
+Assets.RarityVFXAttribute = "KademeEfekti"
+
+function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePart?): Instance?
+	local ad = if type(rarityId) == "string" then RARITY_VFX[rarityId] else nil
+	if not ad then
+		return nil
+	end
+
+	-- Zaten eklenmisse tekrar etme
+	for _, node in model:GetDescendants() do
+		if node:GetAttribute(Assets.RarityVFXAttribute) then
+			return node
+		end
+	end
+
+	local govde = kok
+	if not govde then
+		if model:IsA("BasePart") then
+			govde = model
+		elseif model:IsA("Model") then
+			govde = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+		elseif model:IsA("Tool") then
+			local handle = model:FindFirstChild("Handle")
+			govde = if handle and handle:IsA("BasePart") then handle else model:FindFirstChildWhichIsA("BasePart", true)
+		end
+	end
+
+	if not govde then
+		return nil
+	end
+
+	local sablon = Assets.vfxTemplate(ad)
+	if not sablon then
+		return nil
+	end
+
+	sablon.Name = ad
+	sablon.Parent = model
+
+	--[[
+		Efekt parcasi govdenin ORTASINA oturuyor ve ona kaynaklaniyor.
+		Anchored KAPALI olmali: sabit bir parca kaynaklanamaz, oldugu yerde
+		kalir (ayni tuzak Patlama modulunde de vardi).
+	]]
+	local function yerlestir(parca: BasePart)
+		parca:SetAttribute(Assets.RarityVFXAttribute, true)
+		parca.Anchored = false
+		parca.CanCollide = false
+		parca.CanQuery = false
+		parca.CanTouch = false
+		parca.Massless = true
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = govde
+		weld.Part1 = parca
+		weld.Parent = parca
+	end
+
+	if sablon:IsA("BasePart") then
+		sablon.CFrame = govde.CFrame
+		yerlestir(sablon)
+	elseif sablon:IsA("Model") then
+		sablon:PivotTo(govde.CFrame)
+		for _, parca in sablon:GetDescendants() do
+			if parca:IsA("BasePart") then
+				yerlestir(parca)
+			end
+		end
+	end
+
+	return sablon
+end
+
+--[[
 	VFX sablonunu getirir.
 
 	ATTACHMENT ISARETCILERI KAPATILIR

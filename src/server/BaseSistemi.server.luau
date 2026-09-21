@@ -1710,6 +1710,13 @@ local function buildDisplay(item: any): Model
 	]]
 	Etiket.build(item, labelAnchor)
 
+	--[[
+		EN UST KADEMELERIN KALICI EFEKTI (Cosmic, Secret, Infernal, Abyssal).
+		Elde tasinan brainrotta da ayni efekt var (bkz. Tools.buildBrainrot);
+		ikisi de Assets > VFX icindeki ayni sablondan geliyor.
+	]]
+	Assets.attachRarityVFX(model, item.rarity, primary)
+
 	return model
 end
 

@@ -20,6 +20,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rewards = require(Shared:WaitForChild("Rewards"))
+local Passler = require(Shared:WaitForChild("Passler"))
+local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
@@ -79,6 +81,19 @@ local function ver(player: Player, day: number)
 		Envanter.syncLuckyBlocks(player)
 	end
 
+	--[[
+		Bazi gunlerde ana odulun yaninda SURELI GECIS var (5. gun: 12 saat
+		Teleporter). Kalici sahibi olana verilmez.
+	]]
+	local passYazisi = ""
+	if odul.pass and odul.passSeconds then
+		local info = Passler.get(odul.pass)
+		local ad = if info then info.ad else odul.pass
+		if SureliGecis.ver(player, odul.pass, odul.passSeconds) then
+			passYazisi = ` + {ad} ({SosyalOdul.sure(odul.passSeconds)})`
+		end
+	end
+
 	-- Bazi gunlerde ana odulun yaninda Rot Coin de var
 	local coin = odul.rotCoins or 0
 	if coin > 0 then
@@ -92,6 +107,7 @@ local function ver(player: Player, day: number)
 	if coin > 0 then
 		yazi ..= ` + {coin} Rot Coin`
 	end
+	yazi ..= passYazisi
 	Bildirim:FireClient(player, `Day {day} reward: {yazi}!`, Rewards.color(day))
 end
 

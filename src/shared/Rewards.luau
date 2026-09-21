@@ -82,7 +82,8 @@ Rewards.Days = {
 	{ day = 3, kind = "rot", amount = 100000, rotCoins = 1 },
 	{ day = 4, kind = "luckyblock", amount = 1, tier = EN_UCUZ, rotCoins = 1 },
 	-- 5. gun: onceden verilen 1 Rot Coin + her gunun ekstra 1'i
-	{ day = 5, kind = "luckyblock", amount = 2, tier = EN_UCUZ, rotCoins = 2 },
+	-- 5. gun: 12 saatlik Teleporter + onceki odul
+	{ day = 5, kind = "luckyblock", amount = 2, tier = EN_UCUZ, rotCoins = 2, pass = "Teleporter", passSeconds = 43200 },
 	{ day = 6, kind = "luckyblock", amount = 3, tier = EN_UCUZ, rotCoins = 1 },
 	{ day = 7, kind = "luckyblock", amount = 1, tier = EN_PAHALI, rotCoins = 1 },
 } :: { Day }

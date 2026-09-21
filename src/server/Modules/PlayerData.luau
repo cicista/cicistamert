@@ -69,6 +69,13 @@ export type Data = {
 	-- Ikinci para birimi (HUD'da Rot'un altinda)
 	rotCoins: number,
 	luckyBlocks: { [string]: number },
+	--[[
+		SURELI GECISLER  --  { [gecisAdi] = bitecegi an (os.time) }
+
+		Playtime ve gunluk odullerden cikan gecici Auto Clicker / Teleporter
+		burada duruyor. Suresi gecenler yuklenirken temizlenir.
+	]]
+	tempPasses: { [string]: number },
 	-- Mutasyon scroll sayaclari (bkz. Shared > Scrolls)
 	scrolls: { [string]: number },
 	--[[
@@ -190,6 +197,7 @@ local function defaultData(): Data
 		rotCoins = 0,
 		luckyBlocks = {},
 		scrolls = {},
+		tempPasses = {},
 		shovel = Shovels.Default,
 		shovelMax = Shovels.Default,
 		detector = Detectors.Default,
@@ -319,6 +327,23 @@ local function migrate(raw: any): Data
 		}
 	else
 		data.tutorial = { adim = 1, bitti = true }
+	--[[
+		SURELI GECISLER  --  suresi gecmis olanlar atilir
+
+		Zaman os.time ile mutlak; sunucu yeniden baslasa da oyuncu cikip
+		girse de kalan sure dogru hesaplanir.
+	]]
+	data.tempPasses = {}
+	if type(raw.tempPasses) == "table" then
+		local simdi = os.time()
+		for ad, bitis in raw.tempPasses do
+			local an = tonumber(bitis)
+			if type(ad) == "string" and an and an > simdi then
+				data.tempPasses[ad] = math.floor(an)
+			end
+		end
+	end
+
 	end
 	--[[
 		SCROLL SAYACLARI  --  eski kayitlarda yok, bos baslar

@@ -27,6 +27,7 @@ local Hiz = require(Shared:WaitForChild("Hiz"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
+local SureliGecis = require(Modules:WaitForChild("SureliGecis"))
 
 -- Model klasorleri ve remote'lar herkesten once hazir olmali
 Assets.ensureFolders()
@@ -55,6 +56,13 @@ require(Modules:WaitForChild("Seviye"))
 
 local function setupStats(player: Player)
 	local data = PlayerData.load(player)
+
+	--[[
+		Kayittaki SURELI GECISLER yeniden kuruluyor: oyuncu cikip girse de
+		sunucu yeniden baslasa da kalan sure dogru devam eder
+		(bkz. Modules > SureliGecis).
+	]]
+	SureliGecis.kur(player)
 
 	local stats = Instance.new("Folder")
 	stats.Name = "leaderstats"

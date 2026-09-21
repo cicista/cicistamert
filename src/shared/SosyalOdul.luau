@@ -36,15 +36,22 @@ SosyalOdul.LikeReward = 3
 
 export type PlaytimeOdul = {
 	minutes: number,
-	-- "rotcoin" | "rot" | "luckyblock"
+	-- "rotcoin" | "rot" | "luckyblock" | "pass"
 	kind: string,
-	amount: number,
+	amount: number?,
+	--[[
+		kind = "pass" icin: hangi gecis (Shared > Passler) ve kac saniye.
+		Sureli gecisler kalici sahipligi olan oyuncuya verilmez.
+	]]
+	pass: string?,
+	seconds: number?,
 }
 
 SosyalOdul.Playtime = {
 	-- 15 dakikadan 3 saate
 	{ minutes = 15, kind = "rotcoin", amount = 1 },
-	{ minutes = 30, kind = "rot", amount = 5000 },
+	-- 15 dakikalik Auto Clicker: kazi minigame kendiliginden oynansin
+	{ minutes = 30, kind = "pass", pass = "AutoClicker", seconds = 900 },
 	{ minutes = 60, kind = "luckyblock", amount = 1 },
 	{ minutes = 120, kind = "rotcoin", amount = 2 },
 	{ minutes = 180, kind = "rotcoin", amount = 3 },

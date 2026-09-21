@@ -1193,6 +1193,15 @@ function Tools.buildBrainrot(item: any): Tool
 
 	setHoldAnimation(tool, Assets.Animations.brainrotHold)
 
+	--[[
+		EN UST KADEMELERIN KALICI EFEKTI (Cosmic, Secret, Infernal, Abyssal).
+		Govdeye kaynaklaniyor, yani brainrot elde tasinirken de gorunuyor;
+		base slotundaki model de ayni sablonu kullaniyor.
+	]]
+	if handle then
+		Assets.attachRarityVFX(tool, item.rarity, handle)
+	end
+
 	return tool
 end
 

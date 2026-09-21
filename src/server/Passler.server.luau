@@ -36,10 +36,27 @@ local PassSatinAl = Net.event("PassSatinAl")
 local TEKRAR_BEKLEME = 10
 local DENEME_SAYISI = 3
 
+--[[
+	Sahipligi oyuncunun ustune yazar.
+
+	IKI NITELIK: biri gecisin kendi niteligi (Passler.sahip onu okuyor),
+	obüru "bu KALICI mi" bayragi. Sureli gecisler de ayni ana niteligi
+	aciyor; suresi bitince kapatacaklari zaman kalici hakki elinden
+	almamalari icin bayraga bakiyorlar (bkz. Modules > SureliGecis).
+]]
 local function sahiplikYaz(player: Player, ad: string, sahip: boolean)
 	local info = Passler.get(ad)
-	if info and player.Parent then
-		player:SetAttribute(info.nitelik, sahip)
+	if not info or not player.Parent then
+		return
+	end
+
+	player:SetAttribute("PassKalici_" .. ad, sahip)
+
+	if sahip then
+		player:SetAttribute(info.nitelik, true)
+	elseif player:GetAttribute("PassSure_" .. ad) == nil then
+		-- Sureli hakki da yoksa kapat
+		player:SetAttribute(info.nitelik, false)
 	end
 end
 

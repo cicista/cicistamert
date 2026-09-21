@@ -18,10 +18,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
+local Passler = require(Shared:WaitForChild("Passler"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
+local SureliGecis = require(Modules:WaitForChild("SureliGecis"))
 
 local Bildirim = Net.event("Bildirim")
 local EkOdulAc = Net.event("EkOdulAc")
@@ -105,8 +107,14 @@ local function durumGonder(player: Player)
 	})
 end
 
--- Odulu verir; ekrana ne kazanildigini yazar
-local function ver(player: Player, kind: string, amount: number)
+--[[
+	Odulu verir; ekrana ne kazanildigini yazar.
+
+	SURELI GECIS odulunde (kind = "pass") sure saniye cinsinden gelir ve
+	kalici sahibi olan oyuncuya verilmez -- onun yerine bildirimde sebebi
+	yazar, odul de harcanmis sayilmaz.
+]]
+local function ver(player: Player, kind: string, amount: number, pass: string?, seconds: number?)
 	if kind == "rotcoin" then
 		PlayerData.addRotCoins(player, amount)
 		Bildirim:FireClient(player, `+{amount} Rot Coin!`, SARI)
@@ -117,6 +125,14 @@ local function ver(player: Player, kind: string, amount: number)
 		PlayerData.addLuckyBlocks(player, SosyalOdul.enUcuzLuckyBlock(), amount)
 		Envanter.syncLuckyBlocks(player)
 		Bildirim:FireClient(player, `+{amount} Lucky Block!`, SARI)
+	elseif kind == "pass" and pass and seconds then
+		local info = Passler.get(pass)
+		local ad = if info then info.ad else pass
+		if SureliGecis.ver(player, pass, seconds) then
+			Bildirim:FireClient(player, `{ad} unlocked for {SosyalOdul.sure(seconds)}!`, SARI)
+		else
+			Bildirim:FireClient(player, `You already own {ad}.`, SARI)
+		end
 	end
 	Envanter.push(player)
 end
@@ -158,7 +174,7 @@ local function al(player: Player, tur: string, index: any)
 			return
 		end
 		o.alinan[i] = true
-		ver(player, odul.kind, odul.amount)
+		ver(player, odul.kind, odul.amount or 0, odul.pass, odul.seconds)
 	end
 end
 

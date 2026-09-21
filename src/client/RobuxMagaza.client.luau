@@ -273,19 +273,28 @@ local function yuzYazisi(yuz: Frame, yazi: string, boyut: number, y: number, yuk
 end
 
 --[[
-	ROBUX FIYATI  --  ikon + sayi
+	ROBUX IKONU  --  once resim, olmazsa 3B nesne
 
-	Ikon Assets > Icons > Robux'tan geliyor; MeshPart olarak konmus olsa da
-	dokusu okunuyor (bkz. Icons > goruntu). Ikon bulunamazsa eski "R$ 99"
-	yazisina duser, yani ikon konmadan once de dogru gorunur.
+	Assets > Icons > Robux bir MeshPart olarak konmus. Uzerinde doku
+	(TextureID) varsa onu duz bir resim gibi kullanmak en ucuzu. Doku yoksa
+	-- mesh rengiyle yapilmis olabilir -- nesnenin KENDISI kucuk bir
+	ViewportFrame'de gosteriliyor.
 
-	Ikon ve sayi birlikte ORTALANIYOR: ikisini tek bir yatay dizilime
-	koyup kutuyu icerigine gore buyutuyoruz (AutomaticSize), sonra kutuyu
-	yuzun ortasina oturtuyoruz.
+	Ikisi de olmazsa eski "R$ 99" yazisina duseriz, yani ikon konmadan
+	once de magaza dogru gorunur.
 ]]
+local function robuxNesnesi(): Instance?
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local ikonlar = assets and assets:FindFirstChild("Icons")
+	local node = ikonlar and ikonlar:FindFirstChild("Robux", true)
+	return if node and (node:IsA("BasePart") or node:IsA("Model")) then node:Clone() else nil
+end
+
 local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number, yukseklik: number): Frame?
-	local ikon = Icons.asset("Robux")
-	if not ikon then
+	local resim = Icons.asset("Robux")
+	local nesne = if resim then nil else robuxNesnesi()
+
+	if not resim and not nesne then
 		yuzYazisi(yuz, `R$ {miktar}`, boyut, y, yukseklik)
 		return nil
 	end
@@ -307,15 +316,23 @@ local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number,
 	dizilim.SortOrder = Enum.SortOrder.LayoutOrder
 	dizilim.Parent = kutu
 
-	local resim = Instance.new("ImageLabel")
-	resim.Name = "Ikon"
-	resim.BackgroundTransparency = 1
-	resim.Image = ikon
-	resim.ScaleType = Enum.ScaleType.Fit
-	resim.Size = UDim2.fromOffset(boyut, boyut)
-	resim.LayoutOrder = 1
-	resim.ZIndex = 5
-	resim.Parent = kutu
+	if resim then
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "Ikon"
+		ikon.BackgroundTransparency = 1
+		ikon.Image = resim
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.Size = UDim2.fromOffset(boyut, boyut)
+		ikon.LayoutOrder = 1
+		ikon.ZIndex = 5
+		ikon.Parent = kutu
+	elseif nesne then
+		local kare = UI.modelKaresi(kutu, nesne, boyut + 4, 5)
+		if kare then
+			kare.Name = "Ikon"
+			kare.LayoutOrder = 1
+		end
+	end
 
 	local sayi = UI.text({
 		text = tostring(miktar),
