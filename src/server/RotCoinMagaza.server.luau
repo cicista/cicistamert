@@ -97,6 +97,9 @@ local function satinAl(player: Player, id: string)
 	elseif urun.kind == "luckyblock" and urun.tier then
 		PlayerData.addLuckyBlocks(player, urun.tier, urun.amount or 1)
 		Envanter.syncLuckyBlocks(player)
+	elseif urun.kind == "scroll" and urun.scroll then
+		PlayerData.addScroll(player, urun.scroll, urun.amount or 1)
+		Envanter.syncScrolls(player)
 	else
 		ok, sebep = false, "This item cannot be bought."
 	end

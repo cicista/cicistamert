@@ -35,6 +35,7 @@ local Mutations = require(Shared:WaitForChild("Mutations"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Assets = require(Shared:WaitForChild("Assets"))
+local Scrolls = require(Shared:WaitForChild("Scrolls"))
 local Fonts = require(Shared:WaitForChild("Fonts"))
 local Divine = require(Shared:WaitForChild("Divine"))
 local Etiket = require(Shared:WaitForChild("Etiket"))
@@ -72,6 +73,8 @@ end
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 
 local Bildirim = Net.event("Bildirim")
+-- Mutasyon scroll sonucu: istemci yesil gosterisi oynatiyor
+local ScrollSonuc = Net.event("ScrollSonuc")
 local BaseGuncelle = Net.event("BaseGuncelle")
 local SlotaKoy = Net.event("SlotaKoy")
 local SlottanAl = Net.event("SlottanAl")
@@ -103,6 +106,12 @@ local removeFromSlot: (player: Player, uid: string) -> ()
 local collectRot: (player: Player, baseIndex: number) -> ()
 local updateSign: (baseIndex: number) -> ()
 local buyUpgrade: (player: Player, baseIndex: number) -> ()
+--[[
+	Slottaki brainrotu ciziyor. Ileride tanimlaniyor ama mutasyon scroll'u
+	(yukarida) ondan once cagirmak zorunda: scroll tuttugunda slottaki model
+	yeni mutasyonla yeniden cizilmeli.
+]]
+local showInSlot: (baseIndex: number, slotIndex: number, item: any) -> ()
 local pushBase: (player: Player) -> ()
 local finishCollectButton: (pad: Part, model: Model, baseIndex: number, cfg: any) -> BasePart
 
@@ -552,6 +561,98 @@ local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3, n
 	kontur.Parent = yazi
 end
 
+--[[
+	MUTASYON SCROLL'U  --  base'deki brainrota mutasyon basar
+
+	Oyuncu scroll'u ELINDE TUTARKEN slot promptuna basinca calisir. Scroll
+	SANS TUTSUN TUTMASIN harcanir; tutarsa brainrot mutasyonu kazanir ve
+	slottaki model yeni haliyle yeniden cizilir.
+
+	Sesi ve bildirimi SUNUCU veriyor, ekrandaki mutasyon gosterisini
+	istemci (bkz. ScrollSonuc). Boylece yakindaki oyuncular da sesi duyuyor.
+]]
+local function elindekiScroll(player: Player): (string?, Tool?)
+	local karakter = player.Character
+	if not karakter then
+		return nil, nil
+	end
+	for _, node in karakter:GetChildren() do
+		if node:IsA("Tool") then
+			local id = node:GetAttribute(Scrolls.Nitelik)
+			if type(id) == "string" then
+				return id, node
+			end
+		end
+	end
+	return nil, nil
+end
+
+local function scrollKullan(player: Player, data: any, scrollId: string, slotIndex: number)
+	local info = Scrolls.get(scrollId)
+	if not info then
+		return
+	end
+
+	-- Slotta ne var?
+	local hedef: any = nil
+	for _, item in data.inventory do
+		if item.slot == slotIndex then
+			hedef = item
+			break
+		end
+	end
+
+	if not hedef then
+		Bildirim:FireClient(player, "Put a brainrot in the slot first.", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	if hedef.mutation == info.mutasyon then
+		Bildirim:FireClient(
+			player,
+			`This one is already {info.mutasyon}.`,
+			Color3.fromRGB(255, 200, 90)
+		)
+		return
+	end
+
+	-- Sayaci dusur; scroll tutsa da tutmasa da gider
+	if PlayerData.scrollCount(player, scrollId) <= 0 then
+		return
+	end
+	PlayerData.addScroll(player, scrollId, -1)
+	Envanter.syncScrolls(player)
+
+	local basarili = math.random() < info.sans
+	local govde = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+	if basarili then
+		hedef.mutation = info.mutasyon
+		showInSlot(data.base, slotIndex, hedef)
+		pushBase(player)
+
+		if govde and govde:IsA("BasePart") then
+			Assets.playSoundAt({ "Catch" }, govde)
+		end
+	else
+		if govde and govde:IsA("BasePart") then
+			Assets.playSoundAt({ "FuseFail" }, govde)
+		end
+		Bildirim:FireClient(
+			player,
+			`The scroll fizzled out. No {info.mutasyon} this time.`,
+			Color3.fromRGB(255, 140, 140)
+		)
+	end
+
+	ScrollSonuc:FireClient(player, {
+		ok = basarili,
+		mutation = info.mutasyon,
+		name = if hedef.revealed then hedef.name else nil,
+		renk = info.renk,
+	})
+end
+
 local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: number)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "SlotPrompt"
@@ -582,6 +683,17 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 				`Slot {slotIndex} is locked`,
 				Color3.fromRGB(255, 200, 90)
 			)
+			return
+		end
+
+		--[[
+			ELDE SCROLL VARSA mutasyon denemesi yapilir; brainrot yerlestirme
+			ve geri alma ondan SONRA bakilir. Scroll elde tutulurken zaten
+			brainrot tutulamaz, bu yuzden iki yol cakismaz.
+		]]
+		local scrollId = elindekiScroll(player)
+		if scrollId then
+			scrollKullan(player, data, scrollId, slotIndex)
 			return
 		end
 
@@ -1682,7 +1794,7 @@ local function playSlotSound(baseIndex: number, slotIndex: number?)
 	end
 end
 
-local function showInSlot(baseIndex: number, slotIndex: number, item: any)
+function showInSlot(baseIndex, slotIndex, item)
 	clearSlotModel(baseIndex, slotIndex)
 
 	local pad = getSlotPart(baseIndex, slotIndex)

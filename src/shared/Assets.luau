@@ -207,6 +207,8 @@ Assets.FolderName = "Assets"
 Assets.Categories = {
 	brainrots = "Brainrots",
 	luckyBlocks = "LuckyBlocks",
+	-- Mutasyon scroll Toollari (bkz. Shared > Scrolls)
+	scrolls = "Scrolls",
 	shovels = "Shovels",
 	pickaxes = "Pickaxes",
 	rods = "Rods",
@@ -236,9 +238,18 @@ function Assets.ensureFolders()
 	end
 end
 
+--[[
+	Kategori klasoru (Assets > <ad>). Disaridan da kullanilabilsin diye
+	Assets.klasor ile disa aciliyor: scroll Tool'lari gibi dosyalari
+	arayan moduller kendi arama kodunu yazmasin.
+]]
 local function categoryFolder(category: string): Instance?
 	local root = ReplicatedStorage:FindFirstChild(Assets.FolderName)
 	return if root then root:FindFirstChild(category) else nil
+end
+
+function Assets.klasor(category: string): Instance?
+	return categoryFolder(category)
 end
 
 --[[

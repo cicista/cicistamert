@@ -142,6 +142,9 @@ Net.Events = {
 	"AdminPanelAc",     -- server -> client: panel + yetki
 	"AdminKomut",       -- client -> server: komut calistir
 
+	-- Mutasyon scroll sonucu (bkz. Shared > Scrolls)
+	"ScrollSonuc",      -- server -> client: tuttu mu, hangi mutasyon
+
 	-- Ogretici (bkz. Shared > Ogretici)
 	"OgreticiDurum",    -- server -> client: kacinci adimdayiz, bitti mi
 	"OgreticiIste",     -- client -> server: durumu yolla (arayuz hazir)

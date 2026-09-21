@@ -22,6 +22,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Assets = require(Shared:WaitForChild("Assets"))
+local Scrolls = require(Shared:WaitForChild("Scrolls"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local LevelGlow = require(Shared:WaitForChild("LevelGlow"))
 local Divine = require(Shared:WaitForChild("Divine"))
@@ -1203,6 +1204,38 @@ end
 function Tools.luckyBlockLabel(tierId: string, count: number): string
 	local tier = LuckyBlock.get(tierId)
 	return if count > 1 then `{tier.displayName} ({count})` else tier.displayName
+end
+
+--[[
+	SCROLL TOOL'U  --  Assets > Scrolls altindaki hazir Tool'un kopyasi
+
+	Tutusuna ve gorunumune DOKUNULMUYOR: Studio'daki Tool neyse oyuncunun
+	elinde de o gorunur (Roblox'un varsayilan tutusu). Tek eklenen sey
+	hangi scroll oldugunu soyleyen nitelik ve hotbarda yazan ad.
+
+	Model bulunamazsa nil doner; cagiran taraf sessizce gecer, canta
+	bozulmaz.
+]]
+function Tools.buildScroll(scrollId: string, count: number): Tool?
+	local info = Scrolls.get(scrollId)
+	if not info then
+		return nil
+	end
+
+	local klasor = Assets.klasor(Assets.Categories.scrolls)
+	local sablon = klasor and klasor:FindFirstChild(info.modelAdi, true)
+	if not sablon or not sablon:IsA("Tool") then
+		warn(
+			`[Tools] Scroll bulunamadi: Assets > {Assets.Categories.scrolls} > {info.modelAdi}`
+		)
+		return nil
+	end
+
+	local tool = sablon:Clone()
+	tool.Name = Scrolls.etiket(scrollId, count)
+	tool:SetAttribute(Scrolls.Nitelik, scrollId)
+	tool.CanBeDropped = false
+	return tool
 end
 
 --[[

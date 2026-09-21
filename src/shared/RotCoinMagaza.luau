@@ -21,6 +21,7 @@
 ]]
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
+local Scrolls = require(script.Parent.Scrolls)
 
 local RotCoinMagaza = {}
 
@@ -41,6 +42,8 @@ export type Urun = {
 	-- luckyblock
 	tier: string?,
 	amount: number?,
+	-- scroll (bkz. Shared > Scrolls)
+	scroll: string?,
 	-- potion
 	multiplier: number?,
 	seconds: number?,
@@ -76,6 +79,29 @@ for _, tur in LuckyBlock.Tiers do
 		tier = tur.id,
 		amount = 1,
 	})
+end
+
+--[[
+	MUTASYON SCROLL'LARI  --  bkz. Shared > Scrolls
+
+	Fiyat ve aciklama scroll tanimindan geliyor; buraya yeni bir satir
+	yazmak gerekmiyor, Scrolls.Order'a eklemek yetiyor.
+]]
+for _, id in Scrolls.Order do
+	local info = Scrolls.get(id)
+	if info then
+		table.insert(urunler, {
+			id = `Scroll_{info.id}`,
+			kind = "scroll",
+			name = info.ad,
+			desc = info.aciklama,
+			price = info.fiyat,
+			icon = "scroll",
+			color = info.renk,
+			scroll = info.id,
+			amount = 1,
+		})
+	end
 end
 
 table.insert(urunler, {

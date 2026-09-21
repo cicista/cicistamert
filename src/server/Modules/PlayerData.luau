@@ -69,6 +69,8 @@ export type Data = {
 	-- Ikinci para birimi (HUD'da Rot'un altinda)
 	rotCoins: number,
 	luckyBlocks: { [string]: number },
+	-- Mutasyon scroll sayaclari (bkz. Shared > Scrolls)
+	scrolls: { [string]: number },
 	--[[
 		KADEMELI ESYALAR
 
@@ -187,6 +189,7 @@ local function defaultData(): Data
 		rot = 0,
 		rotCoins = 0,
 		luckyBlocks = {},
+		scrolls = {},
 		shovel = Shovels.Default,
 		shovelMax = Shovels.Default,
 		detector = Detectors.Default,
@@ -317,6 +320,19 @@ local function migrate(raw: any): Data
 	else
 		data.tutorial = { adim = 1, bitti = true }
 	end
+	--[[
+		SCROLL SAYACLARI  --  eski kayitlarda yok, bos baslar
+	]]
+	data.scrolls = {}
+	if type(raw.scrolls) == "table" then
+		for id, adet in raw.scrolls do
+			local sayi = tonumber(adet)
+			if type(id) == "string" and sayi and sayi > 0 then
+				data.scrolls[id] = math.floor(sayi)
+			end
+		end
+	end
+
 	--[[
 		Eski kayitlarda luckyBlocks tek bir SAYIYDI (tur ayrimi yoktu).
 		O kayitlar Normal ture aktariliyor, yoksa oyuncunun bloklari ucardi.
@@ -922,6 +938,28 @@ function PlayerData.addLuckyBlocks(player: Player, tierId: string, amount: numbe
 
 	local next = math.max(0, (data.luckyBlocks[tierId] or 0) + amount)
 	data.luckyBlocks[tierId] = if next > 0 then next else nil
+end
+
+--[[
+	SCROLL SAYACI  --  bkz. Shared > Scrolls
+
+	Eksi miktar da gecerli: kullanilinca -1 ile cagriliyor. Sayac sifirin
+	altina dusmez ve sifirlanan tur tablodan silinir (kayit sismesin).
+]]
+function PlayerData.addScroll(player: Player, scrollId: string, amount: number): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+
+	local yeni = math.max(0, (data.scrolls[scrollId] or 0) + math.floor(amount))
+	data.scrolls[scrollId] = if yeni > 0 then yeni else nil
+	return yeni
+end
+
+function PlayerData.scrollCount(player: Player, scrollId: string): number
+	local data = cache[player]
+	return if data then (data.scrolls[scrollId] or 0) else 0
 end
 
 function PlayerData.luckyBlockCount(player: Player, tierId: string): number

@@ -24,6 +24,7 @@ local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Tools = require(script.Parent:WaitForChild("Tools"))
+local Scrolls = require(Shared:WaitForChild("Scrolls"))
 local Olta = require(script.Parent:WaitForChild("Olta"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
@@ -322,6 +323,61 @@ function Envanter.syncLuckyBlocks(player: Player)
 end
 
 --[[
+	Scroll'lari cantayla esitler (bkz. Shared > Scrolls).
+
+	syncLuckyBlocks ile ayni duzen: her tur icin TEK Tool, adinda adet
+	yaziyor. Tool yeniden uretilmiyor, yalnizca adi guncelleniyor -- yoksa
+	oyuncu scroll'u elinde tutarken her esitlemede elinden duserdi.
+]]
+function Envanter.syncScrolls(player: Player)
+	local data = PlayerData.get(player)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not data or not backpack then
+		return
+	end
+
+	local mevcut: { [string]: Tool } = {}
+	for _, yer in { backpack :: Instance, player.Character } do
+		if yer then
+			for _, item in yer:GetChildren() do
+				if item:IsA("Tool") then
+					local id = item:GetAttribute(Scrolls.Nitelik)
+					if type(id) == "string" then
+						-- Tekrar eden Tool'lar silinir
+						if mevcut[id] then
+							item:Destroy()
+						else
+							mevcut[id] = item
+						end
+					end
+				end
+			end
+		end
+	end
+
+	for _, id in Scrolls.Order do
+		local adet = data.scrolls[id] or 0
+		local tool = mevcut[id]
+
+		if adet <= 0 then
+			if tool then
+				tool:Destroy()
+			end
+			continue
+		end
+
+		if tool then
+			tool.Name = Scrolls.etiket(id, adet)
+		else
+			local yeni = Tools.buildScroll(id, adet)
+			if yeni then
+				yeni.Parent = backpack
+			end
+		end
+	end
+end
+
+--[[
 	Cantayi envanter verisiyle esitler.
 	Slotta olmayan her brainrot icin bir Tool bulunur; fazlaliklar silinir.
 ]]
@@ -377,9 +433,14 @@ local function reorderBackpack(player: Player, backpack: Instance)
 		end
 	end
 
+	--[[
+		SIRALAMAYA SCROLL'LAR DA GIRIYOR ve hepsinin ONUNDE duruyorlar:
+		scroll kullanilacak bir sey, brainrot ise birikiyor. Oyuncu base'e
+		gidince ilk tusta scroll elinde olsun (bkz. Shared > Scrolls).
+	]]
 	local mevcut: { Tool } = {}
 	for _, tool in backpack:GetChildren() do
-		if tool:IsA("Tool") and tool:GetAttribute("BrainrotUid") then
+		if tool:IsA("Tool") and (tool:GetAttribute("BrainrotUid") or tool:GetAttribute(Scrolls.Nitelik)) then
 			table.insert(mevcut, tool)
 		end
 	end
@@ -387,8 +448,22 @@ local function reorderBackpack(player: Player, backpack: Instance)
 		return
 	end
 
+	local function scrollMu(tool: Tool): boolean
+		return type(tool:GetAttribute(Scrolls.Nitelik)) == "string"
+	end
+
 	local istenen = table.clone(mevcut)
 	table.sort(istenen, function(a, b)
+		-- 1) Scroll'lar en basta
+		if scrollMu(a) ~= scrollMu(b) then
+			return scrollMu(a)
+		end
+		-- Iki scroll arasinda sira onemsiz; adlarina gore sabit dursunlar
+		if scrollMu(a) then
+			return a.Name < b.Name
+		end
+
+		-- 2) Kimligi acilmis brainrotlar, sonra 3) pahalidan ucuza
 		local ua = a:GetAttribute("BrainrotUid") :: string
 		local ub = b:GetAttribute("BrainrotUid") :: string
 		if (acik[ua] == true) ~= (acik[ub] == true) then
@@ -525,6 +600,7 @@ end
 function Envanter.refresh(player: Player)
 	Envanter.syncBrainrots(player)
 	Envanter.syncLuckyBlocks(player)
+	Envanter.syncScrolls(player)
 	Envanter.push(player)
 end
 
