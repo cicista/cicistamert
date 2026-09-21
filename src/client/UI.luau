@@ -1398,7 +1398,14 @@ end
 	Rakamlar bir kez seciliyor, her karede yenilenmiyor: ekranda akarken
 	fark edilmiyor ve saniyede bir yuzlerce metin degisiminden kurtuluyoruz.
 ]]
-function UI.sayiYagmuru(parent: GuiObject, renk: Color3, sutun: number, zIndex: number): CanvasGroup
+function UI.sayiYagmuru(
+	parent: GuiObject,
+	renk: Color3,
+	sutun: number,
+	zIndex: number,
+	hiz: number?,
+	koyuluk: number?
+): CanvasGroup
 	--[[
 		Kap bir CanvasGroup: ClipsDescendants duz bir Frame'de UICorner'i
 		yok sayip dikdortgen kirpar, yagmur kartin yuvarlak kosesinden
@@ -1415,6 +1422,10 @@ function UI.sayiYagmuru(parent: GuiObject, renk: Color3, sutun: number, zIndex: 
 
 	local rastgele = Random.new()
 	local SATIR = 14
+	-- Bir sutunun bastan asagi inme suresi; kucukuldukce yagmur hizlanir
+	local sure = hiz or 5
+	-- 0 = tam parlak. Kucukuldukce rakamlar belirginlesir
+	local taban = koyuluk or 0.55
 
 	for i = 1, sutun do
 		-- Bir sutunluk rakam dizisi; dongu icin iki kez tekrarlaniyor
@@ -1431,7 +1442,7 @@ function UI.sayiYagmuru(parent: GuiObject, renk: Color3, sutun: number, zIndex: 
 		sutunYazi.Position = UDim2.new((i - 1) / sutun, 0, -1, 0)
 		sutunYazi.Text = `{metin}\n{metin}`
 		sutunYazi.TextColor3 = renk
-		sutunYazi.TextTransparency = rastgele:NextNumber(0.55, 0.78)
+		sutunYazi.TextTransparency = rastgele:NextNumber(taban, taban + 0.2)
 		sutunYazi.TextSize = 16
 		sutunYazi.Font = Enum.Font.Code
 		sutunYazi.TextXAlignment = Enum.TextXAlignment.Center
@@ -1442,12 +1453,12 @@ function UI.sayiYagmuru(parent: GuiObject, renk: Color3, sutun: number, zIndex: 
 		TweenService:Create(
 			sutunYazi,
 			TweenInfo.new(
-				rastgele:NextNumber(3.5, 6.5),
+				rastgele:NextNumber(sure * 0.7, sure * 1.3),
 				Enum.EasingStyle.Linear,
 				Enum.EasingDirection.InOut,
 				-1,
 				false,
-				rastgele:NextNumber(0, 2)
+				rastgele:NextNumber(0, sure * 0.4)
 			),
 			{ Position = UDim2.new((i - 1) / sutun, 0, 0, 0) }
 		):Play()
@@ -1582,7 +1593,7 @@ end
 	Konum ve tempo RASTGELE ama bir kez seciliyor; her karede oynatmak
 	gerekmiyor, sonme tween'i kendi basina donuyor.
 ]]
-function UI.pariltilar(parent: GuiObject, renk: Color3, sayi: number, zIndex: number): Frame
+function UI.pariltilar(parent: GuiObject, renk: Color3, sayi: number, zIndex: number, rakam: boolean?): Frame
 	local kap = Instance.new("Frame")
 	kap.Name = "Pariltilar"
 	kap.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1597,15 +1608,34 @@ function UI.pariltilar(parent: GuiObject, renk: Color3, sayi: number, zIndex: nu
 	for _ = 1, sayi do
 		local boy = rastgele:NextInteger(6, 12)
 
-		local kivilcim = Instance.new("Frame")
+		--[[
+			RAKAM MODU: kivilcim yerine 0/1 yaziliyor (hacker temasi).
+			Sonup yanma ikisinde de ayni; degisen tek sey ne cizildigi.
+		]]
+		local kivilcim: GuiObject
+		if rakam then
+			local yazi = Instance.new("TextLabel")
+			yazi.BackgroundTransparency = 1
+			yazi.Size = UDim2.fromOffset(boy * 2, boy * 2)
+			yazi.Text = tostring(rastgele:NextInteger(0, 1))
+			yazi.TextColor3 = renk
+			yazi.TextTransparency = 1
+			yazi.TextSize = rastgele:NextInteger(14, 26)
+			yazi.Font = Enum.Font.Code
+			kivilcim = yazi
+		else
+			local kare = Instance.new("Frame")
+			kare.Size = UDim2.fromOffset(boy, boy)
+			kare.Rotation = 45
+			kare.BackgroundColor3 = renk
+			kare.BackgroundTransparency = 1
+			kare.BorderSizePixel = 0
+			kivilcim = kare
+		end
+
 		kivilcim.Name = "Kivilcim"
 		kivilcim.AnchorPoint = Vector2.new(0.5, 0.5)
-		kivilcim.Position = UDim2.fromScale(rastgele:NextNumber(0.1, 0.9), rastgele:NextNumber(0.1, 0.9))
-		kivilcim.Size = UDim2.fromOffset(boy, boy)
-		kivilcim.Rotation = 45
-		kivilcim.BackgroundColor3 = renk
-		kivilcim.BackgroundTransparency = 1
-		kivilcim.BorderSizePixel = 0
+		kivilcim.Position = UDim2.fromScale(rastgele:NextNumber(0.05, 0.95), rastgele:NextNumber(0.05, 0.95))
 		kivilcim.ZIndex = zIndex
 		kivilcim.Parent = kap
 
@@ -1613,18 +1643,20 @@ function UI.pariltilar(parent: GuiObject, renk: Color3, sayi: number, zIndex: nu
 			Her kivilcim kendi gecikmesiyle basliyor; hepsi ayni anda yanip
 			sonerse kivilcim degil, yanip sonen tek bir lamba gibi duruyor.
 		]]
-		TweenService:Create(
-			kivilcim,
-			TweenInfo.new(
-				rastgele:NextNumber(0.5, 1.1),
-				Enum.EasingStyle.Sine,
-				Enum.EasingDirection.InOut,
-				-1,
-				true,
-				rastgele:NextNumber(0, 1.2)
-			),
-			{ BackgroundTransparency = 0.1 }
-		):Play()
+		local sure = TweenInfo.new(
+			rastgele:NextNumber(0.5, 1.1),
+			Enum.EasingStyle.Sine,
+			Enum.EasingDirection.InOut,
+			-1,
+			true,
+			rastgele:NextNumber(0, 1.2)
+		)
+
+		if rakam then
+			TweenService:Create(kivilcim, sure, { TextTransparency = 0.12 }):Play()
+		else
+			TweenService:Create(kivilcim, sure, { BackgroundTransparency = 0.1 }):Play()
+		end
 	end
 
 	return kap

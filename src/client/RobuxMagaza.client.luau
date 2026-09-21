@@ -89,11 +89,12 @@ local LUCKY_KART_BOYU = 240
 local HUZME_AYARI: { [string]: UI.HuzmeAyari } = {
 	-- Hacker: Diamond kadar gosterisli ama yesil
 	Hacker = {
-		sayi = 12,
+		sayi = 18,
 		uzunluk = 240,
-		kalinlik = 34,
-		tur = 16,
-		parlaklik = 0.12,
+		kalinlik = 26,
+		-- Diamond 16 saniyede bir tur atiyor; hacker bunun uc kati hizli
+		tur = 5,
+		parlaklik = 0.06,
 		zIndex = 4,
 		renk = Color3.fromRGB(70, 255, 120),
 	},
@@ -126,6 +127,15 @@ local ARKA_PLAN: { [string]: string } = {
 	Hacker = "hackerbackground",
 	Golden = "goldenbackground",
 }
+
+--[[
+	KIVILCIM SAYISI kademeye gore. Varsayilan 16; Hacker karti "efekte
+	bogulmus" gorunsun diye iki katindan fazla aliyor.
+]]
+local PARILTI_SAYISI: { [string]: number } = {
+	Hacker = 34,
+}
+local PARILTI_VARSAYILAN = 16
 
 -- Arka plan resminin saydamligi ve bulanikligi (bkz. UI.yumusakResim)
 local ARKA_PLAN_SAYDAM = 0.42
@@ -530,13 +540,13 @@ local function gorunenKutu(model: Model): (Vector3?, Vector3?)
 end
 
 --[[
-	Model kademenin KIMLIGIYLE araniyor ("Diamond", "Golden"): klasordeki
-	modeller genelde o adi tasiyor, sira numarasina guvenmek ise klasore yeni
-	bir model girince yanlis blogu getiriyordu. Ad tutmazsa Assets yine siraya
-	duser (bkz. Assets.luckyBlockModel).
+	Model kademenin TAM ADIYLA araniyor ("Golden Lucky Block"), kimligiyle
+	degil: klasordeki modeller o adi tasiyor. Yalnizca kimlik ("Golden")
+	verildiginde eslesme tutmuyor, Assets siraya dusuyor ve sira ada gore
+	oldugu icin Golden'in yerine Diamond geliyordu.
 ]]
 local function luckyOnizleme(kart: Frame, tier: any, x: number, boyut: number): ViewportFrame?
-	local model = Assets.luckyBlockModel(tier.modelName or tier.id, tier.order)
+	local model = Assets.luckyBlockModel(tier.modelName or tier.displayName, tier.order)
 	if not model then
 		return nil
 	end
@@ -835,7 +845,8 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 		ozel, resme degil.
 	]]
 	if tier and tier.id == "Hacker" then
-		UI.corner(UI.sayiYagmuru(cerceve, Color3.fromRGB(80, 255, 130), 9, 1), 12)
+		-- Yogun ve hizli: 18 sutun, bastan asagi 1.8 saniyede iniyor
+		UI.corner(UI.sayiYagmuru(cerceve, Color3.fromRGB(90, 255, 140), 18, 1, 1.8, 0.32), 12)
 	end
 
 	--[[
@@ -898,7 +909,14 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 		pariltiAlani.Parent = cerceve
 		UI.corner(pariltiAlani, 12)
 
-		UI.pariltilar(pariltiAlani, efektRengi or tier.color, 16, 1)
+		-- Hacker temasinda kivilcimlar rakam olarak ciziliyor
+		UI.pariltilar(
+			pariltiAlani,
+			efektRengi or tier.color,
+			PARILTI_SAYISI[tier.id] or PARILTI_VARSAYILAN,
+			1,
+			tier.id == "Hacker"
+		)
 	end
 
 	-- Tek urunlu kartta dugme sagda; yazi alani ona gore daralir

@@ -93,9 +93,9 @@ RobuxMagaza.Kartlar = {
 	--[[
 		HACKER  --  yalnizca burada satiliyor, kazidan cikmiyor.
 
-		Paket buyudukce birim fiyat DUSUYOR: x3'te tanesi 230, x5'te 210,
-		x10'da 190 Robux. eskiFiyat alani ustu cizili olarak yaziliyor,
-		oyuncu indirimi gorsun.
+		Paket buyudukce birim fiyat DUSUYOR: tanesi 250, x3'te 230, x5'te
+		210 Robux. eskiFiyat alani ustu cizili yaziliyor, oyuncu indirimi
+		gorsun. Tekli satista indirim olmadigi icin eskiFiyat da yok.
 	]]
 	{
 		id = "HackerBlock",
@@ -107,9 +107,9 @@ RobuxMagaza.Kartlar = {
 		renkB = Color3.fromRGB(60, 220, 110),
 		tier = "Hacker",
 		urunler = {
+			{ anahtar = "Hacker1", id = 0, fiyat = 250, etiket = "x1", ad = "1 Hacker Lucky Block", tur = "luckyblock", tier = "Hacker", adet = 1 },
 			{ anahtar = "Hacker3", id = 0, fiyat = 690, eskiFiyat = 750, etiket = "x3", ad = "3 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 3 },
 			{ anahtar = "Hacker5", id = 0, fiyat = 1050, eskiFiyat = 1250, etiket = "x5", ad = "5 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 5 },
-			{ anahtar = "Hacker10", id = 0, fiyat = 1900, eskiFiyat = 2500, etiket = "x10", ad = "10 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 10 },
 		},
 	},
 	{
