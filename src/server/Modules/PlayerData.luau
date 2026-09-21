@@ -33,6 +33,7 @@ local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Rods = require(Shared:WaitForChild("Rods"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
+local Passler = require(Shared:WaitForChild("Passler"))
 -- Gunluk odul takviminin gun sayisi (rewardDay sinirlari)
 local Rewards = require(Shared:WaitForChild("Rewards"))
 local Ores = require(Shared:WaitForChild("Ores"))
@@ -699,6 +700,26 @@ function PlayerData.addBrainrot(
 		slot = nil,
 		island = island,
 	}
+
+	--[[
+		DETECTIVE PASS  --  kimlik dedektife ugramadan acilir
+
+		Pass sahibinin kazdigi ve oltadan cikardigi her brainrot ACIK gelir:
+		isim burada, dedektifin yaptigi isin aynisiyla seciliyor (kazildigi
+		adanin havuzundan). Mutasyon zaten esyanin uzerinde, acilinca
+		gorunur oluyor.
+
+		Kanca BURADA, cagiran yerlerde degil: kazi, olta ve sonradan
+		eklenecek her yol bu fonksiyondan geciyor, tek satirla hepsi kapsanir.
+	]]
+	if Passler.sahip(player, "DetectivePass") then
+		local secilen = Brainrots.rollIsland(rarity :: any, island, Random.new())
+		if secilen then
+			item.name = secilen.name
+			item.revealed = true
+		end
+	end
+
 	table.insert(data.inventory, item)
 	return item
 end

@@ -52,6 +52,20 @@ Passler.Info = {
 		aciklama = "Teleport to any island you have unlocked, from anywhere.",
 		nitelik = "Pass_Teleporter",
 	},
+	--[[
+		DETECTIVE PASS
+
+		Kazidan ve oltadan cikan brainrotlar dedektife ugramadan kimligi
+		ACIK gelir. Dedektifin kendisi yine duruyor: pass'siz oyuncular ve
+		mutasyon acma isi ona kaliyor.
+	]]
+	DetectivePass = {
+		id = 0,
+		fiyat = 350,
+		ad = "Detective Pass",
+		aciklama = "Everything you dig or fish comes already identified.",
+		nitelik = "Pass_DetectivePass",
+	},
 } :: { [string]: PassInfo }
 
 Passler.TEST_STUDIO = false

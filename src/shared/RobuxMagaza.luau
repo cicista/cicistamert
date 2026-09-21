@@ -150,7 +150,7 @@ RobuxMagaza.Kartlar = {
 } :: { Kart }
 
 -- Magazada gosterilen Game Pass'ler (Shared > Passler adlari), bu sirayla
-RobuxMagaza.Gecisler = { "AutoClicker", "Teleporter" }
+RobuxMagaza.Gecisler = { "AutoClicker", "Teleporter", "DetectivePass" }
 
 local anahtarla: { [string]: Urun } = {}
 local idile: { [number]: Urun } = {}

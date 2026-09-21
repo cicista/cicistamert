@@ -137,6 +137,7 @@ local BASLIK_GORUNUM: { [string]: { renk: Color3, boyutEk: number } } = {
 local GECIS_GORUNUM = {
 	AutoClicker = { ikon = "shovel", renkA = Color3.fromRGB(255, 120, 60), renkB = Color3.fromRGB(230, 60, 110) },
 	Teleporter = { ikon = "teleporter", renkA = Color3.fromRGB(150, 120, 255), renkB = Color3.fromRGB(80, 90, 230) },
+	DetectivePass = { ikon = "detective", renkA = Color3.fromRGB(90, 200, 255), renkB = Color3.fromRGB(40, 110, 220) },
 }
 
 local screen = Instance.new("ScreenGui")
