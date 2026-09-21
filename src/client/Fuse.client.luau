@@ -1191,8 +1191,12 @@ local function playMerge(data: any)
 	mergeRoot.Visible = false
 	merging = false
 
-	-- Oyuncu hala makinedeyse pencere geri acilir
-	if nearMachine then
+	--[[
+		Pencere yalnizca BASARILI birlestirmeden sonra geri acilir.
+		Basarisizlikta esyalar yandi; pencerenin kendiliginden acilmasi
+		"bir sey daha mi koyayim" baskisi yaratiyordu.
+	]]
+	if nearMachine and basari then
 		pencere.Visible = true
 		sonImza = ""
 		pencereCiz()

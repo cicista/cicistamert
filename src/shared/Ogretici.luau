@@ -44,6 +44,11 @@ export type Adim = {
 	-- Oyuncunun ekraninda duran yonerge
 	yazi: string,
 	--[[
+		Seridin solunda duran ANLATICI resmi (bkz. Ogretici.Anlaticilar).
+		Bos birakilirsa "tesvik" kullanilir.
+	]]
+	resim: string?,
+	--[[
 		Adimin altinda duran kucuk aciklama. Oyuncu "neden" bunu yaptigini
 		bilsin diye; bos birakilirsa yalnizca yonerge gosterilir.
 	]]
@@ -64,13 +69,15 @@ Ogretici.Adimlar = {
 		id = "ilkKazi",
 		olay = "kazdi",
 		hedef = "kum",
-		yazi = "Dig in the sand!",
-		alt = "Beams are buried under the sand.",
+		resim = "hosgeldin",
+		yazi = "Dig the glowing beam!",
+		alt = "It is right next to you -- click it, then click fast!",
 	},
 	{
 		id = "ilkCollect",
 		olay = "collectledi",
 		hedef = "dedektif",
+		resim = "dusunce",
 		yazi = "Take it to the Detective!",
 		alt = "He reveals what you dug up.",
 	},
@@ -78,6 +85,7 @@ Ogretici.Adimlar = {
 		id = "slot",
 		olay = "slotladi",
 		hedef = "base",
+		resim = "tesvik",
 		yazi = "Place it in a base slot!",
 		alt = "Brainrots earn cash while placed.",
 	},
@@ -85,6 +93,7 @@ Ogretici.Adimlar = {
 		id = "para",
 		olay = "parayiAldi",
 		hedef = "base",
+		resim = "dans",
 		yazi = "Collect your cash!",
 		alt = "Step on the pad at your base.",
 	},
@@ -92,24 +101,67 @@ Ogretici.Adimlar = {
 		id = "ucKazi",
 		olay = "ucKazdi",
 		hedef = "kum",
-		yazi = "Dig 3 beams of the same rarity!",
-		alt = "Same rarity, any island.",
+		resim = "tesvik",
+		yazi = "Dig the 3 beams!",
+		alt = "They are lined up next to you.",
 	},
 	{
 		id = "ucCollect",
 		olay = "ucCollectledi",
 		hedef = "dedektif",
+		resim = "dusunce",
 		yazi = "Reveal all 3 at the Detective!",
-		alt = "The Fuse Machine only takes revealed ones.",
+		alt = "Hand in all three, then collect them.",
 	},
 	{
 		id = "fuse",
 		olay = "fuseYapti",
 		hedef = "fuse",
+		resim = "dans",
 		yazi = "Fuse them at the Fuse Machine!",
 		alt = "3 of a kind can become something better.",
 	},
 } :: { Adim }
+
+--[[
+	ILK KAZI  --  yeni oyuncu sansa birakilmaz
+
+	Ogreticinin ILK adiminda (ilkKazi) oyuncunun yaninda GARANTI bir
+	suzme dogar; kademesi hep ayni (IlkKademe), yani ilk kazi her zaman
+	en kolay olani. Cekilis yok, bekleme yok: adimi attigi anda yanindadir
+	(bkz. ServerScriptService > KaziSistemi).
+
+	Minioyunda da KAYBETMEZ: imlec dibe inerse sifirlanmak yerine az bir
+	degerde tutulur (bkz. StarterPlayerScripts > Minigame). Oyuncu geri
+	gitmeyi gorur, ogrenir; ama ilk denemesinde brainrotu kacirmaz.
+]]
+--[[
+	ANLATICI RESIMLERI
+
+	Solda, adimin havasina uyan bir karakter resmi duruyor. Resimler
+	Studio'ya elle konuyor: ReplicatedStorage > Assets > Icons icine
+	asagidaki adlardan BIRIYLE (Decal, ImageLabel ya da StringValue).
+	Buyuk/kucuk harf, bosluk ve alt cizgi farki onemsiz; Turkce karakterli
+	ad da kabul ediliyor ("dusunce" ya da "düşünce").
+
+	Hicbiri bulunamazsa serit resimsiz gorunur ve Output'a hangi adlarin
+	arandigi bir kez yazilir.
+]]
+Ogretici.Anlaticilar = {
+	hosgeldin = { "hosgeldin", "hoşgeldin", "welcome" },
+	dusunce = { "dusunce", "düşünce", "thinking" },
+	tesvik = { "tesvik", "teşvik", "encourage" },
+	dans = { "dans", "dance" },
+} :: { [string]: { string } }
+
+Ogretici.IlkKademe = "Common"
+
+--[[
+	"Uc tane kaz" adiminda kac suzme dogar ve kac tanesi istenir. Suzmeler
+	yan yana dizilir ve hepsi IlkKademe'dendir; oyuncu sansa birakilmadan
+	ucunu de toplar (bkz. KaziSistemi > ogreticiSuzmesi).
+]]
+Ogretici.UcAdet = 3
 
 -- Her adim bitince verilen odul
 Ogretici.RotCoinOdulu = 1

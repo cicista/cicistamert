@@ -63,6 +63,8 @@ end
 local Tools = require(Modules:WaitForChild("Tools"))
 local Olta = require(Modules:WaitForChild("Olta"))
 local Beams = require(Modules:WaitForChild("Beams"))
+-- Ogreticinin adim tanimlari (ilk kazinin kademesi buradan)
+local Adimlar = require(Shared:WaitForChild("Ogretici"))
 local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Ores = require(Shared:WaitForChild("Ores"))
@@ -406,7 +408,91 @@ local function finishDig(player: Player, won: boolean)
 		de hemen donuyor (bkz. Modules > Ogretici).
 	]]
 	Ogretici.olay(player, "kazdi")
+	-- "Uc tane kaz" adimi: bu adimda kazilanlar uid ile sayilir
+	if Ogretici.kaziKaydet then
+		Ogretici.kaziKaydet(player, item.uid)
+	end
 	Ogretici.ucKontrol(player)
+end
+
+--[[
+	OGRETICININ GARANTI SUZMESI
+
+	Oyuncunun ogreticideki suzmesi duruyorsa hicbir sey yapilmaz; yoksa
+	yaninda yeni bir Common suzme dogurulur ve konumu ogreticiye yazilir
+	(istemcideki ok/cizgi oraya bakar, bkz. Modules > Ogretici).
+]]
+local ogreticiSuzmesi: (player: Player, adet: number) -> ()
+do
+	-- Oyuncu basina o an duran ogretici suzmelerinin kimlikleri
+	local suzmem: { [Player]: { string } } = {}
+
+	-- Yan yana dizilirken iki suzme arasindaki mesafe (stud)
+	local ARALIK = 7
+
+	function ogreticiSuzmesi(player: Player, adet: number)
+		local liste = suzmem[player]
+		if not liste then
+			liste = {}
+			suzmem[player] = liste
+		end
+
+		-- Kazilanlari listeden dus
+		for i = #liste, 1, -1 do
+			if not Beams.get(liste[i]) then
+				table.remove(liste, i)
+			end
+		end
+
+		if #liste >= adet then
+			return
+		end
+
+		local karakter = player.Character
+		local kok = karakter and karakter:FindFirstChild("HumanoidRootPart")
+		if not kok or not kok:IsA("BasePart") then
+			return
+		end
+
+		--[[
+			ILKI oyuncunun yanindaki kuma dogar (Beams kendi yerini bulur);
+			digerleri onun SAGINA ve SOLUNA ayni hizada dizilir -- ucu yan
+			yana durur, oyuncu hepsini tek yerde toplar.
+		]]
+		while #liste < adet do
+			local sira = #liste
+			local istenen: Vector3? = nil
+
+			if sira > 0 then
+				local ilk = Beams.get(liste[1])
+				if ilk then
+					-- 1. suzme merkez, 2. sagina, 3. soluna...
+					local yon = if sira % 2 == 1 then 1 else -1
+					local uzaklik = math.ceil(sira / 2) * ARALIK
+					istenen = ilk.position + kok.CFrame.RightVector * (yon * uzaklik)
+				end
+			end
+
+			local beam = Beams.spawnKind(player, Adimlar.IlkKademe, istenen)
+			if not beam then
+				return
+			end
+			table.insert(liste, beam.id)
+		end
+
+		--[[
+			Isaret hep ILK suzmeyi gosterir; ucu yan yana oldugu icin
+			oyuncu digerlerini zaten goruyor.
+		]]
+		local ilk = Beams.get(liste[1])
+		if ilk and Ogretici.hedefKonumAyarla then
+			Ogretici.hedefKonumAyarla(player, ilk.position)
+		end
+	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		suzmem[player] = nil
+	end)
 end
 
 local function startDig(player: Player, beamId: string)
@@ -603,6 +689,18 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 		return
 	end
 
+	--[[
+		OGRETICIDE ILK KAZI KAYBEDILMEZ
+
+		Istemcideki minioyun zaten kaybettirmiyor; burasi kalan yollari da
+		kapatiyor (karakter oldu, sure asildi, paket kaybi...). Yeni oyuncu
+		ilk denemesinde eli bos kalmasin.
+	]]
+	if Ogretici.adimId and Ogretici.adimId(player) == "ilkKazi" then
+		finishDig(player, true)
+		return
+	end
+
 	local elapsed = os.clock() - session.startedAt
 	if elapsed > D.minigameTimeout then
 		finishDig(player, false)
@@ -702,11 +800,31 @@ task.spawn(function()
 			local rod = rodFor(player)
 
 			if gpsInHand and not digging[player] and Sand.isOnSand(player) then
-				local detector = detectorFor(player)
+				--[[
+					OGRETICININ ILK KAZISI  --  garanti suzme
 
-				-- Suzme sansi ve limiti dedektor seviyesinden gelir
-				if rng:NextNumber() * 100 <= detector.spawnChance then
-					Beams.trySpawn(player, luckFor(player), rng, detector.maxBeams)
+					Yeni oyuncu sansa birakilmaz: ilk adimda (ilkKazi) yaninda
+					HER ZAMAN bir Common suzme durur. Cekilis yok, bekleme yok;
+					kaybolursa hemen yenisi dogar. Ogretici o adimda oldugu
+					surece normal (rastgele) dogum yapilmaz ki oyuncu hangisini
+					kazacagini sasirmasin.
+				]]
+				--[[
+					1. adimda TEK, 5. adimda UC suzme (yan yana) garanti
+					dogar; ikisinde de baska suzme cikmaz.
+				]]
+				local ogreticiAdim = if Ogretici.adimId then Ogretici.adimId(player) else nil
+				if ogreticiAdim == "ilkKazi" then
+					ogreticiSuzmesi(player, 1)
+				elseif ogreticiAdim == "ucKazi" then
+					ogreticiSuzmesi(player, Adimlar.UcAdet or 3)
+				else
+					local detector = detectorFor(player)
+
+					-- Suzme sansi ve limiti dedektor seviyesinden gelir
+					if rng:NextNumber() * 100 <= detector.spawnChance then
+						Beams.trySpawn(player, luckFor(player), rng, detector.maxBeams)
+					end
 				end
 			end
 

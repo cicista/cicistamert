@@ -1021,6 +1021,8 @@ local detektifBarYazi = UI.text({
 detektifBarYazi.ZIndex = 3
 
 local detektifDugme = Instance.new("TextButton")
+-- Ogretici bu adi arayip etrafina halka ciziyor (bkz. StarterPlayerScripts > Ogretici)
+detektifDugme.Name = "HepsiniTanimla"
 detektifDugme.AnchorPoint = Vector2.new(1, 0.5)
 detektifDugme.Position = UDim2.new(1, -16, 0.5, 0)
 detektifDugme.Size = UDim2.fromOffset(226, 64)
@@ -1197,6 +1199,20 @@ function detektifDurumCiz()
 		detektifOzet.Text = `Identifying {detektifIs.adet or 0} brainrot(s)...`
 		detektifDugme.BackgroundColor3 = UI.Colors.panel
 		detektifDugmeYazi.Text = "WORKING..."
+	elseif detektifIs and detektifIs.bitti then
+		--[[
+			IS BITTI: TESLIM ALMA
+
+			Brainrotlar kendiliginden verilmiyor; oyuncu bu dugmeye basinca
+			cantaya giriyorlar (bkz. ServerScriptService > Detective).
+		]]
+		local adet = tonumber(detektifIs.adet) or 0
+		detektifBar.Visible = true
+		detektifDolgu.Size = UDim2.fromScale(1, 1)
+		detektifBarYazi.Text = "READY"
+		detektifOzet.Text = `{adet} brainrot(s) identified -- take them back!`
+		detektifDugme.BackgroundColor3 = UI.Colors.good
+		detektifDugmeYazi.Text = `COLLECT {adet}`
 	else
 		detektifBar.Visible = false
 		local toplam = 0
@@ -1261,6 +1277,15 @@ local function detektifCiz()
 end
 
 detektifDugme.MouseButton1Click:Connect(function()
+	--[[
+		Is bitmisse dugme YALNIZCA teslim alir: "collect" isteginde sunucu
+		brainrotlari verip durur, bekleyenleri yeniden ise sokmaz.
+	]]
+	if detektifIs and detektifIs.bitti then
+		DetectiveTeslim:FireServer("collect")
+		return
+	end
+
 	if not detektifCalisiyor() and #detektifBekleyen > 0 then
 		local secilen = {}
 		for uid in detektifSecili do

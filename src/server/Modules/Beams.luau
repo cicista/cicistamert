@@ -1304,7 +1304,7 @@ end
 	zorlugunu sinamak icin. Kum bulunamazsa oyuncunun ayaginin dibine konur,
 	boylece kumsuz bir yerde de test edilebilir.
 ]]
-function Beams.spawnKind(player: Player, kind: string): Beam?
+function Beams.spawnKind(player: Player, kind: string, istenen: Vector3?): Beam?
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") then
@@ -1312,6 +1312,15 @@ function Beams.spawnKind(player: Player, kind: string): Beam?
 	end
 
 	local spot, ada = findSandSpot(player)
+
+	--[[
+		ISTENEN KONUM (ogretici): suzme tam soylenen noktaya konur. Zemin
+		yuksekligi yine olculur ki kumun icine gomulmesin ya da havada kalmasin.
+	]]
+	if istenen then
+		local zemin = Sand.probe(istenen + Vector3.new(0, 8, 0), { char, folder })
+		spot = if zemin then zemin.position else istenen
+	end
 
 	if not spot then
 		-- Kum yoksa: oyuncunun onunde, ayak hizasinda

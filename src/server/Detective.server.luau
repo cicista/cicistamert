@@ -304,18 +304,20 @@ function panelAc(player: Player)
 		return
 	end
 
-	-- Bitmis is varsa once brainrotlar teslim alinir
+--[[
+		BITMIS IS KENDILIGINDEN TESLIM EDILMEZ
+
+		Eskiden panel acilir acilmaz brainrotlar cantaya giriyordu; oyuncu
+		ne oldugunu anlamadan pencere kapaniyordu. Artik panelde COLLECT
+		dugmesi cikiyor ve teslim ona BASINCA oluyor (istemci yine
+		DetectiveTeslim yolluyor, asagidaki isleyici teslim ediyor).
+	]]
 	local is = data.detectiveJob
-	if is and is.bitti then
-		teslimAl(player, data)
-	end
 
 	local liste = bekleyenler(data)
 	local ozet = isOzeti(data)
 	if #liste == 0 and not ozet then
-		if not (is and is.bitti) then
-			Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
-		end
+		Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
@@ -355,6 +357,22 @@ end
 DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 	local data = PlayerData.get(player)
 	if not data then
+		return
+	end
+
+	--[[
+		YALNIZCA TESLIM AL  --  panelin COLLECT dugmesi
+
+		Istemci "collect" yollarsa bitmis is cantaya verilir ve DURULUR:
+		bekleyen brainrotlar bu tiklamayla yeniden ise girmez, oyuncu
+		istedigini secip IDENTIFY der.
+	]]
+	if secilen == "collect" then
+		local bitmis = isOzeti(data)
+		if bitmis and bitmis.bitti then
+			teslimAl(player, data)
+		end
+		panelAc(player)
 		return
 	end
 

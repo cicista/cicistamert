@@ -649,6 +649,74 @@ end
 -- Kum barinin rengi: kazilan brainrotun kademe rengi (modKur ayarlar)
 local kaziRenk = UI.Colors.good
 
+------------------------------------------------------------------
+-- OGRETICININ ILK KAZISI
+--
+-- Yeni oyuncu ilk kazisini KAYBETMEZ: imlec dibe inerse oyun bitmez,
+-- imlec en altta bir tutam yukarida tutulur. Geri gitmeyi gorur ve ne
+-- yapmasi gerektigini ogrenir, ama brainrotu kacirmaz.
+--
+-- Bunun yaninda ekranda buyuk "CLICK!" yazilari yanip soner: yeni
+-- oyuncunun "tiklamam gerekiyormus" demesi icin.
+--
+-- Hangi adimda oldugumuz oyuncu niteliginden okunuyor (sunucu yaziyor,
+-- bkz. ServerScriptService > Modules > Ogretici).
+------------------------------------------------------------------
+local OGRETICI_NITELIK = "OgreticiAdim"
+local OGRETICI_ADIM = "ilkKazi"
+-- Kaybetme yerine imlecin tutulacagi taban
+local OGRETICI_TABAN = 0.06
+
+local function ogreticiKazisi(): boolean
+	return player:GetAttribute(OGRETICI_NITELIK) == OGRETICI_ADIM
+end
+
+-- Barin iki yaninda yanip sonen "CLICK!" yazilari
+local tiklaYazilari: { TextLabel } = {}
+
+for i, x in { 0.5 - 0.26, 0.5 + 0.26 } do
+	local yazi = UI.text({
+		text = "CLICK!",
+		size = UI.Sizes.huge,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 240, 120),
+		align = Enum.TextXAlignment.Center,
+		anchor = Vector2.new(0.5, 0.5),
+		position = UDim2.fromScale(x, 0.5),
+		frameSize = UDim2.fromOffset(220, 60),
+		parent = kaziEkran,
+		name = `Tikla{i}`,
+	})
+	yazi.Visible = false
+	yazi.ZIndex = 20
+	table.insert(tiklaYazilari, yazi)
+end
+
+--[[
+	Yazilar sirayla zipladigi icin tek dongu yetiyor: gorunurken her
+	karede olcek ve saydamlik hesaplaniyor.
+]]
+local tiklaZaman = 0
+
+local function tiklaYazisiCiz(dt: number, acik: boolean)
+	if not acik then
+		for _, yazi in tiklaYazilari do
+			yazi.Visible = false
+		end
+		return
+	end
+
+	tiklaZaman += dt
+	for i, yazi in tiklaYazilari do
+		yazi.Visible = true
+		-- Iki yazi sirayla: biri buyurken digeri kuculur
+		local nabiz = (math.sin(tiklaZaman * 7 + (i - 1) * math.pi) + 1) * 0.5
+		yazi.TextSize = math.floor(UI.Sizes.huge * (0.85 + nabiz * 0.4))
+		yazi.TextTransparency = 0.15 - nabiz * 0.15
+		yazi.Rotation = (if i == 1 then -8 else 8) * (0.5 + nabiz)
+	end
+end
+
 local mod: string = "sea"
 local active: DigMinigame.Minigame? = nil
 local kazi: KaziMinigame.Game? = nil
@@ -1122,6 +1190,24 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 			local state = g:step(step)
 
 			--[[
+				OGRETICI: KAYBETME YOK
+
+				g:step imleci sifira indirip oyunu "kaybedildi" diye
+				bitirmis olabilir. Ogreticinin ilk kazisinda bu geri
+				alinir: imlec tabanda tutulur, oyun surer. state ile
+				g.state ayni tablo oldugu icin duzeltme ayni karede
+				gecerli oluyor.
+			]]
+			local ogreticide = ogreticiKazisi()
+			if ogreticide and state.finished and not state.won then
+				state.finished = false
+				state.won = false
+				state.progress = OGRETICI_TABAN
+			end
+
+			tiklaYazisiCiz(step, ogreticide and not state.finished)
+
+			--[[
 				OTOMATIK TIKLAMA  (pass sahipleri)
 
 				SABIT ARALIKLA tiklanir: saniyede OtoTiklayici.CPS kadar,
@@ -1147,6 +1233,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 			renderKazi(state)
 
 			if state.finished then
+				tiklaYazisiCiz(step, false)
 				finish(state.won)
 			end
 		end)

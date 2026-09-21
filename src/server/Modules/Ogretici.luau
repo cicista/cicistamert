@@ -65,6 +65,37 @@ end
 local Ogretici = {}
 
 --[[
+	ADIM KIMLIGI OYUNCU NITELIGINDE
+
+	Istemcideki baska scriptler (ornegin minioyun) "su an ogreticinin hangi
+	adimindayiz" bilgisine ihtiyac duyuyor ama OgreticiDurum remote'unu
+	dinlemek zorunda kalmasinlar: nitelik kendiliginden replike oluyor ve
+	her yerden tek satirla okunuyor.
+
+	    player:GetAttribute("OgreticiAdim") == "ilkKazi"
+
+	Ogretici bitince nitelik silinir (nil).
+]]
+Ogretici.Nitelik = "OgreticiAdim"
+
+--[[
+	ADIMIN ISARETLEYECEGI KONUM (istege bagli)
+
+	Ilk kazida isaret KUMUN kendisi degil, oyuncu icin dogurulan garanti
+	suzme olmali. KaziSistemi suzmeyi dogurunca buraya yaziyor; istemci
+	oku hep o noktaya cekiyor. Suzme kazilinca / kaybolunca nil yazilir.
+]]
+local hedefKonum: { [Player]: Vector3 } = {}
+
+function Ogretici.hedefKonumAyarla(player: Player, konum: Vector3?)
+	if hedefKonum[player] == konum then
+		return
+	end
+	hedefKonum[player] = konum
+	Ogretici.gonder(player)
+end
+
+--[[
 	GERI DUSME  --  ogretici elde olmayan bir seyi bekletmesin
 
 	"Dedektife goturt" ve "slota koy" adimlarinin anlamli olmasi icin
@@ -119,11 +150,93 @@ function Ogretici.gonder(player: Player)
 	-- Elde olmayan bir seyi bekletiyorsak kazi adimina don
 	geriDus(data)
 
+	local adim = Adimlar.adim(data.tutorial.adim)
+	player:SetAttribute(Ogretici.Nitelik, if data.tutorial.bitti or not adim then nil else adim.id)
+
 	remote("OgreticiDurum"):FireClient(player, {
 		adim = data.tutorial.adim,
 		bitti = data.tutorial.bitti,
 		toplam = Adimlar.adimSayisi(),
+		-- Varsa isaret bu noktaya gider (ilk kazidaki garanti suzme)
+		konum = hedefKonum[player],
 	})
+end
+
+--[[
+	UC KAZI ADIMI  --  SAYIM UIDLERLE
+
+	"Uc tane ayni kademe" adimi eskiden envanterdeki ayni kademeden esyalari
+	sayiyordu; base'e konmus ILK brainrot da sayildigi icin oyuncu IKI kazi
+	yapinca adim bitiyordu. Artik yalnizca BU ADIMDA kazilan brainrotlarin
+	uid'leri sayiliyor: ucunu kazmadan adim bitmez.
+
+	Ayni liste bir sonraki adimda (hepsini dedektife goster) da kullanilir:
+	adim, listedeki UC uid'in de kimligi acilinca biter.
+]]
+local function kazilanListesi(data: any): { string }
+	local t = data.tutorial
+	if type(t.kazilan) ~= "table" then
+		t.kazilan = {}
+	end
+	return t.kazilan
+end
+
+-- Kac tane (Shared > Ogretici ile ayni sayi)
+Ogretici.UcAdet = Adimlar.UcAdet or 3
+
+-- Bu adimda kazilan bir brainrotu kaydeder; ucu tamamlaninca adimi bitirir
+function Ogretici.kaziKaydet(player: Player, uid: string?)
+	local data = PlayerData.get(player)
+	if not data or type(uid) ~= "string" then
+		return
+	end
+	if Ogretici.bekleyen(player) ~= "ucKazdi" then
+		return
+	end
+
+	local liste = kazilanListesi(data)
+	for _, mevcut in liste do
+		if mevcut == uid then
+			return
+		end
+	end
+
+	table.insert(liste, uid)
+	if #liste >= Ogretici.UcAdet then
+		Ogretici.olay(player, "ucKazdi")
+	end
+end
+
+-- Kayitli uid'lerin hepsi acildi mi (dedektiften geri geldi mi)
+local function hepsiAcildi(data: any): boolean
+	local liste = kazilanListesi(data)
+	if #liste < Ogretici.UcAdet then
+		return false
+	end
+
+	local acik: { [string]: boolean } = {}
+	for _, item in data.inventory do
+		if item.revealed and item.name then
+			acik[item.uid] = true
+		end
+	end
+
+	for _, uid in liste do
+		if not acik[uid] then
+			return false
+		end
+	end
+	return true
+end
+
+-- Oyuncunun su anki adiminin kimligi (ornek: "ilkKazi"); bitmisse nil
+function Ogretici.adimId(player: Player): string?
+	local data = PlayerData.get(player)
+	if not data or data.tutorial.bitti then
+		return nil
+	end
+	local adim = Adimlar.adim(data.tutorial.adim)
+	return if adim then adim.id else nil
 end
 
 -- Adim bitti kutlamasi: Rot Coin + beyaz patlama + ses
@@ -159,6 +272,14 @@ function Ogretici.olay(player: Player, olay: string)
 	end
 
 	odullendir(player, adim, sira)
+
+	-- Biten adimin isaret noktasi bir sonrakine tasinmasin
+	hedefKonum[player] = nil
+
+	-- "Hepsini dedektife goster" adimi bitince kazilan listesi de temizlenir
+	if adim.id == "ucCollect" then
+		data.tutorial.kazilan = {}
+	end
 
 	if sira >= Adimlar.adimSayisi() then
 		data.tutorial.bitti = true
@@ -221,14 +342,26 @@ end
 ]]
 function Ogretici.ucKontrol(player: Player)
 	local bekleyen = Ogretici.bekleyen(player)
-	if bekleyen == "ucKazdi" then
-		if Ogretici.ayniKademeVar(player, 3, false) then
-			Ogretici.olay(player, "ucKazdi")
-		end
-	elseif bekleyen == "ucCollectledi" then
-		if Ogretici.ayniKademeVar(player, 3, true) then
-			Ogretici.olay(player, "ucCollectledi")
-		end
+	if bekleyen ~= "ucCollectledi" then
+		return
+	end
+
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	--[[
+		Bu adimda kazilan UC brainrotun ucunun de kimligi acildiysa biter.
+		Kayit yoksa (eski kayit, admin ile adim atlatildi) eski kurala
+		dusulur: envanterde ayni kademeden uc ACIK esya.
+	]]
+	local bitti = if #kazilanListesi(data) >= Ogretici.UcAdet
+		then hepsiAcildi(data)
+		else Ogretici.ayniKademeVar(player, Ogretici.UcAdet, true)
+
+	if bitti then
+		Ogretici.olay(player, "ucCollectledi")
 	end
 end
 
@@ -242,6 +375,10 @@ task.spawn(function()
 	remote("OgreticiIste").OnServerEvent:Connect(function(player)
 		Ogretici.gonder(player)
 	end)
+end)
+
+game:GetService("Players").PlayerRemoving:Connect(function(player)
+	hedefKonum[player] = nil
 end)
 
 return Ogretici
