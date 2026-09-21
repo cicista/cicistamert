@@ -87,6 +87,16 @@ local LUCKY_KART_BOYU = 240
 	LUCKY_X + LUCKY_BOYU/2 kadar iceride.
 ]]
 local HUZME_AYARI: { [string]: UI.HuzmeAyari } = {
+	-- Hacker: Diamond kadar gosterisli ama yesil
+	Hacker = {
+		sayi = 12,
+		uzunluk = 240,
+		kalinlik = 34,
+		tur = 16,
+		parlaklik = 0.12,
+		zIndex = 4,
+		renk = Color3.fromRGB(70, 255, 120),
+	},
 	Diamond = { sayi = 12, uzunluk = 240, kalinlik = 34, tur = 16, parlaklik = 0.12, zIndex = 4 },
 	--[[
 		Golden'in kendi rengi (turuncu) kartin turuncu zemininde kayboluyordu;
@@ -113,6 +123,7 @@ local HUZME_AYARI: { [string]: UI.HuzmeAyari } = {
 ]]
 local ARKA_PLAN: { [string]: string } = {
 	Diamond = "diamondbackground",
+	Hacker = "hackerbackground",
 	Golden = "goldenbackground",
 }
 
@@ -131,6 +142,7 @@ local ARKA_PLAN_YAYILMA = 3
 ]]
 local BASLIK_GORUNUM: { [string]: { renk: Color3, boyutEk: number } } = {
 	Diamond = { renk = Color3.fromRGB(120, 235, 255), boyutEk = 8 },
+	Hacker = { renk = Color3.fromRGB(80, 255, 130), boyutEk = 8 },
 }
 
 -- Game Pass kartlarindaki ikonlar (Icons.Map kisa adi) ve renkleri
@@ -815,6 +827,15 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 		local kap = UI.yumusakResim(cerceve, arkaPlan, ARKA_PLAN_SAYDAM, ARKA_PLAN_YAYILMA, 1)
 		-- Kartinkiyle ayni yaricap: CanvasGroup kirpmayi da yuvarlatiyor
 		UI.corner(kap, 12)
+	end
+
+	--[[
+		HACKER TEMASI: arka planin uzerinden asagi akan yesil rakamlar.
+		Kartin kendi resmi olsa da olmasa da ekleniyor; yagmur kademeye
+		ozel, resme degil.
+	]]
+	if tier and tier.id == "Hacker" then
+		UI.corner(UI.sayiYagmuru(cerceve, Color3.fromRGB(80, 255, 130), 9, 1), 12)
 	end
 
 	--[[

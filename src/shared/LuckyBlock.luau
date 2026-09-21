@@ -87,6 +87,27 @@ LuckyBlock.Tiers = {
 		},
 		mutationRolls = 3,
 	},
+	--[[
+		HACKER  --  yalnizca Robux'la, kazidan CIKMAZ
+
+		dropWeight = 0: kazi cekilisinde hic secilmez. Magazada satiliyor
+		(bkz. Shared > RobuxMagaza) ve carkta Diamond'dan da iyi oranlar
+		veriyor. Modeli Assets > LuckyBlocks > Hacker Lucky Block.
+	]]
+	{
+		id = "Hacker",
+		displayName = "Hacker Lucky Block",
+		modelName = "Hacker Lucky Block",
+		order = 4,
+		color = Color3.fromRGB(60, 255, 110),
+		dropWeight = 0,
+		rarityWeights = {
+			Legendary = 26,
+			Mythic = 44,
+			Secret = 30,
+		},
+		mutationRolls = 4,
+	},
 } :: { Tier }
 
 LuckyBlock.Default = "Normal"

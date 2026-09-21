@@ -55,7 +55,15 @@ local LUCKY_FIYAT: { [string]: number } = {
 
 local urunler: { Urun } = {}
 
+--[[
+	Kazidan CIKMAYAN kademeler (dropWeight 0) burada satilmaz: Hacker Lucky
+	Block yalnizca Robux magazasinda (bkz. Shared > RobuxMagaza).
+]]
 for _, tur in LuckyBlock.Tiers do
+	if tur.dropWeight <= 0 then
+		continue
+	end
+
 	table.insert(urunler, {
 		id = `LuckyBlock_{tur.id}`,
 		kind = "luckyblock",

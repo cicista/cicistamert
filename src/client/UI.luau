@@ -1385,6 +1385,78 @@ function UI.isikHuzmeleri(parent: GuiObject, renk: Color3, ayar: HuzmeAyari): Fr
 end
 
 --[[
+	SAYI YAGMURU  --  hacker temasi
+
+	Kartin zemininden asagi akan yesil rakam sutunlari. Her sutun kendi
+	hizinda iniyor, hepsi ayni anda basa donmesin diye baslangic gecikmeleri
+	de farkli.
+
+	KUSURSUZ DONGU ICIN METIN IKI KEZ YAZILIYOR: yazi kutusu kabin iki kati
+	boyunda ve tam yarisi kadar kayiyor. Ikinci yarinin basi birinci yarinin
+	basiyla ayni oldugu icin tween basa sardiginda sicrama gorunmuyor.
+
+	Rakamlar bir kez seciliyor, her karede yenilenmiyor: ekranda akarken
+	fark edilmiyor ve saniyede bir yuzlerce metin degisiminden kurtuluyoruz.
+]]
+function UI.sayiYagmuru(parent: GuiObject, renk: Color3, sutun: number, zIndex: number): CanvasGroup
+	--[[
+		Kap bir CanvasGroup: ClipsDescendants duz bir Frame'de UICorner'i
+		yok sayip dikdortgen kirpar, yagmur kartin yuvarlak kosesinden
+		tasardi (ayni cozum UI.stripeLayer'da da var).
+	]]
+	local kap = Instance.new("CanvasGroup")
+	kap.Name = "SayiYagmuru"
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.BorderSizePixel = 0
+	kap.ClipsDescendants = true
+	kap.ZIndex = zIndex
+	kap.Parent = parent
+
+	local rastgele = Random.new()
+	local SATIR = 14
+
+	for i = 1, sutun do
+		-- Bir sutunluk rakam dizisi; dongu icin iki kez tekrarlaniyor
+		local yarim = {}
+		for _ = 1, SATIR do
+			table.insert(yarim, tostring(rastgele:NextInteger(0, 1)))
+		end
+		local metin = table.concat(yarim, "\n")
+
+		local sutunYazi = Instance.new("TextLabel")
+		sutunYazi.Name = "Sutun"
+		sutunYazi.BackgroundTransparency = 1
+		sutunYazi.Size = UDim2.new(1 / sutun, 0, 2, 0)
+		sutunYazi.Position = UDim2.new((i - 1) / sutun, 0, -1, 0)
+		sutunYazi.Text = `{metin}\n{metin}`
+		sutunYazi.TextColor3 = renk
+		sutunYazi.TextTransparency = rastgele:NextNumber(0.55, 0.78)
+		sutunYazi.TextSize = 16
+		sutunYazi.Font = Enum.Font.Code
+		sutunYazi.TextXAlignment = Enum.TextXAlignment.Center
+		sutunYazi.TextYAlignment = Enum.TextYAlignment.Top
+		sutunYazi.ZIndex = zIndex
+		sutunYazi.Parent = kap
+
+		TweenService:Create(
+			sutunYazi,
+			TweenInfo.new(
+				rastgele:NextNumber(3.5, 6.5),
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.InOut,
+				-1,
+				false,
+				rastgele:NextNumber(0, 2)
+			),
+			{ Position = UDim2.new((i - 1) / sutun, 0, 0, 0) }
+		):Play()
+	end
+
+	return kap
+end
+
+--[[
 	YUMUSATILMIS ARKA PLAN RESMI
 
 	Roblox'ta UI icin gercek bir blur YOK: BlurEffect yalnizca 3B kamerada
