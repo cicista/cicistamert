@@ -2688,22 +2688,55 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		UI.stroke(coinYazisi, Color3.fromRGB(0, 0, 0), 2)
 	end
 
-	-- Odulun ikonu: Rot icin para, Lucky Block icin blok (ikon paketi)
-	local ikon = Instance.new("ImageLabel")
-	ikon.Name = "Ikon"
-	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
-	-- Rot Coin yazisi olan kartta ikon biraz kucuk ve asagida: yaziyla cakismasin
+	-- Rot Coin yazisi olan kartta gorsel biraz kucuk ve asagida: yaziyla cakismasin
 	local ikonBoy = if buyuk then 120 elseif coinVar then 48 else 62
-	ikon.Position = UDim2.new(0.5, 0, 0.5, if coinVar then 0 else -10)
-	ikon.Size = UDim2.fromOffset(ikonBoy, ikonBoy)
-	ikon.BackgroundTransparency = 1
-	ikon.ScaleType = Enum.ScaleType.Fit
-	ikon.Parent = kart
-	Icons.bind(ikon, if odul.kind == "rot" then "rot" else "luckyBlock")
+	local ikonKonum = UDim2.new(0.5, 0, 0.5, if coinVar then 0 else -10)
 
-	-- Lucky Block ikonu turun renginde hafifce boyanir: en pahali blok ucuzundan ayrilsin
+	--[[
+		LUCKY BLOCK GUNLERI: "?" kutusu ikonu yerine blogun KENDI modeli
+		doner -- oyuncu Hacker gununde Hacker blogunu goruyor.
+
+		Modul burada isteniyor (ust seviyede degil): dosya 200 yerel
+		sinirinin dibinde, ustte yeni local acmak arayuzu komple kirar.
+		require zaten onbellekli, tekrari bedava.
+	]]
+	local modelKondu = false
 	if odul.kind == "luckyblock" then
-		ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(Rewards.color(gun), 0.35)
+		local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
+
+		local yuva = Instance.new("Frame")
+		yuva.Name = "BlokYuvasi"
+		yuva.AnchorPoint = Vector2.new(0.5, 0.5)
+		yuva.Position = ikonKonum
+		yuva.Size = UDim2.fromOffset(ikonBoy, ikonBoy)
+		yuva.BackgroundTransparency = 1
+		yuva.Parent = kart
+
+		-- Blogun arkasinda turun renginde yumusak parlama (viewport isik cizmiyor)
+		UI.parlama(yuva, Rewards.color(gun), math.floor(ikonBoy * 1.3), 2)
+
+		modelKondu = LuckyOnizleme.ekle(yuva, odul.tier, 4)
+		if not modelKondu then
+			yuva:Destroy()
+		end
+	end
+
+	-- Model yoksa eski ikon: Rot icin para, Lucky Block icin paketteki blok
+	if not modelKondu then
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "Ikon"
+		ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+		ikon.Position = ikonKonum
+		ikon.Size = UDim2.fromOffset(ikonBoy, ikonBoy)
+		ikon.BackgroundTransparency = 1
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.Parent = kart
+		Icons.bind(ikon, if odul.kind == "rot" then "rot" else "luckyBlock")
+
+		-- Blok ikonu turun renginde hafifce boyanir: en pahali blok ucuzundan ayrilsin
+		if odul.kind == "luckyblock" then
+			ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(Rewards.color(gun), 0.35)
+		end
 	end
 
 	UI.text({
@@ -3068,14 +3101,37 @@ task.spawn(function()
 				parent = kart,
 			})
 
-			local ikon = Instance.new("ImageLabel")
-			ikon.AnchorPoint = Vector2.new(0.5, 0.5)
-			ikon.Position = UDim2.new(0.5, 0, 0.5, -12)
-			ikon.Size = UDim2.fromOffset(64, 64)
-			ikon.BackgroundTransparency = 1
-			ikon.ScaleType = Enum.ScaleType.Fit
-			ikon.Parent = kart
-			Icons.bind(ikon, SosyalOdul.ikon(odul))
+			-- Lucky Block odulunde donen blok modeli (bkz. Daily kartlari)
+			local blokKondu = false
+			if odul.kind == "luckyblock" then
+				local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
+
+				local yuva = Instance.new("Frame")
+				yuva.Name = "BlokYuvasi"
+				yuva.AnchorPoint = Vector2.new(0.5, 0.5)
+				yuva.Position = UDim2.new(0.5, 0, 0.5, -12)
+				yuva.Size = UDim2.fromOffset(68, 68)
+				yuva.BackgroundTransparency = 1
+				yuva.Parent = kart
+
+				UI.parlama(yuva, LuckyBlock.get(SosyalOdul.enUcuzLuckyBlock()).color, 86, 2)
+
+				blokKondu = LuckyOnizleme.ekle(yuva, SosyalOdul.enUcuzLuckyBlock(), 4)
+				if not blokKondu then
+					yuva:Destroy()
+				end
+			end
+
+			if not blokKondu then
+				local ikon = Instance.new("ImageLabel")
+				ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+				ikon.Position = UDim2.new(0.5, 0, 0.5, -12)
+				ikon.Size = UDim2.fromOffset(64, 64)
+				ikon.BackgroundTransparency = 1
+				ikon.ScaleType = Enum.ScaleType.Fit
+				ikon.Parent = kart
+				Icons.bind(ikon, SosyalOdul.ikon(odul))
+			end
 
 			UI.text({
 				text = SosyalOdul.etiket(odul),
@@ -3611,6 +3667,12 @@ do
 		basindaki not ve tools/check.luau).
 	]]
 	local Assets = require(Shared:WaitForChild("Assets"))
+	--[[
+		Parsomen (scroll) modelleri. Bu require KAYIPTI: satir dongusu scroll
+		urunune gelince "attempt to index nil with 'model'" hatasi veriyor ve
+		ondan SONRAKI urunler (sans iksirleri) hic cizilmiyordu.
+	]]
+	local Scrolls = require(Shared:WaitForChild("Scrolls"))
 
 	local rcPanel = UI.panel(screen, UDim2.fromOffset(520, 540), "RotCoinMagaza")
 
@@ -3640,7 +3702,24 @@ do
 		parent = rcPanel,
 	})
 
-	local rcListe = makeScroll(rcPanel, UDim2.fromOffset(14, 126), UDim2.new(1, -28, 1, -140))
+	--[[
+		LISTE BIR CanvasGroup ICINDE
+
+		Satirlardaki ikonlar UI.sallan ile DONDURULUYOR; Roblox dondurulmus
+		nesneyi ScrollingFrame'in kirpmasiyla kesmiyor. Kaydirinca yonca ve
+		Lucky Block gorselleri listenin disina tasiyordu (Store'da ayni sorun
+		ayni yolla cozuldu). CanvasGroup once kendi yuzeyine ciziyor ve o
+		yuzeyi kendi sinirinda kesiyor.
+	]]
+	local rcListeKabi = Instance.new("CanvasGroup")
+	rcListeKabi.Name = "ListeKabi"
+	rcListeKabi.Position = UDim2.fromOffset(14, 126)
+	rcListeKabi.Size = UDim2.new(1, -28, 1, -140)
+	rcListeKabi.BackgroundTransparency = 1
+	rcListeKabi.BorderSizePixel = 0
+	rcListeKabi.Parent = rcPanel
+
+	local rcListe = makeScroll(rcListeKabi, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1))
 
 	-- Sunucudan gelen son durum
 	local rcBakiye = inventory.rotCoins or 0
@@ -3658,11 +3737,11 @@ do
 
 		if aktif then
 			local yazi = `{RotCoinMagaza.carpanYazisi(iksirCarpan)} Luck ({RotCoinMagaza.sureYazisi(kalan)})`
-			iksirBuff.Text = `Luck Potion: {yazi}`
-			rcIksirYazi.Text = `Active potion: {yazi}`
+			iksirBuff.Text = yazi
+			rcIksirYazi.Text = `Active: {yazi}`
 			rcIksirYazi.TextColor3 = Color3.fromRGB(90, 220, 255)
 		else
-			rcIksirYazi.Text = "No luck potion active"
+			rcIksirYazi.Text = "No luck active"
 			rcIksirYazi.TextColor3 = UI.Colors.textDim
 		end
 
@@ -3839,6 +3918,122 @@ do
 		):Play()
 	end
 
+	--[[
+		DONEN LUCKY BLOCK ONIZLEMESI  --  Store'daki ile ayni
+
+		Blok tam karsidan degil ucte-dortluk acidan duruyor ve UI.sallan'in
+		ritminde kendi ekseninde salliniyor. Hepsi TEK RenderStepped'te
+		donuyor; panel kapaliyken dongu ilk satirda cikiyor.
+
+		ViewportFrame parcacik/isin/isik CIZMEZ (Roblox siniri); blogun
+		etrafindaki parlamayi UI.parlama veriyor.
+	]]
+	local RC_BAKIS = Vector3.new(0, 0, -1)
+	local RC_DURUS = CFrame.Angles(0, math.rad(28), 0) * CFrame.Angles(math.rad(-16), 0, 0)
+	local RC_CERCEVE = 0.78
+	local RC_ISIK = Color3.fromRGB(255, 255, 255)
+
+	-- Sallanan onizlemeler (satirlar yeniden cizilince listeden dusuyorlar)
+	local rcOnizlemeler: { { model: Model, merkez: Vector3, taban: CFrame } } = {}
+
+	-- Kadraj yalnizca GORUNUR parcalardan: gorunmez tutamaklar blogu kucultmesin
+	local function rcGorunenKutu(model: Model): (Vector3?, Vector3?)
+		local enAz: Vector3? = nil
+		local enCok: Vector3? = nil
+
+		for _, parca in model:GetDescendants() do
+			if not parca:IsA("BasePart") or parca.Transparency >= 0.99 then
+				continue
+			end
+			for _, sx in { -0.5, 0.5 } do
+				for _, sy in { -0.5, 0.5 } do
+					for _, sz in { -0.5, 0.5 } do
+						local kose = parca.CFrame:PointToWorldSpace(parca.Size * Vector3.new(sx, sy, sz))
+						enAz = if enAz then enAz:Min(kose) else kose
+						enCok = if enCok then enCok:Max(kose) else kose
+					end
+				end
+			end
+		end
+
+		if not enAz or not enCok then
+			return nil, nil
+		end
+		return (enAz + enCok) / 2, enCok - enAz
+	end
+
+	--[[
+		Madalyonun icine blogun donen 3B onizlemesini kurar.
+		Model bulunamazsa false doner; cagiran taraf ikona duser.
+	]]
+	local function rcLuckyOnizleme(kutu: GuiObject, tier: any): boolean
+		local model = Assets.luckyBlockModel(tier.modelName or tier.displayName, tier.order)
+		if not model then
+			return false
+		end
+
+		-- Onizlemede script ve ses calismasin; efektler dursun (zaten cizilmiyorlar)
+		for _, nesne in model:GetDescendants() do
+			if nesne:IsA("BaseScript") or nesne:IsA("Sound") then
+				nesne:Destroy()
+			end
+		end
+
+		local merkez, kutuBoyut = rcGorunenKutu(model)
+		if not merkez or not kutuBoyut then
+			model:Destroy()
+			return false
+		end
+
+		local vp = Instance.new("ViewportFrame")
+		vp.Name = "Onizleme"
+		vp.AnchorPoint = Vector2.new(0.5, 0.5)
+		vp.Position = UDim2.fromScale(0.5, 0.5)
+		vp.Size = UDim2.fromScale(0.92, 0.92)
+		vp.BackgroundTransparency = 1
+		vp.Ambient = RC_ISIK
+		vp.LightColor = RC_ISIK
+		vp.LightDirection = Vector3.new(-0.4, -0.7, -0.6)
+		vp.ZIndex = 6
+		vp.Parent = kutu
+
+		model.Parent = vp
+
+		local kamera = Instance.new("Camera")
+		kamera.Parent = vp
+		vp.CurrentCamera = kamera
+		kamera.CFrame = CFrame.lookAt(merkez + RC_BAKIS * kutuBoyut.Magnitude * RC_CERCEVE, merkez)
+
+		table.insert(rcOnizlemeler, { model = model, merkez = merkez, taban = model:GetPivot() })
+		return true
+	end
+
+	-- RunService ust seviyede yerel degil (200 yerel siniri): servis burada alinir
+	game:GetService("RunService").RenderStepped:Connect(function()
+		if not rcPanel.Visible then
+			return
+		end
+
+		-- UI.sallan ile ayni ritim: tam donem sallanma suresinin iki kati
+		local aci = math.rad(UI.SallanmaAci) * math.sin(os.clock() * math.pi / UI.SallanmaSuresi)
+
+		for i = #rcOnizlemeler, 1, -1 do
+			local kayit = rcOnizlemeler[i]
+			if not kayit.model.Parent then
+				-- Satir yeniden cizildi: kayit listeden duser
+				rcOnizlemeler[i] = rcOnizlemeler[#rcOnizlemeler]
+				rcOnizlemeler[#rcOnizlemeler] = nil
+				continue
+			end
+
+			local donus = CFrame.new(kayit.merkez)
+				* CFrame.Angles(0, aci, 0)
+				* RC_DURUS
+				* CFrame.new(-kayit.merkez)
+			kayit.model:PivotTo(donus * kayit.taban)
+		end
+	end)
+
 	local function rcCiz()
 		rcBakiyeYazi.Text = `You have {Format.short(rcBakiye)} Rot Coin`
 		iksirYazilariniGuncelle()
@@ -3859,11 +4054,19 @@ do
 				Zemin: Assets > Icons icinde resim varsa O, yoksa renkli
 				canli levha cizimi (bkz. kartResmi / canliZemin).
 			]]
+			--[[
+				HACKER SCROLL: zemin SIYAH. Yesil zeminde yesil rakam yagmuru
+				kayboluyordu; siyahta Matrix gibi okunuyor.
+			]]
+			local zeminRenk = if urun.scroll == "HackerMutation"
+				then Color3.fromRGB(10, 12, 12)
+				else urun.color
+
 			local kartZemini = kartResmi(urun)
 			if kartZemini then
 				resimliZemin(satir, kartZemini, sira)
 			else
-				canliZemin(satir, urun.color)
+				canliZemin(satir, zeminRenk)
 			end
 			UI.stroke(satir, Color3.fromRGB(0, 0, 0), 3)
 
@@ -3900,22 +4103,26 @@ do
 			]]
 			if urun.kind == "luckyblock" and urun.tier then
 				local tur = LuckyBlock.get(urun.tier)
-				local model = if tur
-					then Assets.luckyBlockModel(tur.modelName, tur.order, (tur :: any).eslesme)
-					else nil
-				if model then
-					local kare = UI.modelKaresi(ikon, model, 54, 3)
-					if kare then
-						kare.AnchorPoint = Vector2.new(0.5, 0.5)
-						kare.Position = UDim2.fromScale(0.5, 0.5)
-						modelKondu = true
-					end
+				modelKondu = tur ~= nil and rcLuckyOnizleme(ikon, tur)
+
+				if modelKondu then
+					-- Blogun arkasinda kendi renginde yumusak parlama
+					UI.parlama(satir, urun.color, 74, 4).Position =
+						UDim2.fromOffset(ikon.Position.X.Offset + 32, 42)
 				else
 					warn(
 						`[RotCoinMagaza] Lucky Block modeli bulunamadi: ReplicatedStorage > `
 							.. `Assets > LuckyBlocks ({urun.tier})`
 					)
 				end
+			end
+
+			--[[
+				HACKER TEMASI: Store'daki Hacker Lucky Block kartinin aynisi --
+				satirin uzerinden asagi akan yesil rakamlar.
+			]]
+			if urun.kind == "scroll" and urun.scroll == "HackerMutation" then
+				UI.corner(UI.sayiYagmuru(satir, Color3.fromRGB(90, 255, 140), 18, 2, 1.8, 0.32), 12)
 			end
 
 			if urun.kind == "scroll" and urun.scroll then

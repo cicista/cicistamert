@@ -887,11 +887,22 @@ end
 	Efekti olmayan kademeler icin hicbir sey yapilmaz -- tablo yalnizca
 	burada sayilanlari tanir, gerisi sessizce gecer.
 
+	DIKKAT -- KIMLIK ADI, EKRANDAKI AD DEGIL!
+	Bu tablonun anahtarlari Rarity.Order'daki KIMLIKLER; bazilari oyuncuya
+	baska adla gorunuyor (bkz. Shared > Rarity > displayName):
+
+	    kimlik "Secret"  ->  ekranda "Divine"
+	    kimlik "Gizli"   ->  ekranda "Secret"
+
+	Efekt ekranda gorunen ada gore isteniyor: SecretVFX, oyuncunun "Secret"
+	dedigi kademeye, yani "Gizli" kimligine baglanir. "Divine" (kimlik
+	Secret) tabloda yok, efekt almaz.
+
 	Ayni modele iki kez eklenmesin diye eklenen parca isaretleniyor.
 ]]
 local RARITY_VFX: { [string]: string } = {
 	Cosmic = "CosmicVFX",
-	Secret = "SecretVFX",
+	Gizli = "SecretVFX", -- ekranda "Secret"
 	Infernal = "InfernalVFX",
 	Abyssal = "AbyssalVFX",
 }
@@ -954,10 +965,63 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		weld.Parent = parca
 	end
 
+	--[[
+		EFEKT BRAINROTUN BOYUNA GORE BUYUR
+
+		Sablon tek bir boyda hazirlanmis; Cosmic ve ustu brainrotlar (kademe
+		olcegi + Huge boyut) cogu zaman ondan cok daha iri oluyor ve efekt
+		modelin dibinde kucucuk kaliyordu.
+
+		Carpan = brainrotun en uzun kenari / taban olcu (slotSize). Alt ve ust
+		sinir var: kucuk brainrotta efekt yok olmasin, devasa olanda da
+		ekrani kaplamasin.
+	]]
+	local carpan = 1
+	do
+		local enAz, enCok = Assets.worldBounds(model)
+		if enAz and enCok then
+			local boy = enCok - enAz
+			local uzun = math.max(boy.X, boy.Y, boy.Z)
+			local taban = Assets.BrainrotSize.slotSize
+			if taban > 0 and uzun > 0 then
+				carpan = math.clamp(uzun / taban, 0.75, 3)
+			end
+		end
+	end
+
+	local function olcekle(parca: BasePart)
+		parca.Size *= carpan
+	end
+
 	if sablon:IsA("BasePart") then
+		if carpan ~= 1 then
+			olcekle(sablon)
+		end
 		sablon.CFrame = govde.CFrame
 		yerlestir(sablon)
 	elseif sablon:IsA("Model") then
+		if carpan ~= 1 then
+			--[[
+				ScaleTo modelin PIVOTUNDAN olcekler ve PrimaryPart ister;
+				paketten gelen sablonlarda cogu zaman bos. Yoksa parcalar
+				tek tek buyutuluyor (konumlari zaten pivota gore yazilacak).
+			]]
+			if not sablon.PrimaryPart then
+				sablon.PrimaryPart = sablon:FindFirstChildWhichIsA("BasePart", true)
+			end
+
+			local ok = pcall(function()
+				sablon:ScaleTo(carpan)
+			end)
+			if not ok then
+				for _, parca in sablon:GetDescendants() do
+					if parca:IsA("BasePart") then
+						olcekle(parca)
+					end
+				end
+			end
+		end
+
 		sablon:PivotTo(govde.CFrame)
 		for _, parca in sablon:GetDescendants() do
 			if parca:IsA("BasePart") then
@@ -965,6 +1029,9 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 			end
 		end
 	end
+
+	-- Parcacik boyu, hizi ve isik menzili de ayni oranda buyur
+	Assets.scaleEffects(sablon, carpan)
 
 	return sablon
 end

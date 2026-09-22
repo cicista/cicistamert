@@ -151,6 +151,19 @@ local Map: { [string]: IconEntry } = {
 		{ "Misc", "Question" },
 	},
 	luckyBlock = { "RNG", "? Box" },
+	--[[
+		Auto Clicker gecisi (Playtime 30 dk odulu ve Store karti). Pakette
+		adi kesin bilinmiyor, sirayla deneniyor; kendi resmini Assets >
+		Icons icine "AutoClicker" adiyla koyarsan o kullanilir.
+	]]
+	autoClicker = {
+		{ "AssetsTam", "AutoClicker" },
+		{ "*", "AutoClick" },
+		{ "*", "Click" },
+		{ "*", "Cursor" },
+		{ "*", "Mouse" },
+		{ "*", "Hand" },
+	},
 	upgrade = { "Arrows", "GoldUpgrade" },
 	lockClosed = { "Misc", "LockClosed" },
 	lockOpen = { "Misc", "LockOpen" },

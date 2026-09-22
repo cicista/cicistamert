@@ -104,29 +104,50 @@ for _, id in Scrolls.Order do
 	end
 end
 
-table.insert(urunler, {
-	id = "LuckPotion",
-	kind = "potion",
-	name = "Luck Potion",
-	desc = "x1.5 Luck while digging for 15 minutes",
-	price = 5,
-	icon = "luck2",
-	color = Color3.fromRGB(120, 255, 150),
-	multiplier = 1.5,
-	seconds = 900,
-})
+--[[
+	SANS IKSIRLERI  --  iki sure: 5 / 15 dakika
 
-table.insert(urunler, {
-	id = "SuperLuckPotion",
-	kind = "potion",
-	name = "Super Luck Potion",
-	desc = "x2 Luck while digging for 15 minutes",
-	price = 12,
-	icon = "luck3",
-	color = Color3.fromRGB(90, 220, 255),
-	multiplier = 2,
-	seconds = 900,
-})
+	Sure uzadikca carpan da yukseliyor; en gucluleri Robux magazasindaki
+	x3'un altinda kaliyor ki Rot Coin ile Robux urunleri birbirini yemesin
+	(bkz. Shared > RobuxMagaza > MegaLuck).
+
+	Kurallar degismedi: ayni iksir tekrar alinirsa SURE UZAR, daha guclusu
+	zayifin yerini alir, guclu aktifken zayif alinamaz (bkz. dosya basi).
+]]
+local IKSIRLER = {
+	{
+		id = "LuckPotion5",
+		name = "Luck",
+		price = 3,
+		icon = "luck1",
+		color = Color3.fromRGB(150, 255, 170),
+		multiplier = 1.5,
+		dakika = 5,
+	},
+	{
+		id = "LuckPotion15",
+		name = "Super Luck",
+		price = 10,
+		icon = "luck2",
+		color = Color3.fromRGB(120, 255, 150),
+		multiplier = 2,
+		dakika = 15,
+	},
+}
+
+for _, iksir in IKSIRLER do
+	table.insert(urunler, {
+		id = iksir.id,
+		kind = "potion",
+		name = iksir.name,
+		desc = `x{string.format("%g", iksir.multiplier)} Luck while digging for {iksir.dakika} minutes`,
+		price = iksir.price,
+		icon = iksir.icon,
+		color = iksir.color,
+		multiplier = iksir.multiplier,
+		seconds = iksir.dakika * 60,
+	})
+end
 
 RotCoinMagaza.Urunler = urunler
 

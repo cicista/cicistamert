@@ -47,8 +47,10 @@ export type Tier = {
 LuckyBlock.Tiers = {
 	{
 		id = "Normal",
+		-- ADI ACIKCA YAZILI: klasordeki alfabetik sira ile tur sirasi tutmuyor
+		-- (Hacker Lucky Block basta geliyor), sirayla eslestirmek karistiriyordu
 		displayName = "Lucky Block",
-		modelName = nil,
+		modelName = "New Lucky Block",
 		order = 1,
 		color = Color3.fromRGB(255, 236, 90),
 		dropWeight = 70,
@@ -64,7 +66,7 @@ LuckyBlock.Tiers = {
 	{
 		id = "Golden",
 		displayName = "Golden Lucky Block",
-		modelName = nil,
+		modelName = "New Gold Lucky Block",
 		order = 2,
 		color = Color3.fromRGB(255, 190, 40),
 		dropWeight = 24,
@@ -80,7 +82,7 @@ LuckyBlock.Tiers = {
 	{
 		id = "Diamond",
 		displayName = "Diamond Lucky Block",
-		modelName = nil,
+		modelName = "New Diamond Lucky Block",
 		order = 3,
 		color = Color3.fromRGB(110, 230, 255),
 		dropWeight = 6,

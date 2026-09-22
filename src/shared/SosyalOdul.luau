@@ -23,6 +23,8 @@
 
 local Format = require(script.Parent.Format)
 local LuckyBlock = require(script.Parent.LuckyBlock)
+-- Sureli gecis odullerinin adi icin (Auto Clicker gibi)
+local Passler = require(script.Parent.Passler)
 
 local SosyalOdul = {}
 
@@ -68,15 +70,35 @@ function SosyalOdul.enUcuzLuckyBlock(): string
 	return secilen.id
 end
 
--- Kartta yazan odul: "+1 Rot Coin", "+5K Rot", "1x Lucky Block"
+--[[
+	Kartta yazan odul: "+1 Rot Coin", "+5K Rot", "1x Lucky Block",
+	"Auto Clicker 15 min".
+
+	GECIS ODULLERI (kind = "pass") eskiden bu fonksiyonun sonundaki Lucky
+	Block satirina dusuyordu: amount bos oldugu icin kartta "nilx Lucky
+	Block" yaziyor, ikonu da "?" kutusu geliyordu. Artik her tur kendi
+	dalinda.
+]]
 function SosyalOdul.etiket(odul: PlaytimeOdul): string
 	if odul.kind == "rotcoin" then
 		return `+{odul.amount} Rot Coin`
 	elseif odul.kind == "rot" then
 		return `+{Format.short(odul.amount)} Rot`
+	elseif odul.kind == "pass" then
+		local bilgi = Passler.get(odul.pass or "")
+		local ad = if bilgi then bilgi.ad else (odul.pass or "Pass")
+		local dakika = math.floor((odul.seconds or 0) / 60)
+		return if dakika > 0 then `{ad} {dakika} min` else ad
 	end
-	return `{odul.amount}x {LuckyBlock.get(SosyalOdul.enUcuzLuckyBlock()).displayName}`
+	return `{odul.amount or 1}x {LuckyBlock.get(SosyalOdul.enUcuzLuckyBlock()).displayName}`
 end
+
+-- Gecis odullerinin ikonu (bkz. Shared > Icons > Map)
+local PASS_IKON: { [string]: string } = {
+	AutoClicker = "autoClicker",
+	Teleporter = "teleporter",
+	DetectivePass = "detective",
+}
 
 -- Icons.Map kisa adi
 function SosyalOdul.ikon(odul: PlaytimeOdul): string
@@ -84,6 +106,8 @@ function SosyalOdul.ikon(odul: PlaytimeOdul): string
 		return "rotCoin"
 	elseif odul.kind == "rot" then
 		return "rot"
+	elseif odul.kind == "pass" then
+		return PASS_IKON[odul.pass or ""] or "rewards"
 	end
 	return "luckyBlock"
 end

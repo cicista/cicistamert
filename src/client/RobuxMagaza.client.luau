@@ -280,9 +280,13 @@ end
 	-- mesh rengiyle yapilmis olabilir -- nesnenin KENDISI kucuk bir
 	ViewportFrame'de gosteriliyor.
 
-	Ikisi de olmazsa eski "R$ 99" yazisina duseriz, yani ikon konmadan
-	once de magaza dogru gorunur.
+	Ikisi de olmazsa kutuda yalnizca "R$ 99" yazisi kalir, yani ikon
+	konmadan once de magaza dogru gorunur.
+
+	Ikon yazidan BUYUK ciziliyor (IKON_ORANI): sayiyla ayni boyda oldugunda
+	dugmenin icinde kaybolup gidiyordu.
 ]]
+local IKON_ORANI = 1.5
 local function robuxNesnesi(): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local ikonlar = assets and assets:FindFirstChild("Icons")
@@ -290,14 +294,10 @@ local function robuxNesnesi(): Instance?
 	return if node and (node:IsA("BasePart") or node:IsA("Model")) then node:Clone() else nil
 end
 
-local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number, yukseklik: number): Frame?
+local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number, yukseklik: number): Frame
 	local resim = Icons.asset("Robux")
 	local nesne = if resim then nil else robuxNesnesi()
-
-	if not resim and not nesne then
-		yuzYazisi(yuz, `R$ {miktar}`, boyut, y, yukseklik)
-		return nil
-	end
+	local ikonBoy = math.floor(boyut * IKON_ORANI)
 
 	local kutu = Instance.new("Frame")
 	kutu.Name = "Fiyat"
@@ -312,7 +312,7 @@ local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number,
 	local dizilim = Instance.new("UIListLayout")
 	dizilim.FillDirection = Enum.FillDirection.Horizontal
 	dizilim.VerticalAlignment = Enum.VerticalAlignment.Center
-	dizilim.Padding = UDim.new(0, 3)
+	dizilim.Padding = UDim.new(0, 5)
 	dizilim.SortOrder = Enum.SortOrder.LayoutOrder
 	dizilim.Parent = kutu
 
@@ -322,20 +322,21 @@ local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number,
 		ikon.BackgroundTransparency = 1
 		ikon.Image = resim
 		ikon.ScaleType = Enum.ScaleType.Fit
-		ikon.Size = UDim2.fromOffset(boyut, boyut)
+		ikon.Size = UDim2.fromOffset(ikonBoy, ikonBoy)
 		ikon.LayoutOrder = 1
 		ikon.ZIndex = 5
 		ikon.Parent = kutu
 	elseif nesne then
-		local kare = UI.modelKaresi(kutu, nesne, boyut + 4, 5)
+		local kare = UI.modelKaresi(kutu, nesne, ikonBoy + 4, 5)
 		if kare then
 			kare.Name = "Ikon"
 			kare.LayoutOrder = 1
 		end
 	end
 
+	-- Ikon hic bulunamadiysa sayinin basina "R$" gelir: fiyat yine anlasilsin
 	local sayi = UI.text({
-		text = tostring(miktar),
+		text = if resim or nesne then tostring(miktar) else `R$ {miktar}`,
 		size = boyut,
 		font = UI.Fonts.bold,
 		frameSize = UDim2.fromOffset(0, yukseklik),
@@ -812,8 +813,13 @@ end
 local function urunDugmesi(parent: Instance, urun: RobuxMagaza.Urun)
 	local buton, yuz = satinAlmaDugmesi(parent, YESIL)
 
-	robuxYazisi(yuz, urun.fiyat, UI.Sizes.label, 2, 24)
-	yuzYazisi(yuz, urun.etiket, UI.Sizes.small, 24, 18)
+	--[[
+		Fiyat satiri buyuyen Robux ikonuna yer acacak kadar asagida ve
+		genis; altindaki etiket ("+10") ona degmesin diye 30'dan basliyor.
+		Dugme 58 yuksek, yuz 47: 4 + 26 + 16 tam sigiyor.
+	]]
+	robuxYazisi(yuz, urun.fiyat, UI.Sizes.label, 4, 26)
+	yuzYazisi(yuz, urun.etiket, UI.Sizes.small, 30, 16)
 
 	-- Indirimli urunde eski fiyat ustu cizili, dugmenin koseside egik
 	if urun.eskiFiyat then
@@ -1137,12 +1143,23 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 	buton.Position = UDim2.new(0.5, 0, 1, -10)
 	buton.Size = UDim2.new(1, -20, 0, 50)
 
-	local yazi = yuzYazisi(yuz, "", UI.Sizes.label, 0, 36)
+	--[[
+		FIYAT: urun kartlariyla ayni Robux ikonu + sayi.
+		Gecis alinmissa fiyatin yerini "OWNED" yazisi aliyor; ikisi ayni
+		dugmede duruyor, biri gizli.
+	]]
+	local fiyatKutusu = robuxYazisi(yuz, info.fiyat, UI.Sizes.label, 0, 36)
+	fiyatKutusu.AnchorPoint = Vector2.new(0.5, 0.5)
+	fiyatKutusu.Position = UDim2.fromScale(0.5, 0.5)
+
+	local yazi = yuzYazisi(yuz, "OWNED", UI.Sizes.label, 0, 36)
 	yazi.Size = UDim2.new(1, -4, 1, 0)
+	yazi.Visible = false
 
 	local function ciz()
 		local sahip = Passler.sahip(player, ad)
-		yazi.Text = if sahip then "OWNED" else `R$ {info.fiyat}`
+		yazi.Visible = sahip
+		fiyatKutusu.Visible = not sahip
 		buton.Active = not sahip
 		buton.AutoButtonColor = false
 		-- Sahip olunan gecisin dugmesi gri; fare etkisi rengi tekrar okusun diye yuz degismiyor
