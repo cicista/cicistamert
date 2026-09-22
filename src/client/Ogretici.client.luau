@@ -722,7 +722,38 @@ local function gizle()
 	isaretleriKapat()
 end
 
+--[[
+	ADA IPUCU  --  ogreticiden sonraki tek yonlendirme
+
+	Sunucu, oyuncunun parasi ikinci adaya yetince IpucuAda niteligini
+	yaziyor (bkz. Modules > Ogretici). O acikken serit "yeni ada alabilirsin"
+	der ve Teleporter isaretlenir; ada alinip gidilince nitelik silinir,
+	serit ve isaret kendiliginden kapanir.
+]]
+local IP = Adimlar.AdaIpucu
+
+local function adaIpucuAcik(): boolean
+	return player:GetAttribute(IP.nitelik) == true
+end
+
 local function yonergeyiYaz()
+	--[[
+		Ogretici bittiyse yalnizca ada ipucu kalir: adim yazisi yerine
+		ipucunun kendi yazisi gosterilir.
+	]]
+	if bitti or siraNo <= 0 then
+		if adaIpucuAcik() then
+			sayacYazi.Text = "NEW ISLAND"
+			yonergeYazi.Text = IP.yazi
+			altYazi.Text = IP.alt or ""
+			anlaticiyiCiz({ resim = IP.resim } :: any)
+			serit.Visible = true
+		else
+			serit.Visible = false
+		end
+		return
+	end
+
 	local adim = Adimlar.adim(siraNo)
 	if not adim then
 		serit.Visible = false
@@ -750,7 +781,45 @@ end
 	dedektif, fuse gosterilmesi gerekirken yine dedektif parliyordu.
 ]]
 local function hedefiTazele()
+	--[[
+		Ogretici bitti: ada ipucu aciksa TELEPORTER isaretlenir, degilse
+		hicbir sey.
+	]]
 	if bitti or siraNo <= 0 then
+		isaretleriKapat()
+		if not adaIpucuAcik() then
+			return
+		end
+
+		local karakter = player.Character
+		local kok = karakter and karakter:FindFirstChild("HumanoidRootPart")
+		if not kok or not kok:IsA("BasePart") then
+			return
+		end
+
+		local npc = modelBul({ Config.NPC.name, Config.NPC.altName })
+		if not npc then
+			return
+		end
+
+		--[[
+			IF-IFADESI IKI DEGER DONDURMEZ: baglanacak iki sey donduruyor,
+			"if ... then baglanacak(npc) else nil" yazilsaydi ikincisi
+			kaybolur ve isaret hic kurulmazdi.
+		]]
+		local adornee, isaretKoku = baglanacak(npc)
+		if not adornee or not isaretKoku then
+			return
+		end
+
+		hedef = npc
+		parlama.Adornee = adornee
+		parlama.Enabled = true
+		hedefTabela.Adornee = isaretKoku
+		hedefTabela.Enabled = true
+		kokTutamak.Parent = kok
+		hedefTutamak.Parent = isaretKoku
+		cizgi.Enabled = true
 		return
 	end
 
@@ -866,6 +935,9 @@ OgreticiDurum.OnClientEvent:Connect(function(veri)
 
 	if bitti then
 		gizle()
+		-- Ogretici bitti ama ada ipucu acik olabilir
+		yonergeyiYaz()
+		hedefiTazele()
 		return
 	end
 
@@ -898,10 +970,15 @@ player.CharacterAdded:Connect(isaretleriKapat)
 task.spawn(function()
 	while true do
 		task.wait(1)
-		if not bitti and siraNo > 0 then
-			hedefiTazele()
-		end
+		-- Ogretici bittiyse de calisir: ada ipucu Teleporter'i isaretliyor
+		hedefiTazele()
 	end
+end)
+
+-- Ipucu acilip kapandikca serit ve isaret aninda guncellensin
+player:GetAttributeChangedSignal(IP.nitelik):Connect(function()
+	yonergeyiYaz()
+	hedefiTazele()
 end)
 
 --[[

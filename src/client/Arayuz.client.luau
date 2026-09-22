@@ -22,6 +22,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
+-- Ada ipucu: parasi yeten oyuncuya o adanin satiri kirmizi gosterilir
+local Ogretici = require(Shared:WaitForChild("Ogretici"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -77,8 +79,19 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 		end
 	end
 
+	--[[
+		ADA IPUCU
+
+		Sunucu "parasi yetti" dediginde (bkz. Modules > Ogretici) o adanin
+		satiri KIRMIZI cerceveyle ve kirmizi fiyat yazisiyla gosterilir;
+		yeni oyuncu hangisini secmesi gerektigini sasirmasin.
+	]]
+	local IP = Ogretici.AdaIpucu
+	local ipucuAcik = player:GetAttribute(IP.nitelik) == true
+
 	for _, island in islands do
-		local color = island.color or UI.Colors.accent
+		local ipucuSatiri = ipucuAcik and island.index == IP.ada
+		local color = if ipucuSatiri then IP.renk else (island.color or UI.Colors.accent)
 
 		local button = Instance.new("TextButton")
 		button.Size = UDim2.new(1, -6, 0, 76)
@@ -90,7 +103,16 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 		button.LayoutOrder = island.index
 		button.Parent = list
 		UI.corner(button, 10)
-		UI.stroke(button, color, 1)
+		local cerceve = UI.stroke(button, color, if ipucuSatiri then 3 else 1)
+
+		-- Ipucu satiri nabiz atar: gozden kacmasin
+		if ipucuSatiri then
+			TweenService:Create(
+				cerceve,
+				TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+				{ Thickness = 6, Transparency = 0.35 }
+			):Play()
+		end
 
 		UI.text({
 			text = island.name,
@@ -125,7 +147,7 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 			statusColor = UI.Colors.textDim
 		elseif island.state == "buyable" then
 			statusText = `{Format.short(island.price)} Rot`
-			statusColor = UI.Colors.gold
+			statusColor = if ipucuSatiri then IP.renk else UI.Colors.gold
 		else
 			statusText = "UNLOCKED"
 			statusColor = UI.Colors.good

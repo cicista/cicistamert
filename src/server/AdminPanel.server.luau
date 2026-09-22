@@ -31,6 +31,8 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+-- Ogretici adim tanimlari (admin komutlari icin)
+local OgreticiAdimlar = require(Shared:WaitForChild("Ogretici"))
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
@@ -143,6 +145,71 @@ function commands.ogreticiSifirla(player, data)
 	end
 
 	return "Ogretici basa sarildi: 1. adim"
+end
+
+-- Ogretici modulunu bir kez cozer (yoksa nil)
+local function ogreticiModulu(): any?
+	local modul = script.Parent:FindFirstChild("Modules")
+	local node = modul and modul:FindFirstChild("Ogretici")
+	if node and node:IsA("ModuleScript") then
+		local ok, sonuc = pcall(require, node)
+		if ok then
+			return sonuc
+		end
+	end
+	return nil
+end
+
+--[[
+	SIRADAKI ADIMA GEC
+
+	Adimin isini yapmadan ilerletir: test ederken her seferinde kazi yapip
+	dedektife kosmak gerekmesin.
+]]
+function commands.ogreticiAtla(player, data)
+	if data.tutorial.bitti then
+		return "Ogretici zaten bitmis"
+	end
+
+	local toplam = OgreticiAdimlar.adimSayisi()
+	if data.tutorial.adim >= toplam then
+		data.tutorial.bitti = true
+	else
+		data.tutorial.adim += 1
+	end
+
+	local ogretici = ogreticiModulu()
+	if ogretici then
+		ogretici.gonder(player)
+	end
+
+	return if data.tutorial.bitti
+		then "Ogretici bitirildi"
+		else `Ogretici {data.tutorial.adim}. adima gecti`
+end
+
+-- Butun ogreticiyi bitirir (yonergeler kaybolur)
+function commands.ogreticiBitir(player, data)
+	data.tutorial.bitti = true
+
+	local ogretici = ogreticiModulu()
+	if ogretici then
+		ogretici.gonder(player)
+	end
+
+	return "Ogretici bitirildi"
+end
+
+--[[
+	ADA IPUCUNU SIFIRLA
+
+	"Parasi yetti, Teleporter'i goster" ipucunu yeniden gosterilebilir
+	yapar (bkz. Shared > Ogretici > AdaIpucu).
+]]
+function commands.adaIpucuSifirla(player, data)
+	data.tutorial.adaIpucu = nil
+	player:SetAttribute(OgreticiAdimlar.AdaIpucu.nitelik, nil)
+	return "Ada ipucu sifirlandi (parasi yetince yeniden cikar)"
 end
 
 -- Etkinligi beklemeden tetikler (normalde saatte bir)

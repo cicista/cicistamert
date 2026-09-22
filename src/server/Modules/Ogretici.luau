@@ -371,6 +371,68 @@ end
 	BAGLANTI task.spawn ICINDE: Net.event remote'u beklerken bu modulun
 	yuklenmesi durmasin (yukaridaki tembel alma notuyla ayni sebep).
 ]]
+--[[
+	ADA IPUCU  (bkz. Shared > Ogretici > AdaIpucu)
+
+	Ogretici bittikten sonra tek yonlendirme: parasi ikinci adaya yetince
+	ipucu acilir, ada acilinca kapanir ve bir daha gosterilmez. Durum
+	oyuncu niteliginde tutuluyor; istemciler (isinlayici menusu ve ogretici
+	seridi) onu okuyor.
+]]
+local Config = require(Shared:WaitForChild("OyunConfig"))
+
+local IP = Adimlar.AdaIpucu
+
+local function ipucuFiyati(): number
+	local ada = Config.Islands[IP.ada]
+	return if ada then tonumber(ada.price) or math.huge else math.huge
+end
+
+local function ipucuKontrol(player: Player)
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	--[[
+		Ogretici bitmeden ipucu cikmaz: yeni oyuncunun ekraninda iki
+		yonlendirme birden durmasin.
+	]]
+	local uygun = data.tutorial.bitti
+		and not data.tutorial.adaIpucu
+		and data.islands < IP.ada
+		and data.rot >= ipucuFiyati()
+
+	if uygun then
+		if player:GetAttribute(IP.nitelik) ~= true then
+			player:SetAttribute(IP.nitelik, true)
+		end
+		return
+	end
+
+	-- Ada acildiysa ipucu biter ve bir daha gosterilmez
+	if data.islands >= IP.ada and not data.tutorial.adaIpucu then
+		data.tutorial.adaIpucu = true
+		if player:GetAttribute(IP.nitelik) == true then
+			-- Ipucu acikken ada alindi: varis mesaji
+			remote("Bildirim"):FireClient(player, IP.varis, IP.renk)
+		end
+	end
+
+	if player:GetAttribute(IP.nitelik) ~= nil then
+		player:SetAttribute(IP.nitelik, nil)
+	end
+end
+
+task.spawn(function()
+	while true do
+		task.wait(2)
+		for _, player in game:GetService("Players"):GetPlayers() do
+			pcall(ipucuKontrol, player)
+		end
+	end
+end)
+
 task.spawn(function()
 	remote("OgreticiIste").OnServerEvent:Connect(function(player)
 		Ogretici.gonder(player)

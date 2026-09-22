@@ -154,6 +154,29 @@ Ogretici.Anlaticilar = {
 	dans = { "dans", "dance" },
 } :: { [string]: { string } }
 
+--[[
+	ADA IPUCU  --  ogreticiden SONRAKI tek yonlendirme
+
+	Oyuncunun parasi ikinci adaya (Candy Island) yetince ekranda bir serit
+	belirir ve Teleporter isaretlenir; isinlayici menusunde o adanin satiri
+	KIRMIZI yanar. Oyuncu adayi acip oraya gidince "burada daha guclu
+	brainrotlar var" denir ve ipucu bir daha gorunmez.
+
+	Gereken para Config.Islands[ada].price'tan okunur; burada yazili degil.
+]]
+Ogretici.AdaIpucu = {
+	-- Kacinci ada (Config.Islands sirasi)
+	ada = 2,
+	-- Oyuncu niteligi: istemciler bu ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuAda",
+	yazi = "You can afford a new island!",
+	alt = "Open the Teleporter and pick the red island.",
+	resim = "tesvik",
+	-- Adaya varinca gosterilen bildirim
+	varis = "Stronger brainrots live here -- dig this sand for better rot!",
+	renk = Color3.fromRGB(255, 60, 60),
+}
+
 Ogretici.IlkKademe = "Common"
 
 --[[

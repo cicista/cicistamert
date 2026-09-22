@@ -179,7 +179,13 @@ export type Data = {
 		(bitti = true). Aylardir oynayan birine "kuma git" demek sacma
 		olurdu.
 	]]
-	tutorial: { adim: number, bitti: boolean },
+	--[[
+		OGRETICI  --  adim, bitti mi ve ogretici sonrasi ada ipucu
+
+		kazilan : "uc tane kaz" adiminda kazilan brainrotlarin uid'leri
+		adaIpucu: 2. ada ipucu gosterildi ve tamamlandi mi (bir kez)
+	]]
+	tutorial: { adim: number, bitti: boolean, kazilan: { string }?, adaIpucu: boolean? },
 }
 
 local PlayerData = {}
@@ -324,6 +330,8 @@ local function migrate(raw: any): Data
 		data.tutorial = {
 			adim = math.max(1, math.floor(tonumber(ogretici.adim) or 1)),
 			bitti = ogretici.bitti == true,
+			-- Ada ipucu bir kez gosterilir; kayitta duruyorsa korunur
+			adaIpucu = ogretici.adaIpucu == true,
 		}
 	else
 		data.tutorial = { adim = 1, bitti = true }
