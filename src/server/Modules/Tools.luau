@@ -969,7 +969,8 @@ function Tools.buildBrainrot(item: any): Tool
 	]]
 	local model = if revealed
 		then Assets.brainrotModel(item.name, item.mutation)
-		else Assets.hiddenBrainrotModel()
+		-- Kimligi kapali: kademesinin yumurtasi (bkz. Assets > YUMURTA PAKETI)
+		else Assets.hiddenBrainrotModel(item.rarity)
 	local handle: BasePart? = nil
 
 	if model then

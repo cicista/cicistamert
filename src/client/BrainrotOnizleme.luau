@@ -271,7 +271,8 @@ local function kur(k: Kaynak): ViewportFrame?
 	-- Iki fonksiyon da zaten Clone() donduruyor; bir daha klonlanmiyor
 	local model = if k.revealed and k.name
 		then Assets.brainrotModel(k.name, k.mutation)
-		else Assets.hiddenBrainrotModel()
+		-- Listedeki "?" resmi de elde tasinanla ayni yumurta
+		else Assets.hiddenBrainrotModel(k.rarity)
 
 	if not model then
 		return nil

@@ -3605,6 +3605,12 @@ do
 	-- dogrulanir. Panel yalnizca listeyi cizer ve id yollar.
 	------------------------------------------------------------------
 	local RC_SARI = Color3.fromRGB(255, 215, 40)
+	--[[
+		Lucky Block satirlarinda ikon yerine blogun kendi modeli gosteriliyor.
+		Require BLOK ICINDE: ust seviye 195 yerelle sinira yakin (bkz. dosya
+		basindaki not ve tools/check.luau).
+	]]
+	local Assets = require(Shared:WaitForChild("Assets"))
 
 	local rcPanel = UI.panel(screen, UDim2.fromOffset(520, 540), "RotCoinMagaza")
 
@@ -3666,6 +3672,152 @@ do
 		end
 	end
 
+	--[[
+		CANLI KART ZEMINI  --  kristal dokusu + kayan isik
+
+		Satir urunun renginde PARLAK bir levha: ustu acik, alti koyu; uzerine
+		capraz kristal yuzeyleri ve butun satiri sagdan sola tarayan genis
+		bir isik bandi biniyor. Ikisi de surekli hareket ettigi icin kart
+		canli duruyor.
+
+		Bandi DONDURMUYORUZ: dondurulmus nesneyi ClipsDescendants kirpmiyor
+		(bkz. UI.luau notlari), bant kartin disina tasardi. Egik gorunumu
+		UIGradient'in acisi veriyor.
+	]]
+	local function canliZemin(kart: Frame, renk: Color3)
+		kart.BackgroundColor3 = Color3.new(1, 1, 1)
+		kart.ClipsDescendants = true
+
+		-- Ustu acik, alti koyu: madeni levha hissi
+		local zemin = Instance.new("UIGradient")
+		zemin.Rotation = 90
+		zemin.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, UI.shade(renk, 0.24)),
+			ColorSequenceKeypoint.new(0.45, renk),
+			ColorSequenceKeypoint.new(1, UI.shade(renk, -0.3)),
+		})
+		zemin.Parent = kart
+
+		-- Kristal yuzeyleri: iki capraz serit katmani, agir agir kayiyor
+		for i, aci in { 26, -26 } do
+			local doku = UI.stripeLayer(kart, Color3.new(1, 1, 1), aci, 4, if i == 1 then 0.88 else 0.92)
+			doku.ZIndex = 2
+			UI.corner(doku, 12)
+
+			local gecis = doku:FindFirstChildOfClass("UIGradient")
+			if gecis then
+				gecis.Offset = Vector2.new(if i == 1 then -0.5 else 0.5, 0)
+				TweenService:Create(
+					gecis,
+					TweenInfo.new(if i == 1 then 9 else 12, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true),
+					{ Offset = Vector2.new(if i == 1 then 0.5 else -0.5, 0) }
+				):Play()
+			end
+		end
+
+		-- Satiri tarayan genis isik bandi
+		local isik = Instance.new("Frame")
+		isik.Name = "Tarama"
+		isik.Size = UDim2.fromScale(1, 1)
+		isik.BackgroundColor3 = Color3.new(1, 1, 1)
+		isik.BorderSizePixel = 0
+		isik.ZIndex = 3
+		isik.Parent = kart
+		UI.corner(isik, 12)
+
+		local bant = Instance.new("UIGradient")
+		bant.Rotation = 18
+		bant.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.42, 1),
+			NumberSequenceKeypoint.new(0.5, 0.72),
+			NumberSequenceKeypoint.new(0.58, 1),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		bant.Offset = Vector2.new(-1.3, 0)
+		bant.Parent = isik
+		TweenService:Create(
+			bant,
+			TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 1.6),
+			{ Offset = Vector2.new(1.3, 0) }
+		):Play()
+	end
+
+	--[[
+		KART RESIMLERI  (Assets > Icons)
+
+		Satir zeminleri ve buton resmi Studio'ya elle konuyor; kod once
+		onlari arar, bulamazsa yukaridaki canliZemin cizimine duser.
+
+		  rc_bg_normal / rc_bg_golden / rc_bg_diamond   Lucky Block zeminleri
+		  rc_bg_<urun id>                               tek bir urune ozel zemin
+		  rc_bg                                         kalan urunlerin zemini
+		  rc_button / rc_button_pasif                   fiyat dugmesi (alinabilir / alinamaz)
+
+		Ad kuralsiz: buyuk/kucuk harf, bosluk ve alt cizge farki onemsiz.
+	]]
+	local function kartResmi(urun: any): string?
+		local adaylar: { string } = {}
+		if urun.kind == "luckyblock" and urun.tier then
+			table.insert(adaylar, `rc_bg_{string.lower(urun.tier)}`)
+		end
+		table.insert(adaylar, `rc_bg_{string.lower(urun.id)}`)
+		table.insert(adaylar, "rc_bg")
+
+		for _, ad in adaylar do
+			local resim = Icons.assetTam(ad) or Icons.asset(ad)
+			if resim then
+				return resim
+			end
+		end
+		return nil
+	end
+
+	--[[
+		Resimli zemin: resmi satira yayar ve uzerinden yavas bir isik bandi
+		gecirir -- kart hareketsiz durmasin.
+	]]
+	local function resimliZemin(kart: Frame, resim: string)
+		kart.BackgroundTransparency = 1
+		kart.ClipsDescendants = true
+
+		local zemin = Instance.new("ImageLabel")
+		zemin.Name = "Zemin"
+		zemin.Size = UDim2.fromScale(1, 1)
+		zemin.BackgroundTransparency = 1
+		zemin.Image = resim
+		zemin.ScaleType = Enum.ScaleType.Stretch
+		zemin.ZIndex = 1
+		zemin.Parent = kart
+		UI.corner(zemin, 12)
+
+		local isik = Instance.new("Frame")
+		isik.Name = "Tarama"
+		isik.Size = UDim2.fromScale(1, 1)
+		isik.BackgroundColor3 = Color3.new(1, 1, 1)
+		isik.BorderSizePixel = 0
+		isik.ZIndex = 2
+		isik.Parent = kart
+		UI.corner(isik, 12)
+
+		local bant = Instance.new("UIGradient")
+		bant.Rotation = 18
+		bant.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.44, 1),
+			NumberSequenceKeypoint.new(0.5, 0.82),
+			NumberSequenceKeypoint.new(0.56, 1),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		bant.Offset = Vector2.new(-1.3, 0)
+		bant.Parent = isik
+		TweenService:Create(
+			bant,
+			TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 2),
+			{ Offset = Vector2.new(1.3, 0) }
+		):Play()
+	end
+
 	local function rcCiz()
 		rcBakiyeYazi.Text = `You have {Format.short(rcBakiye)} Rot Coin`
 		iksirYazilariniGuncelle()
@@ -3677,25 +3829,36 @@ do
 
 			local satir = Instance.new("Frame")
 			satir.Name = urun.id
-			satir.Size = UDim2.new(1, -6, 0, 78)
-			satir.BackgroundColor3 = UI.Colors.panelLight
+			satir.Size = UDim2.new(1, -6, 0, 84)
 			satir.BorderSizePixel = 0
 			satir.LayoutOrder = sira
 			satir.Parent = rcListe
 			UI.corner(satir, 12)
-			-- Urunun renginde kart: soldan renkli, saga dogru koyu
-			UI.renkliKart(satir, urun.color)
+			--[[
+				Zemin: Assets > Icons icinde resim varsa O, yoksa renkli
+				canli levha cizimi (bkz. kartResmi / canliZemin).
+			]]
+			local kartZemini = kartResmi(urun)
+			if kartZemini then
+				resimliZemin(satir, kartZemini)
+			else
+				canliZemin(satir, urun.color)
+			end
+			UI.stroke(satir, Color3.fromRGB(0, 0, 0), 3)
 
 			local ikon = Instance.new("ImageLabel")
 			ikon.Name = "Ikon"
-			ikon.Position = UDim2.fromOffset(9, 9)
-			ikon.Size = UDim2.fromOffset(60, 60)
+			ikon.Position = UDim2.fromOffset(10, 10)
+			ikon.Size = UDim2.fromOffset(64, 64)
+			ikon.ZIndex = 5
 			-- Ikon koyu yuvarlak bir rozetin icinde: renkli zeminde kaybolmasin
 			ikon.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 			ikon.BackgroundTransparency = 0.55
 			ikon.ScaleType = Enum.ScaleType.Fit
 			ikon.Parent = satir
-			UI.corner(ikon, 30)
+			UI.corner(ikon, 32)
+			-- Koyu madalyonun kenari: zeminde kaybolmasin
+			UI.stroke(ikon, Color3.fromRGB(0, 0, 0), 2)
 			-- Store'la ayni ritimde sallanir; donmez, urunun yuzu ekranda kalir
 			UI.sallan(ikon)
 			--[[
@@ -3706,6 +3869,34 @@ do
 				Model bulunamazsa Output'a yazilir ve ikona dusulur.
 			]]
 			local modelKondu = false
+
+			--[[
+				LUCKY BLOCK'TA DA IKON YERINE MODEL
+
+				Paketteki "?" kutusu yerine blogun KENDI modeli gosteriliyor
+				(Assets > LuckyBlocks); oyuncu satin alacagi blogu birebir
+				goruyor. Model bulunamazsa eski ikona dusulur.
+			]]
+			if urun.kind == "luckyblock" and urun.tier then
+				local tur = LuckyBlock.get(urun.tier)
+				local model = if tur
+					then Assets.luckyBlockModel(tur.modelName, tur.order, (tur :: any).eslesme)
+					else nil
+				if model then
+					local kare = UI.modelKaresi(ikon, model, 54, 3)
+					if kare then
+						kare.AnchorPoint = Vector2.new(0.5, 0.5)
+						kare.Position = UDim2.fromScale(0.5, 0.5)
+						modelKondu = true
+					end
+				else
+					warn(
+						`[RotCoinMagaza] Lucky Block modeli bulunamadi: ReplicatedStorage > `
+							.. `Assets > LuckyBlocks ({urun.tier})`
+					)
+				end
+			end
+
 			if urun.kind == "scroll" and urun.scroll then
 				local model = Scrolls.model(urun.scroll)
 				if model then
@@ -3726,9 +3917,10 @@ do
 
 			if not modelKondu then
 				Icons.bind(ikon, urun.icon)
-			end
-			if urun.tint then
-				ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
+				-- Renk tonu yalnizca IKONA; model kendi rengiyle kalir
+				if urun.tint then
+					ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
+				end
 			end
 
 			UI.text({
@@ -3736,30 +3928,99 @@ do
 				size = UI.Sizes.body,
 				font = UI.Fonts.bold,
 				color = Color3.new(1, 1, 1),
-				frameSize = UDim2.new(1, -226, 0, 24),
-				position = UDim2.fromOffset(80, 12),
+				frameSize = UDim2.new(1, -240, 0, 26),
+				position = UDim2.fromOffset(86, 14),
 				parent = satir,
+				zIndex = 5,
 			})
 
 			UI.text({
 				text = urun.desc,
 				size = UI.Sizes.tiny,
-				color = Color3.fromRGB(225, 230, 240),
-				frameSize = UDim2.new(1, -226, 0, 30),
-				position = UDim2.fromOffset(80, 38),
+				color = Color3.fromRGB(240, 244, 252),
+				frameSize = UDim2.new(1, -240, 0, 30),
+				position = UDim2.fromOffset(86, 42),
 				parent = satir,
 				wrapped = true,
+				zIndex = 5,
 			})
 
-			-- Para yetiyorsa yesil, yetmiyorsa gri 3B dugme
-			local buton = UI.dugme3B(
-				satir,
-				`{urun.price} Rot Coin`,
-				UDim2.fromOffset(134, 54),
-				if yeter then Color3.fromRGB(70, 205, 85) else UI.KapaliRenk
-			)
+			--[[
+				FIYAT DUGMESI
+
+				Para yetiyorsa yesil, yetmiyorsa gri. Yazinin sagindaki
+				kucuk madeni para (Icons "rotCoin") fiyatin neyle odendigini
+				bir bakista soyluyor.
+			]]
+			--[[
+				Dugme resmi varsa (rc_button / rc_button_pasif) o kullanilir;
+				yoksa oyunun 3B cizim dugmesi.
+			]]
+			local butonResmi = if yeter
+				then (Icons.assetTam("rc_button") or Icons.asset("rc_button"))
+				else (Icons.assetTam("rc_button_pasif") or Icons.asset("rc_button_pasif"))
+
+			local buton: GuiButton
+			local butonYuz: GuiObject
+			local butonYazi: TextLabel?
+
+			if butonResmi then
+				local resimli = Instance.new("ImageButton")
+				resimli.Name = "SatinAl"
+				resimli.BackgroundTransparency = 1
+				resimli.Image = butonResmi
+				resimli.ScaleType = Enum.ScaleType.Stretch
+				resimli.AutoButtonColor = false
+				resimli.Size = UDim2.fromOffset(150, 56)
+				resimli.Parent = satir
+				UI.hover(resimli, nil, resimli)
+
+				butonYazi = UI.text({
+					text = tostring(urun.price),
+					size = UI.Sizes.label,
+					font = UI.Fonts.bold,
+					align = Enum.TextXAlignment.Center,
+					frameSize = UDim2.fromScale(1, 1),
+					parent = resimli,
+					zIndex = 6,
+				})
+
+				buton = resimli
+				butonYuz = resimli
+			else
+				local dugme, yuz, yazi = UI.dugme3B(
+					satir,
+					tostring(urun.price),
+					UDim2.fromOffset(150, 56),
+					if yeter then Color3.fromRGB(70, 205, 85) else UI.KapaliRenk
+				)
+				buton = dugme
+				butonYuz = yuz
+				butonYazi = yazi
+			end
+
 			buton.AnchorPoint = Vector2.new(1, 0.5)
 			buton.Position = UDim2.new(1, -12, 0.5, 0)
+			buton.ZIndex = 5
+
+			if butonYazi then
+				-- Yazi solda, para ikonuna yer birakir
+				butonYazi.Size = UDim2.new(1, -34, 1, 0)
+				butonYazi.Position = UDim2.fromOffset(2, 0)
+			end
+
+			do
+				local para = Instance.new("ImageLabel")
+				para.Name = "Coin"
+				para.AnchorPoint = Vector2.new(1, 0.5)
+				para.Position = UDim2.new(1, -8, 0.5, 0)
+				para.Size = UDim2.fromOffset(26, 26)
+				para.BackgroundTransparency = 1
+				para.ScaleType = Enum.ScaleType.Fit
+				para.ZIndex = 6
+				para.Parent = butonYuz
+				Icons.bind(para, "rotCoin")
+			end
 			buton.MouseButton1Click:Connect(function()
 				RotCoinMagazaAl:FireServer(urun.id)
 			end)

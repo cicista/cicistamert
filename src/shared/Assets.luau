@@ -1032,6 +1032,29 @@ Assets.HiddenBrainrot = {
 	tint = 0.6,
 
 	--[[
+		YUMURTA PAKETI  --  her kademenin KENDI yumurtasi
+
+		Kazidan cikan "?" esya artik tek bir model degil: kademesine gore
+		ayri bir yumurta. Modeller ReplicatedStorage > Assets icindeki
+		"EggPack" (adinda "egg" gecen herhangi bir klasor/model) icinde
+		durur; ADA GORE siralanip kademe sirasina dagitilir:
+
+		    1. yumurta -> Common, 2. -> Rare, 3. -> Epic ...
+
+		Paket kademe sayisindan azsa son yumurta kalan kademelerde de
+		kullanilir. Sira yanlissa asagidaki kademeAdlari tablosuna o
+		kademenin model adini yaz; ad her zaman siradan once gelir.
+
+		Sunucu acilirken hangi yumurtanin hangi kademeye dustugu Output'a
+		yazilir: [Assets] Yumurta eslesmesi: Common=... Rare=...
+	]]
+	paketAdi = "EggPack",
+	kademeAdlari = {
+		-- Common = "Yumurta1",
+		-- Rare = "Yumurta2",
+	} :: { [string]: string },
+
+	--[[
 		ELDEKI BOYUT KADEMEYE GORE
 
 		Carpan Assets.BrainrotSize.toolSize (4.5 stud) ile carpilir ve
@@ -1105,6 +1128,11 @@ Assets.HiddenBrainrot = {
 function Assets.tintHidden(root: Instance, rarityId: string?)
 	local cfg = Assets.HiddenBrainrot
 	if not cfg.keepAll or type(rarityId) ~= "string" then
+		return
+	end
+
+	-- Kademenin kendi modeli (yumurta) zaten dogru renkte: boyanmaz
+	if root:GetAttribute("KademeModeli") == true then
 		return
 	end
 	local info = Rarity.Info[rarityId :: any]
@@ -1258,8 +1286,129 @@ local hiddenCache: Model? = nil
 	Bulunamazsa nil doner; cagiran taraf duz kutu gorunumune duser
 	(bkz. Modules > Tools > buildBrainrot).
 ]]
-function Assets.hiddenBrainrotModel(): Model?
+--[[
+	YUMURTA PAKETINI BUL
+
+	Assets altinda (yoksa her yerde) adinda "egg" ya da "yumurta" gecen
+	klasor/modelin icindeki MODELLER, ada gore sirali. Bir kez bulunup
+	saklanir.
+]]
+local yumurtaListesi: { Model }? = nil
+
+local function yumurtalar(): { Model }
+	if yumurtaListesi then
+		return yumurtaListesi
+	end
+
+	local liste: { Model } = {}
 	local cfg = Assets.HiddenBrainrot
+
+	local function paketMi(node: Instance): boolean
+		local ad = string.lower((string.gsub(node.Name, "[%s_%-]", "")))
+		return ad == string.lower(cfg.paketAdi)
+			or string.find(ad, "egg", 1, true) ~= nil
+			or string.find(ad, "yumurta", 1, true) ~= nil
+	end
+
+	local koklar: { Instance } = {}
+	local assetKok = ReplicatedStorage:FindFirstChild(Assets.FolderName)
+	if assetKok then
+		table.insert(koklar, assetKok)
+	end
+	for _, kok in Assets.searchRoots() do
+		table.insert(koklar, kok)
+	end
+
+	for _, kok in koklar do
+		for _, node in kok:GetDescendants() do
+			if (node:IsA("Folder") or node:IsA("Model")) and paketMi(node) then
+				for _, cocuk in node:GetChildren() do
+					if cocuk:IsA("Model") then
+						table.insert(liste, cocuk)
+					end
+				end
+			end
+		end
+		if #liste > 0 then
+			break
+		end
+	end
+
+	table.sort(liste, function(a, b)
+		return a.Name < b.Name
+	end)
+
+	yumurtaListesi = liste
+	return liste
+end
+
+--[[
+	Bir kademenin yumurtasi. Once kademeAdlari'ndaki ad, sonra sira
+	(Rarity.order); paket kisaysa son yumurta kullanilir.
+]]
+local yumurtaRaporu = false
+
+local function yumurtaModeli(rarityId: string?): Model?
+	local liste = yumurtalar()
+	if #liste == 0 then
+		return nil
+	end
+
+	if not yumurtaRaporu then
+		yumurtaRaporu = true
+		local satirlar = {}
+		for _, kademe in Rarity.Order do
+			local info = Rarity.Info[kademe]
+			local sira = if info then math.clamp(info.order, 1, #liste) else 1
+			local ad = Assets.HiddenBrainrot.kademeAdlari[kademe]
+			table.insert(satirlar, `{kademe}={ad or liste[sira].Name}`)
+		end
+		print(`[Assets] Yumurta eslesmesi ({#liste} model): {table.concat(satirlar, "  ")}`)
+	end
+
+	local ad = if rarityId then Assets.HiddenBrainrot.kademeAdlari[rarityId] else nil
+	if ad then
+		for _, model in liste do
+			if model.Name == ad then
+				return model
+			end
+		end
+	end
+
+	local info = if rarityId then Rarity.Info[rarityId :: any] else nil
+	local sira = if info then math.clamp(info.order, 1, #liste) else 1
+	return liste[sira]
+end
+
+--[[
+	Kimligi belirlenmemis esyanin modeli.
+
+	Once kademesine ait YUMURTA (bkz. yumurtaModeli); paket yoksa eski tek
+	model (Gold Ore) kullanilir ve o kademe rengine boyanir.
+]]
+function Assets.hiddenBrainrotModel(rarityId: string?): Model?
+	local cfg = Assets.HiddenBrainrot
+
+	--[[
+		YUMURTA: her kademenin kendi modeli oldugu icin BOYANMAZ.
+		Isaret niteligi (KademeModeli) tintHidden'a "bu modele dokunma" der.
+	]]
+	local yumurta = yumurtaModeli(rarityId)
+	if yumurta then
+		local kopya = asModel(yumurta:Clone())
+		if kopya then
+			kopya:SetAttribute("KademeModeli", true)
+			for _, node in kopya:GetDescendants() do
+				if node:IsA("BasePart") then
+					node:SetAttribute(cfg.keepAttribute, true)
+				end
+			end
+			if yumurta:IsDescendantOf(Workspace) then
+				silence(yumurta)
+			end
+			return golgeyiKapat(kopya)
+		end
+	end
 
 	if hiddenCache then
 		return golgeyiKapat(hiddenCache:Clone())
