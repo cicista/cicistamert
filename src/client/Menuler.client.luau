@@ -3762,7 +3762,13 @@ do
 			table.insert(adaylar, `rc_bg_{string.lower(urun.tier)}`)
 		end
 		table.insert(adaylar, `rc_bg_{string.lower(urun.id)}`)
-		table.insert(adaylar, "rc_bg")
+		--[[
+			GENEL "rc_bg" BILEREK EN SONDA VE TUR BASINA:
+			iksir/parsomen satirlari Lucky Block zeminine (turkuaz kristal)
+			dusunce magaza tek tip ve yanlis gorunuyordu. Once turune ozel
+			resim aranir; hicbiri yoksa satir KENDI renginde cizilir.
+		]]
+		table.insert(adaylar, `rc_bg_{string.lower(urun.kind)}`)
 
 		for _, ad in adaylar do
 			local resim = Icons.assetTam(ad) or Icons.asset(ad)
@@ -3931,7 +3937,35 @@ do
 			end
 
 			if not modelKondu then
-				Icons.bind(ikon, urun.icon)
+				--[[
+					IKON YOKSA BOS DAIRE KALMASIN
+
+					Paketteki sans iksiri ikonlari (luck2 / luck3) bazi
+					paketlerde yok; madalyon bombos duruyordu. Ikon gelene
+					kadar yerinde urunun kisa etiketi durur: iksirde carpan
+					("x1.5"), digerlerinde adin ilk harfi.
+				]]
+				local kisa = if urun.kind == "potion" and urun.multiplier
+					then RotCoinMagaza.carpanYazisi(urun.multiplier)
+					else string.upper(string.sub(urun.name, 1, 1))
+
+				local yedek = UI.text({
+					text = kisa,
+					size = UI.Sizes.label,
+					font = UI.Fonts.bold,
+					color = Color3.new(1, 1, 1),
+					align = Enum.TextXAlignment.Center,
+					frameSize = UDim2.fromScale(1, 1),
+					parent = ikon,
+					zIndex = 6,
+				})
+
+				Icons.bind(ikon, urun.icon, function(ok)
+					if ok then
+						yedek.Visible = false
+					end
+				end)
+
 				-- Renk tonu yalnizca IKONA; model kendi rengiyle kalir
 				if urun.tint then
 					ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
