@@ -3774,22 +3774,37 @@ do
 	end
 
 	--[[
-		Resimli zemin: resmi satira yayar ve uzerinden yavas bir isik bandi
-		gecirir -- kart hareketsiz durmasin.
+		RESIMLI ZEMIN  --  akan doku + tarayan isik
+
+		Resim satirdan GENIS kuruluyor ve icinde saga sola suzuluyor; satir
+		kirptigi icin disari tasmiyor. Boylece kristal yuzey donuk bir
+		fotograf gibi durmuyor, akiyor. Ustunden ayrica genis bir isik bandi
+		geciyor.
+
+		faz: her satir farkli anda baslasin diye gecikme (sira numarasi).
 	]]
-	local function resimliZemin(kart: Frame, resim: string)
+	local function resimliZemin(kart: Frame, resim: string, faz: number)
 		kart.BackgroundTransparency = 1
 		kart.ClipsDescendants = true
 
 		local zemin = Instance.new("ImageLabel")
 		zemin.Name = "Zemin"
-		zemin.Size = UDim2.fromScale(1, 1)
+		zemin.AnchorPoint = Vector2.new(0.5, 0.5)
+		zemin.Position = UDim2.fromScale(0.44, 0.5)
+		-- Satirdan genis: kayarken kenarda bosluk acilmasin
+		zemin.Size = UDim2.fromScale(1.3, 1.16)
 		zemin.BackgroundTransparency = 1
 		zemin.Image = resim
 		zemin.ScaleType = Enum.ScaleType.Stretch
 		zemin.ZIndex = 1
 		zemin.Parent = kart
-		UI.corner(zemin, 12)
+
+		-- Doku ileri geri akar (her satir kendi gecikmesiyle)
+		TweenService:Create(
+			zemin,
+			TweenInfo.new(5.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, faz * 0.5),
+			{ Position = UDim2.fromScale(0.56, 0.5) }
+		):Play()
 
 		local isik = Instance.new("Frame")
 		isik.Name = "Tarama"
@@ -3813,7 +3828,7 @@ do
 		bant.Parent = isik
 		TweenService:Create(
 			bant,
-			TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 2),
+			TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 2 + faz * 0.35),
 			{ Offset = Vector2.new(1.3, 0) }
 		):Play()
 	end
@@ -3840,7 +3855,7 @@ do
 			]]
 			local kartZemini = kartResmi(urun)
 			if kartZemini then
-				resimliZemin(satir, kartZemini)
+				resimliZemin(satir, kartZemini, sira)
 			else
 				canliZemin(satir, urun.color)
 			end
