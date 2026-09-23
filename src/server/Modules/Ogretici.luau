@@ -380,8 +380,12 @@ end
 	seridi) onu okuyor.
 ]]
 local Config = require(Shared:WaitForChild("OyunConfig"))
+local Shovels = require(Shared:WaitForChild("Shovels"))
 
 local IP = Adimlar.AdaIpucu
+-- Ilk kurek ipucu (asagida); IP'yi okuyan fonksiyonlar da bunu gordugu
+-- icin ikisi de burada tanimli
+local KI = Adimlar.KurekIpucu
 
 local function ipucuFiyati(): number
 	local ada = Config.Islands[IP.ada]
@@ -398,10 +402,17 @@ local function ipucuKontrol(player: Player)
 		Ogretici bitmeden ipucu cikmaz: yeni oyuncunun ekraninda iki
 		yonlendirme birden durmasin.
 	]]
+	--[[
+		SERIT TEK YONERGELIK: kurek ipucu aciksa ada ipucu bekler. Kurek
+		oyunun sirasinda once geliyor (750K, ada 650M), yani normalde ikisi
+		hic carsismaz -- ama kurek hic alinmadan adaya para yetisirse
+		oyuncuyu once kurege yonlendiriyoruz.
+	]]
 	local uygun = data.tutorial.bitti
 		and not data.tutorial.adaIpucu
 		and data.islands < IP.ada
 		and data.rot >= ipucuFiyati()
+		and player:GetAttribute(KI.nitelik) ~= true
 
 	if uygun then
 		if player:GetAttribute(IP.nitelik) ~= true then
@@ -431,14 +442,9 @@ end
 	kurek alininca kapanir ve bir daha gosterilmez. Fiyat Shovels'tan
 	okunuyor, burada yazili degil.
 
-	IKI IPUCU AYNI ANDA CIKMAZ: kurek ada ipucundan once geliyor (750K'ya
-	ikinci adadan once ulasiliyor), ama yine de ada ipucu aciksa kurek
-	ipucu bekletiliyor -- serit tek yonergelik.
+	IKI IPUCU AYNI ANDA CIKMAZ: serit tek yonergelik, o yuzden kurek ipucu
+	aciksa ada ipucu bekler (bkz. ipucuKontrol).
 ]]
-local Shovels = require(Shared:WaitForChild("Shovels"))
-
-local KI = Adimlar.KurekIpucu
-
 local function kurekAlindi(data: PlayerData.Data): boolean
 	local hedef = Shovels.Info[KI.kurek]
 	local sahip = Shovels.Info[data.shovelMax]
@@ -468,10 +474,7 @@ local function kurekIpucuKontrol(player: Player)
 		return
 	end
 
-	local uygun = data.tutorial.bitti
-		and not data.tutorial.kurekIpucu
-		and player:GetAttribute(IP.nitelik) ~= true
-		and data.rot >= fiyat
+	local uygun = data.tutorial.bitti and not data.tutorial.kurekIpucu and data.rot >= fiyat
 
 	if uygun then
 		if player:GetAttribute(KI.nitelik) ~= true then

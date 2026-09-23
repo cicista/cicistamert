@@ -55,7 +55,7 @@ local KODLAR: { [string]: { rotCoins: number } } = {
 	gun degisince sifirlaniyor.
 
 	Burada tutulan tek sey `son`: kayda en son ne zaman sure islendigi.
-	Aradaki fark, durum her sorulduğunda kayda ekleniyor.
+	Aradaki fark, durum her sorulunca kayda ekleniyor.
 ]]
 local oturum: { [Player]: { son: number } } = {}
 

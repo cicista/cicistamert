@@ -910,12 +910,6 @@ local RARITY_VFX: { [string]: string } = {
 	Abyssal = "AbyssalVFX",
 }
 
---[[
-	EFEKTLI EN DUSUK KADEME. Yumurtalarin efekt olcegi buradan baslayip her
-	kademede 1.5 katina cikiyor (bkz. Assets.kademeVfxOlcegi).
-]]
-local VFX_ILK_SIRA = Rarity.Info.Secret.order
-
 Assets.RarityVFXAttribute = "KademeEfekti"
 
 --[[
@@ -1139,9 +1133,10 @@ Assets.HiddenBrainrot = {
 		YUMURTA PAKETI  --  her kademenin KENDI yumurtasi
 
 		Kazidan cikan "?" esya artik tek bir model degil: kademesine gore
-		ayri bir yumurta. Modeller ReplicatedStorage > Assets icindeki
-		"EggPack" (adinda "egg" gecen herhangi bir klasor/model) icinde
-		durur; ADA GORE siralanip kademe sirasina dagitilir:
+		ayri bir yumurta. Modeller ReplicatedStorage > Assets > "Eggs"
+		klasorunde durur ("EggPack" ya da adinda "egg"/"yumurta" gecen
+		baska bir klasor de olur); ADA GORE siralanip kademe sirasina
+		dagitilir:
 
 		    1. yumurta -> Common, 2. -> Rare, 3. -> Epic ...
 
@@ -1170,6 +1165,9 @@ Assets.HiddenBrainrot = {
 
 		  Common 0.35 -> ~1.6 stud        Mythic ~1.77 -> ~8 stud
 		  Divine ~2.7 -> ~12 stud         Abyssal ~13.5 -> ~60 stud
+
+		Kademe efekti (Divine ve ustu) yumurtanin BOYUNDAN hesaplandigi icin
+		o da ayni oranda buyuyor; ust siniri Assets.YumurtaVFXMaxScale.
 
 		Ust kademeler GERCEKTEN devasa oluyor; kucultmek icin yumurtaOrani
 		dusurmek (orn. 1.3) ya da asagidaki tabloyu elle yazmak yeterli.
@@ -1241,21 +1239,6 @@ do
 			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
 		end
 	end
-end
-
---[[
-	KADEMENIN EFEKT OLCEGI
-
-	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
-	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
-	Efekti olmayan kademelerde 1 doner.
-]]
-function Assets.kademeVfxOlcegi(rarityId: string?): number
-	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
-	if not info then
-		return 1
-	end
-	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
 end
 
 --[[

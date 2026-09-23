@@ -928,7 +928,7 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 	]]
 	if tier and tier.id == "Hacker" then
 		-- Yogun ve hizli: 18 sutun, bastan asagi 1.8 saniyede iniyor
-		UI.corner(UI.sayiYagmuru(cerceve, Color3.fromRGB(90, 255, 140), 18, 1, 1.8, 0.32), 12)
+		UI.corner(UI.sayiYagmuru(cerceve, UI.HackerYesil, 18, 1, 1.8, 0.32), 12)
 	end
 
 	--[[
