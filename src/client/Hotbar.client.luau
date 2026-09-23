@@ -97,13 +97,48 @@ ekran.IgnoreGuiInset = true
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ekran.Parent = playerGui
 
+--[[
+	KOK CERCEVE  --  cubuk + cekmece dugmesi birlikte
+
+	Ikisi ayni kapta duruyor ki DAR EKRANDA birlikte kuculsunler: on yuva
+	yan yana 670 piksel tutuyor, telefonda ekrana sigmiyor. Asagidaki
+	UIScale kabin tamamini kucultuyor, yani yuvalar da dugme de ayni oranda
+	kuculuyor ve aralari bozulmuyor.
+]]
+local CUBUK_EN = SLOT_SAYISI * (SLOT_BOY + SLOT_ARA) - SLOT_ARA
+local CEKMECE_EN = 34
+local KOK_EN = CUBUK_EN + SLOT_ARA + CEKMECE_EN
+
+local kok = Instance.new("Frame")
+kok.Name = "HotbarKok"
+kok.AnchorPoint = Vector2.new(0.5, 1)
+kok.Position = UDim2.new(0.5, 0, 1, -ALT_PAY)
+kok.Size = UDim2.fromOffset(KOK_EN, SLOT_BOY)
+kok.BackgroundTransparency = 1
+kok.Parent = ekran
+
+local kokOlcek = Instance.new("UIScale")
+kokOlcek.Parent = kok
+
+local function olcegiTazele()
+	local en = ekran.AbsoluteSize.X
+	if en <= 0 then
+		return
+	end
+	-- Iki yanda 16'sar piksel pay kalsin
+	kokOlcek.Scale = math.clamp((en - 32) / KOK_EN, 0.5, 1)
+end
+
+olcegiTazele()
+ekran:GetPropertyChangedSignal("AbsoluteSize"):Connect(olcegiTazele)
+
 local cubuk = Instance.new("Frame")
 cubuk.Name = "Cubuk"
-cubuk.AnchorPoint = Vector2.new(0.5, 1)
-cubuk.Position = UDim2.new(0.5, 0, 1, -ALT_PAY)
-cubuk.Size = UDim2.fromOffset(SLOT_SAYISI * (SLOT_BOY + SLOT_ARA) - SLOT_ARA, SLOT_BOY)
+cubuk.AnchorPoint = Vector2.new(0, 1)
+cubuk.Position = UDim2.new(0, 0, 1, 0)
+cubuk.Size = UDim2.fromOffset(CUBUK_EN, SLOT_BOY)
 cubuk.BackgroundTransparency = 1
-cubuk.Parent = ekran
+cubuk.Parent = kok
 
 local dizilim = Instance.new("UIListLayout")
 dizilim.FillDirection = Enum.FillDirection.Horizontal
@@ -389,9 +424,9 @@ end
 ------------------------------------------------------------------
 local cekmeceDugme = Instance.new("TextButton")
 cekmeceDugme.Name = "Cekmece"
-cekmeceDugme.AnchorPoint = Vector2.new(0, 1)
-cekmeceDugme.Position = UDim2.new(0.5, cubuk.Size.X.Offset / 2 + SLOT_ARA, 1, -ALT_PAY)
-cekmeceDugme.Size = UDim2.fromOffset(34, SLOT_BOY)
+cekmeceDugme.AnchorPoint = Vector2.new(1, 1)
+cekmeceDugme.Position = UDim2.new(1, 0, 1, 0)
+cekmeceDugme.Size = UDim2.fromOffset(CEKMECE_EN, SLOT_BOY)
 cekmeceDugme.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
 cekmeceDugme.BackgroundTransparency = 0.25
 cekmeceDugme.BorderSizePixel = 0
@@ -401,7 +436,7 @@ cekmeceDugme.TextColor3 = Color3.fromRGB(230, 234, 242)
 cekmeceDugme.TextSize = 22
 cekmeceDugme.FontFace = UI.Fonts.bold
 cekmeceDugme.Visible = false
-cekmeceDugme.Parent = ekran
+cekmeceDugme.Parent = kok
 UI.corner(cekmeceDugme, 10)
 UI.stroke(cekmeceDugme, Color3.fromRGB(0, 0, 0), 2)
 UI.hover(cekmeceDugme)
@@ -410,7 +445,8 @@ local cekmece = Instance.new("Frame")
 cekmece.Name = "CekmecePaneli"
 cekmece.AnchorPoint = Vector2.new(0.5, 1)
 cekmece.Position = UDim2.new(0.5, 0, 1, -(ALT_PAY + SLOT_BOY + 10))
-cekmece.Size = UDim2.fromOffset(SLOT_SAYISI * (SLOT_BOY + SLOT_ARA) - SLOT_ARA, 150)
+-- Dar ekranda daralir, genis ekranda cubukla ayni eni gecmez
+cekmece.Size = UDim2.new(1, -32, 0, 150)
 cekmece.BackgroundColor3 = Color3.fromRGB(20, 22, 27)
 cekmece.BackgroundTransparency = 0.12
 cekmece.BorderSizePixel = 0
@@ -418,6 +454,10 @@ cekmece.Visible = false
 cekmece.Parent = ekran
 UI.corner(cekmece, 12)
 UI.stroke(cekmece, Color3.fromRGB(0, 0, 0), 2)
+
+local cekmeceSinir = Instance.new("UISizeConstraint")
+cekmeceSinir.MaxSize = Vector2.new(CUBUK_EN, 150)
+cekmeceSinir.Parent = cekmece
 
 local cekmeceListe = Instance.new("ScrollingFrame")
 cekmeceListe.Name = "Liste"

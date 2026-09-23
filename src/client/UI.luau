@@ -482,14 +482,22 @@ UI.DokuBoyu = 128
 UI.DokuSaydamlik = 0.88
 
 local dokuKimligi: string? = nil
-local dokuArandi = false
 
-local function dokuBul(): string?
-	if dokuArandi then
-		return dokuKimligi
-	end
-	dokuArandi = true
+--[[
+	DOKU GEC GELEBILIR
 
+	Paneller istemci acilir acilmaz kuruluyor; MaterialService'in icerigi o
+	an daha replike olmamis olabilir. Bir kez arayip pes etseydik oyunun
+	tamaminda zemin duz kalirdi.
+
+	Bu yuzden katman HER ZAMAN kuruluyor (resmi bos olarak) ve doku bulunana
+	kadar bekleyenler listesinde tutuluyor; bulununca hepsine birden
+	yaziliyor. Arama birkac saniye surer, sonra bir kez uyarip susar.
+]]
+local bekleyenDokular: { ImageLabel } = {}
+local dokuAramasiBasladi = false
+
+local function dokuyuAra(): string?
 	local service = game:FindService("MaterialService")
 	if not service then
 		return nil
@@ -499,39 +507,63 @@ local function dokuBul(): string?
 		if node:IsA("MaterialVariant") then
 			for _, ad in DOKU_ADLARI do
 				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
-					dokuKimligi = node.ColorMap
-					return dokuKimligi
+					return node.ColorMap
 				end
 			end
 		end
 	end
 
-	warn(
-		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
-			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
-	)
 	return nil
 end
 
+local function dokuyuDagit()
+	for _, katman in bekleyenDokular do
+		if katman.Parent then
+			katman.Image = dokuKimligi or ""
+		end
+	end
+	table.clear(bekleyenDokular)
+end
+
+local function dokuAramasiniBaslat()
+	if dokuAramasiBasladi then
+		return
+	end
+	dokuAramasiBasladi = true
+
+	task.spawn(function()
+		-- ~10 saniye: replikasyon icin fazlasiyla yeterli
+		for _ = 1, 20 do
+			dokuKimligi = dokuyuAra()
+			if dokuKimligi then
+				dokuyuDagit()
+				return
+			end
+			task.wait(0.5)
+		end
+
+		warn(
+			`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+				.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+		)
+		dokuyuDagit()
+	end)
+end
+
 --[[
-	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
-	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
-	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur.
+	Katman en altta durur: `zIndex` cercevenin kendi ZIndex'iyle ayni, once
+	eklendigi icin kardeslerinin ARKASINDA kalir.
 
 	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
 	yuvarlak panelin kosesinden tasar.
 ]]
-function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
-	local kimlik = dokuBul()
-	if not kimlik then
-		return nil
-	end
-
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel
 	local katman = Instance.new("ImageLabel")
 	katman.Name = "Doku"
 	katman.Size = UDim2.fromScale(1, 1)
 	katman.BackgroundTransparency = 1
-	katman.Image = kimlik
+	katman.Image = dokuKimligi or ""
 	katman.ImageTransparency = UI.DokuSaydamlik
 	katman.ScaleType = Enum.ScaleType.Tile
 	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
@@ -542,6 +574,12 @@ function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
 
 	if kose then
 		UI.corner(katman, kose)
+	end
+
+	-- Doku henuz gelmediyse siraya gir; gelince resmi yazilir
+	if not dokuKimligi then
+		table.insert(bekleyenDokular, katman)
+		dokuAramasiniBaslat()
 	end
 
 	return katman
