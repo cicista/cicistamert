@@ -90,7 +90,14 @@ local function ver(player: Player, day: number)
 		local info = Passler.get(odul.pass)
 		local ad = if info then info.ad else odul.pass
 		if SureliGecis.ver(player, odul.pass, odul.passSeconds) then
-			passYazisi = ` + {ad} ({SosyalOdul.sure(odul.passSeconds)})`
+			--[[
+				kind == "pass" gunlerinde (3. gun) gecis ZATEN ana odul;
+				Rewards.label onu yaziyor. Ikinci kez eklersek bildirim
+				"Detective Pass (1 Day) + Detective Pass (24:00:00)" olur.
+			]]
+			if odul.kind ~= "pass" then
+				passYazisi = ` + {ad} ({SosyalOdul.sure(odul.passSeconds)})`
+			end
 		end
 	end
 

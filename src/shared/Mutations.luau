@@ -52,7 +52,7 @@ Mutations.Order = { "Normal", "Gold", "Lava", "Diamond", "Galaxy", "Rainbow", "H
 	Oyuncunun bu mutasyonlarla buldugu brainrotlar ayrica kaydedilir
 	(PlayerData.discoveredMut). Listeye ekleme yapmak yeterli.
 ]]
-Mutations.IndexOrder = { "Gold", "Diamond", "Galaxy" } :: { MutationId }
+Mutations.IndexOrder = { "Gold", "Diamond", "Galaxy", "Hacker" } :: { MutationId }
 
 Mutations.Info = {
 	Normal = {

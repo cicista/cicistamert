@@ -209,7 +209,10 @@ end
 function commands.adaIpucuSifirla(player, data)
 	data.tutorial.adaIpucu = nil
 	player:SetAttribute(OgreticiAdimlar.AdaIpucu.nitelik, nil)
-	return "Ada ipucu sifirlandi (parasi yetince yeniden cikar)"
+	-- Ilk kurek ipucu de ayni dugmeyle sifirlaniyor: ikisi de "ogretici sonrasi"
+	data.tutorial.kurekIpucu = nil
+	player:SetAttribute(OgreticiAdimlar.KurekIpucu.nitelik, nil)
+	return "Ada ve kurek ipuclari sifirlandi (parasi yetince yeniden cikar)"
 end
 
 -- Etkinligi beklemeden tetikler (normalde saatte bir)

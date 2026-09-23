@@ -46,20 +46,43 @@ local KODLAR: { [string]: { rotCoins: number } } = {
 	RELEASE = { rotCoins = 5 },
 }
 
--- Oturum: giris ani ve bu oturumda alinan playtime basamaklari
-local oturum: { [Player]: { basla: number, alinan: { [number]: boolean } } } = {}
+--[[
+	PLAYTIME SAYACI  --  oturumun degil GUNUN sayaci
+
+	Eskiden sure her giriste sifirdan sayiliyor, alinan basamaklar da yalniz
+	bu tabloda duruyordu: oyuncu cikip girince hepsi yenileniyordu. Artik
+	toplam sure ve alinan basamaklar KAYITTA (bkz. PlayerData.playtime*) ve
+	gun degisince sifirlaniyor.
+
+	Burada tutulan tek sey `son`: kayda en son ne zaman sure islendigi.
+	Aradaki fark, durum her sorulduğunda kayda ekleniyor.
+]]
+local oturum: { [Player]: { son: number } } = {}
 
 -- Ust uste gelen istekler ayni odulu iki kez vermesin
 local mesgul: { [Player]: boolean } = {}
 local sonKod: { [Player]: number } = {}
 
-local function oturumOf(player: Player)
+--[[
+	Son islemeden bu yana gecen sureyi kayda ekler ve o gunun TOPLAM
+	suresini dondurur. Veri henuz yuklenmediyse sayac baslamaz -- yukleme
+	beklerken gecen sure odule saydirilmaz.
+]]
+local function playtimeTazele(player: Player): number
+	local simdi = os.clock()
 	local o = oturum[player]
 	if not o then
-		o = { basla = os.clock(), alinan = {} }
+		o = { son = simdi }
 		oturum[player] = o
 	end
-	return o
+
+	local gecen = simdi - o.son
+	o.son = simdi
+
+	if not PlayerData.get(player) then
+		return 0
+	end
+	return PlayerData.playtimeEkle(player, gecen)
 end
 
 local function grupta(player: Player): boolean
@@ -83,13 +106,12 @@ local function durumGonder(player: Player)
 		return
 	end
 
-	local o = oturumOf(player)
-	local gecen = os.clock() - o.basla
+	local gecen = playtimeTazele(player)
 
 	local basamaklar = {}
 	for i, odul in SosyalOdul.Playtime do
 		table.insert(basamaklar, {
-			claimed = o.alinan[i] == true,
+			claimed = PlayerData.playtimeAlindi(player, i),
 			ready = gecen >= odul.minutes * 60,
 		})
 	end
@@ -169,11 +191,13 @@ local function al(player: Player, tur: string, index: any)
 		if not i or not odul then
 			return
 		end
-		local o = oturumOf(player)
-		if o.alinan[i] or os.clock() - o.basla < odul.minutes * 60 then
+		if playtimeTazele(player) < odul.minutes * 60 then
 			return
 		end
-		o.alinan[i] = true
+		-- Isaretleme ile odul ayni adimda: iki istek ayni basamagi alamaz
+		if not PlayerData.playtimeAl(player, i) then
+			return
+		end
 		ver(player, odul.kind, odul.amount or 0, odul.pass, odul.seconds)
 	end
 end
@@ -230,13 +254,32 @@ EkOdulAc.OnServerEvent:Connect(function(player)
 end)
 
 Players.PlayerAdded:Connect(function(player)
-	oturumOf(player)
+	oturum[player] = { son = os.clock() }
 end)
 for _, player in Players:GetPlayers() do
-	oturumOf(player)
+	oturum[player] = { son = os.clock() }
 end
 
+--[[
+	PANEL ACILMASA DA SURE ISLENSIN
+
+	playtimeTazele yalnizca durum sorulunca calisiyor. Oyuncu Rewards'i hic
+	acmadan cikarsa o oturumun tamami kayda gecmezdi; dakikada bir isleyip
+	bu bosluğu kapatiyoruz. Ayrica gece yarisini oyunun icinde geciren
+	oyuncunun sayaci da burada sifirlaniyor.
+]]
+task.spawn(function()
+	while true do
+		task.wait(60)
+		for _, player in Players:GetPlayers() do
+			playtimeTazele(player)
+		end
+	end
+end)
+
 Players.PlayerRemoving:Connect(function(player)
+	-- Kayit alinmadan once son dilimi de isle
+	playtimeTazele(player)
 	oturum[player] = nil
 	mesgul[player] = nil
 	sonKod[player] = nil

@@ -457,6 +457,1098 @@ local function kapanisOynat(frame: Frame)
 end
 
 -- Standart panel: koyu zemin, yuvarlak kose, ince kontur
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
+--[[
+	=====================================================================
+	DUZ ZEMINLERE DOKU
+	=====================================================================
+
+	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
+	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
+	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
+	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+
+	NEDEN MaterialVariant
+	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
+	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+
+	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
+	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
+	calismaya devam eder.
+]]
+local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+-- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
+UI.DokuBoyu = 128
+-- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
+UI.DokuSaydamlik = 0.88
+
+local dokuKimligi: string? = nil
+local dokuArandi = false
+
+local function dokuBul(): string?
+	if dokuArandi then
+		return dokuKimligi
+	end
+	dokuArandi = true
+
+	local service = game:FindService("MaterialService")
+	if not service then
+		return nil
+	end
+
+	for _, node in service:GetDescendants() do
+		if node:IsA("MaterialVariant") then
+			for _, ad in DOKU_ADLARI do
+				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
+					dokuKimligi = node.ColorMap
+					return dokuKimligi
+				end
+			end
+		end
+	end
+
+	warn(
+		`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
+			.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
+	)
+	return nil
+end
+
+--[[
+	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur
+	(doku yoksa nil). Katman en altta durur: `zIndex` cercevenin kendi
+	ZIndex'iyle ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
+
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	yuvarlak panelin kosesinden tasar.
+]]
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel?
+	local kimlik = dokuBul()
+	if not kimlik then
+		return nil
+	end
+
+	local katman = Instance.new("ImageLabel")
+	katman.Name = "Doku"
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.Image = kimlik
+	katman.ImageTransparency = UI.DokuSaydamlik
+	katman.ScaleType = Enum.ScaleType.Tile
+	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.ZIndex = cerceve.ZIndex
+	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
+	katman.Active = false
+	katman.Parent = cerceve
+
+	if kose then
+		UI.corner(katman, kose)
+	end
+
+	return katman
+end
+
 function UI.panel(parent: Instance, size: UDim2, name: string?): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = name or "Panel"
@@ -478,6 +1570,30 @@ function UI.panel(parent: Instance, size: UDim2, name: string?): Frame
 	end
 	UI.corner(frame, 14)
 	UI.stroke(frame, UI.Colors.accent, 1)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
+	-- Duz zemin yerine seramik doku (bkz. UI.dokuZemini)
+	UI.dokuZemini(frame, 14)
 
 	--[[
 		Tek panel kurali + acilis/kapanis animasyonu.
@@ -1285,8 +2401,20 @@ end
 	boylece Store ile Rot Coin Shop birbirinden kopuk gorunmez. Hizli ve
 	genis tutuldu -- kart listesinde goz ilk buraya takilsin.
 ]]
+--[[
+	HACKER TEMASI  --  tek yerden
+
+	Rot Coin Shop'taki Hacker Mutation Scroll satiri, Store'daki Hacker
+	Lucky Block karti ve gunluk odulun 7. gunu AYNI zemini kullaniyor:
+	siyah levha + uzerinden akan yesil rakamlar. Degerler burada duruyor ki
+	birini degistirince ucu birden degissin.
+]]
+UI.HackerZemin = Color3.fromRGB(10, 12, 12)
+UI.HackerYesil = Color3.fromRGB(90, 255, 140)
+
 UI.SallanmaAci = 17
 UI.SallanmaSuresi = 0.75
+
 
 function UI.sallan(nesne: GuiObject, aci: number?, sure: number?): Tween
 	local genlik = aci or UI.SallanmaAci

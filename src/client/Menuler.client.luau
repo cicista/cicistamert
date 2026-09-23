@@ -384,6 +384,126 @@ end
 local envanter = UI.panel(screen, UDim2.fromOffset(600, 580), "Envanter")
 
 --[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
+	ENVANTERIN ZEMINI KAHVERENGI
+
+	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
+	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
+	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
+	gibi duruyor.
+]]
+envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+
+--[[
 	ENVANTER  --  canli, iki bolumlu
 
 	    [ Inventory                               X ]   <- renkli baslik
@@ -2502,6 +2622,13 @@ local ODUL_RENK: { [number]: Color3 } = {
 	[7] = Color3.fromRGB(255, 255, 255),
 }
 
+-- Gecis odullerinin ikonu (bkz. Shared > Icons > Map)
+local ODUL_PASS_IKON: { [string]: string } = {
+	AutoClicker = "autoClicker",
+	Teleporter = "teleporter",
+	DetectivePass = "detective",
+}
+
 local odulPanel = UI.panel(
 	screen,
 	UDim2.fromOffset(
@@ -2627,32 +2754,31 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	kart.AnchorPoint = Vector2.new(0.5, 0.5)
 	kart.Position = UDim2.fromOffset(x + en / 2, y + boy / 2)
 	kart.Size = UDim2.fromOffset(en, boy)
-	kart.BackgroundColor3 = ODUL_RENK[gun] or UI.Colors.accent
+	kart.BackgroundColor3 = if buyuk then UI.HackerZemin else (ODUL_RENK[gun] or UI.Colors.accent)
 	kart.BorderSizePixel = 0
 	kart.Parent = odulSayfalari.daily
 	UI.corner(kart, 10)
 	UI.stroke(kart, Color3.fromRGB(0, 0, 0), 3)
 
 	--[[
-		ZEMIN GECISI
-		Normal kartlar ustten asagi hafifce koyulasiyor (duz renk yerine
-		parlak kart hissi). Son gunun zemini gokkusagi: en buyuk odul
-		ilk bakista ayrilsin. Gecis zemin rengiyle carpildigi icin son
-		gunun zemini beyaz.
+		SON GUNUN ZEMINI = Rot Coin Shop'taki Hacker Mutation Scroll zemini.
+		Siyah levha + uzerinden akan yesil rakamlar; ikisi de orada ne
+		degerdeyse burada da o (bkz. rcCiz > sayiYagmuru). Gokkusagi gecisi
+		yerine bu geldi: en buyuk odul yine ayriksi duruyor ama artik
+		magazadaki Hacker temasiyla ayni dili konusuyor.
 	]]
-	local gecis = Instance.new("UIGradient")
-	gecis.Rotation = 90
-	gecis.Color = if buyuk
-		then ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 70, 70)),
-			ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 160, 40)),
-			ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 230, 60)),
-			ColorSequenceKeypoint.new(0.6, Color3.fromRGB(90, 220, 90)),
-			ColorSequenceKeypoint.new(0.8, Color3.fromRGB(60, 160, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 80, 255)),
-		})
-		else ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 175, 175))
-	gecis.Parent = kart
+	if buyuk then
+		UI.corner(UI.sayiYagmuru(kart, UI.HackerYesil, 18, 1, 1.8, 0.32), 10)
+	else
+		--[[
+			ZEMIN GECISI. Normal kartlar ustten asagi hafifce koyulasiyor:
+			duz renk yerine parlak kart hissi.
+		]]
+		local gecis = Instance.new("UIGradient")
+		gecis.Rotation = 90
+		gecis.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 175, 175))
+		gecis.Parent = kart
+	end
 
 	local olcek = Instance.new("UIScale")
 	olcek.Parent = kart
@@ -4059,7 +4185,7 @@ do
 				kayboluyordu; siyahta Matrix gibi okunuyor.
 			]]
 			local zeminRenk = if urun.scroll == "HackerMutation"
-				then Color3.fromRGB(10, 12, 12)
+				then UI.HackerZemin
 				else urun.color
 
 			local kartZemini = kartResmi(urun)
@@ -4122,7 +4248,7 @@ do
 				satirin uzerinden asagi akan yesil rakamlar.
 			]]
 			if urun.kind == "scroll" and urun.scroll == "HackerMutation" then
-				UI.corner(UI.sayiYagmuru(satir, Color3.fromRGB(90, 255, 140), 18, 2, 1.8, 0.32), 12)
+				UI.corner(UI.sayiYagmuru(satir, UI.HackerYesil, 18, 2, 1.8, 0.32), 12)
 			end
 
 			if urun.kind == "scroll" and urun.scroll then

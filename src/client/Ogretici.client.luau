@@ -731,22 +731,43 @@ end
 	serit ve isaret kendiliginden kapanir.
 ]]
 local IP = Adimlar.AdaIpucu
+local KI = Adimlar.KurekIpucu
 
 local function adaIpucuAcik(): boolean
 	return player:GetAttribute(IP.nitelik) == true
 end
 
+local function kurekIpucuAcik(): boolean
+	return player:GetAttribute(KI.nitelik) == true
+end
+
+--[[
+	OGRETICI BITTIKTEN SONRA acik olan ipucu (yoksa nil). Sunucu ikisini
+	ayni anda acmiyor; yine de kurek once geliyor cunku oyunun sirasi o.
+
+	Serit ve isaret ayni secimi kullansin diye tek yerde duruyor.
+]]
+local function ipucuOf(): ({ [string]: any }?, string?)
+	if kurekIpucuAcik() then
+		return KI :: any, "FIRST SHOVEL"
+	elseif adaIpucuAcik() then
+		return IP :: any, "NEW ISLAND"
+	end
+	return nil, nil
+end
+
 local function yonergeyiYaz()
 	--[[
-		Ogretici bittiyse yalnizca ada ipucu kalir: adim yazisi yerine
+		Ogretici bittiyse yalnizca ipuclari kalir: adim yazisi yerine
 		ipucunun kendi yazisi gosterilir.
 	]]
 	if bitti or siraNo <= 0 then
-		if adaIpucuAcik() then
-			sayacYazi.Text = "NEW ISLAND"
-			yonergeYazi.Text = IP.yazi
-			altYazi.Text = IP.alt or ""
-			anlaticiyiCiz({ resim = IP.resim } :: any)
+		local ipucu, baslik = ipucuOf()
+		if ipucu then
+			sayacYazi.Text = baslik or ""
+			yonergeYazi.Text = ipucu.yazi
+			altYazi.Text = ipucu.alt or ""
+			anlaticiyiCiz({ resim = ipucu.resim } :: any)
 			serit.Visible = true
 		else
 			serit.Visible = false
@@ -782,12 +803,14 @@ end
 ]]
 local function hedefiTazele()
 	--[[
-		Ogretici bitti: ada ipucu aciksa TELEPORTER isaretlenir, degilse
-		hicbir sey.
+		Ogretici bitti: kurek ipucu aciksa KUREK MAGAZASI, ada ipucu aciksa
+		TELEPORTER isaretlenir; ikisi de kapaliysa hicbir sey.
 	]]
 	if bitti or siraNo <= 0 then
 		isaretleriKapat()
-		if not adaIpucuAcik() then
+
+		local ipucu = ipucuOf()
+		if not ipucu then
 			return
 		end
 
@@ -797,7 +820,13 @@ local function hedefiTazele()
 			return
 		end
 
-		local npc = modelBul({ Config.NPC.name, Config.NPC.altName })
+		--[[
+			Kurek ipucunun hedefi listeden geliyor (Magaza betigiyle ayni
+			adlar); ada ipucununki Teleporter NPC'si.
+		]]
+		local npc = modelBul(
+			if kurekIpucuAcik() then KI.modeller else { Config.NPC.name, Config.NPC.altName }
+		)
 		if not npc then
 			return
 		end

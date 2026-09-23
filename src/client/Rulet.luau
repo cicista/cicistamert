@@ -54,6 +54,114 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
 -- Degerli bolmelerin canli cercevesi (Index de ayni modulu kullanir)
 local KademeEfekti = require(script.Parent:WaitForChild("KademeEfekti"))
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
+-- 1. cark durunca calan patlama sesi
+local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
+
+--[[
+	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
+	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
+	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
+]]
+local DURUS_SESI = "FuseExplosion"
 
 local Rulet = {}
 
@@ -641,6 +749,7 @@ function Rulet.run(reel: Reel, plan: Plan): boolean
 
 			Rulet.tint(reel, fallbackColor)
 			highlight(reel, winnerIndex, fallbackColor)
+			YerelSes.cal(DURUS_SESI)
 
 			if plan.onRarity then
 				plan.onRarity(winnerRarity)

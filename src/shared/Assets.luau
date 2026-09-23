@@ -218,6 +218,8 @@ Assets.Categories = {
 	-- Pencere arka planlari (Store kartlari); icinde Decal/ImageLabel tasiyan nesneler
 	backgrounds = "Backgrounds",
 	sounds = "Sounds",
+	-- Kimligi belirlenmemis esyanin kademe kademe yumurtalari
+	eggs = "Eggs",
 }
 
 -- Sunucu acilista cagirir; eksik klasorleri olusturur.
@@ -895,21 +897,42 @@ end
 	    kimlik "Gizli"   ->  ekranda "Secret"
 
 	Efekt ekranda gorunen ada gore isteniyor: SecretVFX, oyuncunun "Secret"
-	dedigi kademeye, yani "Gizli" kimligine baglanir. "Divine" (kimlik
-	Secret) tabloda yok, efekt almaz.
+	dedigi kademeye, yani "Gizli" kimligine baglanir; DivineVFX de oyuncunun
+	"Divine" dedigi kademeye, yani "Secret" kimligine.
 
 	Ayni modele iki kez eklenmesin diye eklenen parca isaretleniyor.
 ]]
 local RARITY_VFX: { [string]: string } = {
+	Secret = "DivineVFX", -- ekranda "Divine"
 	Cosmic = "CosmicVFX",
 	Gizli = "SecretVFX", -- ekranda "Secret"
 	Infernal = "InfernalVFX",
 	Abyssal = "AbyssalVFX",
 }
 
+--[[
+	EFEKTLI EN DUSUK KADEME. Yumurtalarin efekt olcegi buradan baslayip her
+	kademede 1.5 katina cikiyor (bkz. Assets.kademeVfxOlcegi).
+]]
+local VFX_ILK_SIRA = Rarity.Info.Secret.order
+
 Assets.RarityVFXAttribute = "KademeEfekti"
 
-function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePart?): Instance?
+--[[
+	Efekt olceginin UST SINIRI. Brainrotlarda 3'te kaliyor (paket modelleri
+	cok iri export edilmis olabiliyor, efekt ekrani kaplamasin); yumurtalar
+	kademe kademe 1.5 katina ciktigi icin onlarda sinir yukari aliniyor --
+	yoksa Divine'dan sonraki butun yumurtalarda efekt ayni boyda kalirdi.
+]]
+Assets.RarityVFXMaxScale = 3
+Assets.YumurtaVFXMaxScale = 40
+
+function Assets.attachRarityVFX(
+	model: Instance,
+	rarityId: string?,
+	kok: BasePart?,
+	enCokOlcek: number?
+): Instance?
 	local ad = if type(rarityId) == "string" then RARITY_VFX[rarityId] else nil
 	if not ad then
 		return nil
@@ -984,7 +1007,7 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 			local uzun = math.max(boy.X, boy.Y, boy.Z)
 			local taban = Assets.BrainrotSize.slotSize
 			if taban > 0 and uzun > 0 then
-				carpan = math.clamp(uzun / taban, 0.75, 3)
+				carpan = math.clamp(uzun / taban, 0.75, enCokOlcek or Assets.RarityVFXMaxScale)
 			end
 		end
 	end
@@ -1125,24 +1148,26 @@ Assets.HiddenBrainrot = {
 		ELDEKI BOYUT KADEMEYE GORE
 
 		Carpan Assets.BrainrotSize.toolSize (4.5 stud) ile carpilir ve
-		modelin EN UZUN kenari o boya getirilir. Degersiz kademeler ufak
-		tefek, degerliler devasa: oyuncu elindekinin ne kadar degerli
-		oldugunu bakinca anlasin. Listede olmayan kademe: default.
+		modelin EN UZUN kenari o boya getirilir.
 
-		  Common 0.35 -> ~1.6 stud      Abyssal 1.6 -> ~7.2 stud
+		YUMURTALAR HER KADEMEDE 1.5 KATINA CIKIYOR: Common eski boyunda
+		kaliyor (yumurtaTabani), her ust kademe bir oncekinin yumurtaOrani
+		katı. Boylece kademe farki bakar bakmaz anlasiliyor.
+
+		  Common 0.35 -> ~1.6 stud        Mythic ~1.77 -> ~8 stud
+		  Divine ~2.7 -> ~12 stud         Abyssal ~13.5 -> ~60 stud
+
+		Ust kademeler GERCEKTEN devasa oluyor; kucultmek icin yumurtaOrani
+		dusurmek (orn. 1.3) ya da asagidaki tabloyu elle yazmak yeterli.
+		Tablo bos birakilan kademeleri kendisi hesapliyor.
 	]]
-	rarityScale = {
-		Common = 0.35,
-		Rare = 0.42,
-		Epic = 0.5,
-		Legendary = 0.62,
-		Mythic = 0.75,
-		Secret = 0.9, -- ekranda "Divine"
-		Cosmic = 1.05,
-		Gizli = 1.2, -- ekranda "Secret"
-		Infernal = 1.4,
-		Abyssal = 1.6,
-	} :: { [string]: number },
+	yumurtaTabani = 0.35,
+	yumurtaOrani = 1.5,
+	--[[
+		Elle verilmis carpanlar. Bos: hepsi yumurtaTabani/yumurtaOrani'ndan
+		hesaplanir (bkz. asagida rarityScale doldurma dongusu).
+	]]
+	rarityScale = {} :: { [string]: number },
 	default = 0.5,
 
 	-- Bu adli parca BOYANMAZ; modelin kendi gorunumunde kalir
@@ -1186,6 +1211,390 @@ Assets.HiddenBrainrot = {
 	offset = Vector3.new(0, 0, 0),
 	rotation = Vector3.new(0, 0, 0),
 }
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
+
+--[[
+	YUMURTA BOYLARINI DOLDUR
+
+	rarityScale elle yazilmadiysa her kademe bir oncekinin yumurtaOrani
+	kati olur; Common yumurtaTabani'nda kalir. Elle yazilan kademe oldugu
+	gibi birakilir, yani tek bir kademeyi ayarlamak icin butun tabloyu
+	yazmak gerekmiyor.
+]]
+do
+	local cfg = Assets.HiddenBrainrot
+	for sira, kademe in Rarity.Order do
+		if cfg.rarityScale[kademe] == nil then
+			cfg.rarityScale[kademe] = cfg.yumurtaTabani * cfg.yumurtaOrani ^ (sira - 1)
+		end
+	end
+end
+
+--[[
+	KADEMENIN EFEKT OLCEGI
+
+	Efektli en dusuk kademe (Divine) 1, her ust kademe 1.5 kati. Yumurtalar
+	ayni oranda buyudugu icin efekt de onlarla ayni tempoda buyuyor.
+	Efekti olmayan kademelerde 1 doner.
+]]
+function Assets.kademeVfxOlcegi(rarityId: string?): number
+	local info = if type(rarityId) == "string" then Rarity.Info[rarityId :: any] else nil
+	if not info then
+		return 1
+	end
+	return Assets.HiddenBrainrot.yumurtaOrani ^ math.max(0, info.order - VFX_ILK_SIRA)
+end
 
 --[[
 	Gizli brainrot modelini kademesine gore boyar. Elde tasinan tool'da
@@ -1360,21 +1769,50 @@ local hiddenCache: Model? = nil
 	klasor/modelin icindeki MODELLER, ada gore sirali. Bir kez bulunup
 	saklanir.
 ]]
-local yumurtaListesi: { Model }? = nil
+--[[
+	Yumurtalar MODEL olmak zorunda degil: tek parcalik (MeshPart) yumurtalar
+	da kabul ediliyor, asModel onlari kullanirken modele sariyor.
+]]
+local yumurtaListesi: { Instance }? = nil
 
-local function yumurtalar(): { Model }
+local function yumurtalar(): { Instance }
 	if yumurtaListesi then
 		return yumurtaListesi
 	end
 
-	local liste: { Model } = {}
+	local liste: { Instance } = {}
 	local cfg = Assets.HiddenBrainrot
 
+	--[[
+		PAKET MI, YUMURTA MI
+
+		Iki asamali: once ADI TAM TUTAN kapsayici ("Eggs", "EggPack",
+		"Yumurtalar") aranir, bulunamazsa adinda "egg"/"yumurta" GECEN
+		herhangi bir klasore dusulur.
+
+		Tek asamali olsaydi "Eggs" klasorunun icindeki "Common Egg" modeli
+		de paket sayilir ve onun PARCALARI yumurta diye listeye girerdi --
+		liste sisip kademe eslesmesi kayardi.
+	]]
+	local TAM_ADLAR = { string.lower(cfg.paketAdi), "eggs", "egg", "yumurtalar", "yumurta" }
+
+	local function sade(node: Instance): string
+		return string.lower((string.gsub(node.Name, "[%s_%-]", "")))
+	end
+
+	local function tamPaket(node: Instance): boolean
+		local ad = sade(node)
+		for _, hedef in TAM_ADLAR do
+			if ad == hedef then
+				return true
+			end
+		end
+		return false
+	end
+
 	local function paketMi(node: Instance): boolean
-		local ad = string.lower((string.gsub(node.Name, "[%s_%-]", "")))
-		return ad == string.lower(cfg.paketAdi)
-			or string.find(ad, "egg", 1, true) ~= nil
-			or string.find(ad, "yumurta", 1, true) ~= nil
+		local ad = sade(node)
+		return string.find(ad, "egg", 1, true) ~= nil or string.find(ad, "yumurta", 1, true) ~= nil
 	end
 
 	local koklar: { Instance } = {}
@@ -1386,18 +1824,34 @@ local function yumurtalar(): { Model }
 		table.insert(koklar, kok)
 	end
 
-	for _, kok in koklar do
+	local function topla(kok: Instance, sinama: (Instance) -> boolean)
 		for _, node in kok:GetDescendants() do
-			if (node:IsA("Folder") or node:IsA("Model")) and paketMi(node) then
+			if (node:IsA("Folder") or node:IsA("Model")) and sinama(node) then
 				for _, cocuk in node:GetChildren() do
-					if cocuk:IsA("Model") then
+					if cocuk:IsA("Model") or cocuk:IsA("BasePart") then
 						table.insert(liste, cocuk)
 					end
 				end
+				-- Ilk kapsayici yeter: ic ice paketlerde liste iki katina cikmasin
+				return
 			end
 		end
+	end
+
+	for _, kok in koklar do
+		topla(kok, tamPaket)
 		if #liste > 0 then
 			break
+		end
+	end
+
+	-- Adi tam tutan kapsayici yok: adinda "egg" gecen ilk klasore dus
+	if #liste == 0 then
+		for _, kok in koklar do
+			topla(kok, paketMi)
+			if #liste > 0 then
+				break
+			end
 		end
 	end
 
@@ -1415,7 +1869,7 @@ end
 ]]
 local yumurtaRaporu = false
 
-local function yumurtaModeli(rarityId: string?): Model?
+local function yumurtaModeli(rarityId: string?): Instance?
 	local liste = yumurtalar()
 	if #liste == 0 then
 		return nil

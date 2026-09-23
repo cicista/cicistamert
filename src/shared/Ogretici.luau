@@ -177,6 +177,342 @@ Ogretici.AdaIpucu = {
 	renk = Color3.fromRGB(255, 60, 60),
 }
 
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
+--[[
+	ILK KUREK IPUCU  --  ogreticiden sonraki ikinci yonlendirme
+
+	Baslangic kuregi yavas; oyunun asil hizi ikinci kurekle geliyor. Oyuncu
+	onun parasina ulasinca ekranda serit belirir ve KUREK MAGAZASI
+	isaretlenir. Kuregi alinca ipucu kapanir ve bir daha gosterilmez.
+
+	Fiyat burada YAZILI DEGIL: Shovels.Info[kurek].price'tan okunuyor, yani
+	kuregin fiyatini degistirmek yeter.
+]]
+Ogretici.KurekIpucu = {
+	-- Hangi kurek (bkz. Shared > Shovels)
+	kurek = "Iron",
+	-- Oyuncu niteligi: istemci ipucunun acik olup olmadigini buradan okur
+	nitelik = "IpucuKurek",
+	yazi = "You can afford your first shovel!",
+	alt = "Open the Shovel Shop and buy it -- digging gets much faster.",
+	resim = "tesvik",
+	-- Kurek alininca cikan bildirim
+	varis = "Nice shovel! Beams come out way faster now.",
+	renk = Color3.fromRGB(255, 200, 60),
+	--[[
+		Isaretlenecek modelin Workspace'teki adlari. Magaza betigi de ayni
+		listeyi kullaniyor (bkz. ServerScriptService > Magaza > MAGAZA_ADLARI).
+	]]
+	modeller = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" },
+}
+
 Ogretici.IlkKademe = "Common"
 
 --[[

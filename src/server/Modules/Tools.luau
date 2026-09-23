@@ -1200,7 +1200,17 @@ function Tools.buildBrainrot(item: any): Tool
 		base slotundaki model de ayni sablonu kullaniyor.
 	]]
 	if handle then
-		Assets.attachRarityVFX(tool, item.rarity, handle)
+		--[[
+			YUMURTALARDA SINIR YUKARIDA: kimligi kapali esya kademe kademe
+			1.5 katina cikiyor, efekt de onunla buyumeli (bkz. Assets >
+			YumurtaVFXMaxScale).
+		]]
+		Assets.attachRarityVFX(
+			tool,
+			item.rarity,
+			handle,
+			if revealed then nil else Assets.YumurtaVFXMaxScale
+		)
 	end
 
 	return tool

@@ -424,11 +424,70 @@ local function ipucuKontrol(player: Player)
 	end
 end
 
+--[[
+	ILK KUREK IPUCU  (bkz. Shared > Ogretici > KurekIpucu)
+
+	Ada ipucuyla ayni kalipta: parasi ikinci kurege yetince nitelik acilir,
+	kurek alininca kapanir ve bir daha gosterilmez. Fiyat Shovels'tan
+	okunuyor, burada yazili degil.
+
+	IKI IPUCU AYNI ANDA CIKMAZ: kurek ada ipucundan once geliyor (750K'ya
+	ikinci adadan once ulasiliyor), ama yine de ada ipucu aciksa kurek
+	ipucu bekletiliyor -- serit tek yonergelik.
+]]
+local Shovels = require(Shared:WaitForChild("Shovels"))
+
+local KI = Adimlar.KurekIpucu
+
+local function kurekAlindi(data: PlayerData.Data): boolean
+	local hedef = Shovels.Info[KI.kurek]
+	local sahip = Shovels.Info[data.shovelMax]
+	return hedef ~= nil and sahip ~= nil and sahip.level >= hedef.level
+end
+
+local function kurekIpucuKontrol(player: Player)
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	local hedef = Shovels.Info[KI.kurek]
+	local fiyat = if hedef then hedef.price else math.huge
+
+	-- Kurek alindiysa ipucu biter ve bir daha gosterilmez
+	if kurekAlindi(data) then
+		if not data.tutorial.kurekIpucu then
+			data.tutorial.kurekIpucu = true
+			if player:GetAttribute(KI.nitelik) == true then
+				remote("Bildirim"):FireClient(player, KI.varis, KI.renk)
+			end
+		end
+		if player:GetAttribute(KI.nitelik) ~= nil then
+			player:SetAttribute(KI.nitelik, nil)
+		end
+		return
+	end
+
+	local uygun = data.tutorial.bitti
+		and not data.tutorial.kurekIpucu
+		and player:GetAttribute(IP.nitelik) ~= true
+		and data.rot >= fiyat
+
+	if uygun then
+		if player:GetAttribute(KI.nitelik) ~= true then
+			player:SetAttribute(KI.nitelik, true)
+		end
+	elseif player:GetAttribute(KI.nitelik) ~= nil then
+		player:SetAttribute(KI.nitelik, nil)
+	end
+end
+
 task.spawn(function()
 	while true do
 		task.wait(2)
 		for _, player in game:GetService("Players"):GetPlayers() do
 			pcall(ipucuKontrol, player)
+			pcall(kurekIpucuKontrol, player)
 		end
 	end
 end)

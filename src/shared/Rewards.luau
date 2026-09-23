@@ -5,11 +5,11 @@
 	Her 24 saatte bir o gunun odulu alinir; alinan her odul takvimi bir
 	sonraki gune gecirir. 7. gunden sonra takvim 1. gune doner.
 
-	    Gun 1   5K Rot                              + 1 Rot Coin
-	    Gun 2   50K Rot                             + 1 Rot Coin
-	    Gun 3   100K Rot                            + 1 Rot Coin
+	    Gun 1   150K Rot                            + 1 Rot Coin
+	    Gun 2   3M Rot                              + 1 Rot Coin
+	    Gun 3   1 gunluk Detective Pass             + 1 Rot Coin
 	    Gun 4   1 x en ucuz Lucky Block             + 1 Rot Coin
-	    Gun 5   2 x en ucuz Lucky Block             + 2 Rot Coin
+	    Gun 5   2 x en ucuz Lucky Block + 12s Telep + 2 Rot Coin
 	    Gun 6   3 x en ucuz Lucky Block             + 1 Rot Coin
 	    Gun 7   1 x en pahali Lucky Block           + 1 Rot Coin
 
@@ -63,13 +63,20 @@ local EN_PAHALI = uctakiTur(true)
 
 export type Day = {
 	day: number,
-	-- "rot" ya da "luckyblock"
+	-- "rot", "luckyblock" ya da "pass"
 	kind: string,
 	amount: number,
 	-- Yalnizca luckyblock odullerinde: hangi tur
 	tier: string?,
 	-- Ana odulun YANINDA verilen Rot Coin (yoksa nil)
 	rotCoins: number?,
+	--[[
+		SURELI GECIS. kind == "pass" ise ANA odul budur; diger gunlerde ana
+		odulun yanina eklenir. passSeconds bitince gecis kendiliginden kapanir
+		(bkz. ServerScriptService > Modules > SureliGecis).
+	]]
+	pass: string?,
+	passSeconds: number?,
 }
 
 --[[

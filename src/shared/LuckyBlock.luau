@@ -299,7 +299,16 @@ end
 
 	tierId imzada kaliyor -- cagiran taraflar degismesin diye.
 ]]
-function LuckyBlock.rollMutation(_tierId: string, rng: Random): string
+function LuckyBlock.rollMutation(tierId: string, rng: Random): string
+	--[[
+		ZORUNLU MUTASYON cekilisin ONUNDE: Hacker Lucky Block'tan cikan her
+		brainrot Hacker gelmek zorunda; "mutasyonsuz" ya da baska bir
+		mutasyon ihtimali yok.
+	]]
+	local tier = LuckyBlock.get(tierId)
+	if tier and tier.zorunluMutasyon then
+		return tier.zorunluMutasyon
+	end
 	return Mutations.roll(rng)
 end
 

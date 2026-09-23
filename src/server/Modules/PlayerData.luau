@@ -113,6 +113,20 @@ export type Data = {
 	-- Rewards > Social: alinan tek seferlik oduller ("group", "like") ve kullanilan kodlar
 	socialClaimed: { [string]: boolean },
 	redeemedCodes: { [string]: boolean },
+	--[[
+		REWARDS > PLAYTIME  --  gunluk
+
+		Basamaklar OTURUMA degil GUNE bagli: oyuncu cikip girince sayac
+		sifirlanmiyor, alinan basamaklar geri gelmiyor. Gun degisince
+		(playtimeGun) ikisi de sifirlanir.
+
+		playtimeGun   : hangi gun (os.time // 86400, UTC)
+		playtimeSure  : o gun oyunda gecirilen toplam saniye
+		playtimeAlinan: o gun alinan basamaklarin sirasi
+	]]
+	playtimeGun: number,
+	playtimeSure: number,
+	playtimeAlinan: { [number]: boolean },
 	-- Detective'e birakilan toplu inceleme: { bitis = os.time, toplam, uids }
 	detectiveJob: any?,
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
@@ -185,7 +199,14 @@ export type Data = {
 		kazilan : "uc tane kaz" adiminda kazilan brainrotlarin uid'leri
 		adaIpucu: 2. ada ipucu gosterildi ve tamamlandi mi (bir kez)
 	]]
-	tutorial: { adim: number, bitti: boolean, kazilan: { string }?, adaIpucu: boolean? },
+	tutorial: {
+		adim: number,
+		bitti: boolean,
+		kazilan: { string }?,
+		adaIpucu: boolean?,
+		-- kurekIpucu: ilk kurek ipucu gosterildi ve tamamlandi mi (bir kez)
+		kurekIpucu: boolean?,
+	},
 }
 
 local PlayerData = {}
@@ -225,6 +246,9 @@ local function defaultData(): Data
 		xp = 0,
 		socialClaimed = {},
 		redeemedCodes = {},
+		playtimeGun = 0,
+		playtimeSure = 0,
+		playtimeAlinan = {},
 		islands = 1,
 		reachedIsland = Brainrots.IslandOrder[1],
 		ores = {},
@@ -332,6 +356,8 @@ local function migrate(raw: any): Data
 			bitti = ogretici.bitti == true,
 			-- Ada ipucu bir kez gosterilir; kayitta duruyorsa korunur
 			adaIpucu = ogretici.adaIpucu == true,
+			-- Ilk kurek ipucu de bir kez gosterilir
+			kurekIpucu = ogretici.kurekIpucu == true,
 		}
 	else
 		data.tutorial = { adim = 1, bitti = true }
@@ -474,6 +500,30 @@ local function migrate(raw: any): Data
 				end
 			end
 		end
+	end
+
+	--[[
+		PLAYTIME  --  gun degistiyse sifirla
+
+		Kayittaki gun bugun degilse sayac da alinan basamaklar da sifirlanir;
+		boylece oduller HER GUN bir kez alinir. Eski kayitlarda alan yok,
+		onlar da sifirdan baslar.
+	]]
+	data.playtimeGun = tonumber(raw.playtimeGun) or 0
+	data.playtimeSure = math.max(0, tonumber(raw.playtimeSure) or 0)
+	data.playtimeAlinan = {}
+	if type(raw.playtimeAlinan) == "table" then
+		for anahtar, deger in raw.playtimeAlinan do
+			local sira = tonumber(anahtar)
+			if sira and deger == true then
+				data.playtimeAlinan[sira] = true
+			end
+		end
+	end
+	if data.playtimeGun ~= os.time() // 86400 then
+		data.playtimeGun = os.time() // 86400
+		data.playtimeSure = 0
+		data.playtimeAlinan = {}
 	end
 
 	-- Fuse coinleri (coin sisteminden onceki kayitlarda bu alan yok)
@@ -836,6 +886,326 @@ end
 function PlayerData.discovered(player: Player): { [string]: boolean }
 	local data = cache[player]
 	return if data then data.discovered else {}
+end
+
+--[[
+	PLAYTIME  --  gunluk sayac
+
+	Dort islem de once GUNU denetler: kayittaki gun bugun degilse sayac ve
+	alinan basamaklar sifirlanir. Boylece oyuncu gece yarisini oyunun
+	icinde gecirse bile oduller yenilenir -- girise cikisa bagli degil.
+]]
+local function playtimeGunuTazele(data: Data)
+	local bugun = os.time() // 86400
+	if data.playtimeGun ~= bugun then
+		data.playtimeGun = bugun
+		data.playtimeSure = 0
+		data.playtimeAlinan = {}
+	end
+end
+
+-- O gun toplanan sureye ekleme yapar ve yeni toplami dondurur
+function PlayerData.playtimeEkle(player: Player, saniye: number): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	if saniye > 0 then
+		data.playtimeSure += saniye
+	end
+	return data.playtimeSure
+end
+
+-- O gun oyunda gecirilen toplam sure
+function PlayerData.playtimeSuresi(player: Player): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeSure
+end
+
+-- Basamak bugun alindi mi
+function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeAlinan[tostring(sira)] == true
+end
+
+-- Basamagi alinmis isaretler; bugun ilk kez aliniyorsa true
+function PlayerData.playtimeAl(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	local anahtar = tostring(sira)
+	if data.playtimeAlinan[anahtar] then
+		return false
+	end
+	data.playtimeAlinan[anahtar] = true
+	return true
+end
+
+--[[
+	PLAYTIME  --  gunluk sayac
+
+	Dort islem de once GUNU denetler: kayittaki gun bugun degilse sayac ve
+	alinan basamaklar sifirlanir. Boylece oyuncu gece yarisini oyunun
+	icinde gecirse bile oduller yenilenir -- girise cikisa bagli degil.
+]]
+local function playtimeGunuTazele(data: Data)
+	local bugun = os.time() // 86400
+	if data.playtimeGun ~= bugun then
+		data.playtimeGun = bugun
+		data.playtimeSure = 0
+		data.playtimeAlinan = {}
+	end
+end
+
+-- O gun toplanan sureye ekleme yapar ve yeni toplami dondurur
+function PlayerData.playtimeEkle(player: Player, saniye: number): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	if saniye > 0 then
+		data.playtimeSure += saniye
+	end
+	return data.playtimeSure
+end
+
+-- O gun oyunda gecirilen toplam sure
+function PlayerData.playtimeSuresi(player: Player): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeSure
+end
+
+-- Basamak bugun alindi mi
+function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeAlinan[tostring(sira)] == true
+end
+
+-- Basamagi alinmis isaretler; bugun ilk kez aliniyorsa true
+function PlayerData.playtimeAl(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	local anahtar = tostring(sira)
+	if data.playtimeAlinan[anahtar] then
+		return false
+	end
+	data.playtimeAlinan[anahtar] = true
+	return true
+end
+
+--[[
+	PLAYTIME  --  gunluk sayac
+
+	Dort islem de once GUNU denetler: kayittaki gun bugun degilse sayac ve
+	alinan basamaklar sifirlanir. Boylece oyuncu gece yarisini oyunun
+	icinde gecirse bile oduller yenilenir -- girise cikisa bagli degil.
+]]
+local function playtimeGunuTazele(data: Data)
+	local bugun = os.time() // 86400
+	if data.playtimeGun ~= bugun then
+		data.playtimeGun = bugun
+		data.playtimeSure = 0
+		data.playtimeAlinan = {}
+	end
+end
+
+-- O gun toplanan sureye ekleme yapar ve yeni toplami dondurur
+function PlayerData.playtimeEkle(player: Player, saniye: number): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	if saniye > 0 then
+		data.playtimeSure += saniye
+	end
+	return data.playtimeSure
+end
+
+-- O gun oyunda gecirilen toplam sure
+function PlayerData.playtimeSuresi(player: Player): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeSure
+end
+
+-- Basamak bugun alindi mi
+function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeAlinan[tostring(sira)] == true
+end
+
+-- Basamagi alinmis isaretler; bugun ilk kez aliniyorsa true
+function PlayerData.playtimeAl(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	local anahtar = tostring(sira)
+	if data.playtimeAlinan[anahtar] then
+		return false
+	end
+	data.playtimeAlinan[anahtar] = true
+	return true
+end
+
+--[[
+	PLAYTIME  --  gunluk sayac
+
+	Dort islem de once GUNU denetler: kayittaki gun bugun degilse sayac ve
+	alinan basamaklar sifirlanir. Boylece oyuncu gece yarisini oyunun
+	icinde gecirse bile oduller yenilenir -- girise cikisa bagli degil.
+]]
+local function playtimeGunuTazele(data: Data)
+	local bugun = os.time() // 86400
+	if data.playtimeGun ~= bugun then
+		data.playtimeGun = bugun
+		data.playtimeSure = 0
+		data.playtimeAlinan = {}
+	end
+end
+
+-- O gun toplanan sureye ekleme yapar ve yeni toplami dondurur
+function PlayerData.playtimeEkle(player: Player, saniye: number): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	if saniye > 0 then
+		data.playtimeSure += saniye
+	end
+	return data.playtimeSure
+end
+
+-- O gun oyunda gecirilen toplam sure
+function PlayerData.playtimeSuresi(player: Player): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeSure
+end
+
+-- Basamak bugun alindi mi
+function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeAlinan[tostring(sira)] == true
+end
+
+-- Basamagi alinmis isaretler; bugun ilk kez aliniyorsa true
+function PlayerData.playtimeAl(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	local anahtar = tostring(sira)
+	if data.playtimeAlinan[anahtar] then
+		return false
+	end
+	data.playtimeAlinan[anahtar] = true
+	return true
+end
+
+--[[
+	PLAYTIME  --  gunluk sayac
+
+	Dort islem de once GUNU denetler: kayittaki gun bugun degilse sayac ve
+	alinan basamaklar sifirlanir. Boylece oyuncu gece yarisini oyunun
+	icinde gecirse bile oduller yenilenir -- girise cikisa bagli degil.
+]]
+local function playtimeGunuTazele(data: Data)
+	local bugun = os.time() // 86400
+	if data.playtimeGun ~= bugun then
+		data.playtimeGun = bugun
+		data.playtimeSure = 0
+		data.playtimeAlinan = {}
+	end
+end
+
+-- O gun toplanan sureye ekleme yapar ve yeni toplami dondurur
+function PlayerData.playtimeEkle(player: Player, saniye: number): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	if saniye > 0 then
+		data.playtimeSure += saniye
+	end
+	return data.playtimeSure
+end
+
+-- O gun oyunda gecirilen toplam sure
+function PlayerData.playtimeSuresi(player: Player): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeSure
+end
+
+-- Basamak bugun alindi mi
+function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	return data.playtimeAlinan[tostring(sira)] == true
+end
+
+-- Basamagi alinmis isaretler; bugun ilk kez aliniyorsa true
+function PlayerData.playtimeAl(player: Player, sira: number): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+	playtimeGunuTazele(data)
+	local anahtar = tostring(sira)
+	if data.playtimeAlinan[anahtar] then
+		return false
+	end
+	data.playtimeAlinan[anahtar] = true
+	return true
 end
 
 -- Index'te gosterilen mutasyonlar (Mutations.IndexOrder) kume olarak
