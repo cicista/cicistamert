@@ -461,20 +461,30 @@ end
 	DUZ ZEMINLERE DOKU
 	=====================================================================
 
-	Panellerin zemini duz renkti ve bos duruyordu. MaterialService'e konan
-	seramik doku (Studio > MaterialService > "[2024] Seramic Tiles") burada
-	bir MaterialVariant olarak bulunup ColorMap'i okunuyor ve zeminin
-	uzerine DOSENEREK (ScaleType.Tile) seriliyor.
+	Panellerin zemini duz renkti ve bos duruyordu; uzerine seramik bir doku
+	DOSENIYOR (ScaleType.Tile).
 
-	NEDEN MaterialVariant
-	Arayuz bir malzemeyi dogrudan kullanamiyor; kullanabilecegi tek sey bir
-	resim kimligi. MaterialVariant'in ColorMap'i tam olarak o.
+	DOKU BIR RESIMDIR, MALZEME DEGIL
+	Arayuz bir malzemeyi (MaterialVariant) kullanamiyor; kullanabilecegi tek
+	sey bir resim kimligi. MaterialService'teki varyanttan resmi OKUMAK da
+	mumkun degil -- ColorMap yalnizca eklenti guvenlik seviyesinde okunuyor.
+	Bu yuzden resim ya UI.DokuResmi'ne yaziliyor ya da Assets icine bir
+	Decal/ImageLabel/StringValue olarak konuyor (bkz. dokuyuAra).
 
 	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
-	Output'a bir kez uyari yazilir. Yani Studio'da doku olmasa da arayuz
-	calismaya devam eder.
+	Output'a bir kez uyari yazilir. Yani doku olmasa da arayuz calismaya
+	devam eder.
 ]]
 local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+
+--[[
+	DOKUNUN RESMI  --  en kisa yol
+
+	Buraya "rbxassetid://123456789" yazarsan baska hicbir sey gerekmez;
+	butun panel zeminleri o resimle doseniyor. Bos birakilirsa doku
+	Assets icinde adiyla aranir (bkz. dokuyuAra).
+]]
+UI.DokuResmi = ""
 
 -- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
 UI.DokuBoyu = 128
@@ -486,9 +496,9 @@ local dokuKimligi: string? = nil
 --[[
 	DOKU GEC GELEBILIR
 
-	Paneller istemci acilir acilmaz kuruluyor; MaterialService'in icerigi o
-	an daha replike olmamis olabilir. Bir kez arayip pes etseydik oyunun
-	tamaminda zemin duz kalirdi.
+	Paneller istemci acilir acilmaz kuruluyor; Assets'in icerigi o an daha
+	replike olmamis olabilir. Bir kez arayip pes etseydik oyunun tamaminda
+	zemin duz kalirdi.
 
 	Bu yuzden katman HER ZAMAN kuruluyor (resmi bos olarak) ve doku bulunana
 	kadar bekleyenler listesinde tutuluyor; bulununca hepsine birden
@@ -502,49 +512,32 @@ local function sadeDokuAdi(ad: string): string
 end
 
 --[[
-	Dokuyu once MaterialService'te (MaterialVariant.ColorMap), bulunamazsa
-	Assets icinde bir resim olarak arar.
+	MATERIALSERVICE'TEN DOKU OKUNAMIYOR
 
-	ESLESME GEVSEK: ad birebir tutmazsa "seramic"/"ceramic"/"tile" gecen ilk
-	MaterialVariant kabul edilir. Studio Material Manager varyanti bazen
-	"[2024] Seramic Tiles 1" gibi bir ekle kaydediyor.
+	Ilk surum MaterialVariant.ColorMap'i okumaya calisiyordu ve Output'a
+	su hatayi basiyordu:
+
+	    The current thread cannot read 'ColorMap' (lacking capability Plugin)
+
+	ColorMap yalnizca PLUGIN guvenlik seviyesinde okunabiliyor; ne sunucu ne
+	istemci scriptleri erisebiliyor. Hata arama dongusunu de oldurdugu icin
+	zemin sessizce duz kaliyordu. O yol tamamen kaldirildi.
+
+	Arayuz zaten bir MALZEMEYI kullanamiyor, yalnizca bir RESIM kimligini
+	kullanabiliyor. Bu yuzden doku iki yoldan veriliyor:
+
+	    1. UI.DokuResmi'ne dogrudan "rbxassetid://..." yazmak
+	    2. ReplicatedStorage > Assets icine dokuyu tasiyan bir Decal,
+	       Texture, ImageLabel ya da resim kimligini tutan bir StringValue
+	       koymak (adi DOKU_ADLARI'ndan biri olmali)
+
+	Ikisi de yoksa paneller duz renk kalir ve Output'a bir kez yazilir.
 ]]
 local function dokuyuAra(): string?
-	local service = game:FindService("MaterialService")
-	if service then
-		local gevsek: string? = nil
-
-		for _, node in service:GetDescendants() do
-			if node:IsA("MaterialVariant") and node.ColorMap ~= "" then
-				local ad = sadeDokuAdi(node.Name)
-				for _, hedef in DOKU_ADLARI do
-					if ad == sadeDokuAdi(hedef) then
-						return node.ColorMap
-					end
-				end
-				if
-					not gevsek
-					and (
-						string.find(ad, "seramic", 1, true)
-						or string.find(ad, "ceramic", 1, true)
-						or string.find(ad, "tile", 1, true)
-					)
-				then
-					gevsek = node.ColorMap
-				end
-			end
-		end
-
-		if gevsek then
-			return gevsek
-		end
+	if UI.DokuResmi ~= "" then
+		return UI.DokuResmi
 	end
 
-	--[[
-		YEDEK: Assets icine konmus duz bir resim (Decal / Texture /
-		ImageLabel). MaterialVariant'i olmayan biri dokuyu boyle de
-		verebilsin.
-	]]
 	local kok = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
 	if kok then
 		for _, node in kok:GetDescendants() do
@@ -555,6 +548,8 @@ local function dokuyuAra(): string?
 						return node.Texture
 					elseif node:IsA("ImageLabel") and node.Image ~= "" then
 						return node.Image
+					elseif node:IsA("StringValue") and node.Value ~= "" then
+						return node.Value
 					end
 				end
 			end
@@ -565,33 +560,18 @@ local function dokuyuAra(): string?
 end
 
 --[[
-	Doku bulunamayinca Output'a NE BULUNDUGUNU yazar. "Bulunamadi" tek
-	basina ise yaramiyor: sorun cogu zaman addaki kucuk bir fark ya da bos
-	ColorMap oluyor, ikisi de ancak listeyi gorunce anlasiliyor.
+	Doku bulunamayinca NE YAPILMASI GEREKTIGINI yazar. Kuru bir
+	"bulunamadi" ise yaramiyor: dokunun neden gelmedigi ancak sebebi
+	yazilinca anlasiliyor.
 ]]
 local function dokuRaporu()
-	local service = game:FindService("MaterialService")
-	local satirlar: { string } = {}
-
-	if service then
-		for _, node in service:GetDescendants() do
-			if node:IsA("MaterialVariant") then
-				table.insert(
-					satirlar,
-					`"{node.Name}"{if node.ColorMap == "" then " (ColorMap BOS)" else ""}`
-				)
-			end
-		end
-	end
-
-	if #satirlar == 0 then
-		warn("[UI] MaterialService'te hic MaterialVariant yok. Zeminler duz renk kaliyor.")
-	else
-		warn(
-			`[UI] Doku bulunamadi. MaterialService'teki varyantlar: {table.concat(satirlar, ", ")}. `
-				.. `Aranan ad: "{DOKU_ADLARI[1]}" (ColorMap dolu olmali).`
-		)
-	end
+	warn(
+		`[UI] Panel dokusu yok, zeminler duz renk kaliyor. MaterialService'teki `
+			.. "malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i yalnizca eklentiler "
+			.. "okuyabiliyor). Dokuyu ya UI.DokuResmi'ne rbxassetid olarak yaz, ya da "
+			.. `ReplicatedStorage > Assets icine "{DOKU_ADLARI[1]}" adiyla bir Decal / `
+			.. "ImageLabel / StringValue koy."
+	)
 end
 
 local function dokuyuDagit()
