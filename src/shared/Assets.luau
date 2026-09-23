@@ -1200,22 +1200,25 @@ Assets.HiddenBrainrot = {
 		Carpan Assets.BrainrotSize.toolSize (4.5 stud) ile carpilir ve
 		modelin EN UZUN kenari o boya getirilir.
 
-		YUMURTALAR HER KADEMEDE 1.5 KATINA CIKIYOR: Common eski boyunda
-		kaliyor (yumurtaTabani), her ust kademe bir oncekinin yumurtaOrani
-		katı. Boylece kademe farki bakar bakmaz anlasiliyor.
+		YUMURTALAR HER KADEMEDE BIR ONCEKININ yumurtaOrani KATI: Common
+		taban boyunda kaliyor (yumurtaTabani), yukari dogru kademe kademe
+		buyuyor. Boylece kademe farki bakar bakmaz anlasiliyor.
 
-		  Common 0.35 -> ~1.6 stud        Mythic ~1.77 -> ~8 stud
-		  Divine ~2.7 -> ~12 stud         Abyssal ~13.5 -> ~60 stud
+		  Common ~1.6 stud      Mythic ~3.3 stud      Cosmic ~4.7 stud
+		  Divine ~3.9 stud      Infernal ~6.8 stud    Abyssal ~8.1 stud
+
+		ORAN 1.5 IKEN COK BUYUYORDU: ust kademeler 40-60 stud'a ciktigi
+		icin 1.2'ye indirildi. Artik en irisi karakterin biraz ustunde.
 
 		Yumurtanin efekti MODELIN ICINDE duruyor (Studio'da elle konuyor),
 		yani model buyudukce o da buyuyor; kod ayrica efekt eklemiyor.
 
-		Ust kademeler GERCEKTEN devasa oluyor; kucultmek icin yumurtaOrani
-		dusurmek (orn. 1.3) ya da asagidaki tabloyu elle yazmak yeterli.
-		Tablo bos birakilan kademeleri kendisi hesapliyor.
+		Boyu degistirmek icin yumurtaOrani'ni oynatmak yeter; asagidaki
+		tabloya elle yazilan kademe varsa o oldugu gibi kalir, kalanlari
+		kod hesaplar.
 	]]
 	yumurtaTabani = 0.35,
-	yumurtaOrani = 1.5,
+	yumurtaOrani = 1.2,
 	--[[
 		Elle verilmis carpanlar. Bos: hepsi yumurtaTabani/yumurtaOrani'ndan
 		hesaplanir (bkz. asagida rarityScale doldurma dongusu).
