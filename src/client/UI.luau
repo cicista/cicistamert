@@ -498,11 +498,11 @@ local DOKU_ADLARI = {
 	Buraya "rbxassetid://123456789" yazarsan baska hicbir sey gerekmez;
 	butun panel zeminleri o resimle doseniyor.
 
-	DIKKAT: burasi DISKTEKI dosya. Studio'daki kopyaya yazmak iseyaramaz --
+	DIKKAT: burasi DISKTEKI dosya. Studio'daki kopyaya yazmak ise yaramaz --
 	Rojo her senkronda diskteki surumu Studio'ya basiyor ve orada yazilan
 	sey siliniyor. Studio'dan vermek istiyorsan asagidaki NITELIGI kullan.
 ]]
-UI.DokuResmi = ""
+UI.DokuResmi = "rbxassetid://15985615564"
 
 --[[
 	STUDIO'DAN VERMENIN YOLU
