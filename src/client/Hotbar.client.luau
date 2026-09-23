@@ -37,6 +37,10 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
+-- Siralama icin: brainrotun degeri ve kademe sirasi
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
+local Scrolls = require(Shared:WaitForChild("Scrolls"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -107,36 +111,67 @@ ekran.Parent = playerGui
 ]]
 local CUBUK_EN = SLOT_SAYISI * (SLOT_BOY + SLOT_ARA) - SLOT_ARA
 local CEKMECE_EN = 34
-local KOK_EN = CUBUK_EN + SLOT_ARA + CEKMECE_EN
 
+--[[
+	BOS YUVA YER KAPLAMAZ
+
+	Cubuk artik sabit 10 yuva genisliginde degil: dolu yuva kadar. Bos
+	yuvalar Visible = false yapiliyor ve UIListLayout gorunmeyen cocugu
+	saymadigi icin cubuk kendiliginden daraliyor, kalanlar ortada topluyor.
+
+	Bu yuzden genislikler AutomaticSize ile olculuyor; kok da cubugu ve
+	cekmece dugmesini yan yana tutan bir liste.
+]]
 local kok = Instance.new("Frame")
 kok.Name = "HotbarKok"
 kok.AnchorPoint = Vector2.new(0.5, 1)
 kok.Position = UDim2.new(0.5, 0, 1, -ALT_PAY)
-kok.Size = UDim2.fromOffset(KOK_EN, SLOT_BOY)
+kok.Size = UDim2.fromOffset(0, SLOT_BOY)
+kok.AutomaticSize = Enum.AutomaticSize.X
 kok.BackgroundTransparency = 1
 kok.Parent = ekran
 
+local kokDizilim = Instance.new("UIListLayout")
+kokDizilim.FillDirection = Enum.FillDirection.Horizontal
+kokDizilim.Padding = UDim.new(0, SLOT_ARA)
+kokDizilim.SortOrder = Enum.SortOrder.LayoutOrder
+kokDizilim.HorizontalAlignment = Enum.HorizontalAlignment.Center
+kokDizilim.VerticalAlignment = Enum.VerticalAlignment.Bottom
+kokDizilim.Parent = kok
+
 local kokOlcek = Instance.new("UIScale")
 kokOlcek.Parent = kok
+
+--[[
+	Dar ekranda cubuk kuculur. Olcu kokun AbsoluteSize'indan alinamaz --
+	UIScale onu zaten carpiyor, geri besleme olusur. Onun yerine gorunen
+	yuva sayisindan HESAPLANIYOR.
+]]
+local gorunenYuva = 0
+local cekmeceAcikMi = false
 
 local function olcegiTazele()
 	local en = ekran.AbsoluteSize.X
 	if en <= 0 then
 		return
 	end
+
+	local icerik = math.max(1, gorunenYuva) * (SLOT_BOY + SLOT_ARA) - SLOT_ARA
+	if cekmeceAcikMi then
+		icerik += SLOT_ARA + CEKMECE_EN
+	end
+
 	-- Iki yanda 16'sar piksel pay kalsin
-	kokOlcek.Scale = math.clamp((en - 32) / KOK_EN, 0.5, 1)
+	kokOlcek.Scale = math.clamp((en - 32) / icerik, 0.5, 1)
 end
 
-olcegiTazele()
 ekran:GetPropertyChangedSignal("AbsoluteSize"):Connect(olcegiTazele)
 
 local cubuk = Instance.new("Frame")
 cubuk.Name = "Cubuk"
-cubuk.AnchorPoint = Vector2.new(0, 1)
-cubuk.Position = UDim2.new(0, 0, 1, 0)
-cubuk.Size = UDim2.fromOffset(CUBUK_EN, SLOT_BOY)
+cubuk.LayoutOrder = 1
+cubuk.Size = UDim2.fromOffset(0, SLOT_BOY)
+cubuk.AutomaticSize = Enum.AutomaticSize.X
 cubuk.BackgroundTransparency = 1
 cubuk.Parent = kok
 
@@ -331,6 +366,17 @@ local function ikonOf(tool: Tool): GuiObject?
 		return var
 	end
 
+	--[[
+		LUCKY BLOCK'TA IKON YOK, AD VAR.
+
+		Paketteki blok modeli bu boyutta okunakli bir ikon vermiyor; hangi
+		blok oldugu ancak adindan anlasiliyor. nil dondurunce yuva adi
+		yaziyor (bkz. yuvayiCiz).
+	]]
+	if tool:GetAttribute("LuckyBlock") then
+		return nil
+	end
+
 	if tool.TextureId ~= "" then
 		local resim = Instance.new("ImageLabel")
 		resim.Name = "Resim"
@@ -385,14 +431,18 @@ local function yuvayiCiz(sira: number)
 	local yuva = yuvalar[sira]
 	local tool = yuvaninEsyasi[sira]
 
+	--[[
+		BOS YUVA GIZLENIR. UIListLayout gorunmeyeni saymadigi icin cubuk
+		o kadar daralir; ekranin altinda bomboş kutular durmaz.
+	]]
 	if not tool then
+		yuva.kap.Visible = false
 		yuva.yazi.Text = ""
 		yuva.adet.Text = ""
-		yuva.kap.BackgroundTransparency = 0.55
-		yuva.kenar.Color = Color3.fromRGB(0, 0, 0)
-		yuva.numara.TextTransparency = 0.5
 		return
 	end
+
+	yuva.kap.Visible = true
 
 	local ikon = ikonOf(tool)
 	if ikon then
@@ -414,9 +464,14 @@ local function yuvayiCiz(sira: number)
 end
 
 local function hepsiniCiz()
+	gorunenYuva = 0
 	for sira = 1, SLOT_SAYISI do
 		yuvayiCiz(sira)
+		if yuvaninEsyasi[sira] then
+			gorunenYuva += 1
+		end
 	end
+	olcegiTazele()
 end
 
 ------------------------------------------------------------------
@@ -424,8 +479,7 @@ end
 ------------------------------------------------------------------
 local cekmeceDugme = Instance.new("TextButton")
 cekmeceDugme.Name = "Cekmece"
-cekmeceDugme.AnchorPoint = Vector2.new(1, 1)
-cekmeceDugme.Position = UDim2.new(1, 0, 1, 0)
+cekmeceDugme.LayoutOrder = 2
 cekmeceDugme.Size = UDim2.fromOffset(CEKMECE_EN, SLOT_BOY)
 cekmeceDugme.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
 cekmeceDugme.BackgroundTransparency = 0.25
@@ -563,7 +617,90 @@ end
 ]]
 local sonCekmeceImzasi = ""
 
+------------------------------------------------------------------
+-- SIRALAMA
+------------------------------------------------------------------
+--[[
+	YUVA SIRASI
+
+	    1. Aletler      kurek, GPS, olta, kazma, flyboard
+	    2. Parsomenler  (Scrolls.Nitelik)
+	    3. Lucky Block  kullanilacak esya, parsomenle ayni mantik
+	    4. Brainrotlar  PAHALIDAN UCUZA (saniyelik getirisine gore)
+	    5. Yumurtalar   kimligi acilmamis olanlar, kademesi yuksekten dusuge
+
+	Siralama HER TAZELEMEDE yeniden yapiliyor: kumdan cikip girince de,
+	envanter degisince de kurek 1. yuvaya doner. Eskiden bir esya aldigi
+	yuvada kalıyordu; o yuzden kazidan donunce alet arada bir yerde
+	kaliyordu.
+]]
+local function oncelik(tool: Tool): number
+	if type(tool:GetAttribute(Scrolls.Nitelik)) == "string" then
+		return 2
+	end
+	if tool:GetAttribute("LuckyBlock") then
+		return 3
+	end
+	if type(tool:GetAttribute("BrainrotUid")) == "string" then
+		return if tool:GetAttribute("Revealed") == true then 4 else 5
+	end
+	-- Geri kalan her sey alet
+	return 1
+end
+
+--[[
+	Brainrotun siralama degeri: acilmissa saniyelik getirisi, acilmamissa
+	kademesinin sirasi. Ikisi ayni sayida degil ama ayni GRUPTA olanlar
+	kendi aralarinda karsilastirildigi icin sorun olmuyor.
+]]
+local function deger(tool: Tool): number
+	local kademe = tool:GetAttribute("Rarity")
+	local durum = tool:GetAttribute("Condition")
+	local mutasyon = tool:GetAttribute("Mutation")
+
+	if tool:GetAttribute("Revealed") == true and type(durum) == "string" then
+		local gelir = Brainrots.income(adOf(tool), durum :: any, mutasyon :: any)
+		if gelir > 0 then
+			return gelir
+		end
+	end
+
+	local info = if type(kademe) == "string" then Rarity.Info[kademe :: any] else nil
+	return if info then info.order else 0
+end
+
+local function sirala(liste: { Tool })
+	--[[
+		Ayni grup ve ayni degerdeyse ADA gore: siralama kare kare
+		degismesin. table.sort kararli degil, esitlikte kesin bir kural
+		olmazsa ayni iki esya her tazelemede yer degistirebilir.
+	]]
+	table.sort(liste, function(a, b)
+		local oa, ob = oncelik(a), oncelik(b)
+		if oa ~= ob then
+			return oa < ob
+		end
+
+		local da, db = deger(a), deger(b)
+		if da ~= db then
+			return da > db
+		end
+
+		return a.Name < b.Name
+	end)
+end
+
 local function cekmeceyiCiz(disarida: { Tool })
+	--[[
+		Dugmenin gorunurlugu imza denetiminden ONCE: dugme cubukta yer
+		kapladigi icin olcek hesabi ona bakiyor (bkz. olcegiTazele).
+	]]
+	cekmeceAcikMi = #disarida > 0
+	cekmeceDugme.Visible = cekmeceAcikMi
+	if not cekmeceAcikMi then
+		cekmece.Visible = false
+	end
+
 	local imza = {}
 	for _, tool in disarida do
 		table.insert(imza, tool.Name)
@@ -580,9 +717,7 @@ local function cekmeceyiCiz(disarida: { Tool })
 		end
 	end
 
-	cekmeceDugme.Visible = #disarida > 0
 	if #disarida == 0 then
-		cekmece.Visible = false
 		return
 	end
 
@@ -625,20 +760,11 @@ local function tazele()
 		var[tool] = true
 	end
 
-	-- Artik olmayan esyalarin yuvasi bosalir
-	for tool, sira in esyaninYuvasi do
-		if not var[tool] then
-			esyaninYuvasi[tool] = nil
-			if yuvaninEsyasi[sira] == tool then
-				yuvaninEsyasi[sira] = nil
-			end
-		end
-	end
-
 	--[[
-		Ikon ve dinleyiciler AYRI temizleniyor: cekmecedeki (yuvasiz)
-		esyalarin da dinleyicisi var, yalnizca yuvalari gezseydik onlar
-		oyuncu cikana kadar bagli kalirdi.
+		Yuva tablolari asagida zaten sifirdan kuruluyor; burada yalnizca
+		artik var olmayan esyalarin IKONU ve dinleyicileri birakiliyor.
+		Ikisi ayri geziliyor cunku cekmecedeki (yuvasiz) esyalarin da
+		dinleyicisi var.
 	]]
 	for tool in baglantilar do
 		if not var[tool] then
@@ -652,28 +778,24 @@ local function tazele()
 	end
 
 	--[[
-		Yuvasi olmayan esyalara EN KUCUK BOS yuva veriliyor. Backpack
-		sirasiyla geziliyor: sunucu parsomenleri en basa aliyor (bkz.
-		Modules > Envanter > reorderBackpack), boylece ilk tusta parsomen
-		oluyor.
+		YUVALAR HER SEFERINDE BASTAN DAGITILIYOR (bkz. YUVA SIRASI).
+		Ilk on esya cubuga, kalani cekmeceye.
 	]]
-	local disarida: { Tool } = {}
-	for _, tool in mevcut do
-		if not esyaninYuvasi[tool] then
-			local yerlesti = false
-			for sira = 1, SLOT_SAYISI do
-				if not yuvaninEsyasi[sira] then
-					yuvaninEsyasi[sira] = tool
-					esyaninYuvasi[tool] = sira
-					yerlesti = true
-					break
-				end
-			end
-			if not yerlesti then
-				table.insert(disarida, tool)
-			end
-		end
+	sirala(mevcut)
+	table.clear(yuvaninEsyasi)
+	table.clear(esyaninYuvasi)
 
+	local disarida: { Tool } = {}
+	for sira, tool in mevcut do
+		if sira <= SLOT_SAYISI then
+			yuvaninEsyasi[sira] = tool
+			esyaninYuvasi[tool] = sira
+		else
+			table.insert(disarida, tool)
+		end
+	end
+
+	for _, tool in mevcut do
 		--[[
 			ADI ya da ADEDI degisince yalnizca rozet tazelenir. Sunucu
 			parsomen harcandiginda Tool'u silmeyip adini degistiriyor
@@ -697,8 +819,9 @@ local function tazele()
 		end
 	end
 
-	hepsiniCiz()
+	-- Cekmece once: olcek hesabi dugmenin gorunurlugune bakiyor
 	cekmeceyiCiz(disarida)
+	hepsiniCiz()
 end
 
 local function tazelemeIste()
