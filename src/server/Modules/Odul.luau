@@ -20,6 +20,14 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rewards = require(Shared:WaitForChild("Rewards"))
+local Format = require(Shared:WaitForChild("Format"))
+
+--[[
+	Sureli gecis odulu KALICI SAHIBINE verilemez; o gun eli bos kalmasin
+	diye yerine bu kadar Rot verilir. 1. ve 2. gunun (150K / 3M) arasinda
+	bir deger.
+]]
+local PASS_YERINE_ROT = 1_000_000
 local Passler = require(Shared:WaitForChild("Passler"))
 local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
 
@@ -89,6 +97,7 @@ local function ver(player: Player, day: number)
 	if odul.pass and odul.passSeconds then
 		local info = Passler.get(odul.pass)
 		local ad = if info then info.ad else odul.pass
+
 		if SureliGecis.ver(player, odul.pass, odul.passSeconds) then
 			--[[
 				kind == "pass" gunlerinde (3. gun) gecis ZATEN ana odul;
@@ -98,6 +107,16 @@ local function ver(player: Player, day: number)
 			if odul.kind ~= "pass" then
 				passYazisi = ` + {ad} ({SosyalOdul.sure(odul.passSeconds)})`
 			end
+		elseif odul.kind == "pass" then
+			--[[
+				GECIS ZATEN KALICI OLARAK ONUN: gunun tek odulu buydu, eli
+				bos kalmasin diye yerine Rot veriliyor. Miktar ROBUX
+				fiyatindan degil, o gunku takvimin komsu gunlerinden:
+				3. gun 1. ile 2. gunun arasinda duruyor.
+			]]
+			local yerine = PASS_YERINE_ROT
+			PlayerData.addRot(player, yerine)
+			passYazisi = ` -- already owned, +{Format.short(yerine)} Rot instead`
 		end
 	end
 
