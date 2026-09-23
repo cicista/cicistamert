@@ -134,8 +134,29 @@ end
 	daha gorunmuyor; test etmek icin her seferinde yeni hesap acmak gerekirdi.
 	Bu komut oyuncuyu ilk adima dondurur ve istemciye yeni durumu yollar.
 ]]
+--[[
+	OGRETICI SONRASI IPUCLARI  --  serit onlarla da acik kaliyor
+
+	Ogretici bitince ekrandaki serit KAPANMIYOR gibi gorunuyordu: sunucu
+	iki saniyede bir "ogretici bitti mi, parasi yetiyor mu" diye bakip
+	KUREK / ADA ipucunu aciyor (bkz. Modules > Ogretici > ipucuKontrol) ve
+	serit bu kez ipucu yazisiyla geri geliyordu. Test eden adminin parasi
+	her zaman yettigi icin bu, ogretici hic kapanmamis gibi duruyordu.
+
+	Bu yuzden "bitir" ikisini de GORULMUS isaretliyor, "basa sar" ise
+	sifirliyor -- iki komut da niteligi temizliyor ki istemci aninda
+	kapatsin.
+]]
+local function ipuclariniAyarla(player: Player, data: any, gorulmus: boolean)
+	data.tutorial.adaIpucu = gorulmus
+	data.tutorial.kurekIpucu = gorulmus
+	player:SetAttribute(OgreticiAdimlar.AdaIpucu.nitelik, nil)
+	player:SetAttribute(OgreticiAdimlar.KurekIpucu.nitelik, nil)
+end
+
 function commands.ogreticiSifirla(player, data)
-	data.tutorial = { adim = 1, bitti = false }
+	data.tutorial = { adim = 1, bitti = false, kazilan = {} }
+	ipuclariniAyarla(player, data, false)
 
 	local modul = script.Parent:FindFirstChild("Modules")
 	local ogretici = modul and modul:FindFirstChild("Ogretici")
@@ -174,6 +195,14 @@ function commands.ogreticiAtla(player, data)
 	end
 
 	local toplam = OgreticiAdimlar.adimSayisi()
+
+	--[[
+		Kayitli adim listeden buyuk olabilir (adim silindi ya da eski bir
+		kayit): once listeye sigdiriliyor, yoksa "siradaki adim" hicbir
+		zaman bulunamaz ve ogretici hep asili kalirdi.
+	]]
+	data.tutorial.adim = math.clamp(math.floor(data.tutorial.adim), 1, toplam)
+
 	if data.tutorial.adim >= toplam then
 		data.tutorial.bitti = true
 	else
@@ -190,16 +219,28 @@ function commands.ogreticiAtla(player, data)
 		else `Ogretici {data.tutorial.adim}. adima gecti`
 end
 
--- Butun ogreticiyi bitirir (yonergeler kaybolur)
+--[[
+	BUTUN OGRETICIYI BITIRIR  --  ekranda hicbir yonerge kalmaz
+
+	Yalnizca "bitti" demek yetmiyordu: adim sayaci son adima alinmali,
+	"uc kazi" listesi bosaltilmali ve ogretici sonrasi ipuclari gorulmus
+	sayilmali (yoksa serit birkac saniye sonra ipucu yazisiyla geri gelir).
+	Adim niteligi de siliniyor -- sunucu tarafinda kalan kancalar (garanti
+	suzme, isaretler) onu okuyor.
+]]
 function commands.ogreticiBitir(player, data)
 	data.tutorial.bitti = true
+	data.tutorial.adim = OgreticiAdimlar.adimSayisi()
+	data.tutorial.kazilan = {}
+	ipuclariniAyarla(player, data, true)
+	player:SetAttribute("OgreticiAdim", nil)
 
 	local ogretici = ogreticiModulu()
 	if ogretici then
 		ogretici.gonder(player)
 	end
 
-	return "Ogretici bitirildi"
+	return "Ogretici bitirildi (ipuclari dahil)"
 end
 
 --[[
@@ -220,7 +261,7 @@ end
 -- Etkinligi beklemeden tetikler (normalde saatte bir)
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()
-	return `Etkinlik baslatildi ({LuckyBlock.Event.count} blok)`
+	return `Etkinlik baslatildi ({LuckyBlock.toplamBlok()} blok)`
 end
 
 -- Her tikta TEK blok verir; tur arg ile gelir

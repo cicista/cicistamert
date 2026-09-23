@@ -27,6 +27,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Fonts = require(Shared:WaitForChild("Fonts"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Divine = require(Shared:WaitForChild("Divine"))
+-- Kademe arka plan resimleri (bkz. UI.blokTemasi)
+local Icons = require(Shared:WaitForChild("Icons"))
 
 local UI = {}
 
@@ -1714,6 +1716,295 @@ function UI.sayiYagmuru(
 		):Play()
 	end
 
+	return kap
+end
+
+--[[
+	PARCA YAGMURU  --  asagi akan kucuk sekiller
+
+	Sayi yagmurunun (hacker temasi) sekilli kardesi: rakam yerine elmas,
+	daire ya da kare parcalar akiyor. Elmaslar dogal dursun diye kendi
+	eksenlerinde de agir agir doniyor.
+
+	Kap yine bir CanvasGroup: duz Frame'de ClipsDescendants yuvarlak kosleri
+	yok sayip kartin disina tasiyordu (ayni not sayiYagmuru'nda da var).
+	Kosenin yuvarlanmasi cagirana ait: UI.corner(kap, 12).
+]]
+export type YagmurAyari = {
+	renk: Color3,
+	-- Kac parca (varsayilan 14)
+	sayi: number?,
+	-- Parcanin kenar uzunlugu, piksel (varsayilan 10)
+	boyut: number?,
+	-- Bir parcanin tepeden dibe inme suresi (varsayilan 4 sn)
+	sure: number?,
+	-- "elmas" | "daire" | "kare"
+	sekil: string?,
+	-- Taban saydamlik: 0 = tam parlak (varsayilan 0.35)
+	saydam: number?,
+	zIndex: number?,
+}
+
+function UI.parcaYagmuru(parent: GuiObject, ayar: YagmurAyari): CanvasGroup
+	local kap = Instance.new("CanvasGroup")
+	kap.Name = "ParcaYagmuru"
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.BorderSizePixel = 0
+	kap.ClipsDescendants = true
+	kap.ZIndex = ayar.zIndex or 2
+	kap.Parent = parent
+
+	local rastgele = Random.new()
+	local adet = ayar.sayi or 14
+	local boyut = ayar.boyut or 10
+	local sure = ayar.sure or 4
+	local sekil = ayar.sekil or "elmas"
+	local saydam = ayar.saydam or 0.35
+
+	for i = 1, adet do
+		--[[
+			Her parca kendi hizinda ve kendi gecikmesiyle iniyor; hepsi ayni
+			anda tepeden basa sarmasin diye gecikme suresi de rastgele.
+			Kucuk parcalar daha saydam: derinlik hissi verir.
+		]]
+		local olcek = rastgele:NextNumber(0.65, 1.25)
+		local kenar = math.floor(boyut * olcek)
+
+		local parca = Instance.new("Frame")
+		parca.Name = "Parca"
+		parca.AnchorPoint = Vector2.new(0.5, 0.5)
+		parca.Size = UDim2.fromOffset(kenar, kenar)
+		parca.Position = UDim2.new(rastgele:NextNumber(0.03, 0.97), 0, -0.2, 0)
+		parca.BackgroundColor3 = ayar.renk
+		parca.BackgroundTransparency = math.clamp(saydam + (1.25 - olcek) * 0.25, 0, 0.95)
+		parca.BorderSizePixel = 0
+		parca.Rotation = if sekil == "elmas" then 45 else 0
+		parca.ZIndex = kap.ZIndex
+		parca.Parent = kap
+
+		if sekil == "daire" then
+			local yuvarlak = Instance.new("UICorner")
+			yuvarlak.CornerRadius = UDim.new(1, 0)
+			yuvarlak.Parent = parca
+		elseif sekil == "kare" then
+			UI.corner(parca, 2)
+		end
+
+		-- Parlak uc: parcanin ustu acik, alti rengin kendisi
+		local gecis = Instance.new("UIGradient")
+		gecis.Rotation = 90
+		gecis.Color = ColorSequence.new(Color3.new(1, 1, 1), ayar.renk)
+		gecis.Parent = parca
+
+		local inis = rastgele:NextNumber(sure * 0.7, sure * 1.4) / olcek
+		TweenService:Create(
+			parca,
+			TweenInfo.new(inis, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false, rastgele:NextNumber(0, sure)),
+			{ Position = UDim2.new(parca.Position.X.Scale, 0, 1.2, 0) }
+		):Play()
+
+		if sekil == "elmas" then
+			-- Duserken agir agir kendi ekseninde doner
+			TweenService:Create(
+				parca,
+				TweenInfo.new(rastgele:NextNumber(4, 9), Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+				{ Rotation = 45 + 360 }
+			):Play()
+		end
+	end
+
+	return kap
+end
+
+--[[
+	LUCKY BLOCK TEMASI  --  kademenin arka plani + akan animasyonu
+
+	Iki katman birden seriliyor:
+
+	  1. ARKA PLAN RESMI  Store kartlarindaki resmin aynisi. Resimler
+	     ReplicatedStorage > Assets > Backgrounds icinde duruyor
+	     (diamondbackground / goldenbackground / hackerbackground);
+	     yoksa o katman atlanir, kartin kendi zemini kalir.
+
+	  2. ANIMASYON        Hacker yesil rakam yagmuru, Diamond donerek inen
+	     buz elmaslari, Golden suzulen altin damlalari.
+
+	Normal blokta ikisi de yok: ozel olanlar one ciksin. Kademesi
+	taninmayan bir sey gelirse hicbir sey yapilmaz (nil doner).
+]]
+--[[
+	CANLI LEVHA  --  Rot Coin magazasindaki kart zemininin aynisi
+
+	Kendi arka plan resmi OLMAYAN kademeler (Normal blok) duz ve donuk
+	kaliyordu. Bu katman onun yerine parlak bir levha ciziyor: ustu acik
+	alti koyu bir gecis, uzerinde agir agir kayan iki capraz kristal serit
+	katmani ve bastan sona suzulen genis bir isik bandi.
+
+	Butun katmanlar KABIN ZIndex'inde: boylece kabin kendi sirasi neyse
+	icerigi de orada kalir, ustundeki cark ve yazilarin onune gecmez
+	(siralamayi ekleme sirasi belirler).
+]]
+function UI.canliZemin(parent: GuiObject, renk: Color3, kose: number?, zIndex: number?): Frame
+	local z = zIndex or 0
+	local yaricap = kose or 12
+
+	local kap = Instance.new("Frame")
+	kap.Name = "CanliZemin"
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundColor3 = Color3.new(1, 1, 1)
+	kap.BorderSizePixel = 0
+	kap.ClipsDescendants = true
+	kap.ZIndex = z
+	kap.Parent = parent
+	UI.corner(kap, yaricap)
+
+	-- Ustu acik, alti koyu: madeni levha hissi
+	local zemin = Instance.new("UIGradient")
+	zemin.Rotation = 90
+	zemin.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, UI.shade(renk, 0.24)),
+		ColorSequenceKeypoint.new(0.45, renk),
+		ColorSequenceKeypoint.new(1, UI.shade(renk, -0.3)),
+	})
+	zemin.Parent = kap
+
+	-- Kristal yuzeyleri: iki capraz serit katmani, agir agir kayiyor
+	for i, aci in { 26, -26 } do
+		local doku = UI.stripeLayer(kap, Color3.new(1, 1, 1), aci, 4, if i == 1 then 0.88 else 0.92)
+		doku.ZIndex = z
+		UI.corner(doku, yaricap)
+
+		local gecis = doku:FindFirstChildOfClass("UIGradient")
+		if gecis then
+			gecis.Offset = Vector2.new(if i == 1 then -0.5 else 0.5, 0)
+			TweenService:Create(
+				gecis,
+				TweenInfo.new(if i == 1 then 9 else 12, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true),
+				{ Offset = Vector2.new(if i == 1 then 0.5 else -0.5, 0) }
+			):Play()
+		end
+	end
+
+	-- Bastan sona suzulen genis isik bandi
+	local isik = Instance.new("Frame")
+	isik.Name = "Tarama"
+	isik.Size = UDim2.fromScale(1, 1)
+	isik.BackgroundColor3 = Color3.new(1, 1, 1)
+	isik.BorderSizePixel = 0
+	isik.ZIndex = z
+	isik.Parent = kap
+	UI.corner(isik, yaricap)
+
+	local bant = Instance.new("UIGradient")
+	bant.Rotation = 18
+	bant.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.72),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	bant.Offset = Vector2.new(-1.3, 0)
+	bant.Parent = isik
+	TweenService:Create(
+		bant,
+		TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 1.6),
+		{ Offset = Vector2.new(1.3, 0) }
+	):Play()
+
+	return kap
+end
+
+-- Kademe -> Assets > Backgrounds icindeki resmin adi
+UI.BlokArkaPlani = {
+	Diamond = "diamondbackground",
+	Golden = "goldenbackground",
+	Hacker = "hackerbackground",
+} :: { [string]: string }
+
+-- Assets > Categories.backgrounds ile ayni klasor
+local ARKA_PLAN_KLASORU = "Backgrounds"
+-- Resim zeminde kalsin, uzerindeki yazilari bastirmasin
+local ARKA_PLAN_SAYDAM = 0.45
+-- Rot Coin magazasindan gelen kart resimleri daha dolgun serilir
+local MAGAZA_SAYDAM = 0.12
+local ARKA_PLAN_YAYILMA = 3
+
+function UI.blokTemasi(kart: GuiObject, tierId: string?, zIndex: number?, kose: number?, renk: Color3?): GuiObject?
+	if type(tierId) ~= "string" then
+		return nil
+	end
+
+	local z = zIndex or 2
+	local yaricap = kose or 12
+	local kap: GuiObject? = nil
+
+	--[[
+		1) ZEMIN  --  uc kademeli arama
+
+		  1. Assets > Backgrounds > <kademe>background
+		     Store kartlarindaki resim (elmas dokusu, altin tugla, Matrix).
+
+		  2. Assets > Icons > rc_bg_<kademe>  ya da  rc_bg
+		     Rot Coin magazasinin kart resimleri. Normal blogun Backgrounds
+		     icinde resmi yok; magazadaki kahverengi doku buradan geliyor,
+		     yani carkin arkasi magazadaki kartla ayni gorunuyor.
+
+		  3. Hicbiri yoksa CANLI LEVHA: blogun renginde parlak zemin, kayan
+		     kristaller, suzulen isik. Duz koyu zemin hicbir kademede kalmaz.
+
+		Magaza resimleri zeminde kalsin diye degil, KART gibi gorunsun diye
+		daha az saydam seriliyor.
+	]]
+	local resimAdi = UI.BlokArkaPlani[tierId]
+	local resim = if resimAdi then Icons.assetKlasorden(ARKA_PLAN_KLASORU, resimAdi) else nil
+	local saydam = ARKA_PLAN_SAYDAM
+
+	if not resim then
+		local kucuk = string.lower(tierId)
+		resim = Icons.assetTam(`rc_bg_{kucuk}`)
+			or Icons.asset(`rc_bg_{kucuk}`)
+			or Icons.assetTam("rc_bg")
+			or Icons.asset("rc_bg")
+		saydam = MAGAZA_SAYDAM
+	end
+
+	if resim then
+		UI.corner(UI.yumusakResim(kart, resim, saydam, ARKA_PLAN_YAYILMA, z), yaricap)
+	elseif renk then
+		UI.canliZemin(kart, renk, yaricap, z)
+	end
+
+	-- 2) Akan animasyon
+	if tierId == "Hacker" then
+		-- Yogun ve hizli: 18 sutun, bastan asagi 1.8 saniyede iniyor
+		kap = UI.sayiYagmuru(kart, UI.HackerYesil, 18, z, 1.8, 0.32)
+	elseif tierId == "Diamond" then
+		kap = UI.parcaYagmuru(kart, {
+			renk = Color3.fromRGB(150, 235, 255),
+			sayi = 16,
+			boyut = 11,
+			sure = 4.5,
+			sekil = "elmas",
+			saydam = 0.3,
+			zIndex = z,
+		})
+	elseif tierId == "Golden" then
+		kap = UI.parcaYagmuru(kart, {
+			renk = Color3.fromRGB(255, 225, 120),
+			sayi = 14,
+			boyut = 10,
+			sure = 5.5,
+			sekil = "daire",
+			saydam = 0.32,
+			zIndex = z,
+		})
+	end
+
+	if kap then
+		UI.corner(kap, yaricap)
+	end
 	return kap
 end
 

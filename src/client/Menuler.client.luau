@@ -1629,6 +1629,48 @@ local luckyTier = UI.text({
 	parent = luckyPanel,
 })
 
+--[[
+	PANELIN ARKA TEMASI  --  acilan blogun kademesine gore
+
+	Panelin cizgili koyu zemini her blokta ayni duruyordu. Bu katman o
+	zeminin hemen ustune seriliyor ve Store'daki kartlarla AYNI animasyonu
+	oynatiyor (bkz. UI.blokTemasi):
+
+	    Hacker   yesil rakam yagmuru
+	    Diamond  donerek inen buz elmaslari
+	    Golden   suzulen altin damlalari
+
+	Icerigi her acilista yenileniyor (bkz. LuckyBlockSonuc isleyicisi).
+	ZIndex 0: panelin dokusuyla ayni katmanda, carkin ve yazilarin altinda.
+
+	Ust seviyede yeni yerel acilmiyor (200 siniri): katmana sonradan
+	adiyla ulasiliyor.
+]]
+do
+	local kat = Instance.new("Frame")
+	kat.Name = "TemaKatmani"
+	kat.Size = UDim2.fromScale(1, 1)
+	kat.BackgroundTransparency = 1
+	kat.ZIndex = 0
+	kat.Parent = luckyPanel
+
+	--[[
+		BASLIK IKONU DAHA ILK KAREDE BLOK OLSUN
+
+		Panel acilinca kademesine gore yenileniyor; burada varsayilan blok
+		takiliyor ki paketin "?" kutusu bir an bile gorunmesin. Ikon
+		cubukta asenkron kuruldugu icin (Icons.bind) birkac kare bekleniyor.
+	]]
+	task.spawn(function()
+		local cubuk = luckyPanel:WaitForChild("Baslik", 10)
+		local ikon = cubuk and cubuk:WaitForChild("Ikon", 10)
+		if ikon and ikon:IsA("ImageLabel") then
+			task.wait(0.2)
+			require(script.Parent:WaitForChild("LuckyOnizleme")).ikonaKoy(ikon, LuckyBlock.Default)
+		end
+	end)
+end
+
 UI.closeButton(luckyPanel).MouseButton1Click:Connect(function()
 	luckyPanel.Visible = false
 end)
@@ -1867,6 +1909,72 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	luckyTier.TextColor3 = if typeof(data.tierColor) == "Color3" then data.tierColor else UI.Colors.textDim
 
 	--[[
+		ARKA TEMA ACILAN BLOGA GORE
+
+		Tur kimligi sunucudan geliyor; eski bir sunucu kimlik yollamazsa
+		gorunen addan bulunuyor. Normal blokta animasyon yok: zemin eskisi
+		gibi duz kalir.
+	]]
+	do
+		--[[
+			ACILAN BLOGUN KIMLIGI
+
+			Sunucudan geliyor; eski bir sunucu kimlik yollamazsa gorunen
+			addan bulunuyor, o da tutmazsa varsayilan blok kullaniliyor --
+			baslikta her halukarda gercek bir blok doner, "?" kutusu degil.
+		]]
+		local turId = if type(data.tier) == "string" then data.tier else nil
+		if not turId and type(data.tierName) == "string" then
+			for _, aday in LuckyBlock.Tiers do
+				if aday.displayName == data.tierName then
+					turId = aday.id
+					break
+				end
+			end
+		end
+
+		local kat = luckyPanel:FindFirstChild("TemaKatmani")
+		if kat and kat:IsA("GuiObject") then
+			-- Onceki acilisin animasyonu temizlenir
+			kat:ClearAllChildren()
+			--[[
+				Panelin kose yaricapiyla ayni (bkz. UI.panel). Renk, arka
+				plan resmi olmayan kademelerde canli levhanin rengi olur.
+			]]
+			UI.blokTemasi(
+				kat,
+				turId,
+				0,
+				14,
+				if typeof(data.tierColor) == "Color3" then data.tierColor else Rarity.LuckyBlock.colorA
+			)
+		end
+
+		--[[
+			BASLIKTAKI IKON DA ACILAN BLOK
+
+			Baslik cubugunda paketin "?" tahta kutusu duruyordu; hangi blogu
+			actigini soylemiyordu. Artik orada blogun kendi modeli doner.
+		]]
+		local cubuk = luckyPanel:FindFirstChild("Baslik")
+		local ikon = cubuk and cubuk:FindFirstChild("Ikon")
+		if ikon and ikon:IsA("ImageLabel") then
+			local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
+			LuckyOnizleme.ikonaKoy(ikon, turId or LuckyBlock.Default)
+
+			--[[
+				Baslik yazisi ikonun sagindan baslar. Normalde bunu Icons.bind
+				yapiyor; paket ikonu hic bulunamazsa yazi solda kalip modelin
+				ustune biniyordu.
+			]]
+			local yazi = cubuk and cubuk:FindFirstChild("Yazi")
+			if yazi and yazi:IsA("TextLabel") then
+				yazi.Position = UDim2.fromOffset(62, 0)
+			end
+		end
+	end
+
+	--[[
 		TURUN RENGI: baslik cubugu, isik huzmeleri ve rulet cercevesi acilan
 		blogun renginde (Lucky sari, Golden turuncu, Diamond mavi).
 	]]
@@ -1897,26 +2005,32 @@ end)
 
 
 ------------------------------------------------------------------
--- BLOK YAGMURU SAYACI (ekranin ust ortasi)
+-- BLOK YAGMURU BILGISI (ekranin sol alti)
 --
--- Sunucu 5 saniyede bir kalan sureyi gonderiyor; arada client kendi
--- icinde geri sayiyor. Boylece yazi her saniye ilerliyor ama sunucuyla
--- arasi acilmiyor.
+-- Yagmur iki sarta bagli: sunucuda 6 kisi olacak VE son yagmurun
+-- uzerinden 1 saat gecmis olacak (bkz. Shared > LuckyBlock > Event).
+-- Kutu ikisini birden gosteriyor:
+--
+--     LUCKY BLOCK RAIN
+--     4 / 6 PLAYERS
+--     next in 42:10        (ya da DROPPING SOON / NOW!)
+--
+-- Sunucu durumu iki saniyede bir yolluyor, arada client kendi icinde
+-- sayiyor: yazi her saniye ilerler ama sunucuyla arasi acilmaz.
 ------------------------------------------------------------------
 local sayacKutu = Instance.new("Frame")
-sayacKutu.Name = "EtkinlikSayaci"
-sayacKutu.AnchorPoint = Vector2.new(0.5, 0)
--- Ust ortada, LEVEL barinin hemen altinda. Bar ust cubugun icinde (ekranin
--- 8..56 pikseli, bkz. StarterPlayerScripts > SeviyeArayuz); bu ekran ust
--- cubugun ALTINDAN olculuyor; cubuk 36 ya da 58 piksel olabildigi icin 24
--- pikselle ikisinde de barin altinda kaliyor
-sayacKutu.Position = UDim2.new(0.5, 0, 0, 24)
-sayacKutu.Size = UDim2.fromOffset(260, 54)
+sayacKutu.Name = "LuckyYagmurBilgisi"
+-- Sol altta, para gostergesinin ustunde. Kesin yeri solSutunuYerlestir'de
+-- hesaplaniyor: arayuz olcegi degisince para kutusuyla cakismasin
+sayacKutu.AnchorPoint = Vector2.new(0, 1)
+sayacKutu.Position = UDim2.new(0, 20, 1, -200)
+sayacKutu.Size = UDim2.fromOffset(250, 66)
 -- Kutu degil: bildirimler gibi bu da yalnizca yazi. Cerceve ve zemin yok,
 -- okunurlugu yazilarin kendi siyah konturu sagliyor
 sayacKutu.BackgroundTransparency = 1
 sayacKutu.BorderSizePixel = 0
-sayacKutu.Visible = false
+-- Bastan gorunur: sol menu sutunu yerini ona gore hesapliyor (bkz. solSutunuYerlestir)
+sayacKutu.Visible = LuckyBlock.Event.enabled
 sayacKutu.Parent = screen
 
 UI.text({
@@ -1924,20 +2038,31 @@ UI.text({
 	size = UI.Sizes.tiny,
 	font = UI.Fonts.bold,
 	color = Rarity.LuckyBlock.colorA,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -10, 0, 18),
-	position = UDim2.fromOffset(5, 6),
+	frameSize = UDim2.new(1, 0, 0, 18),
+	position = UDim2.fromOffset(0, 0),
 	parent = sayacKutu,
 })
 
+-- Buyuk satir: kac kisi var / kac gerekiyor
 local sayacYazi = UI.text({
-	text = "--:--",
+	text = "0 / 6 PLAYERS",
 	size = UI.Sizes.heading,
 	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -10, 0, 28),
-	position = UDim2.fromOffset(5, 24),
+	frameSize = UDim2.new(1, 0, 0, 28),
+	position = UDim2.fromOffset(0, 18),
 	parent = sayacKutu,
+})
+
+-- Alt satir: bekleme suresi ya da "DROPPING SOON"
+UI.text({
+	text = "",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = UI.Colors.textDim,
+	frameSize = UDim2.new(1, 0, 0, 20),
+	position = UDim2.fromOffset(0, 46),
+	parent = sayacKutu,
+	name = "Durum",
 })
 
 local kalanSure = -1
@@ -1956,15 +2081,60 @@ local function sureMetni(seconds: number): string
 end
 
 --[[
-	Sayac yalnizca yagmira LuckyBlock.Event.showBefore saniye kala gorunur.
-	Iki saatlik araligin tamamini geri saymak ekranda gereksiz duruyordu.
+	KUTUYU CIZ
+
+	Oyuncu sayisi ve bekleme sunucudan geliyor, sayim (son 15 saniye) de
+	oyle. Sayilar nitelik olarak kutunun ustunde duruyor: bu dosya 200
+	yerel sinirinda, ust seviyede yeni degisken acilmiyor.
 ]]
 local function tazeleGorunurluk()
-	sayacKutu.Visible = kalanSure >= 0 and kalanSure <= LuckyBlock.Event.showBefore
+	local oyuncu = sayacKutu:GetAttribute("Oyuncu") or 0
+	local gereken = sayacKutu:GetAttribute("Gereken") or LuckyBlock.Event.gerekenOyuncu
+	local sayim = sayacKutu:GetAttribute("Sayim") or -1
+	local durum = sayacKutu:FindFirstChild("Durum")
+
+	sayacKutu.Visible = LuckyBlock.Event.enabled
+
+	local yeterli = oyuncu >= gereken
+	sayacYazi.Text = `{oyuncu} / {gereken} PLAYERS`
+	-- Sayi dolunca yesil: oyuncu tek bakista "tamam" desin
+	sayacYazi.TextColor3 = if yeterli then Color3.fromRGB(120, 255, 150) else UI.Colors.text
+
+	if not (durum and durum:IsA("TextLabel")) then
+		return
+	end
+
+	if sayim >= 0 then
+		-- Son sayim: bloklar dusmek uzere
+		durum.Text = `DROPPING IN {sayim}s`
+		durum.TextColor3 = Rarity.LuckyBlock.colorA
+	elseif kalanSure > 0 then
+		-- Bir onceki yagmurdan sonraki bekleme
+		durum.Text = `next in {sureMetni(kalanSure)}`
+		durum.TextColor3 = UI.Colors.textDim
+	elseif yeterli then
+		durum.Text = "STARTING..."
+		durum.TextColor3 = Rarity.LuckyBlock.colorA
+	else
+		durum.Text = `{gereken - oyuncu} more to start`
+		durum.TextColor3 = UI.Colors.textDim
+	end
 end
 
-EtkinlikSayaci.OnClientEvent:Connect(function(seconds)
-	kalanSure = math.max(0, tonumber(seconds) or 0)
+EtkinlikSayaci.OnClientEvent:Connect(function(veri)
+	--[[
+		Sunucu artik tablo yolluyor; eski surumden duz sayi gelirse o da
+		bekleme suresi sayilir (sunucu ve istemci ayri guncellenebilir).
+	]]
+	if type(veri) == "table" then
+		sayacKutu:SetAttribute("Oyuncu", math.floor(tonumber(veri.oyuncu) or 0))
+		sayacKutu:SetAttribute("Gereken", math.floor(tonumber(veri.gereken) or LuckyBlock.Event.gerekenOyuncu))
+		sayacKutu:SetAttribute("Sayim", math.floor(tonumber(veri.sayim) or -1))
+		kalanSure = math.max(0, tonumber(veri.bekleme) or 0)
+	else
+		kalanSure = math.max(0, tonumber(veri) or 0)
+	end
+
 	tazeleGorunurluk()
 end)
 
@@ -1972,23 +2142,17 @@ task.spawn(function()
 	while true do
 		task.wait(1)
 
-		if kalanSure < 0 then
-			continue
+		-- Sunucu tazelemesi arasinda sayilar yerinde saymasin
+		if kalanSure > 0 then
+			kalanSure -= 1
 		end
 
-		if kalanSure <= 0 then
-			sayacYazi.Text = "NOW!"
-			sayacYazi.TextColor3 = Rarity.LuckyBlock.colorA
-			continue
+		local sayim = sayacKutu:GetAttribute("Sayim") or -1
+		if sayim > 0 then
+			sayacKutu:SetAttribute("Sayim", sayim - 1)
 		end
 
-		kalanSure -= 1
 		tazeleGorunurluk()
-		sayacYazi.Text = sureMetni(kalanSure)
-		-- Son bir dakikada dikkat cekmesi icin renk degisir
-		sayacYazi.TextColor3 = if kalanSure <= 60
-			then Color3.fromRGB(255, 120, 120)
-			else UI.Colors.text
 	end
 end)
 
@@ -2111,6 +2275,15 @@ local function solSutunuYerlestir()
 	iksirBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi + buffYuksekligi))
 	if iksirBuff.Visible then
 		buffYuksekligi += iksirBuff.Size.Y.Offset * carpan
+	end
+
+	--[[
+		Blok yagmuru bilgisi de ayni yigina giriyor: para -> buff'lar ->
+		yagmur -> menu butonlari. Gorunmuyorsa yer kaplamaz.
+	]]
+	sayacKutu.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi + buffYuksekligi))
+	if sayacKutu.Visible then
+		buffYuksekligi += sayacKutu.Size.Y.Offset * carpan
 	end
 
 	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + SUTUN_BOSLUK))

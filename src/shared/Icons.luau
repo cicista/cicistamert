@@ -150,7 +150,20 @@ local Map: { [string]: IconEntry } = {
 		{ "AssetsTam", "Detective" },
 		{ "Misc", "Question" },
 	},
-	luckyBlock = { "RNG", "? Box" },
+	--[[
+		LUCKY BLOCK YEDEK IKONU
+
+		Arayuzde bloklar artik 3B MODELLERIYLE cikiyor (bkz.
+		StarterPlayerScripts > LuckyOnizleme); bu ikon yalnizca model hic
+		bulunamayinca kullaniliyor. Paketteki "? Box" en sonda: kendi
+		resmini Assets > Icons icine "LuckyBlock" adiyla koyarsan once o
+		denenir.
+	]]
+	luckyBlock = {
+		{ "AssetsTam", "LuckyBlock" },
+		{ "*", "LuckyBlock" },
+		{ "RNG", "? Box" },
+	},
 	--[[
 		Auto Clicker gecisi (Playtime 30 dk odulu ve Store karti). Pakette
 		adi kesin bilinmiyor, sirayla deneniyor; kendi resmini Assets >

@@ -215,7 +215,7 @@ local function buildPanel(info: any)
 		actionButton(`Rot Coin ver  (+{miktar})`, "giveRotCoins", miktar, Color3.fromRGB(120, 226, 150))
 	end
 	actionButton(
-		`Blok yagmuru baslat  ({LuckyBlock.Event.count} blok)`,
+		`Blok yagmuru baslat  ({LuckyBlock.toplamBlok()} blok)`,
 		"luckyEvent",
 		nil,
 		UI.Colors.warn

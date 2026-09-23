@@ -287,6 +287,123 @@ end
 
 	groundY: koninin ince ucunun oturacagi zemin yuksekligi.
 ]]
+--[[
+	Kademenin gorunum ayari (bkz. Shared > LuckyBlock > Event.gorunum).
+	Taninmayan kademe normalin ayarini kullanir.
+]]
+local function gorunumOf(tierId: string): any
+	local g = LuckyBlock.Event.gorunum
+	return g[tierId] or g.Normal or { olcek = 1, sutun = 140, kalinlik = 4, isik = 26 }
+end
+
+--[[
+	GOKYUZU SUTUNU  --  blok haritanin her yerinden gorunsun
+
+	Isik konisi yalnizca yakindan belli oluyordu. Bunun uzerine bir de
+	yerden gokyuzune uzanan renkli bir sutun cikiyor: Beam oldugu icin
+	her acidan duz gorunuyor, yukari dogru inceliyor ve soluyor.
+
+	Ozel bloklarda (Elmas / Altin) sutun daha uzun ve kalin -- adanin obur
+	ucundan bile hangisinin nerede oldugu anlasiliyor.
+]]
+local function buildSkyColumn(parent: BasePart, groundY: number, tier: any, gorunum: any)
+	local yukseklik = gorunum.sutun or 140
+	if yukseklik <= 0 then
+		return
+	end
+
+	local alt = Instance.new("Attachment")
+	alt.Name = "SutunAlt"
+	alt.Position = Vector3.new(0, groundY - parent.Position.Y, 0)
+	alt.Parent = parent
+
+	local ust = Instance.new("Attachment")
+	ust.Name = "SutunUst"
+	ust.Position = Vector3.new(0, groundY - parent.Position.Y + yukseklik, 0)
+	ust.Parent = parent
+
+	local sutun = Instance.new("Beam")
+	sutun.Name = "GokSutunu"
+	sutun.Attachment0 = alt
+	sutun.Attachment1 = ust
+	sutun.Width0 = gorunum.kalinlik or 4
+	-- Yukari dogru incelir: gokyuzunde eriyip gider
+	sutun.Width1 = (gorunum.kalinlik or 4) * 0.35
+	sutun.FaceCamera = true
+	sutun.LightEmission = 1
+	sutun.LightInfluence = 0
+	sutun.Color = ColorSequence.new(Color3.new(1, 1, 1), tier.color)
+	sutun.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(0.6, 0.72),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	sutun.Segments = 4
+	sutun.Parent = parent
+end
+
+--[[
+	OZEL BLOGUN SUSU  --  kivilcimlar ve donen halka
+
+	Elmas ve Altin bloklar normal bloklarin arasinda kaybolmasin diye:
+	etraflarinda kademe renginde parcaciklar ucusuyor, altlarinda da
+	yavasca donen bir isik halkasi duruyor.
+]]
+local function buildOzelSus(parent: BasePart, tier: any, gorunum: any)
+	if gorunum.kivilcim then
+		local ek = Instance.new("Attachment")
+		ek.Name = "KivilcimNoktasi"
+		ek.Parent = parent
+
+		local kivilcim = Instance.new("ParticleEmitter")
+		kivilcim.Name = "Kivilcim"
+		kivilcim.Color = ColorSequence.new(Color3.new(1, 1, 1), tier.color)
+		kivilcim.LightEmission = 1
+		kivilcim.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.9),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		kivilcim.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		kivilcim.Lifetime = NumberRange.new(0.8, 1.6)
+		kivilcim.Rate = 26
+		kivilcim.Speed = NumberRange.new(2, 5)
+		kivilcim.SpreadAngle = Vector2.new(180, 180)
+		kivilcim.Rotation = NumberRange.new(0, 360)
+		kivilcim.Parent = ek
+	end
+
+	if gorunum.halka then
+		local halka = Instance.new("Part")
+		halka.Name = "Halka"
+		halka.Shape = Enum.PartType.Cylinder
+		halka.Size = Vector3.new(0.4, 14, 14)
+		-- Silindir X ekseninde uzanir: yere yatirmak icin 90 derece cevriliyor
+		halka.CFrame = parent.CFrame * CFrame.new(0, -3, 0) * CFrame.Angles(0, 0, math.rad(90))
+		halka.Anchored = true
+		halka.CanCollide = false
+		halka.CastShadow = false
+		halka.Material = Enum.Material.Neon
+		halka.Color = tier.color
+		halka.Transparency = 0.45
+		halka.Parent = parent.Parent
+
+		-- Halka blokla birlikte agir agir doner
+		task.spawn(function()
+			local t = 0
+			while halka.Parent and parent.Parent do
+				t += task.wait(0.05)
+				halka.CFrame = parent.CFrame
+					* CFrame.new(0, -3, 0)
+					* CFrame.Angles(0, 0, math.rad(90))
+					* CFrame.Angles(t * 0.8, 0, 0)
+			end
+		end)
+	end
+end
+
 local function buildBeacon(parent: BasePart, groundY: number)
 	local E = LuckyBlock.Event
 
@@ -338,6 +455,7 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 	end
 
 	local tier = LuckyBlock.get(tierId)
+	local gorunum = gorunumOf(tier.id)
 	local model = buildBlock(tierId)
 	local primary = model.PrimaryPart
 	if not primary then
@@ -352,6 +470,19 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 		end
 	end
 
+	--[[
+		OZEL BLOKLAR DAHA IRI
+
+		Elmas ve Altin normal bloklarin bir bucuk katindan buyuk duruyor
+		(bkz. Event.gorunum): uzaktan bakan oyuncu hangisinin degerli
+		oldugunu boyutundan anliyor.
+	]]
+	if (gorunum.olcek or 1) ~= 1 then
+		pcall(function()
+			model:ScaleTo(gorunum.olcek)
+		end)
+	end
+
 	-- Blok koninin genis agzinin uzerinde durur
 	local origin = nokta + Vector3.new(0, LuckyBlock.Event.beaconHeight, 0)
 	model.Name = `Etkinlik_{tier.id}`
@@ -360,16 +491,36 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 
 	Assets.playAnimations(model)
 	buildBeacon(primary, nokta.Y)
+	buildSkyColumn(primary, nokta.Y, tier, gorunum)
+	buildOzelSus(primary, tier, gorunum)
+
+	-- Kademe renginde isik: ozel bloklarin menzili daha genis
+	local renkliIsik = Instance.new("PointLight")
+	renkliIsik.Name = "KademeIsigi"
+	renkliIsik.Color = tier.color
+	renkliIsik.Range = gorunum.isik or 26
+	renkliIsik.Brightness = 4
+	renkliIsik.Parent = primary
 
 	-- Blok ortaya cikti: herkes duyar
 	LuckyBlockOdul.sesCal()
 
+	--[[
+		ETIKET HARITANIN HER YERINDEN GORUNUR
+
+		MaxDistance 500'du: obur adadan bakinca blogun nerede oldugu hic
+		belli olmuyordu. Artik sinir yok (AlwaysOnTop zaten acikti, yani
+		duvarin arkasindan da gorunuyor) ve ozel bloklarin yazisi daha
+		buyuk.
+	]]
+	local ozel = (gorunum.olcek or 1) > 1
+
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "Etiket"
-	sign.Size = UDim2.fromOffset(230, 40)
-	sign.StudsOffset = Vector3.new(0, 4, 0)
+	sign.Size = UDim2.fromOffset(if ozel then 300 else 230, if ozel then 52 else 40)
+	sign.StudsOffset = Vector3.new(0, if ozel then 7 else 4, 0)
 	sign.AlwaysOnTop = true
-	sign.MaxDistance = 500
+	sign.MaxDistance = math.huge
 	sign.LightInfluence = 0
 	sign.Parent = primary
 
@@ -379,7 +530,7 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 	label.FontFace = Fonts.bold
 	label.Text = string.upper(tier.displayName)
 	label.TextColor3 = tier.color
-	label.TextSize = 24
+	label.TextSize = if ozel then 34 else 24
 	label.TextScaled = false
 	label.Parent = sign
 	Fonts.applyOutline(label)
@@ -481,75 +632,207 @@ local function tierForIsland(index: number, islandCount: number): string
 end
 
 --[[
+	BLOK ZEMINLERI  --  adinda "luckyzemin" gecen parcalar
+
+	Haritadaki ada parcalarinin (Island modelleri) icine konmus isaret
+	parcalari. Ad kuralsiz aranir: buyuk/kucuk harf, bosluk, alt cizgi ve
+	tire onemsiz -- "LuckyZemin 3", "lucky_zemin", "luckyzemin" hepsi olur.
+
+	Liste her yagmurda yeniden cikariliyor: harita sonradan degisse (yeni
+	ada eklense) de dogru calisir, saatte bir yapilan bir tarama.
+]]
+local function normalAd(ad: string): string
+	return string.lower((string.gsub(ad, "[%s_%-]", "")))
+end
+
+local function luckyZeminleri(): { BasePart }
+	local aranan = normalAd(LuckyBlock.Event.zeminAdi or "luckyzemin")
+	local liste: { BasePart } = {}
+
+	for _, node in Workspace:GetDescendants() do
+		if node:IsA("BasePart") and string.find(normalAd(node.Name), aranan, 1, true) then
+			table.insert(liste, node)
+		end
+	end
+
+	return liste
+end
+
+-- Zeminin UST yuzunun ortasi: blok parcanin icine gomulmesin
+local function zeminNoktasi(zemin: BasePart): Vector3
+	return (zemin.CFrame * CFrame.new(0, zemin.Size.Y / 2, 0)).Position
+end
+
+--[[
 	YAGMUR
 
-	Her adaya EN COK BIR blok. Adanin kumu Event.islandSands icindeki adla
-	bulunur; o adda parca yoksa (harita henuz o adayi tasimiyorsa) ada
-	sessizce atlanir.
+	Bloklar "luckyzemin" parcalarinin uzerine duser. Liste karistirilip
+	bastan kullanildigi icin HER ZEMINE EN COK BIR BLOK gelir: ayni yerde
+	iki blok olmaz, zeminlerin de hepsi dolmaz (fazlasi bos kalir).
+
+	Ne dusecegi Event.dagilim'da: once ozel bloklar (birer Elmas ve Altin),
+	sonra normaller. Zemin sayisi yetmezse listenin basindakiler yerlesir,
+	yani ozel bloklar hicbir zaman kaybolmaz.
+
+	Hic "luckyzemin" yoksa eski davranisa donulur: her adanin kumuna bir
+	blok (Event.islandSands) -- ve Output'a neden oldugunu yazan bir uyari.
 ]]
 local function runEvent()
 	local E = LuckyBlock.Event
-	local adalar = E.islandSands
 
-	local spawned = 0
-	for index, sandName in adalar do
-		local spot = Sand.randomSpotNamed({ sandName }, rng)
-		if not spot then
-			continue
+	--[[
+		SIRA: ozel bloklar bastan. Dagilim listesi ne diyorsa o.
+	]]
+	local sira: { string } = {}
+	for _, satir in E.dagilim do
+		for _ = 1, satir.adet do
+			table.insert(sira, satir.tier)
+		end
+	end
+
+	local zeminler = luckyZeminleri()
+
+	-- YEDEK: zemin yoksa eski ada-kumu dagilimi
+	if #zeminler == 0 then
+		warn(
+			`[LuckyBlock] Etkinlik: adinda "{E.zeminAdi}" gecen parca bulunamadi -- `
+				.. "bloklar eski duzenle adalarin kumuna dusuyor. Ada parcalarinin icine "
+				.. "luckyzemin adinda parcalar koy."
+		)
+
+		local dusen = 0
+		for index, sandName in E.islandSands do
+			local spot = Sand.randomSpotNamed({ sandName }, rng)
+			if spot and spawnEventBlock(tierForIsland(index, #E.islandSands), spot) then
+				dusen += 1
+			end
 		end
 
-		if spawnEventBlock(tierForIsland(index, #adalar), spot) then
+		if dusen > 0 then
+			Bildirim:FireAllClients(
+				`LUCKY BLOCK RAIN! {dusen} blocks dropped on the sand`,
+				Rarity.LuckyBlock.colorA
+			)
+		end
+		return
+	end
+
+	-- Zeminleri karistir (Fisher-Yates): her yagmurda baska yerler dolsun
+	for i = #zeminler, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		zeminler[i], zeminler[j] = zeminler[j], zeminler[i]
+	end
+
+	local spawned = 0
+	local ozel = 0
+	for index, tierId in sira do
+		local zemin = zeminler[index]
+		if not zemin then
+			-- Zemin kalmadi: geri kalan bloklar bu etkinlikte dusmez
+			break
+		end
+
+		if spawnEventBlock(tierId, zeminNoktasi(zemin)) then
 			spawned += 1
+			if tierId ~= LuckyBlock.Default then
+				ozel += 1
+			end
 		end
 	end
 
 	if spawned == 0 then
-		warn("[LuckyBlock] Etkinlik: hicbir adada kum bulunamadi, blok dusurulemedi")
+		warn("[LuckyBlock] Etkinlik: zeminler bulundu ama hicbir blok dusurulemedi")
 		return
 	end
 
 	Bildirim:FireAllClients(
-		`LUCKY BLOCK RAIN! {spawned} blocks dropped on the sand`,
+		`LUCKY BLOCK RAIN! {spawned} blocks dropped ({ozel} special)`,
 		Rarity.LuckyBlock.colorA
 	)
 
-	print(`[LuckyBlock] Etkinlik: {spawned} blok dusuruldu`)
+	print(`[LuckyBlock] Etkinlik: {spawned} blok / {#zeminler} zemin ({ozel} ozel)`)
 end
 
 --[[
-	SAYAC
+	NE ZAMAN YAGAR  --  oyuncu sayisi + bekleme
 
-	Sonraki yagmira kalan sure client'a saniye olarak gonderilir. Client
-	kendi icinde geri sayar, sunucu 5 saniyede bir tazeler -- boylece yazi
-	akici ilerler ama saat kaymasi birikmez.
+	Iki sart birden:
+	  1. Sunucuda Event.gerekenOyuncu kadar kisi olacak (6/6)
+	  2. Son yagmurun uzerinden Event.interval gecmis olacak (1 saat)
+
+	Ikisi de tamamlaninca Event.geriSayim saniyelik bir sayim basliyor --
+	ekrandaki bilgi kutusu "DROPPING SOON" yazip herkesi hazirliyor -- ve
+	bloklar duruyor. Sayim baslamissa biri cikip sayi 5'e duse bile yagmur
+	iptal edilmiyor: oyuncular son saniyede birbirini oyundan atmasin.
+
+	SAYAC EKRANI
+	Durum iki saniyede bir herkese yollaniyor: kac kisi var, kac gerekiyor,
+	bekleme ne kadar kaldi, sayim basladi mi. Istemci arasini kendi sayiyor
+	(bkz. StarterPlayerScripts > Menuler > blok yagmuru bilgisi).
 ]]
-local nextEventAt = 0
+local sonEtkinlik = 0
+local sayimKalan = -1
+
+local function etkinlikDurumu(): { [string]: any }
+	local E = LuckyBlock.Event
+	return {
+		oyuncu = #Players:GetPlayers(),
+		gereken = E.gerekenOyuncu,
+		-- Bir sonraki yagmurun serbest kalmasina kalan sure
+		bekleme = math.max(0, (sonEtkinlik + E.interval) - os.clock()),
+		-- Sayim basladiysa kalan saniye, yoksa -1
+		sayim = sayimKalan,
+	}
+end
 
 local function broadcastTimer(target: Player?)
-	local remaining = math.max(0, nextEventAt - os.clock())
+	local durum = etkinlikDurumu()
 	if target then
-		EtkinlikSayaci:FireClient(target, remaining)
+		EtkinlikSayaci:FireClient(target, durum)
 	else
-		EtkinlikSayaci:FireAllClients(remaining)
+		EtkinlikSayaci:FireAllClients(durum)
 	end
 end
 
 if LuckyBlock.Event.enabled then
 	task.spawn(function()
-		nextEventAt = os.clock() + LuckyBlock.Event.firstDelay
-		task.wait(LuckyBlock.Event.firstDelay)
+		local E = LuckyBlock.Event
+
+		-- Sunucu yeni acildi: ilk yagmur icin kisa bir nefes payi
+		sonEtkinlik = os.clock() - E.interval + E.firstDelay
 
 		while true do
+			task.wait(2)
+
+			local durum = etkinlikDurumu()
+			if durum.oyuncu < durum.gereken or durum.bekleme > 0 then
+				continue
+			end
+
+			-- Sartlar tamam: herkes gorsun diye kisa sayim
+			sayimKalan = E.geriSayim
+			Bildirim:FireAllClients(
+				`LUCKY BLOCK RAIN in {E.geriSayim}s! {durum.gereken}/{durum.gereken} players`,
+				Rarity.LuckyBlock.colorA
+			)
+
+			while sayimKalan > 0 do
+				broadcastTimer(nil)
+				task.wait(1)
+				sayimKalan -= 1
+			end
+
+			sayimKalan = -1
+			sonEtkinlik = os.clock()
 			runEvent()
-			nextEventAt = os.clock() + LuckyBlock.Event.interval
-			task.wait(LuckyBlock.Event.interval)
+			broadcastTimer(nil)
 		end
 	end)
 
 	task.spawn(function()
 		while true do
 			broadcastTimer(nil)
-			task.wait(5)
+			task.wait(2)
 		end
 	end)
 
@@ -699,6 +982,8 @@ local function openBlock(player: Player, tierId: string)
 		spinTime = W.revealSpinTime,
 
 		winner = winner,
+		-- Kimlik de gidiyor: istemci carkta blogun modelini gosteriyor
+		tier = tierId,
 		tierName = tier.displayName,
 		-- Hacker gibi turlerde carkin TUM bolmeleri bu mutasyonla cizilir
 		tierMutation = tier.zorunluMutasyon,

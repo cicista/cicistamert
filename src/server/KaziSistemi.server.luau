@@ -68,6 +68,8 @@ local Adimlar = require(Shared:WaitForChild("Ogretici"))
 local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Ores = require(Shared:WaitForChild("Ores"))
+-- Taban yurume hizi: tarama yaricapi buna gore buyuyor
+local Hiz = require(Shared:WaitForChild("Hiz"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
@@ -110,6 +112,27 @@ local lastDig: { [Player]: number } = {}
 ]]
 local GIRDAP_ARASI = 4
 local lastWhirl: { [Player]: number } = {}
+
+--[[
+	TARAMA HIZLI OYUNCUYA AYAK UYDURUR
+
+	Tarama sabit 1.5 saniyede bir yapiliyordu. Speed yukseltmesi tavan
+	yapmis oyuncu saniyede 160 stud gidiyor, yani iki tarama arasinda 240
+	stud: dogan suzme daha oyuncu gormeden arkada kaliyor, 75 studluk
+	yaricaptan cikinca listeden de dusuyordu -- "dedektor taramiyor".
+
+	Iki degisiklik:
+	  1. Dongu 0.4 saniyede bir donuyor; tarama SURE ya da GIDILEN YOL
+	     dolunca yapiliyor (hangisi once gelirse). Yavas oyuncuda eskisi
+	     gibi 1.5 saniye, kosanda birkac adimda bir.
+	  2. Listeye giren suzmelerin yaricapi hizla buyuyor: kosarken az
+	     onceki suzme ekranda kaliyor, geri donup kazabiliyorsun.
+]]
+local TARAMA_ADIMI = 0.4
+-- Bu kadar stud yol alindiysa suresi dolmasa da yeniden taranir
+local TARAMA_MESAFESI = 35
+local sonTarama: { [Player]: number } = {}
+local sonKonum: { [Player]: Vector3 } = {}
 
 -- Teshis yazisi bir kez cikar (ilk basarili girdaptan sonra susar)
 local girdapBildirildi = false
@@ -789,17 +812,33 @@ end)
 ------------------------------------------------------------------
 task.spawn(function()
 	while true do
-		task.wait(G.scanInterval)
+		task.wait(TARAMA_ADIMI)
 
 		Beams.cleanup()
 
 		for _, player in Players:GetPlayers() do
+			--[[
+				Bu oyuncu icin tarama sirasi geldi mi: ya sure doldu ya da
+				son taramadan beri TARAMA_MESAFESI kadar yol gitti.
+			]]
+			local govde = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local konum = if govde and govde:IsA("BasePart") then govde.Position else nil
+			local simdiTarama = os.clock()
+			local gidilen = if konum and sonKonum[player] then (konum - sonKonum[player]).Magnitude else math.huge
+			local sirasiGeldi = (simdiTarama - (sonTarama[player] or 0) >= G.scanInterval)
+				or gidilen >= TARAMA_MESAFESI
+
+			if sirasiGeldi then
+				sonTarama[player] = simdiTarama
+				sonKonum[player] = konum
+			end
+
 			local gpsInHand = Tools.equipped(player, Tools.GPSName) ~= nil
 			-- Denizde tahtadaysa balikcilik acik (bkz. Flyboard.server)
 			local rodInHand = player:GetAttribute("Flyboarding") == true
 			local rod = rodFor(player)
 
-			if gpsInHand and not digging[player] and Sand.isOnSand(player) then
+			if sirasiGeldi and gpsInHand and not digging[player] and Sand.isOnSand(player) then
 				--[[
 					OGRETICININ ILK KAZISI  --  garanti suzme
 
@@ -835,7 +874,7 @@ task.spawn(function()
 				(flyboardla denizdeyken kendiliginden veriliyor) ve sans ile
 				limit DEDEKTORDEN degil OLTADAN geliyor.
 			]]
-			if rodInHand and rod and not digging[player] then
+			if sirasiGeldi and rodInHand and rod and not digging[player] then
 				--[[
 					GIRDAPLAR TEKER TEKER GELIR
 
@@ -880,6 +919,19 @@ task.spawn(function()
 				yoksa dedektorun.
 			]]
 			local yaricap = if rodInHand and rod then rod.scanRadius else detectorFor(player).scanRadius
+
+			--[[
+				HIZ PAYI
+
+				Yaricap yurume hiziyla buyuyor (taban 16 stud/sn). Tavan
+				hizda (160) uc kat: kosarken dogan suzme hemen listeden
+				dusmuyor. Yavas oyuncuda carpan 1, yani hicbir sey degismez.
+			]]
+			local insan = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+			if insan then
+				yaricap *= math.clamp(insan.WalkSpeed / Hiz.TabanHiz, 1, 3)
+			end
+
 			GPSGuncelle:FireClient(player, Beams.snapshotFor(player, yaricap))
 		end
 	end
@@ -977,6 +1029,10 @@ Players.PlayerRemoving:Connect(function(player)
 	sabitlenen[player] = nil
 	lastDig[player] = nil
 	lastOnSand[player] = nil
+	-- Tarama zamanlayicilari da birakilsin (bkz. TARAMA_ADIMI)
+	sonTarama[player] = nil
+	sonKonum[player] = nil
+	lastWhirl[player] = nil
 end)
 
 -- Magaza kuregi degistirdiginde bunu tetikler; eski kurek silinip yenisi verilir

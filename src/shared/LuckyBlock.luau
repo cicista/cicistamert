@@ -135,28 +135,80 @@ LuckyBlock.Default = "Normal"
 ]]
 LuckyBlock.Event = {
 	enabled = true,
-	-- Kac saniyede bir dussun (7200 = 2 saat)
-	interval = 7200,
-	-- Sayac ekranda ne zaman gorunsun: yagmira bu kadar saniye kala
-	-- (3600 = son 1 saat). Oncesinde yazi hic cikmaz.
-	showBefore = 3600,
+
 	--[[
-		HER ADAYA EN COK BIR BLOK
+		NE ZAMAN OLUR
 
-		Asagidaki liste 1. adadan sonuncuya dogru her adanin KUM PARCASININ
-		ADI. Yagmurda her ad icin bir blok dusuruluyor, o addan parca yoksa
-		o ada atlaniyor.
+		Iki sart birden: sunucuda gerekenOyuncu kadar kisi olacak VE son
+		yagmurun uzerinden interval kadar gecmis olacak. Sart tamamlaninca
+		geriSayim saniye beklenir (herkes ekrandaki "6/6" yazisini gorup
+		hazirlansin), sonra bloklar duser.
 
-		En degerli kademe HER ZAMAN listenin SONUNCU adasina duser: ulasmasi
-		en zor ada en iyi odulu tasisin.
+		Sayim basladiktan sonra biri cikarsa yagmur yine de olur: oyuncular
+		son saniyede oyundan atilmasin diye.
+	]]
+	gerekenOyuncu = 6,
+	geriSayim = 15,
+	-- Iki yagmur arasindaki en az sure (3600 = 1 saat)
+	interval = 3600,
+	--[[
+		BLOKLARIN DUSTUGU YERLER  --  "luckyzemin" parcalari
+
+		Haritadaki adalarin (Island modelleri) icine konmus, adinda
+		"luckyzemin" gecen parcalar. Her yagmurda bunlarin arasindan
+		RASTGELE secim yapilir ve HER ZEMINE EN COK BIR BLOK duser:
+		ayni yere iki blok cikmaz, zeminlerin hepsi de dolmaz.
+
+		Buyuk/kucuk harf, bosluk ve alt cizgi onemsiz; "LuckyZemin 3",
+		"lucky_zemin" hepsi olur.
+	]]
+	zeminAdi = "luckyzemin",
+
+	--[[
+		HER YAGMURDA NE DUSER  --  sirayla
+
+		Ozel bloklar listenin BASINDA: zemin sayisi yetmezse once onlar
+		yerlesir. Elmas ve altindan her etkinlikte BIRER tane var, gerisi
+		normal blok.
+	]]
+	dagilim = {
+		{ tier = "Diamond", adet = 1 },
+		{ tier = "Golden", adet = 1 },
+		{ tier = "Normal", adet = 15 },
+	},
+
+	--[[
+		KADEME GORUNUMU  --  ozel bloklar uzaktan bagirsin
+
+		olcek     modelin boy carpani
+		sutun     gokyuzune uzanan isik sutununun yuksekligi (stud)
+		kalinlik  sutunun yerdeki genisligi
+		isik      PointLight menzili
+		kivilcim  blogun etrafinda parildayan parcaciklar
+		halka     blogun altinda donen isik halkasi
+	]]
+	gorunum = {
+		Normal = { olcek = 1, sutun = 140, kalinlik = 4, isik = 26 },
+		Golden = { olcek = 1.45, sutun = 320, kalinlik = 7, isik = 45, kivilcim = true },
+		Diamond = { olcek = 1.7, sutun = 420, kalinlik = 9, isik = 60, kivilcim = true, halka = true },
+		Hacker = { olcek = 1.7, sutun = 420, kalinlik = 9, isik = 60, kivilcim = true, halka = true },
+	},
+
+	--[[
+		YEDEK: zemin bulunamazsa eski davranis
+
+		Adinda "luckyzemin" gecen tek bir parca yoksa bloklar eskisi gibi
+		asagidaki kum parcalarinin uzerine duser (her adaya bir tane) ve
+		Output'a bir uyari yazilir.
 	]]
 	islandSands = { "kum", "sekerkum", "snowkum", "alevkum", "deniz" },
+
 	--[[
-		Sunucu acildiktan kac saniye sonra ilk etkinlik olsun.
-		Eskiden 180'di: her yeni sunucuda (Studio'da her Play'de) 3. dakikada
-		blok yagiyordu. Artik ilk yagmur da normal aralikta gelir.
+		Sunucu acildiktan sonraki ilk bekleme. Yeni acilan (ya da Studio'da
+		Play'e basilan) sunucuda oyuncu sayisi hemen dolarsa bloklar aninda
+		yagmasin diye kisa bir nefes payi.
 	]]
-	firstDelay = 7200,
+	firstDelay = 60,
 	-- Toplanmayan blok kac saniye sonra kaybolur (0 = hic kaybolmasin)
 	despawn = 1200,
 	--[[
@@ -230,6 +282,15 @@ end
 local byId: { [string]: Tier } = {}
 for _, tier in LuckyBlock.Tiers do
 	byId[tier.id] = tier
+end
+
+-- Bir yagmurda dusen toplam blok sayisi (zemin yeterse)
+function LuckyBlock.toplamBlok(): number
+	local toplam = 0
+	for _, satir in LuckyBlock.Event.dagilim do
+		toplam += satir.adet
+	end
+	return toplam
 end
 
 function LuckyBlock.get(id: string?): Tier

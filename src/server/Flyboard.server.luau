@@ -866,8 +866,17 @@ RunService.Heartbeat:Connect(function(dt)
 
 		ride.gyro.CFrame = hedef
 
-		-- Hiz bonusu her karede dogrulanir (baska sistemler WalkSpeed'i degistirebilir)
-		local beklenen = bonusHiz(ride.walkSpeed, ride.info)
+		--[[
+			Hiz bonusu her karede dogrulanir (baska sistemler WalkSpeed'i
+			degistirebilir).
+
+			TABAN HIZ HER KARE OZNITELIKTEN OKUNUYOR: oyuncu tahtadayken
+			Speed yukseltmesi alirsa (bkz. ServerScriptService > Hiz)
+			oznitelik guncelleniyor ve yeni hiz aninda geciyor. Eskiden
+			binerken alinan ride.walkSpeed kopyasi kullaniliyordu, yani
+			hizin islemesi icin inip binmek gerekiyordu.
+		]]
+		local beklenen = bonusHiz(tabanHiz(humanoid), ride.info)
 		if math.abs(humanoid.WalkSpeed - beklenen) > 0.01 then
 			humanoid.WalkSpeed = beklenen
 		end

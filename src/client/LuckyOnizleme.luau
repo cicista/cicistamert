@@ -169,6 +169,43 @@ function LuckyOnizleme.ekle(kutu: GuiObject, tier: any, zIndex: number?): boolea
 	return true
 end
 
+--[[
+	HAZIR BIR IKONUN YERINE BLOGUN KENDISI
+
+	Arayuzde blok gosteren yerlerin cogu once Icons paketinden gelen "?"
+	kutusu ikonunu koyuyordu: paketteki o resim hangi blok oldugunu hic
+	soylemiyor (Hacker da Elmas da ayni tahta kutu). Bu fonksiyon o
+	ImageLabel'in resmini silip icine blogun DONEN MODELINI kuruyor.
+
+	Ikon kutusu yerinde kaldigi icin yerlesim degismiyor; model
+	bulunamazsa eski resim geri veriliyor ve false donuyor.
+]]
+function LuckyOnizleme.ikonaKoy(ikon: ImageLabel | ImageButton, tier: any): boolean
+	-- Onceki onizleme (baska bir blok acilmis olabilir)
+	local eski = ikon:FindFirstChild("Onizleme")
+	if eski then
+		eski:Destroy()
+	end
+
+	local resim = ikon.Image
+	ikon.Image = ""
+
+	if LuckyOnizleme.ekle(ikon, tier, ikon.ZIndex) then
+		ikon.Visible = true
+		--[[
+			Icons.bind paketi gec bulursa resmi SONRADAN basiyor ve modelin
+			arkasinda "?" kutusu beliriyordu. Bu nitelik degisince o dongu
+			"artik ben bagli degilim" deyip cekiliyor (bkz. Shared > Icons).
+		]]
+		ikon:SetAttribute("IkonKimligi", "blokModeli")
+		return true
+	end
+
+	-- Model yok: paket ikonuna geri don
+	ikon.Image = resim
+	return false
+end
+
 RunService.RenderStepped:Connect(function()
 	if #kayitlar == 0 then
 		return
