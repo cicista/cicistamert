@@ -3,12 +3,17 @@
 	GelirYazisi  (LocalScript)
 	Yeri: StarterPlayer > StarterPlayerScripts > GelirYazisi
 
-	Oyuncunun base'i her saniye ne kazandiriyorsa, o rakam TOPLA butonunun
-	uzerinde bir yerden firlayip kayboluyor. Para birikiyormus hissi veren
-	tek sey buydu: eskiden birikim yalnizca butona basinca gorunuyordu,
-	arada base olu duruyordu.
+	Base'deki HER BRAINROT'un saniyelik getirisi, TOPLA butonunun uzerinde
+	ayri bir yazi olarak firlayip kayboluyor. Sekiz dolu slot -> saniyede
+	sekiz ayri yazi, hepsi baska noktadan ve baska acida.
 
-	AKIS  (her saniye bir tane)
+	NEDEN TEK TOPLAM DEGIL
+	Once tek bir rakam cikiyordu. Toplam dogru bilgiyi veriyor ama para
+	akisini hissettirmiyor: ekranda saniyede bir kez bir sayi belirip
+	kayboluyordu. Ayri ayri cikinca base doldukca ekran canlaniyor ve
+	oyuncu paranin NEREDEN geldigini goruyor.
+
+	AKIS  (her yazi icin)
 	    dogar  : butonun uzerinde RASTGELE bir noktada, kucuk ve saydam
 	    pop    : hizlica normalin biraz ustune buyur, sonra oturur
 	    bekle  : 0.5 saniye oldugu yerde durur
@@ -21,10 +26,11 @@
 	(Assets > Icons > "rot"). Ikon bulunamazsa yalnizca rakam cikar.
 
 	NEREDEN BILIYOR
-	Sunucu butona iki nitelik yaziyor (bkz. ServerScriptService >
+	Sunucu butona su nitelikleri yaziyor (bkz. ServerScriptService >
 	BaseSistemi > updateCollectButton):
 	    SahipId         -- base kimin
-	    SaniyelikGelir  -- saniyede kac rot
+	    SlotGelirleri   -- her brainrotun getirisi, virgulle ayrilmis
+	    SaniyelikGelir  -- hepsinin toplami (burada kullanilmiyor)
 
 	Yalnizca KENDI base'inin yazilari cikiyor: herkesinki cizilseydi
 	kalabalik bir haritada ekran yaziyla dolardi.
@@ -49,8 +55,15 @@ local UI = require(script.Parent:WaitForChild("UI"))
 ------------------------------------------------------------------
 -- AYARLAR
 ------------------------------------------------------------------
--- Iki yazi arasi sure. 1 = saniyede bir (gelir de saniyelik)
+-- Iki tur arasi sure. 1 = saniyede bir (gelir de saniyelik)
 local ARALIK = 1
+
+--[[
+	Ayni turdaki yazilar bu sure icinde rastgele dagitiliyor. Hepsi ayni
+	karede ciksaydi tek bir blok gibi gorunurdu; boyle pes pese patliyorlar.
+	ARALIK'tan kucuk olmali, yoksa turlar birbirine girer.
+]]
+local SERPME = 0.45
 
 --[[
 	RENKLER: acik yesil yazi, koyu yesil kontur. Kazanc yesil olsun diye --
@@ -62,11 +75,16 @@ local KONTUR_RENGI = Color3.fromRGB(12, 70, 26)
 -- Yazinin solundaki para ikonunun kenari (piksel)
 local IKON_BOYU = 26
 
--- Yazinin dogdugu kutu: butonun ustunde bu kadar stud'luk bir alan
-local DAGILIM_X = 2.6
-local DAGILIM_Z = 1.6
-local EN_ALCAK = 2.2
-local EN_YUKSEK = 3.6
+--[[
+	Yazinin dogdugu kutu: butonun ustunde bu kadar stud'luk bir alan.
+
+	Artik saniyede bir degil, slot sayisi kadar yazi cikiyor; alan genis
+	tutuldu ki ayni anda dogan sekiz on yazi ust uste yigilmasin.
+]]
+local DAGILIM_X = 3.6
+local DAGILIM_Z = 2.2
+local EN_ALCAK = 2
+local EN_YUKSEK = 4.4
 
 -- Egim: saga ya da sola en cok bu kadar derece
 local EN_COK_ACI = 30
@@ -80,11 +98,14 @@ local SONME_SURESI = 0.9
 local YUKSELME = 2.4
 
 --[[
-	Ayni anda ekranda durabilecek en cok yazi. Oyuncu uzun sure bakmadan
-	dursa bile birikip ekrani doldurmasin (sunucu takilirsa arka arkaya
-	birkac tane dogabilir).
+	Ayni anda ekranda durabilecek en cok yazi.
+
+	Her brainrot kendi yazisini cikardigi icin sayi slot sayisiyla birlikte
+	buyuyor: yirmi dolu slot, her yazi ~1.6 saniye yasiyor -> tepe noktada
+	otuz kusur yazi. Sinir bunun biraz ustunde; asilirsa o turdaki fazla
+	yazilar atlanir, ekran yaziyla dolmaz.
 ]]
-local EN_COK_YAZI = 8
+local EN_COK_YAZI = 40
 
 ------------------------------------------------------------------
 -- BUTONU BUL
@@ -242,16 +263,47 @@ end
 ------------------------------------------------------------------
 -- DONGU
 ------------------------------------------------------------------
+--[[
+	Sunucunun gonderdigi virgullu listeyi sayilara cevirir
+	(bkz. BaseSistemi > updateCollectButton).
+]]
+local function gelirleriOku(pad: BasePart): { number }
+	local ham = pad:GetAttribute("SlotGelirleri")
+	if type(ham) ~= "string" or ham == "" then
+		return {}
+	end
+
+	local liste: { number } = {}
+	for parca in string.gmatch(ham, "[^,]+") do
+		local sayi = tonumber(parca)
+		if sayi and sayi > 0 then
+			table.insert(liste, sayi)
+		end
+	end
+	return liste
+end
+
 task.spawn(function()
 	while true do
 		task.wait(ARALIK)
 
 		local pad = benimButonum()
-		if pad then
-			local gelir = pad:GetAttribute("SaniyelikGelir")
-			if type(gelir) == "number" and gelir > 0 then
-				yaziCikar(pad, gelir)
-			end
+		if not pad then
+			continue
+		end
+
+		--[[
+			HER BRAINROT KENDI YAZISIYLA. Hepsi ayni karede cikmiyor:
+			aralarina kucuk rastgele gecikmeler konuyor, boylece tek bir
+			blok yerine pes pese patlayan bir seri gorunuyor.
+		]]
+		for _, gelir in gelirleriOku(pad) do
+			task.delay(math.random() * SERPME, function()
+				-- Gecikme sirasinda base el degistirmis olabilir
+				if pad.Parent and pad:GetAttribute("SahipId") == player.UserId then
+					yaziCikar(pad, gelir)
+				end
+			end)
 		end
 	end
 end)

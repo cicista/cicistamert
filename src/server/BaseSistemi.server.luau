@@ -2019,17 +2019,41 @@ local function updateCollectButton(baseIndex: number)
 	--[[
 		SANIYELIK GELIR ISTEMCIYE NITELIKLE GIDIYOR
 
-		Butonun ustunde her saniye beliren "+1.2K/s" yazilarini istemci
-		ciziyor (bkz. StarterPlayerScripts > GelirYazisi). Bunun icin iki
-		sey bilmesi yeterli: base kimin ve saniyede ne kazandiriyor.
+		Butonun ustunde her saniye beliren yazilari istemci ciziyor (bkz.
+		StarterPlayerScripts > GelirYazisi).
 
-		Nitelik kullaniliyor cunku remote gerekmiyor: nitelikler
-		kendiliginden replike oluyor ve gec giren oyuncu da guncel degeri
-		goruyor.
+		HER BRAINROT AYRI YAZI: toplam tek bir rakam olarak degil, slottaki
+		her brainrotun KENDI getirisi ayri ayri gonderiliyor. Sekiz dolu
+		slot -> saniyede sekiz ayri yazi. Oyuncu paranin nereden geldigini
+		ve akisi boyle hissediyor.
+
+		TEK NITELIKTE VIRGULLU LISTE: yirmi slot icin yirmi ayri nitelik
+		yazmak her saniye yirmi replikasyon demekti; tek yazi tek
+		replikasyon. Nitelikler tablo tasiyamadigi icin metne ceviriliyor.
+
+		Remote yerine nitelik cunku kendiliginden replike oluyor ve sonradan
+		giren oyuncu da guncel degeri goruyor.
 	]]
 	local sahip = owners[baseIndex]
 	pad:SetAttribute("SahipId", if sahip then sahip.UserId else nil)
-	pad:SetAttribute("SaniyelikGelir", if sahip then totalIncome(sahip) else 0)
+
+	local gelirler: { string } = {}
+	local toplam = 0
+	if sahip then
+		for _, item in PlayerData.placedItems(sahip) do
+			if item.revealed and item.name then
+				local gelir = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
+				if gelir > 0 then
+					-- %.2f: ustel gosterim (1e+06) cikmasin, istemci tonumber ile okuyor
+					table.insert(gelirler, string.format("%.2f", gelir))
+					toplam += gelir
+				end
+			end
+		end
+	end
+
+	pad:SetAttribute("SaniyelikGelir", toplam)
+	pad:SetAttribute("SlotGelirleri", table.concat(gelirler, ","))
 
 	-- Toplama sonrasi bekleme: buton bu sure boyunca KIRMIZI ve kapali
 	local bekleme = math.max(0, (collectUntil[baseIndex] or 0) - os.clock())
