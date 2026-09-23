@@ -479,7 +479,7 @@ local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Til
 -- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
 UI.DokuBoyu = 128
 -- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
-UI.DokuSaydamlik = 0.88
+UI.DokuSaydamlik = 0.8
 
 local dokuKimligi: string? = nil
 
