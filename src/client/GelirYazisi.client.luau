@@ -14,10 +14,10 @@
 	oyuncu paranin NEREDEN geldigini goruyor.
 
 	AKIS  (her yazi icin)
-	    dogar  : butonun uzerinde RASTGELE bir noktada, kucuk ve saydam
-	    pop    : hizlica normalin biraz ustune buyur, sonra oturur
+	    dogar  : butonun uzerinde RASTGELE bir noktada, kucuk
+	    pop    : hizlica oturmus boyunun biraz ustune buyur, sonra oturur
 	    bekle  : 0.5 saniye oldugu yerde durur
-	    soner  : yukari suzulurken yavasca kaybolur
+	    soner  : 0.3 saniyede yukari suzulup saydamlasarak kaybolur
 
 	Her yazi kendi acisiyla duruyor (saga ya da sola 30 dereceye kadar):
 	ust uste gelen iki yazi birbirinin kopyasi gibi gorunmesin.
@@ -92,10 +92,16 @@ local EN_COK_ACI = 30
 -- Buyume, bekleme ve sonme sureleri (saniye)
 local POP_SURESI = 0.18
 local BEKLEME = 0.5
-local SONME_SURESI = 0.9
+local SONME_SURESI = 0.3
+
+--[[
+	Yazinin oturmus boyu. 1 tam boy; 0.75 ile biraz kucultuldu -- ayni
+	anda sekiz on tane cikinca tam boy ekrani dolduruyordu.
+]]
+local BOY = 0.75
 
 -- Sonerken bu kadar stud yukari suzulur
-local YUKSELME = 2.4
+local YUKSELME = 1.2
 
 --[[
 	Ayni anda ekranda durabilecek en cok yazi.
@@ -209,6 +215,14 @@ local function yaziCikar(pad: BasePart, gelir: number)
 		align = Enum.TextXAlignment.Left,
 		frameSize = UDim2.fromOffset(120, 30),
 		parent = kap,
+		--[[
+			UI.text KENDI SIYAH KONTURUNU EKLEMESIN.
+
+			Asagida koyu yesil kontur konuyor. Ikisi birden olunca sonerken
+			yalnizca yesil olan soluyor, siyah olan yerinde kaliyordu: yazi
+			kaybolmadan once SIYAHA DONUYOR gibi gorunuyordu.
+		]]
+		outline = false,
 	})
 	yazi.LayoutOrder = 2
 	yazi.AutomaticSize = Enum.AutomaticSize.X
@@ -226,14 +240,14 @@ local function yaziCikar(pad: BasePart, gelir: number)
 		sonunda hafif bir geri tepme veriyor, "firlamis" hissi ondan.
 	]]
 	local olcek = Instance.new("UIScale")
-	olcek.Scale = 0.35
+	olcek.Scale = BOY * 0.35
 	olcek.Parent = kap
 
 	TweenService
 		:Create(
 			olcek,
 			TweenInfo.new(POP_SURESI, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-			{ Scale = 1 }
+			{ Scale = BOY }
 		)
 		:Play()
 
@@ -242,16 +256,23 @@ local function yaziCikar(pad: BasePart, gelir: number)
 			return
 		end
 
+		--[[
+			SONME: yukari suzulurken saydamlasip kayboluyor. Boyu
+			DEGISMIYOR -- kuculerek gitmek 0.3 saniyede goz aldatici
+			duruyordu, duz bir suzulme daha temiz.
+
+			Yazinin, konturunun ve ikonun saydamligi AYNI ANDA artiyor;
+			biri geride kalirsa yazi kaybolmadan once rengi degisiyormus
+			gibi gorunuyor.
+		]]
 		local bilgi = TweenInfo.new(SONME_SURESI, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 		TweenService:Create(yazi, bilgi, { TextTransparency = 1 }):Play()
 		TweenService:Create(kontur, bilgi, { Transparency = 1 }):Play()
 		TweenService:Create(ikon, bilgi, { ImageTransparency = 1 }):Play()
-		-- Sonerken yukari suzulur ve hafifce kuculur
 		TweenService
 			:Create(tabela, bilgi, { StudsOffset = tabela.StudsOffset + Vector3.new(0, YUKSELME, 0) })
 			:Play()
-		TweenService:Create(olcek, bilgi, { Scale = 0.8 }):Play()
 
 		task.delay(SONME_SURESI, function()
 			tabela:Destroy()
