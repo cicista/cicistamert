@@ -553,7 +553,27 @@ local function esyalariTopla(): { Tool }
 	return liste
 end
 
+--[[
+	CEKMECE HER TAZELEMEDE YENIDEN CIZILMEZ
+
+	tazele saniyede bir calisiyor; cekmecede onlarca brainrot olabiliyor.
+	Icerik gercekten degismediyse (ayni esyalar, ayni adlar) listeye
+	dokunulmuyor -- yoksa her saniye onlarca dugme yikilip yeniden
+	kuruluyor ve tiklamaya calisan oyuncunun elinden kaciyordu.
+]]
+local sonCekmeceImzasi = ""
+
 local function cekmeceyiCiz(disarida: { Tool })
+	local imza = {}
+	for _, tool in disarida do
+		table.insert(imza, tool.Name)
+	end
+	local yeniImza = table.concat(imza, "|")
+	if yeniImza == sonCekmeceImzasi then
+		return
+	end
+	sonCekmeceImzasi = yeniImza
+
 	for _, node in cekmeceListe:GetChildren() do
 		if not node:IsA("UIListLayout") then
 			node:Destroy()
@@ -612,6 +632,21 @@ local function tazele()
 			if yuvaninEsyasi[sira] == tool then
 				yuvaninEsyasi[sira] = nil
 			end
+		end
+	end
+
+	--[[
+		Ikon ve dinleyiciler AYRI temizleniyor: cekmecedeki (yuvasiz)
+		esyalarin da dinleyicisi var, yalnizca yuvalari gezseydik onlar
+		oyuncu cikana kadar bagli kalirdi.
+	]]
+	for tool in baglantilar do
+		if not var[tool] then
+			ikonuBirak(tool)
+		end
+	end
+	for tool in ikonlar do
+		if not var[tool] then
 			ikonuBirak(tool)
 		end
 	end
