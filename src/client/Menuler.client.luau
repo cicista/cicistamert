@@ -3921,7 +3921,27 @@ do
 	]]
 	local function resimliZemin(kart: Frame, resim: string, faz: number)
 		kart.BackgroundTransparency = 1
-		kart.ClipsDescendants = true
+
+		--[[
+			ZEMIN BIR CANVASGROUP ICINDE.
+
+			Eskiden resim dogrudan karta konuyor, tasan kismi da kartin
+			ClipsDescendants'i kirpiyordu. Ama ClipsDescendants DIKDORTGEN
+			kirpiyor: kartin yuvarlak kosesinde resim keskin kaliyor,
+			pencereye oturmamis duruyordu.
+
+			CanvasGroup once kendi yuzeyine ciziyor, UICorner o yuzeye
+			uygulaniyor -- kirpma da yuvarlak oluyor. (Ayni cozum Store
+			kartlarinin arka planinda da var, bkz. UI.yumusakResim.)
+		]]
+		local kap = Instance.new("CanvasGroup")
+		kap.Name = "ZeminKabi"
+		kap.Size = UDim2.fromScale(1, 1)
+		kap.BackgroundTransparency = 1
+		kap.BorderSizePixel = 0
+		kap.ZIndex = 1
+		kap.Parent = kart
+		UI.corner(kap, 12)
 
 		local zemin = Instance.new("ImageLabel")
 		zemin.Name = "Zemin"
@@ -3933,7 +3953,7 @@ do
 		zemin.Image = resim
 		zemin.ScaleType = Enum.ScaleType.Stretch
 		zemin.ZIndex = 1
-		zemin.Parent = kart
+		zemin.Parent = kap
 
 		-- Doku ileri geri akar (her satir kendi gecikmesiyle)
 		TweenService:Create(

@@ -1988,6 +1988,21 @@ local function updateCollectButton(baseIndex: number)
 	local cfg = Bases.CollectPad
 	local waiting = pending[baseIndex] or 0
 
+	--[[
+		SANIYELIK GELIR ISTEMCIYE NITELIKLE GIDIYOR
+
+		Butonun ustunde her saniye beliren "+1.2K/s" yazilarini istemci
+		ciziyor (bkz. StarterPlayerScripts > GelirYazisi). Bunun icin iki
+		sey bilmesi yeterli: base kimin ve saniyede ne kazandiriyor.
+
+		Nitelik kullaniliyor cunku remote gerekmiyor: nitelikler
+		kendiliginden replike oluyor ve gec giren oyuncu da guncel degeri
+		goruyor.
+	]]
+	local sahip = owners[baseIndex]
+	pad:SetAttribute("SahipId", if sahip then sahip.UserId else nil)
+	pad:SetAttribute("SaniyelikGelir", if sahip then totalIncome(sahip) else 0)
+
 	-- Toplama sonrasi bekleme: buton bu sure boyunca KIRMIZI ve kapali
 	local bekleme = math.max(0, (collectUntil[baseIndex] or 0) - os.clock())
 	local ready = owners[baseIndex] ~= nil and waiting >= 1 and bekleme <= 0

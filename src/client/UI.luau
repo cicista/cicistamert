@@ -661,6 +661,17 @@ function UI.listePayi(liste: GuiObject, pay: number?): UIPadding
 	dolgu.PaddingBottom = UDim.new(0, p)
 	dolgu.Parent = liste
 
+	--[[
+		KAYDIRMA CUBUGU ICERIGIN USTUNE BINMESIN
+
+		Varsayilan ayarda cubuk icerik alanini daraltmiyor, uzerine
+		ciziliyor: satirlarin sag kenari ve konturu cubugun altinda
+		kaliyordu. ScrollBarInset.ScrollBar cubuga kendi yerini veriyor.
+	]]
+	if liste:IsA("ScrollingFrame") then
+		liste.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+	end
+
 	return dolgu
 end
 

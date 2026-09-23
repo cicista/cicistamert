@@ -349,24 +349,68 @@ local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number,
 	return kutu
 end
 
--- Kartin sol ustundeki egik serit: "NEW!", "HOT!"
+--[[
+	Kartin sol ustundeki egik serit: "NEW!", "HOT!"
+
+	SERIT ARTIK KARTIN ICINDE. Eskiden (-12, -14) ile kartin disina
+	tasiyordu ve listenin ScrollingFrame'i tasan kismi KIRPIYORDU -- yazi
+	yarim gorunuyor, kimi kartta hic gorunmuyordu. Simdi tamami kartin
+	icinde.
+
+	ZINDEX 20: karttaki her seyin (arka plan resmi 1, huzmeler 4, model ve
+	yazilar 5, dugmeler 6) uzerinde. Dikkat cekmesi gereken tek sey bu.
+]]
+local SERIT_ZINDEX = 20
+
+--[[
+	Seridin arkasindaki kirmizi huzmeler. Kartin kendi huzmelerinden daha
+	kucuk ve daha hizli: goz once buraya gelsin.
+]]
+local SERIT_HUZME: UI.HuzmeAyari = {
+	sayi = 7,
+	uzunluk = 96,
+	kalinlik = 13,
+	tur = 6,
+	parlaklik = 0.25,
+	zIndex = SERIT_ZINDEX - 1,
+}
+
+local SERIT_KIRMIZI = Color3.fromRGB(255, 45, 45)
+
 local function serit(kart: Frame, yazi: string)
+	--[[
+		Huzmeler ve yazi ORTAK BIR KAPTA: kap dondurulmuyor, yalnizca yazi
+		egik duruyor. Huzmeler kendi icinde donuyor (bkz. UI.isikHuzmeleri).
+	]]
+	local kap = Instance.new("Frame")
+	kap.Name = "Serit"
+	kap.AnchorPoint = Vector2.new(0, 0)
+	kap.Position = UDim2.fromOffset(10, 8)
+	kap.Size = UDim2.fromOffset(86, 30)
+	kap.BackgroundTransparency = 1
+	kap.ZIndex = SERIT_ZINDEX
+	kap.Parent = kart
+
+	UI.isikHuzmeleri(kap, SERIT_KIRMIZI, SERIT_HUZME)
+
 	local etiket = UI.text({
 		text = yazi,
 		size = UI.Sizes.heading,
 		font = UI.Fonts.bold,
-		color = KIRMIZI,
-		frameSize = UDim2.fromOffset(90, 30),
-		position = UDim2.fromOffset(-12, -14),
-		parent = kart,
-		zIndex = 8,
+		color = SERIT_KIRMIZI,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = kap,
+		zIndex = SERIT_ZINDEX,
 	})
-	etiket.Name = "Serit"
+	etiket.Name = "Yazi"
 	etiket.Rotation = -14
+	-- Kalin siyah kontur: kirmizi huzmelerin uzerinde de okunsun
+	UI.stroke(etiket, Color3.fromRGB(0, 0, 0), 3)
 
 	-- Hafif nabiz: gozden kacmasin ama goz yormasin
 	local olcek = Instance.new("UIScale")
-	olcek.Parent = etiket
+	olcek.Parent = kap
 	TweenService:Create(
 		olcek,
 		TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
