@@ -433,7 +433,7 @@ local function yuvayiCiz(sira: number)
 
 	--[[
 		BOS YUVA GIZLENIR. UIListLayout gorunmeyeni saymadigi icin cubuk
-		o kadar daralir; ekranin altinda bomboş kutular durmaz.
+		o kadar daralir; ekranin altinda bombos kutular durmaz.
 	]]
 	if not tool then
 		yuva.kap.Visible = false
@@ -631,7 +631,7 @@ local sonCekmeceImzasi = ""
 
 	Siralama HER TAZELEMEDE yeniden yapiliyor: kumdan cikip girince de,
 	envanter degisince de kurek 1. yuvaya doner. Eskiden bir esya aldigi
-	yuvada kalıyordu; o yuzden kazidan donunce alet arada bir yerde
+	yuvada kaliyordu; o yuzden kazidan donunce alet arada bir yerde
 	kaliyordu.
 ]]
 local function oncelik(tool: Tool): number
