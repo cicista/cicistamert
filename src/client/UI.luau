@@ -1956,3 +1956,5 @@ function UI.bildirimNoktasi(hedef: GuiObject, zIndex: number?): (acik: boolean) 
 		nabiz = yeni
 	end
 end
+
+return UI
