@@ -481,10 +481,27 @@ local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Til
 	DOKUNUN RESMI  --  en kisa yol
 
 	Buraya "rbxassetid://123456789" yazarsan baska hicbir sey gerekmez;
-	butun panel zeminleri o resimle doseniyor. Bos birakilirsa doku
-	Assets icinde adiyla aranir (bkz. dokuyuAra).
+	butun panel zeminleri o resimle doseniyor.
+
+	DIKKAT: burasi DISKTEKI dosya. Studio'daki kopyaya yazmak iseyaramaz --
+	Rojo her senkronda diskteki surumu Studio'ya basiyor ve orada yazilan
+	sey siliniyor. Studio'dan vermek istiyorsan asagidaki NITELIGI kullan.
 ]]
 UI.DokuResmi = ""
+
+--[[
+	STUDIO'DAN VERMENIN YOLU
+
+	ReplicatedStorage > Assets klasorune bu adda bir nitelik (Attribute)
+	eklersen doku oradan okunur. Nitelikler Rojo'nun dokunmadigi yerde
+	durdugu icin senkron onlari silmiyor:
+
+	    Assets  ->  Attributes  ->  PanelDokusu = rbxassetid://123456789
+
+	Komut cubugundan tek satirla da konur:
+	    game.ReplicatedStorage.Assets:SetAttribute("PanelDokusu", "rbxassetid://123")
+]]
+UI.DokuNiteligi = "PanelDokusu"
 
 -- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
 UI.DokuBoyu = 128
@@ -524,21 +541,65 @@ end
 	zemin sessizce duz kaliyordu. O yol tamamen kaldirildi.
 
 	Arayuz zaten bir MALZEMEYI kullanamiyor, yalnizca bir RESIM kimligini
-	kullanabiliyor. Bu yuzden doku iki yoldan veriliyor:
+	kullanabiliyor. Bu yuzden doku uc yoldan verilebiliyor (sirayla
+	bakiliyor):
 
-	    1. UI.DokuResmi'ne dogrudan "rbxassetid://..." yazmak
-	    2. ReplicatedStorage > Assets icine dokuyu tasiyan bir Decal,
-	       Texture, ImageLabel ya da resim kimligini tutan bir StringValue
-	       koymak (adi DOKU_ADLARI'ndan biri olmali)
+	    1. UI.DokuResmi  --  diskteki bu dosyaya yazilan kimlik
+	    2. Assets uzerindeki UI.DokuNiteligi niteligi  --  Studio'dan
+	       verilen yol; komut cubugu ColorMap'i OKUYABILDIGI icin sunu tek
+	       satirda yapmak yetiyor:
 
-	Ikisi de yoksa paneller duz renk kalir ve Output'a bir kez yazilir.
+	         for _,v in game:GetService("MaterialService"):GetDescendants() do
+	           if v:IsA("MaterialVariant") and v.Name:lower():find("seramic") then
+	             game.ReplicatedStorage.Assets:SetAttribute("PanelDokusu", v.ColorMap)
+	           end
+	         end
+
+	    3. Assets icine konmus bir Decal / Texture / ImageLabel /
+	       StringValue (adi DOKU_ADLARI'ndan biri olmali)
+
+	Hicbiri yoksa paneller duz renk kalir ve Output'a bir kez yazilir.
 ]]
+--[[
+	Kimligi kullanilabilir hale getirir.
+
+	Studio'dan kopyalanan degerler bazen duz sayi oluyor ("18339548312");
+	ImageLabel.Image duz sayiyi kabul etmiyor, basina rbxassetid:// gerekiyor.
+]]
+local function dokuKimligiDuzelt(deger: string?): string?
+	if type(deger) ~= "string" then
+		return nil
+	end
+
+	local temiz = (string.gsub(deger, "%s", ""))
+	if temiz == "" then
+		return nil
+	end
+	if string.match(temiz, "^%d+$") then
+		return `rbxassetid://{temiz}`
+	end
+	return temiz
+end
+
 local function dokuyuAra(): string?
-	if UI.DokuResmi ~= "" then
-		return UI.DokuResmi
+	local elle = dokuKimligiDuzelt(UI.DokuResmi)
+	if elle then
+		return elle
 	end
 
 	local kok = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
+
+	--[[
+		NITELIK: Studio'dan verilen yol (bkz. UI.DokuNiteligi). Rojo
+		niteliklere dokunmadigi icin senkron bunu silmiyor.
+	]]
+	if kok then
+		local nitelik = dokuKimligiDuzelt(kok:GetAttribute(UI.DokuNiteligi) :: any)
+		if nitelik then
+			return nitelik
+		end
+	end
+
 	if kok then
 		for _, node in kok:GetDescendants() do
 			local ad = sadeDokuAdi(node.Name)
@@ -566,11 +627,12 @@ end
 ]]
 local function dokuRaporu()
 	warn(
-		`[UI] Panel dokusu yok, zeminler duz renk kaliyor. MaterialService'teki `
-			.. "malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i yalnizca eklentiler "
-			.. "okuyabiliyor). Dokuyu ya UI.DokuResmi'ne rbxassetid olarak yaz, ya da "
-			.. `ReplicatedStorage > Assets icine "{DOKU_ADLARI[1]}" adiyla bir Decal / `
-			.. "ImageLabel / StringValue koy."
+		"[UI] Panel dokusu yok, zeminler duz renk kaliyor. MaterialService'teki "
+			.. "malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i yalnizca eklentiler okuyor). "
+			.. "En kisa yol -- Studio'da komut cubuguna: "
+			.. 'for _,v in game:GetService("MaterialService"):GetDescendants() do '
+			.. 'if v:IsA("MaterialVariant") and v.Name:lower():find("seramic") then '
+			.. `game.ReplicatedStorage.Assets:SetAttribute("{UI.DokuNiteligi}", v.ColorMap) end end`
 	)
 end
 
