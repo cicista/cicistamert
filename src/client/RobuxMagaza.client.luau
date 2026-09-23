@@ -382,11 +382,16 @@ local function serit(kart: Frame, yazi: string)
 		Huzmeler ve yazi ORTAK BIR KAPTA: kap dondurulmuyor, yalnizca yazi
 		egik duruyor. Huzmeler kendi icinde donuyor (bkz. UI.isikHuzmeleri).
 	]]
+	--[[
+		KARTIN SOL UST KOSESINDE. Kap ne kadar genisse yazi da o kadar
+		ortaya kayiyor (yazi kabin ortasinda duruyor), o yuzden kap yaziya
+		gore dar tutuluyor. Konum yuvarlak kosenin hemen icinde.
+	]]
 	local kap = Instance.new("Frame")
 	kap.Name = "Serit"
 	kap.AnchorPoint = Vector2.new(0, 0)
-	kap.Position = UDim2.fromOffset(10, 8)
-	kap.Size = UDim2.fromOffset(86, 30)
+	kap.Position = UDim2.fromOffset(6, 4)
+	kap.Size = UDim2.fromOffset(62, 26)
 	kap.BackgroundTransparency = 1
 	kap.ZIndex = SERIT_ZINDEX
 	kap.Parent = kart

@@ -1979,8 +1979,36 @@ end
 	  toplanacak rot var -> yesil, miktar yazili
 	  bos / sahipsiz     -> duz (gri)
 ]]
-local function updateCollectButton(baseIndex: number)
+--[[
+	BUTON KAYBOLURSA YENIDEN BULUNUR
+
+	collectPads yalnizca base kurulurken doluyor. Buton araya giren bir sey
+	yuzunden (base yeniden kuruldu, Studio'dan silindi, streaming) tablodan
+	dusunce updateCollectButton sessizce donuyordu: buton son rengiyle --
+	cogu zaman GRI -- kilitli kaliyordu. Rengin degismemesinin sebebi buydu.
+
+	Artik once tabloya, tutmazsa base modelinin icine bakiliyor ve bulunan
+	buton tabloya geri yaziliyor.
+]]
+local function collectPadBul(baseIndex: number): BasePart?
 	local pad = collectPads[baseIndex]
+	if pad and pad.Parent then
+		return pad
+	end
+
+	local base = getBase(baseIndex)
+	local aday = base and base:FindFirstChild("ToplaButonu")
+	if aday and aday:IsA("BasePart") then
+		collectPads[baseIndex] = aday
+		return aday
+	end
+
+	collectPads[baseIndex] = nil
+	return nil
+end
+
+local function updateCollectButton(baseIndex: number)
+	local pad = collectPadBul(baseIndex)
 	if not pad then
 		return
 	end
@@ -2459,23 +2487,38 @@ end)
 -- Gelir Rot'a yazilmaz, base'de birikir. Oyuncu TOPLA butonuna basana
 -- kadar orada bekler.
 ------------------------------------------------------------------
+--[[
+	DONGU HATAYLA OLMEZ
+
+	Govde pcall icinde: tek bir hata (bozuk bir kayit, silinmis bir model)
+	task.spawn ipligini komple oldururdu. Oldugunde gelir birikmeyi birakir
+	ve BUTUN butonlar son renklerinde -- cogu zaman gri -- donardi. Hata
+	artik Output'a yaziliyor, dongu bir sonraki turda devam ediyor.
+]]
+local function gelirTuru()
+	for _, player in Players:GetPlayers() do
+		local data = PlayerData.get(player)
+		local index = data and data.base
+		if index then
+			local income = totalIncome(player)
+			if income > 0 then
+				pending[index] = (pending[index] or 0) + income * Bases.PayoutInterval
+			end
+		end
+	end
+
+	for index = 1, Bases.Count do
+		updateCollectButton(index)
+	end
+end
+
 task.spawn(function()
 	while true do
 		task.wait(Bases.PayoutInterval)
 
-		for _, player in Players:GetPlayers() do
-			local data = PlayerData.get(player)
-			local index = data and data.base
-			if index then
-				local income = totalIncome(player)
-				if income > 0 then
-					pending[index] = (pending[index] or 0) + income * Bases.PayoutInterval
-				end
-			end
-		end
-
-		for index = 1, Bases.Count do
-			updateCollectButton(index)
+		local ok, hata = pcall(gelirTuru)
+		if not ok then
+			warn(`[Base] Gelir dongusu hatasi (dongu devam ediyor): {tostring(hata)}`)
 		end
 	end
 end)

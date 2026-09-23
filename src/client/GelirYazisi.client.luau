@@ -17,6 +17,9 @@
 	Her yazi kendi acisiyla duruyor (saga ya da sola 30 dereceye kadar):
 	ust uste gelen iki yazi birbirinin kopyasi gibi gorunmesin.
 
+	GORUNUM: acik yesil rakam, koyu yesil kontur, solunda para ikonu
+	(Assets > Icons > "rot"). Ikon bulunamazsa yalnizca rakam cikar.
+
 	NEREDEN BILIYOR
 	Sunucu butona iki nitelik yaziyor (bkz. ServerScriptService >
 	BaseSistemi > updateCollectButton):
@@ -38,6 +41,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Bases = require(Shared:WaitForChild("Bases"))
 local Format = require(Shared:WaitForChild("Format"))
+-- Yazinin yanindaki para ikonu
+local Icons = require(Shared:WaitForChild("Icons"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -46,6 +51,16 @@ local UI = require(script.Parent:WaitForChild("UI"))
 ------------------------------------------------------------------
 -- Iki yazi arasi sure. 1 = saniyede bir (gelir de saniyelik)
 local ARALIK = 1
+
+--[[
+	RENKLER: acik yesil yazi, koyu yesil kontur. Kazanc yesil olsun diye --
+	base'in "hazir" butonuyla ayni dil.
+]]
+local YAZI_RENGI = Color3.fromRGB(105, 255, 130)
+local KONTUR_RENGI = Color3.fromRGB(12, 70, 26)
+
+-- Yazinin solundaki para ikonunun kenari (piksel)
+local IKON_BOYU = 26
 
 -- Yazinin dogdugu kutu: butonun ustunde bu kadar stud'luk bir alan
 local DAGILIM_X = 2.6
@@ -133,23 +148,57 @@ local function yaziCikar(pad: BasePart, gelir: number)
 	)
 	tabela.Parent = playerGui
 
+	--[[
+		IKON + YAZI YAN YANA, birlikte ortalanmis. Dondurulen ve
+		olceklenen sey bu KAP: ikon yazidan ayri donup kaymasin.
+	]]
+	local kap = Instance.new("Frame")
+	kap.Name = "Kap"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	kap.Position = UDim2.fromScale(0.5, 0.5)
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.Parent = tabela
+
+	local dizilim = Instance.new("UIListLayout")
+	dizilim.FillDirection = Enum.FillDirection.Horizontal
+	dizilim.Padding = UDim.new(0, 4)
+	dizilim.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dizilim.VerticalAlignment = Enum.VerticalAlignment.Center
+	dizilim.Parent = kap
+
+	local ikon = Instance.new("ImageLabel")
+	ikon.Name = "Ikon"
+	ikon.LayoutOrder = 1
+	ikon.Size = UDim2.fromOffset(IKON_BOYU, IKON_BOYU)
+	ikon.BackgroundTransparency = 1
+	ikon.ScaleType = Enum.ScaleType.Fit
+	-- Ikon gelene kadar yer kaplamasin: bulunursa gorunur olur
+	ikon.Visible = false
+	ikon.Parent = kap
+	Icons.bind(ikon, "rot", function(ok: boolean)
+		ikon.Visible = ok
+	end)
+
 	local yazi = UI.text({
 		text = `+{Format.short(gelir)}`,
 		size = UI.Sizes.heading,
 		font = UI.Fonts.bold,
-		color = Bases.RotColor,
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromScale(1, 1),
-		parent = tabela,
+		color = YAZI_RENGI,
+		align = Enum.TextXAlignment.Left,
+		frameSize = UDim2.fromOffset(120, 30),
+		parent = kap,
 	})
-	-- Kalin siyah kontur: zemin ne renk olursa olsun okunur
-	local kontur = UI.stroke(yazi, Color3.fromRGB(0, 0, 0), 3)
+	yazi.LayoutOrder = 2
+	yazi.AutomaticSize = Enum.AutomaticSize.X
+	-- Koyu yesil kontur: acik yesil yazi her zeminde okunsun
+	local kontur = UI.stroke(yazi, KONTUR_RENGI, 3)
 
 	--[[
 		EGIM: sifirdan EN_COK_ACI dereceye, yonu de rastgele. Sifira yakin
 		degerler de cikiyor -- hepsi egik olsaydi duzen yapay gorunurdu.
 	]]
-	yazi.Rotation = rastgele:NextNumber(0, EN_COK_ACI) * (if rastgele:NextNumber() < 0.5 then -1 else 1)
+	kap.Rotation = rastgele:NextNumber(0, EN_COK_ACI) * (if rastgele:NextNumber() < 0.5 then -1 else 1)
 
 	--[[
 		POP: kucuk ve biraz iri arasinda gidip oturuyor. Back easing
@@ -157,7 +206,7 @@ local function yaziCikar(pad: BasePart, gelir: number)
 	]]
 	local olcek = Instance.new("UIScale")
 	olcek.Scale = 0.35
-	olcek.Parent = yazi
+	olcek.Parent = kap
 
 	TweenService
 		:Create(
@@ -176,6 +225,7 @@ local function yaziCikar(pad: BasePart, gelir: number)
 
 		TweenService:Create(yazi, bilgi, { TextTransparency = 1 }):Play()
 		TweenService:Create(kontur, bilgi, { Transparency = 1 }):Play()
+		TweenService:Create(ikon, bilgi, { ImageTransparency = 1 }):Play()
 		-- Sonerken yukari suzulur ve hafifce kuculur
 		TweenService
 			:Create(tabela, bilgi, { StudsOffset = tabela.StudsOffset + Vector3.new(0, YUKSELME, 0) })
