@@ -634,6 +634,21 @@ local sonCekmeceImzasi = ""
 	yuvada kaliyordu; o yuzden kazidan donunce alet arada bir yerde
 	kaliyordu.
 ]]
+--[[
+	Brainrotun kimligi acilmis mi (yani yumurta DEGIL mi).
+
+	Once sunucunun yazdigi nitelige bakiliyor. ADA DA bakiliyor cunku
+	kimligi kapali esyanin adi her zaman "??? (Kademe)" oluyor: nitelik bir
+	sebeple gelmezse siralama yine de dogru kaliyor. Bir kez nitelik
+	bozuktu ve yumurtalar brainrotlarin onune geciyordu.
+]]
+local function acikMi(tool: Tool): boolean
+	if tool:GetAttribute("Revealed") == true then
+		return true
+	end
+	return string.sub(tool.Name, 1, 3) ~= "???"
+end
+
 local function oncelik(tool: Tool): number
 	if type(tool:GetAttribute(Scrolls.Nitelik)) == "string" then
 		return 2
@@ -642,7 +657,7 @@ local function oncelik(tool: Tool): number
 		return 3
 	end
 	if type(tool:GetAttribute("BrainrotUid")) == "string" then
-		return if tool:GetAttribute("Revealed") == true then 4 else 5
+		return if acikMi(tool) then 4 else 5
 	end
 	-- Geri kalan her sey alet
 	return 1
@@ -658,7 +673,7 @@ local function deger(tool: Tool): number
 	local durum = tool:GetAttribute("Condition")
 	local mutasyon = tool:GetAttribute("Mutation")
 
-	if tool:GetAttribute("Revealed") == true and type(durum) == "string" then
+	if acikMi(tool) and type(durum) == "string" then
 		local gelir = Brainrots.income(adOf(tool), durum :: any, mutasyon :: any)
 		if gelir > 0 then
 			return gelir

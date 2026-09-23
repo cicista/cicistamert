@@ -943,7 +943,20 @@ function Tools.buildBrainrot(item: any): Tool
 	tool:SetAttribute("Rarity", item.rarity)
 	tool:SetAttribute("Condition", item.condition)
 	tool:SetAttribute("Mutation", item.mutation)
-	tool:SetAttribute("Revealed", revealed == true)
+	--[[
+		DIKKAT: `revealed` BOOLEAN DEGIL.
+
+		Yukarida `item.revealed and item.name` olarak hesaplaniyor, yani
+		acilmis bir brainrotta degeri brainrotun ADI (bir metin). Burada
+		eskiden `revealed == true` yaziyordu ve metin true'ya esit
+		olmadigi icin nitelik HER ZAMAN false kaliyordu. Iki sey bozuktu:
+
+		  - Hotbar acilmis brainrotu yumurtadan ayiramiyor, yumurtalar
+		    brainrotlarin onune gecebiliyordu (bkz. Hotbar > oncelik)
+		  - Envanter esitlemesi "acilma durumu degisti" sanip acilmis her
+		    brainrotun Tool'unu her turda yeniden uretiyordu
+	]]
+	tool:SetAttribute("Revealed", revealed ~= nil and revealed ~= false)
 
 	--[[
 		Gizli modelin KENDI tutus ayari (bkz. Assets.HiddenBrainrot).
