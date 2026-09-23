@@ -643,10 +643,32 @@ end
 	yazilinca anlasiliyor.
 ]]
 local function dokuRaporu()
+	--[[
+		NE BULUNDUGUNU da yaziyor. "Doku yok" tek basina ise yaramiyor:
+		nitelik hic konmamis da olabilir, yanlis yere konmus da, degeri bos
+		da olabilir -- ucunun caresi ayri.
+	]]
+	local kok = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
+
+	local durum: string
+	if not kok then
+		durum = "ReplicatedStorage > Assets klasoru YOK"
+	else
+		local deger = kok:GetAttribute(UI.DokuNiteligi)
+		if deger == nil then
+			durum = `Assets uzerinde "{UI.DokuNiteligi}" niteligi YOK`
+		elseif type(deger) ~= "string" or deger == "" then
+			durum = `"{UI.DokuNiteligi}" niteligi BOS ({typeof(deger)})`
+		else
+			durum = `"{UI.DokuNiteligi}" = "{deger}" (resim yuklenemedi)`
+		end
+	end
+
 	warn(
-		"[UI] Panel dokusu yok, zeminler duz renk kaliyor. MaterialService'teki "
-			.. "malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i yalnizca eklentiler okuyor). "
-			.. "En kisa yol -- Studio'da komut cubuguna: "
+		`[UI] Panel dokusu yok, zeminler duz renk kaliyor. Durum: {durum}. `
+			.. "MaterialService'teki malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i "
+			.. "yalnizca eklentiler okuyor), o yuzden kimlik ya bu nitelige ya da "
+			.. "UI.DokuResmi'ne yazilmali. Studio'da EDIT modunda komut cubuguna: "
 			.. 'for _,v in game:GetService("MaterialService"):GetDescendants() do '
 			.. 'if v:IsA("MaterialVariant") then local n=v.Name:lower() '
 			.. 'if n:find("seram") or n:find("ceram") or n:find("tile") then '
