@@ -475,7 +475,22 @@ end
 	Output'a bir kez uyari yazilir. Yani doku olmasa da arayuz calismaya
 	devam eder.
 ]]
-local DOKU_ADLARI = { "[2024] Seramic Tiles", "2024 Seramic Tiles", "Seramic Tiles", "SeramicTiles" }
+--[[
+	Dokunun aranacagi adlar. Ilki Output'taki ornekte gecen ad; gerisi ayni
+	seyin baska yazilislari. Turkce "Seramik" de listede -- malzemenin adi
+	Studio'da elle degistirilebiliyor ve "c/k" farki yuzunden eslesme
+	kaciyordu.
+]]
+local DOKU_ADLARI = {
+	"Seramik",
+	"[2024] Seramic Tiles",
+	"2024 Seramic Tiles",
+	"Seramic Tiles",
+	"SeramicTiles",
+	"Seramik Tiles",
+	"Ceramic Tiles",
+}
+
 
 --[[
 	DOKUNUN RESMI  --  en kisa yol
@@ -550,8 +565,10 @@ end
 	       satirda yapmak yetiyor:
 
 	         for _,v in game:GetService("MaterialService"):GetDescendants() do
-	           if v:IsA("MaterialVariant") and v.Name:lower():find("seramic") then
-	             game.ReplicatedStorage.Assets:SetAttribute("PanelDokusu", v.ColorMap)
+	           if v:IsA("MaterialVariant") then local n = v.Name:lower()
+	             if n:find("seram") or n:find("ceram") or n:find("tile") then
+	               game.ReplicatedStorage.Assets:SetAttribute("PanelDokusu", v.ColorMap)
+	             end
 	           end
 	         end
 
@@ -631,8 +648,10 @@ local function dokuRaporu()
 			.. "malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i yalnizca eklentiler okuyor). "
 			.. "En kisa yol -- Studio'da komut cubuguna: "
 			.. 'for _,v in game:GetService("MaterialService"):GetDescendants() do '
-			.. 'if v:IsA("MaterialVariant") and v.Name:lower():find("seramic") then '
-			.. `game.ReplicatedStorage.Assets:SetAttribute("{UI.DokuNiteligi}", v.ColorMap) end end`
+			.. 'if v:IsA("MaterialVariant") then local n=v.Name:lower() '
+			.. 'if n:find("seram") or n:find("ceram") or n:find("tile") then '
+			.. `game.ReplicatedStorage.Assets:SetAttribute("{UI.DokuNiteligi}", v.ColorMap) `
+			.. 'print("kondu:", v.Name, v.ColorMap) end end end'
 	)
 end
 
