@@ -927,20 +927,12 @@ Assets.CountAttribute = "Adet"
 
 
 --[[
-	Efekt olceginin UST SINIRI. Brainrotlarda 3'te kaliyor (paket modelleri
-	cok iri export edilmis olabiliyor, efekt ekrani kaplamasin); yumurtalar
-	kademe kademe 1.5 katina ciktigi icin onlarda sinir yukari aliniyor --
-	yoksa Divine'dan sonraki butun yumurtalarda efekt ayni boyda kalirdi.
+	Efekt olceginin UST SINIRI: paket modelleri cok iri export edilmis
+	olabiliyor, efekt ekrani kaplamasin.
 ]]
 Assets.RarityVFXMaxScale = 3
-Assets.YumurtaVFXMaxScale = 40
 
-function Assets.attachRarityVFX(
-	model: Instance,
-	rarityId: string?,
-	kok: BasePart?,
-	enCokOlcek: number?
-): Instance?
+function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePart?): Instance?
 	local ad = if type(rarityId) == "string" then RARITY_VFX[rarityId] else nil
 	if not ad then
 		return nil
@@ -1015,7 +1007,7 @@ function Assets.attachRarityVFX(
 			local uzun = math.max(boy.X, boy.Y, boy.Z)
 			local taban = Assets.BrainrotSize.slotSize
 			if taban > 0 and uzun > 0 then
-				carpan = math.clamp(uzun / taban, 0.75, enCokOlcek or Assets.RarityVFXMaxScale)
+				carpan = math.clamp(uzun / taban, 0.75, Assets.RarityVFXMaxScale)
 			end
 		end
 	end
@@ -1079,14 +1071,60 @@ end
 	Studio'da test ederken efektin onune geciyor. Uretilen her kopyada
 	kapatiliyor; haritadaki orijinal sablona dokunulmuyor.
 ]]
+--[[
+	VFX AYRI BIR KLASORDE OLMAK ZORUNDA DEGIL
+
+	grabTemplate birebir ada bakiyor; efekt dosyalari cogu zaman dogrudan
+	Assets'in icinde duruyor ve adi da tam tutmayabiliyor ("Divine VFX",
+	"divineVFX"). Bu yuzden bulunamazsa Assets'in ve Workspace'in tamami
+	bosluk/harf farki gozetmeden bir kez taraniyor.
+]]
+local function vfxAra(name: string): Instance?
+	local hedef = string.lower((string.gsub(name, "[%s_%-]", "")))
+
+	local koklar: { Instance } = {}
+	local assetKok = ReplicatedStorage:FindFirstChild(Assets.FolderName)
+	if assetKok then
+		table.insert(koklar, assetKok)
+	end
+	table.insert(koklar, Workspace)
+
+	for _, kok in koklar do
+		for _, node in kok:GetDescendants() do
+			if string.lower((string.gsub(node.Name, "[%s_%-]", ""))) == hedef then
+				return node
+			end
+		end
+	end
+
+	return nil
+end
+
 function Assets.vfxTemplate(name: string): Instance?
 	local template = grabTemplate(
 		name,
 		Assets.Categories.vfx,
-		"Workspace'e ya da ReplicatedStorage > Assets > VFX icine koy. Efekt olmadan devam ediliyor."
+		"ReplicatedStorage > Assets icine (ya da Workspace'e) koy. Efekt olmadan devam ediliyor.",
+		-- Uyari asagidaki genis aramadan SONRA verilsin
+		true
 	)
 
 	if not template then
+		local bulunan = vfxAra(name)
+		if bulunan then
+			template = bulunan:Clone()
+			if bulunan:IsDescendantOf(Workspace) then
+				silence(bulunan)
+			end
+		end
+	end
+
+	if not template then
+		Assets.warnOnce(
+			`vfx yok: {name}`,
+			`[Assets] "{name}" bulunamadi. ReplicatedStorage > Assets icine koy `
+				.. "(alt klasor sart degil). Efekt olmadan devam ediliyor."
+		)
 		return nil
 	end
 
@@ -1135,17 +1173,20 @@ Assets.HiddenBrainrot = {
 		Kazidan cikan "?" esya artik tek bir model degil: kademesine gore
 		ayri bir yumurta. Modeller ReplicatedStorage > Assets > "Eggs"
 		klasorunde durur ("EggPack" ya da adinda "egg"/"yumurta" gecen
-		baska bir klasor de olur); ADA GORE siralanip kademe sirasina
-		dagitilir:
+		baska bir klasor de olur).
 
-		    1. yumurta -> Common, 2. -> Rare, 3. -> Epic ...
+		ESLESME ADA GORE: yumurtanin adinda kademenin EKRANDA GORUNEN adi
+		gecmeli -- "Divine Egg" Divine'a, "Mythic" Mythic'e gider. "Egg" /
+		"Yumurta" eki, bosluk, alt cizgi ve harf buyuklugu onemsiz.
+		Ayrintisi icin bkz. yumurtaEslesmesi.
 
-		Paket kademe sayisindan azsa son yumurta kalan kademelerde de
-		kullanilir. Sira yanlissa asagidaki kademeAdlari tablosuna o
-		kademenin model adini yaz; ad her zaman siradan once gelir.
+		Yumurtasi olmayan kademe eski tek modele (Gold Ore) duser.
 
 		Sunucu acilirken hangi yumurtanin hangi kademeye dustugu Output'a
-		yazilir: [Assets] Yumurta eslesmesi: Common=... Rare=...
+		yazilir: [Assets] Yumurta eslesmesi: Common=... Divine=...
+
+		Adi hicbir kademeye benzemeyen bir yumurta varsa kademeAdlari
+		tablosuna elle yaz; o her seyin onunde gelir.
 	]]
 	paketAdi = "EggPack",
 	kademeAdlari = {
@@ -1166,8 +1207,8 @@ Assets.HiddenBrainrot = {
 		  Common 0.35 -> ~1.6 stud        Mythic ~1.77 -> ~8 stud
 		  Divine ~2.7 -> ~12 stud         Abyssal ~13.5 -> ~60 stud
 
-		Kademe efekti (Divine ve ustu) yumurtanin BOYUNDAN hesaplandigi icin
-		o da ayni oranda buyuyor; ust siniri Assets.YumurtaVFXMaxScale.
+		Yumurtanin efekti MODELIN ICINDE duruyor (Studio'da elle konuyor),
+		yani model buyudukce o da buyuyor; kod ayrica efekt eklemiyor.
 
 		Ust kademeler GERCEKTEN devasa oluyor; kucultmek icin yumurtaOrani
 		dusurmek (orn. 1.3) ya da asagidaki tabloyu elle yazmak yeterli.
@@ -1509,41 +1550,128 @@ local function yumurtalar(): { Instance }
 end
 
 --[[
-	Bir kademenin yumurtasi. Once kademeAdlari'ndaki ad, sonra sira
-	(Rarity.order); paket kisaysa son yumurta kullanilir.
-]]
-local yumurtaRaporu = false
+	YUMURTA <-> KADEME ESLESMESI  --  ADA GORE
 
-local function yumurtaModeli(rarityId: string?): Instance?
+	Yumurtalar kademelerine SIRAYLA degil ADLARIYLA dagitiliyor: paketteki
+	"Divine Egg" Divine'a, "Mythic" Mythic'e gidiyor. Sira yontemi yeni bir
+	yumurta eklenince her seyi kaydiriyordu.
+
+	Addaki "egg"/"yumurta" eki, bosluklar, alt cizgi ve buyuk/kucuk harf
+	farki yok sayiliyor: "Divine Egg", "divine_egg", "DivineEgg" ayni sey.
+
+	IKI ISIM CAKISIYOR (bkz. Shared > Rarity):
+	    kimlik "Secret" -> ekranda "Divine"
+	    kimlik "Gizli"  -> ekranda "Secret"
+	Bu yuzden once EKRANDAKI adlar eslestiriliyor (oyuncu ve paketi
+	hazirlayan o adi biliyor), eslesen yumurta "kapildi" diye
+	isaretleniyor; ikinci turda kalan kademeler KIMLIK adiyla yalnizca
+	bostaki yumurtalardan seciliyor. Yoksa "Secret" adli yumurta yanlis
+	kademeye gidebilirdi.
+
+	Elle ayar: HiddenBrainrot.kademeAdlari'na yazilan ad her seyin onunde.
+]]
+local function sadeYumurtaAdi(ad: string): string
+	local s = string.lower((string.gsub(ad, "[%s_%-]", "")))
+	s = string.gsub(s, "egg", "")
+	s = string.gsub(s, "yumurta", "")
+	return s
+end
+
+local yumurtaHaritasi: { [string]: Instance }? = nil
+
+local function yumurtaEslesmesi(): { [string]: Instance }
+	if yumurtaHaritasi then
+		return yumurtaHaritasi
+	end
+
 	local liste = yumurtalar()
-	if #liste == 0 then
+	local harita: { [string]: Instance } = {}
+	local kapili: { [Instance]: boolean } = {}
+
+	local function bul(hedef: string, birebir: boolean?): Instance?
+		local sade = if birebir then string.lower(hedef) else sadeYumurtaAdi(hedef)
+		for _, model in liste do
+			if kapili[model] then
+				continue
+			end
+			local ad = if birebir then string.lower(model.Name) else sadeYumurtaAdi(model.Name)
+			if ad == sade then
+				return model
+			end
+		end
 		return nil
 	end
 
-	if not yumurtaRaporu then
-		yumurtaRaporu = true
-		local satirlar = {}
-		for _, kademe in Rarity.Order do
-			local info = Rarity.Info[kademe]
-			local sira = if info then math.clamp(info.order, 1, #liste) else 1
-			local ad = Assets.HiddenBrainrot.kademeAdlari[kademe]
-			table.insert(satirlar, `{kademe}={ad or liste[sira].Name}`)
-		end
-		print(`[Assets] Yumurta eslesmesi ({#liste} model): {table.concat(satirlar, "  ")}`)
-	end
-
-	local ad = if rarityId then Assets.HiddenBrainrot.kademeAdlari[rarityId] else nil
-	if ad then
-		for _, model in liste do
-			if model.Name == ad then
-				return model
+	-- 1. Elle yazilmis adlar
+	for _, kademe in Rarity.Order do
+		local elle = Assets.HiddenBrainrot.kademeAdlari[kademe]
+		if elle then
+			local model = bul(elle, true)
+			if model then
+				harita[kademe] = model
+				kapili[model] = true
 			end
 		end
 	end
 
-	local info = if rarityId then Rarity.Info[rarityId :: any] else nil
-	local sira = if info then math.clamp(info.order, 1, #liste) else 1
-	return liste[sira]
+	-- 2. Ekrandaki ad ("Divine", "Secret", "Cosmic" ...)
+	for _, kademe in Rarity.Order do
+		if not harita[kademe] then
+			local info = Rarity.Info[kademe]
+			local model = if info then bul(info.displayName) else nil
+			if model then
+				harita[kademe] = model
+				kapili[model] = true
+			end
+		end
+	end
+
+	-- 3. Kimlik adi ("Gizli" gibi ic adlar)
+	for _, kademe in Rarity.Order do
+		if not harita[kademe] then
+			local model = bul(kademe)
+			if model then
+				harita[kademe] = model
+				kapili[model] = true
+			end
+		end
+	end
+
+	--[[
+		RAPOR: hangi kademeye hangi yumurta dustu ve hangileri bos kaldi.
+		Bos kalan kademe ESKI MODELE (Gold Ore) duser; Output'ta gorunsun ki
+		eksik yumurta fark edilsin.
+	]]
+	if #liste > 0 then
+		local satirlar, eksik = {}, {}
+		for _, kademe in Rarity.Order do
+			local info = Rarity.Info[kademe]
+			local gorunen = if info then info.displayName else kademe
+			if harita[kademe] then
+				table.insert(satirlar, `{gorunen}={harita[kademe].Name}`)
+			else
+				table.insert(eksik, gorunen)
+			end
+		end
+		print(`[Assets] Yumurta eslesmesi ({#liste} model): {table.concat(satirlar, "  ")}`)
+		if #eksik > 0 then
+			warn(
+				`[Assets] Su kademelerin yumurtasi bulunamadi: {table.concat(eksik, ", ")}. `
+					.. "Yumurtanin adinda kademenin ekranda gorunen adi gecmeli "
+					.. '(orn. "Divine Egg").'
+			)
+		end
+	end
+
+	yumurtaHaritasi = harita
+	return harita
+end
+
+local function yumurtaModeli(rarityId: string?): Instance?
+	if type(rarityId) ~= "string" then
+		return nil
+	end
+	return yumurtaEslesmesi()[rarityId]
 end
 
 --[[

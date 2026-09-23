@@ -390,8 +390,12 @@ local envanter = UI.panel(screen, UDim2.fromOffset(600, 580), "Envanter")
 	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
 	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
 	gibi duruyor.
+
+	Renk BURADA degil, asagida baslikCubugu'na parametre olarak veriliyor:
+	o fonksiyon panelin zeminini kendi gradyaniyla yeniden boyuyor ve
+	dogrudan yazilan rengi eziyor.
 ]]
-envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
+local ENVANTER_ZEMIN = Color3.fromRGB(84, 58, 38)
 
 --[[
 	ENVANTER  --  canli, iki bolumlu
@@ -406,7 +410,14 @@ envanter.BackgroundColor3 = Color3.fromRGB(84, 58, 38)
 	Base'deki bir brainrota tiklamak onu cantaya geri alir.
 ]]
 -- Cilali mavi-mor baslik cubugu (bkz. UI.baslikCubugu)
-UI.baslikCubugu(envanter, "Inventory", Color3.fromRGB(50, 150, 255), Color3.fromRGB(170, 90, 255), "inventory")
+UI.baslikCubugu(
+	envanter,
+	"Inventory",
+	Color3.fromRGB(50, 150, 255),
+	Color3.fromRGB(170, 90, 255),
+	"inventory",
+	ENVANTER_ZEMIN
+)
 
 UI.closeButton(envanter).MouseButton1Click:Connect(function()
 	envanter.Visible = false
@@ -2747,7 +2758,18 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		ikon.BackgroundTransparency = 1
 		ikon.ScaleType = Enum.ScaleType.Fit
 		ikon.Parent = kart
-		Icons.bind(ikon, if odul.kind == "rot" then "rot" else "luckyBlock")
+		--[[
+			GECIS GUNLERI (kind = "pass", 3. gun Detective Pass) eskiden
+			"luckyBlock" dalina dusup "?" kutusu gosteriyordu; artik gecisin
+			kendi ikonu geliyor (Assets > Icons > Detective).
+		]]
+		Icons.bind(
+			ikon,
+			if odul.kind == "rot"
+				then "rot"
+				elseif odul.kind == "pass" then (ODUL_PASS_IKON[odul.pass or ""] or "rewards")
+				else "luckyBlock"
+		)
 
 		-- Blok ikonu turun renginde hafifce boyanir: en pahali blok ucuzundan ayrilsin
 		if odul.kind == "luckyblock" then

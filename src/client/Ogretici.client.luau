@@ -500,6 +500,90 @@ local function modelBul(adlar: { string }): Instance?
 end
 
 --[[
+	EN YAKIN OLANI  --  haritada ayni adda BIRDEN COK model varken
+
+	Teleporter her adada bir tane: dordu de "Teleporter" adli. modelBul ilk
+	bulduguna donuyordu, o da cogu zaman baska bir adadaki oluyordu -- serit
+	"isinlayiciya git" derken isaret denizin otesini gosteriyordu.
+
+	Burada AYNI ADDAKI hepsi toplanip oyuncuya en yakini seciliyor.
+]]
+--[[
+	ADAYLAR ONBELLEKTE
+
+	hedefiTazele saniyede bir calisiyor; her seferinde butun Workspace'i
+	gezmek gereksiz. Ayni adlar icin bulunan modeller birkac saniye
+	saklaniyor, aradaki cagrilarda yalnizca "hangisi daha yakin" hesabi
+	yapiliyor. Silinmis modeller kullanilmadan once eleniyor.
+]]
+local adayOnbellek: { [string]: { zaman: number, liste: { Instance } } } = {}
+local ADAY_OMRU = 5
+
+local function adaylariBul(adlar: { string }): { Instance }
+	local anahtar = table.concat(adlar, "|")
+	local kayit = adayOnbellek[anahtar]
+	if kayit and os.clock() - kayit.zaman < ADAY_OMRU then
+		local canli: { Instance } = {}
+		for _, node in kayit.liste do
+			if node.Parent then
+				table.insert(canli, node)
+			end
+		end
+		if #canli > 0 then
+			return canli
+		end
+	end
+
+	local hedefler: { string } = {}
+	for _, ad in adlar do
+		table.insert(hedefler, sadeAd(ad))
+	end
+
+	local liste: { Instance } = {}
+	for _, node in Workspace:GetDescendants() do
+		if node:IsA("Model") or node:IsA("BasePart") then
+			local ad = sadeAd(node.Name)
+			for _, hedef in hedefler do
+				if ad == hedef then
+					table.insert(liste, node)
+					break
+				end
+			end
+		end
+	end
+
+	adayOnbellek[anahtar] = { zaman = os.clock(), liste = liste }
+	return liste
+end
+
+local function enYakinModel(adlar: { string }): Instance?
+	local karakter = player.Character
+	local kok = karakter and karakter:FindFirstChild("HumanoidRootPart")
+	if not kok or not kok:IsA("BasePart") then
+		return modelBul(adlar)
+	end
+
+	local enIyi: Instance? = nil
+	local enIyiUzaklik = math.huge
+
+	for _, node in adaylariBul(adlar) do
+		local ok, konum = pcall(function()
+			return if node:IsA("Model") then node:GetPivot().Position else (node :: BasePart).Position
+		end)
+		if ok and typeof(konum) == "Vector3" then
+			local uzaklik = (konum - kok.Position).Magnitude
+			if uzaklik < enIyiUzaklik then
+				enIyiUzaklik = uzaklik
+				enIyi = node
+			end
+		end
+	end
+
+	-- Hicbiri birebir tutmadi: eski arama (icinde gecen ad, vs.)
+	return enIyi or modelBul(adlar)
+end
+
+--[[
 	KUM HEDEFI ICIN GORUNMEZ BIR ISARET NOKTASI
 
 	Kum plaji cogu zaman kocaman tek bir parca. Isaretleri dogrudan ona
@@ -641,9 +725,9 @@ local function hedefiBul(tur: Adimlar.Hedef, kok: BasePart): Instance?
 	end
 
 	if tur == "dedektif" then
-		return modelBul({ Config.Detective.name })
+		return enYakinModel({ Config.Detective.name })
 	elseif tur == "fuse" then
-		return modelBul({ Config.Fuse.machineName, Config.Fuse.machineAltName })
+		return enYakinModel({ Config.Fuse.machineName, Config.Fuse.machineAltName })
 	elseif tur == "base" then
 		local model = if baseIndex then modelBul({ Bases.baseName(baseIndex) }) else nil
 		if not model then
@@ -823,8 +907,11 @@ local function hedefiTazele()
 		--[[
 			Kurek ipucunun hedefi listeden geliyor (Magaza betigiyle ayni
 			adlar); ada ipucununki Teleporter NPC'si.
+
+			EN YAKINI seciliyor: her adada bir Teleporter var, ilk bulunan
+			cogu zaman baska bir adadaki oluyordu.
 		]]
-		local npc = modelBul(
+		local npc = enYakinModel(
 			if kurekIpucuAcik() then KI.modeller else { Config.NPC.name, Config.NPC.altName }
 		)
 		if not npc then

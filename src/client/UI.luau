@@ -497,23 +497,101 @@ local dokuKimligi: string? = nil
 local bekleyenDokular: { ImageLabel } = {}
 local dokuAramasiBasladi = false
 
+local function sadeDokuAdi(ad: string): string
+	return string.lower((string.gsub(ad, "[%s_%-%[%]]", "")))
+end
+
+--[[
+	Dokuyu once MaterialService'te (MaterialVariant.ColorMap), bulunamazsa
+	Assets icinde bir resim olarak arar.
+
+	ESLESME GEVSEK: ad birebir tutmazsa "seramic"/"ceramic"/"tile" gecen ilk
+	MaterialVariant kabul edilir. Studio Material Manager varyanti bazen
+	"[2024] Seramic Tiles 1" gibi bir ekle kaydediyor.
+]]
 local function dokuyuAra(): string?
 	local service = game:FindService("MaterialService")
-	if not service then
-		return nil
+	if service then
+		local gevsek: string? = nil
+
+		for _, node in service:GetDescendants() do
+			if node:IsA("MaterialVariant") and node.ColorMap ~= "" then
+				local ad = sadeDokuAdi(node.Name)
+				for _, hedef in DOKU_ADLARI do
+					if ad == sadeDokuAdi(hedef) then
+						return node.ColorMap
+					end
+				end
+				if
+					not gevsek
+					and (
+						string.find(ad, "seramic", 1, true)
+						or string.find(ad, "ceramic", 1, true)
+						or string.find(ad, "tile", 1, true)
+					)
+				then
+					gevsek = node.ColorMap
+				end
+			end
+		end
+
+		if gevsek then
+			return gevsek
+		end
 	end
 
-	for _, node in service:GetDescendants() do
-		if node:IsA("MaterialVariant") then
-			for _, ad in DOKU_ADLARI do
-				if string.lower(node.Name) == string.lower(ad) and node.ColorMap ~= "" then
-					return node.ColorMap
+	--[[
+		YEDEK: Assets icine konmus duz bir resim (Decal / Texture /
+		ImageLabel). MaterialVariant'i olmayan biri dokuyu boyle de
+		verebilsin.
+	]]
+	local kok = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
+	if kok then
+		for _, node in kok:GetDescendants() do
+			local ad = sadeDokuAdi(node.Name)
+			for _, hedef in DOKU_ADLARI do
+				if ad == sadeDokuAdi(hedef) then
+					if (node:IsA("Decal") or node:IsA("Texture")) and node.Texture ~= "" then
+						return node.Texture
+					elseif node:IsA("ImageLabel") and node.Image ~= "" then
+						return node.Image
+					end
 				end
 			end
 		end
 	end
 
 	return nil
+end
+
+--[[
+	Doku bulunamayinca Output'a NE BULUNDUGUNU yazar. "Bulunamadi" tek
+	basina ise yaramiyor: sorun cogu zaman addaki kucuk bir fark ya da bos
+	ColorMap oluyor, ikisi de ancak listeyi gorunce anlasiliyor.
+]]
+local function dokuRaporu()
+	local service = game:FindService("MaterialService")
+	local satirlar: { string } = {}
+
+	if service then
+		for _, node in service:GetDescendants() do
+			if node:IsA("MaterialVariant") then
+				table.insert(
+					satirlar,
+					`"{node.Name}"{if node.ColorMap == "" then " (ColorMap BOS)" else ""}`
+				)
+			end
+		end
+	end
+
+	if #satirlar == 0 then
+		warn("[UI] MaterialService'te hic MaterialVariant yok. Zeminler duz renk kaliyor.")
+	else
+		warn(
+			`[UI] Doku bulunamadi. MaterialService'teki varyantlar: {table.concat(satirlar, ", ")}. `
+				.. `Aranan ad: "{DOKU_ADLARI[1]}" (ColorMap dolu olmali).`
+		)
+	end
 end
 
 local function dokuyuDagit()
@@ -542,10 +620,7 @@ local function dokuAramasiniBaslat()
 			task.wait(0.5)
 		end
 
-		warn(
-			`[UI] Doku bulunamadi: MaterialService > "{DOKU_ADLARI[1]}" `
-				.. "(MaterialVariant, ColorMap dolu olmali). Zeminler duz renk kaliyor."
-		)
+		dokuRaporu()
 		dokuyuDagit()
 	end)
 end
@@ -1158,7 +1233,24 @@ end
 	boyanir ve kalin siyah kontur alir. Kapatma dugmesi cubugun sag ucuna
 	tasinir. Cubuk 62. piksele kadar yer kaplar; icerik 70'ten baslamali.
 ]]
-function UI.baslikCubugu(panel: Frame, yazi: string, renkA: Color3, renkB: Color3, ikonId: string?): (Frame, TextLabel)
+--[[
+	`zeminRenk` verilmezse panelin zemini standart koyu gridir
+	(UI.Colors.panel). Veren panel kendi rengini korur -- envanterin
+	kahverengi zemini boyle duruyor.
+
+	NEDEN PARAMETRE: bu fonksiyon panelin BackgroundColor3'unu beyaza cekip
+	uzerine bir gradyan koyuyor (gradyan zemin rengiyle CARPILIYOR, o yuzden
+	taban beyaz olmali). Cagiran taraf paneli kendisi boyasaydi buradaki
+	gradyan onu ezerdi; nitekim eziyordu da.
+]]
+function UI.baslikCubugu(
+	panel: Frame,
+	yazi: string,
+	renkA: Color3,
+	renkB: Color3,
+	ikonId: string?,
+	zeminRenk: Color3?
+): (Frame, TextLabel)
 	local kontur = panel:FindFirstChildOfClass("UIStroke")
 	if kontur then
 		kontur.Color = SIYAH
@@ -1166,14 +1258,15 @@ function UI.baslikCubugu(panel: Frame, yazi: string, renkA: Color3, renkB: Color
 	end
 
 	-- Zemin: ust kisim baslik renginde hafif isik alir, alta dogru koyulasir
+	local taban = zeminRenk or UI.Colors.panel
 	panel.BackgroundColor3 = BEYAZ
 	local zemin = Instance.new("UIGradient")
 	zemin.Name = "PanelRengi"
 	zemin.Rotation = 90
 	zemin.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, UI.Colors.panel:Lerp(renkA, 0.22)),
-		ColorSequenceKeypoint.new(0.45, UI.Colors.panel:Lerp(renkB, 0.08)),
-		ColorSequenceKeypoint.new(1, UI.Colors.panel),
+		ColorSequenceKeypoint.new(0, taban:Lerp(renkA, 0.22)),
+		ColorSequenceKeypoint.new(0.45, taban:Lerp(renkB, 0.08)),
+		ColorSequenceKeypoint.new(1, taban),
 	})
 	zemin.Parent = panel
 

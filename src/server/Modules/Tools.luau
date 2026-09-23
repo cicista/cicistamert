@@ -1199,18 +1199,17 @@ function Tools.buildBrainrot(item: any): Tool
 		Govdeye kaynaklaniyor, yani brainrot elde tasinirken de gorunuyor;
 		base slotundaki model de ayni sablonu kullaniyor.
 	]]
-	if handle then
-		--[[
-			YUMURTALARDA SINIR YUKARIDA: kimligi kapali esya kademe kademe
-			1.5 katina cikiyor, efekt de onunla buyumeli (bkz. Assets >
-			YumurtaVFXMaxScale).
-		]]
-		Assets.attachRarityVFX(
-			tool,
-			item.rarity,
-			handle,
-			if revealed then nil else Assets.YumurtaVFXMaxScale
-		)
+	--[[
+		YUMURTALARA EFEKT EKLENMEZ.
+
+		Kademe efekti yalnizca kimligi ACILMIS brainrota takiliyor. Yumurtalar
+		kademe kademe 1.5 katina ciktigi icin efekt de onlarla buyuyordu ve
+		ust kademelerde ekrani kapliyordu; yumurtanin efekti artik modelin
+		KENDI icinde duruyor (Studio'da elle konuyor) ve boyu modelle
+		birlikte olcekleniyor.
+	]]
+	if revealed and handle then
+		Assets.attachRarityVFX(tool, item.rarity, handle)
 	end
 
 	return tool
