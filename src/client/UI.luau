@@ -1800,16 +1800,76 @@ function UI.modelKaresi(parent: GuiObject, model: Instance, boyut: number, zInde
 	kamera.Parent = vp
 	vp.CurrentCamera = kamera
 
-	-- Kadraj: nesnenin sinir kutusunu kosegeni kadar geriden cekiyoruz
+	--[[
+		KADRAJ GORUNEN PARCALARA GORE
+
+		Kamera, nesnenin sinir kutusunun kosegeni kadar geriden cekiliyor;
+		yani kutu ne kadar buyukse kamera o kadar uzakta duruyor ve nesne
+		karede hep AYNI BUYUKLUKTE gorunuyor.
+
+		Ama kutu GORUNMEZ parcalari da sayarsa bu bozuluyor. Kademe efekti
+		(Assets > attachRarityVFX) saydamligi 1 olan bir parca ve en kucuk
+		olcegi 0.75 ile sinirli: Tiny bir brainrotun yaninda modelin birkac
+		kati kaliyor. Kutuyu o doldurunca kamera geri cekiliyor ve brainrot
+		karede nokta kadar goruluyordu.
+
+		Artik yalnizca GORUNEN parcalar sayiliyor. Hicbiri gorunmuyorsa
+		(her sey saydam) eski hesaba dusuluyor.
+	]]
 	local merkez, olcu
-	if govde:IsA("Model") then
-		local cf, size = govde:GetBoundingBox()
-		merkez, olcu = cf.Position, size
-	else
-		merkez, olcu = kok.Position, kok.Size
+
+	do
+		local enAz: Vector3? = nil
+		local enCok: Vector3? = nil
+
+		for _, parca in govde:GetDescendants() do
+			if not parca:IsA("BasePart") or parca.Transparency >= 0.99 then
+				continue
+			end
+
+			local cf, boyut = parca.CFrame, parca.Size
+			-- Parcanin sekiz kosesi: donuk parcalarda dunya kutusu boyle cikar
+			for _, sx in { -0.5, 0.5 } do
+				for _, sy in { -0.5, 0.5 } do
+					for _, sz in { -0.5, 0.5 } do
+						local kose = (cf * CFrame.new(boyut.X * sx, boyut.Y * sy, boyut.Z * sz)).Position
+						enAz = if enAz then enAz:Min(kose) else kose
+						enCok = if enCok then enCok:Max(kose) else kose
+					end
+				end
+			end
+		end
+
+		if govde:IsA("BasePart") and govde.Transparency < 0.99 then
+			local cf, boyut = (govde :: BasePart).CFrame, (govde :: BasePart).Size
+			for _, sx in { -0.5, 0.5 } do
+				for _, sy in { -0.5, 0.5 } do
+					for _, sz in { -0.5, 0.5 } do
+						local kose = (cf * CFrame.new(boyut.X * sx, boyut.Y * sy, boyut.Z * sz)).Position
+						enAz = if enAz then enAz:Min(kose) else kose
+						enCok = if enCok then enCok:Max(kose) else kose
+					end
+				end
+			end
+		end
+
+		if enAz and enCok then
+			merkez, olcu = (enAz + enCok) / 2, enCok - enAz
+		elseif govde:IsA("Model") then
+			local cf, size = (govde :: Model):GetBoundingBox()
+			merkez, olcu = cf.Position, size
+		else
+			merkez, olcu = kok.Position, kok.Size
+		end
 	end
 
-	kamera.CFrame = CFrame.lookAt(merkez + Vector3.new(0, 0, -1) * olcu.Magnitude * 0.85, merkez)
+	--[[
+		Uzaklik kosegene bagli. En az 1: sifir boyutlu (ya da tek noktaya
+		inmis) bir nesnede kamera merkezin USTUNE gelir ve lookAt hata
+		verir.
+	]]
+	local uzaklik = math.max(olcu.Magnitude * 0.85, 1)
+	kamera.CFrame = CFrame.lookAt(merkez + Vector3.new(0, 0, -1) * uzaklik, merkez)
 
 	return vp
 end

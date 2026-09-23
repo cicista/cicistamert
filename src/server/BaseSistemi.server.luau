@@ -292,6 +292,38 @@ local function buildCollectButton(model: Model, bounds: CFrame, size: Vector3, b
 		pad.Name = "ToplaButonu"
 		pad.Size = marker.Size
 		pad.CFrame = marker.CFrame
+
+		--[[
+			ISARETCININ MALZEMESI KORUNUR
+
+			Buton, isaretcinin YERINE degil AYNI YERINE kuruluyor. Studio'da
+			isaretcinin malzemesini degistirmek eskiden hicbir ise
+			yaramiyordu: buton her zaman SmoothPlastic oluyordu.
+
+			Malzeme artik isaretciden geciyor. Renk yine kod tarafindan
+			veriliyor (yesil/kirmizi/gri), o yuzden RENGI YUTAN malzemeler
+			(Glass, ForceField) secilirse buton renk degistirmiyormus gibi
+			gorunur -- oyle bir durumda malzemeyi SmoothPlastic ya da
+			Neon yap.
+		]]
+		pad:SetAttribute("Malzeme", marker.Material.Name)
+
+		--[[
+			ISARETCI GIZLENIR
+
+			Isaretci ayni boyutta ve ayni yerde duruyor; gorunur kalirsa
+			butonun TAM USTUNE biniyor ve butonun rengi hic gorunmuyor.
+			Eskiden Studio'daki isaretci yari saydam oldugu icin bu fark
+			edilmiyordu; opak bir malzeme secilince buton kayboldu.
+
+			Silinmiyor, yalnizca gizleniyor: base yeniden kurulursa yer
+			bilgisi yine ondan okunacak.
+		]]
+		marker.Transparency = 1
+		marker.CanCollide = false
+		marker.CanQuery = false
+		marker.CanTouch = false
+
 		return finishCollectButton(pad, model, baseIndex, cfg)
 	end
 
@@ -326,7 +358,14 @@ function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: an
 		Saydamlik ve yansima sifirlaniyor: Studio'da konan isaret parcasi
 		(ToplaNoktasi) yari saydamsa alttaki zemin rengi butona karisiyordu.
 	]]
-	pad.Material = Enum.Material.SmoothPlastic
+	--[[
+		Isaretciden gelen malzeme varsa o kullanilir (bkz. buildCollectButton);
+		yoksa varsayilan SmoothPlastic.
+	]]
+	local malzeme = pad:GetAttribute("Malzeme")
+	pad.Material = if type(malzeme) == "string" and (Enum.Material :: any)[malzeme]
+		then (Enum.Material :: any)[malzeme]
+		else Enum.Material.SmoothPlastic
 	pad.Transparency = 0
 	pad.Reflectance = 0
 	pad.Color = cfg.idleColor
