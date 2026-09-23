@@ -66,6 +66,8 @@ list.ScrollBarImageColor3 = UI.Colors.panelLight
 list.CanvasSize = UDim2.new()
 list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 list.Parent = menu
+-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
+UI.listePayi(list)
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.Padding = UDim.new(0, 10)

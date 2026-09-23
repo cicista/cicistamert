@@ -166,6 +166,8 @@ local function makeScroll(parent: Instance, position: UDim2, size: UDim2): Scrol
 	scroll.CanvasSize = UDim2.new()
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = parent
+	-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
+	UI.listePayi(scroll)
 
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 8)
@@ -636,26 +638,13 @@ local function refreshEnvanter()
 	end
 
 	------------------------------------------------------------------
-	-- BASE: slot sirasiyla, bos slotlar da
-	------------------------------------------------------------------
-	sectionHeader(envanterListe, `ON YOUR BASE   {placed}/{slotSayisi}`, 1, Color3.fromRGB(60, 190, 90))
-
-	for slotNo = 1, slotSayisi do
-		local item = slotta[slotNo]
-		if item then
-			tabanaTikla(brainrotRow(envanterListe, item, 1 + slotNo, envanterPencere), item)
-		else
-			bosSlotSatiri(envanterListe, slotNo, 1 + slotNo)
-		end
-	end
-	for index, item in fazlaSlot do
-		tabanaTikla(brainrotRow(envanterListe, item, 1 + slotSayisi + index, envanterPencere), item)
-	end
-
-	------------------------------------------------------------------
 	-- CANTA: once acilmislar pahalidan ucuza, sonra acilmamislar
+	--
+	-- USTTE DURUYOR: oyuncunun elindekiler, yani uzerinde islem yapacagi
+	-- sey burasi. Base slotlari oturmus bir duzen, onlara bakmak icin
+	-- asagi inmek yeterli.
 	------------------------------------------------------------------
-	sectionHeader(envanterListe, `IN YOUR BACKPACK   ({#cantada})`, 1000, Color3.fromRGB(60, 130, 230))
+	sectionHeader(envanterListe, `IN YOUR BACKPACK   ({#cantada})`, 1, Color3.fromRGB(60, 130, 230))
 
 	if #cantada == 0 then
 		UI.text({
@@ -666,21 +655,45 @@ local function refreshEnvanter()
 			frameSize = UDim2.new(1, 0, 0, 36),
 			parent = envanterListe,
 			wrapped = true,
-		}).LayoutOrder = 1001
-		return
+		}).LayoutOrder = 2
+	else
+		table.sort(cantada, function(a, b)
+			local acikA = a.revealed == true and a.name ~= nil
+			local acikB = b.revealed == true and b.name ~= nil
+			if acikA ~= acikB then
+				return acikA
+			end
+			return worth(a) > worth(b)
+		end)
+
+		for index, item in cantada do
+			eleAlTikla(brainrotRow(envanterListe, item, 1 + index, envanterPencere), item)
+		end
 	end
 
-	table.sort(cantada, function(a, b)
-		local acikA = a.revealed == true and a.name ~= nil
-		local acikB = b.revealed == true and b.name ~= nil
-		if acikA ~= acikB then
-			return acikA
-		end
-		return worth(a) > worth(b)
-	end)
+	------------------------------------------------------------------
+	-- BASE: slot sirasiyla, bos slotlar da  --  LISTENIN ALTINDA
+	------------------------------------------------------------------
+	sectionHeader(
+		envanterListe,
+		`ON YOUR BASE   {placed}/{slotSayisi}`,
+		100000,
+		Color3.fromRGB(60, 190, 90)
+	)
 
-	for index, item in cantada do
-		eleAlTikla(brainrotRow(envanterListe, item, 1000 + index, envanterPencere), item)
+	for slotNo = 1, slotSayisi do
+		local item = slotta[slotNo]
+		if item then
+			tabanaTikla(brainrotRow(envanterListe, item, 100000 + slotNo, envanterPencere), item)
+		else
+			bosSlotSatiri(envanterListe, slotNo, 100000 + slotNo)
+		end
+	end
+	for index, item in fazlaSlot do
+		tabanaTikla(
+			brainrotRow(envanterListe, item, 100000 + slotSayisi + index, envanterPencere),
+			item
+		)
 	end
 end
 

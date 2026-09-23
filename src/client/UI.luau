@@ -485,8 +485,11 @@ end
 	yuvarlak panelin kosesinden tasmayi kessin.
 ]]
 
--- Bir karonun kenari (piksel). Buyudukce karolar irilesir.
-UI.DokuBoyu = 86
+--[[
+	Karolarin ARALIGI (piksel): paralel cizgiler arasindaki dik uzaklik.
+	Buyudukce karolar irilesir.
+]]
+UI.DokuBoyu = 64
 --[[
 	Desenin gorunurlugu: 0 = tamamen belirgin, 1 = hic yok.
 	0.86 = hafif bir dokunus; zemin rengini bastirmadan yuzeyi kiriyor.
@@ -502,26 +505,63 @@ local DOKU_ISIK = Color3.fromRGB(255, 255, 255)
 	koymak anlamsiz; bu sinirdan sonra karolar buyutulup sayi sabit
 	tutuluyor.
 ]]
-local DOKU_EN_COK_CIZGI = 24
+local DOKU_EN_COK_CIZGI = 40
 
-local function dokuCizgisi(kap: Instance, yatay: boolean, konum: number, renk: Color3, kalinlik: number)
+--[[
+	Tek bir desen cizgisi. Merkezinden konumlaniyor ve DONDURULUYOR:
+	karo deseni 45 derecelik iki cizgi ailesinden olusuyor.
+]]
+local function dokuCizgisi(
+	kap: Instance,
+	x: number,
+	y: number,
+	uzunluk: number,
+	aci: number,
+	renk: Color3
+)
 	local cizgi = Instance.new("Frame")
-	cizgi.Name = if yatay then "Yatay" else "Dikey"
+	cizgi.Name = "Cizgi"
 	cizgi.BorderSizePixel = 0
 	cizgi.BackgroundColor3 = renk
-	cizgi.Size = if yatay
-		then UDim2.new(1, 0, 0, kalinlik)
-		else UDim2.new(0, kalinlik, 1, 0)
-	cizgi.Position = if yatay
-		then UDim2.fromOffset(0, konum)
-		else UDim2.fromOffset(konum, 0)
+	cizgi.AnchorPoint = Vector2.new(0.5, 0.5)
+	cizgi.Size = UDim2.fromOffset(uzunluk, 1)
+	cizgi.Position = UDim2.fromOffset(x, y)
+	cizgi.Rotation = aci
 	cizgi.Parent = kap
+end
+
+--[[
+	Bir cizgi ailesi: `aci` egimli, birbirine `adim` kadar uzak paralel
+	cizgiler. Cerceveyi bastan sona kaplasinlar diye uzunluklari en + boy
+	(kosegenden uzun) ve merkezden iki yana dogru diziliyorlar.
+
+	Her cizgi ikili: koyu bir yiv ve onun hemen yaninda acik bir isik
+	cizgisi. Ikisi birlikte derzin kabartma hissini veriyor.
+]]
+local function dokuAilesi(kap: Instance, en: number, boy: number, aci: number, adim: number)
+	local r = math.rad(aci)
+	-- Cizgiye DIK yon: cizgiler bu yon boyunca diziliyor
+	local nx, ny = -math.sin(r), math.cos(r)
+
+	local uzunluk = en + boy
+	local adet = math.ceil((en + boy) / (2 * adim))
+	local ortaX, ortaY = en / 2, boy / 2
+
+	for k = -adet, adet do
+		local x = ortaX + k * adim * nx
+		local y = ortaY + k * adim * ny
+		dokuCizgisi(kap, x, y, uzunluk, aci, DOKU_YIV)
+		dokuCizgisi(kap, x + nx, y + ny, uzunluk, aci, DOKU_ISIK)
+	end
 end
 
 --[[
 	Deseni cercevenin OLCUSUNE gore kurar. Olcu degisince yeniden
 	cagriliyor: sabit sayida cizgi koysaydik kucuk panelde tasar, buyuk
 	panelde yarida kalirdi.
+
+	KARO: iki cizgi ailesi, +45 ve -45 derece. Dik kesisince kare olurdu;
+	45 derecede kesisince elmas (karo) cikiyor.
 ]]
 local function dokuyuKur(kap: Frame, en: number, boy: number)
 	for _, cocuk in kap:GetChildren() do
@@ -538,17 +578,10 @@ local function dokuyuKur(kap: Frame, en: number, boy: number)
 		Karo boyu: istenen boy, ama cizgi sayisi siniri asmayacak kadar
 		buyutuluyor.
 	]]
-	local adim = math.max(UI.DokuBoyu, math.ceil(math.max(en, boy) / DOKU_EN_COK_CIZGI))
+	local adim = math.max(UI.DokuBoyu, math.ceil((en + boy) / DOKU_EN_COK_CIZGI))
 
-	for x = adim, en, adim do
-		dokuCizgisi(kap, false, x - 1, DOKU_YIV, 1)
-		dokuCizgisi(kap, false, x, DOKU_ISIK, 1)
-	end
-
-	for y = adim, boy, adim do
-		dokuCizgisi(kap, true, y - 1, DOKU_YIV, 1)
-		dokuCizgisi(kap, true, y, DOKU_ISIK, 1)
-	end
+	dokuAilesi(kap, en, boy, 45, adim)
+	dokuAilesi(kap, en, boy, -45, adim)
 end
 
 --[[
@@ -589,6 +622,46 @@ function UI.dokuZemini(cerceve: GuiObject, kose: number?): Frame
 	katman:GetPropertyChangedSignal("AbsoluteSize"):Connect(tazele)
 
 	return katman
+end
+
+--[[
+	=====================================================================
+	LISTE KENAR PAYI
+	=====================================================================
+
+	ScrollingFrame icerigini KIRPIYOR. Satirlarin konturu (UIStroke)
+	cercevenin DISINA ciziliyor; satir x = 0'dan basladigi icin sol
+	kenardaki kontur kirpilip yok oluyordu -- basliklar ve satirlar soldan
+	kesik duruyordu. (Sagda kirpilmiyordu, cunku satirlar orada birkac
+	piksel dar birakilmisti; asimetri de bu yuzden.)
+
+	Cozum listeye kenar payi vermek: satirlar payin icine oturunca konturun
+	cizilecegi yer kaliyor. Satirlarin genisligi `1, -x` olarak verildigi
+	icin pay eklenince kendiliginden daraliyorlar, ayri ayri duzeltmek
+	gerekmiyor.
+
+	Alt pay listenin sonundaki satirin konturu icin; ust payi UIListLayout
+	zaten birakiyor.
+]]
+UI.ListePayi = 5
+
+function UI.listePayi(liste: GuiObject, pay: number?): UIPadding
+	local mevcut = liste:FindFirstChildOfClass("UIPadding")
+	if mevcut then
+		return mevcut
+	end
+
+	local p = pay or UI.ListePayi
+
+	local dolgu = Instance.new("UIPadding")
+	dolgu.Name = "KenarPayi"
+	dolgu.PaddingLeft = UDim.new(0, p)
+	dolgu.PaddingRight = UDim.new(0, p)
+	dolgu.PaddingTop = UDim.new(0, p)
+	dolgu.PaddingBottom = UDim.new(0, p)
+	dolgu.Parent = liste
+
+	return dolgu
 end
 
 function UI.panel(parent: Instance, size: UDim2, name: string?): Frame

@@ -407,6 +407,8 @@ secimListe.CanvasSize = UDim2.new()
 secimListe.AutomaticCanvasSize = Enum.AutomaticSize.Y
 secimListe.ZIndex = 21
 secimListe.Parent = secim
+-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
+UI.listePayi(secimListe)
 
 local secimDizilim = Instance.new("UIListLayout")
 secimDizilim.Padding = UDim.new(0, 8)

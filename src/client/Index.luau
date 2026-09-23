@@ -353,6 +353,8 @@ liste.CanvasSize = UDim2.new()
 liste.AutomaticCanvasSize = Enum.AutomaticSize.Y
 liste.ScrollingDirection = Enum.ScrollingDirection.Y
 liste.Parent = panel
+-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
+UI.listePayi(liste)
 
 local dizilim = Instance.new("UIListLayout")
 dizilim.Padding = UDim.new(0, 12)

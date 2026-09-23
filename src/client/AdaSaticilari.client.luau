@@ -55,6 +55,8 @@ local function liste(parent: Instance, position: UDim2, size: UDim2): ScrollingF
 	scroll.CanvasSize = UDim2.new()
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = parent
+	-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
+	UI.listePayi(scroll)
 
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 8)
