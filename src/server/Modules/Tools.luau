@@ -1252,6 +1252,8 @@ function Tools.buildScroll(scrollId: string, count: number): Tool?
 	local tool = sablon:Clone()
 	tool.Name = Scrolls.etiket(scrollId, count)
 	tool:SetAttribute(Scrolls.Nitelik, scrollId)
+	-- Hotbar rozeti adi degil bu niteligi okuyor (bkz. Assets.CountAttribute)
+	tool:SetAttribute(Assets.CountAttribute, count)
 	tool.CanBeDropped = false
 
 	--[[
@@ -1314,6 +1316,8 @@ function Tools.buildLuckyBlock(tierId: string, count: number): Tool
 
 	local tool = Instance.new("Tool")
 	tool.Name = Tools.luckyBlockLabel(tierId, count)
+	-- Hotbar rozeti adi degil bu niteligi okuyor (bkz. Assets.CountAttribute)
+	tool:SetAttribute(Assets.CountAttribute, count)
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
 	tool.ToolTip = `{tier.displayName} -- click to spin the wheel`

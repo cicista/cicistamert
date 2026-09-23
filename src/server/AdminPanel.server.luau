@@ -22,6 +22,8 @@
 	  setRod         -- olta kademesi verir (arg: rodId)
 	  clearInventory -- envanteri bosaltir (slottakiler dahil)
 	  spawnBeam      -- istenen kademede isik suzmesi dogurur (arg: rarity)
+	  spawnGirdap    -- istenen kademede deniz girdabi dogurur (arg: rarity)
+	  giveGizliBrainrot -- kimligi ACILMAMIS brainrot verir (arg: rarity)
 	  haritaRaporu   -- adalarin, base lerin ve NPC lerin konumlarini Output a yazar
 ]]
 
@@ -426,6 +428,60 @@ function commands.spawnBeam(player, data, arg)
 	local label = if Rarity.Info[arg] then Rarity.displayName(arg) else Rarity.LuckyBlock.displayName
 
 	return `{label} suzmesi dogdu -- kuregi eline al ve kaz`
+end
+
+--[[
+	GIRDAP SPAWNLA
+
+	Denizdeki girdabin suzme karsiligi. Normalde girdap yalnizca elinde
+	OLTA varken, flyboardla denizin ustundeyken ve sansa bagli doguyor;
+	burada uc sart da atlanir.
+
+	Yakinda su yoksa girdap oyuncunun ONUNE konur ve mesajda yazar --
+	gorunumu ve donusu karada da bakilabilsin diye.
+]]
+function commands.spawnGirdap(player, data, arg)
+	if type(arg) ~= "string" or not Rarity.Info[arg] then
+		return nil
+	end
+
+	local girdap, suda = Beams.spawnWhirlKind(player, arg)
+	if not girdap then
+		return "Girdap dogurulamadi -- karakterin yok mu?"
+	end
+
+	local label = Rarity.displayName(arg)
+	return if suda
+		then `{label} girdabi denizde dogdu -- oltayi eline al`
+		else `{label} girdabi ONUNE kondu (yakinda su yok)`
+end
+
+--[[
+	KIMLIKSIZ BRAINROT VER
+
+	giveBrainrot'un aynisi ama brainrot ACILMAMIS geliyor: siyah yumurta
+	olarak cantaya giriyor ve kimligi Detective'te aciliyor. Yumurtalarin
+	kademe kademe boyunu ve efektini sinamanin en kisa yolu.
+]]
+function commands.giveGizliBrainrot(player, data, arg)
+	local rarityId = if type(arg) == "string" and Rarity.Info[arg] then arg else "Common"
+
+	local item = PlayerData.addBrainrot(player, rarityId, Condition.roll(rng), Mutations.roll(rng))
+	if not item then
+		return nil
+	end
+
+	--[[
+		ADI SIMDIDEN yaziliyor ama revealed KAPALI: Detective acana kadar
+		oyuncuya gorunmuyor, normal kazi akisinda da boyle oluyor.
+	]]
+	item.name = Brainrots.roll(rarityId :: any, rng).name
+	item.revealed = false
+
+	Envanter.syncBrainrots(player)
+	Envanter.push(player)
+
+	return `Kimliksiz {Rarity.displayName(rarityId)} brainrot verildi -- Detective'e goturup ac`
 end
 
 --[[

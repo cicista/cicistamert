@@ -29,6 +29,8 @@
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Format = require(script.Parent.Format)
+-- Gecis odullerinin adi icin (Detective Pass, Teleporter)
+local Passler = require(script.Parent.Passler)
 
 local Rewards = {}
 
@@ -84,9 +86,10 @@ export type Day = {
 	bildirim ve sunucu hepsini buradan okuyor.
 ]]
 Rewards.Days = {
-	{ day = 1, kind = "rot", amount = 5000, rotCoins = 1 },
-	{ day = 2, kind = "rot", amount = 50000, rotCoins = 1 },
-	{ day = 3, kind = "rot", amount = 100000, rotCoins = 1 },
+	{ day = 1, kind = "rot", amount = 150000, rotCoins = 1 },
+	{ day = 2, kind = "rot", amount = 3000000, rotCoins = 1 },
+	-- 3. gun: 1 gunluk Detective Pass (kazilan brainrotlar kimlikli gelir)
+	{ day = 3, kind = "pass", amount = 0, pass = "DetectivePass", passSeconds = 86400, rotCoins = 1 },
 	{ day = 4, kind = "luckyblock", amount = 1, tier = EN_UCUZ, rotCoins = 1 },
 	-- 5. gun: onceden verilen 1 Rot Coin + her gunun ekstra 1'i
 	-- 5. gun: 12 saatlik Teleporter + onceki odul
@@ -104,22 +107,44 @@ function Rewards.nextDay(day: number): number
 	return day % #Rewards.Days + 1
 end
 
+--[[
+	Sureli gecis odulunun yanindaki sure: "1 Day", "12h", "15 min".
+	Tam bolunuyorsa o birimde yaziliyor.
+]]
+function Rewards.passSuresi(saniye: number): string
+	local t = math.max(0, math.floor(saniye))
+	if t >= 86400 and t % 86400 == 0 then
+		local gun = t // 86400
+		return if gun == 1 then "1 Day" else `{gun} Days`
+	end
+	if t >= 3600 then
+		return `{t // 3600}h`
+	end
+	return `{t // 60} min`
+end
+
 -- Kartta ve bildirimde yazan odul adi
 function Rewards.label(day: number): string
 	local odul = Rewards.get(day)
 	if odul.kind == "rot" then
 		return `+{Format.short(odul.amount)} Rot`
+	elseif odul.kind == "pass" then
+		local bilgi = Passler.get(odul.pass or "")
+		local ad = if bilgi then bilgi.ad else (odul.pass or "Pass")
+		return `{ad} ({Rewards.passSuresi(odul.passSeconds or 0)})`
 	end
 
 	local tur = LuckyBlock.get(odul.tier)
 	return if odul.amount > 1 then `{odul.amount}x {tur.displayName}` else tur.displayName
 end
 
--- Odulun rengi: Rot sari, Lucky Block kendi turunun renginde
+-- Odulun rengi: Rot sari, gecis moru, Lucky Block kendi turunun renginde
 function Rewards.color(day: number): Color3
 	local odul = Rewards.get(day)
 	if odul.kind == "rot" then
 		return Color3.fromRGB(255, 214, 41)
+	elseif odul.kind == "pass" then
+		return Color3.fromRGB(170, 120, 255)
 	end
 	return LuckyBlock.get(odul.tier).color
 end

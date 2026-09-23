@@ -25,6 +25,8 @@ local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Tools = require(script.Parent:WaitForChild("Tools"))
 local Scrolls = require(Shared:WaitForChild("Scrolls"))
+-- Tool adet niteligi (hotbar rozeti) icin
+local Assets = require(Shared:WaitForChild("Assets"))
 local Olta = require(script.Parent:WaitForChild("Olta"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
@@ -318,6 +320,7 @@ function Envanter.syncLuckyBlocks(player: Player)
 		]]
 		if tool then
 			tool.Name = Tools.luckyBlockLabel(tier.id, count)
+			tool:SetAttribute(Assets.CountAttribute, count)
 		else
 			Tools.buildLuckyBlock(tier.id, count).Parent = backpack
 		end
@@ -370,6 +373,7 @@ function Envanter.syncScrolls(player: Player)
 
 		if tool then
 			tool.Name = Scrolls.etiket(id, adet)
+			tool:SetAttribute(Assets.CountAttribute, adet)
 		else
 			local yeni = Tools.buildScroll(id, adet)
 			if yeni then

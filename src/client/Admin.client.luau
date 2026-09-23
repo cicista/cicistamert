@@ -473,6 +473,26 @@ local function buildPanel(info: any)
 		},
 	})
 
+	--[[
+		GIRDAP SPAWNLA
+
+		Suzmenin deniz karsiligi. Normalde olta + flyboard + sans gerekiyor;
+		buradan dogrudan doguyor. Yakinda su yoksa karaya konur ve sunucu
+		bunu mesajda soyler.
+	]]
+	section("GIRDAP SPAWNLA  --  denizdeki karsiligi")
+
+	local girdapChips: { any } = {}
+	for _, id in Rarity.Order do
+		table.insert(girdapChips, {
+			label = string.sub(Rarity.get(id).displayName, 1, 4),
+			command = "spawnGirdap",
+			arg = id,
+			color = Rarity.color(id),
+		})
+	end
+	chipRow(girdapChips)
+
 	section("BRAINROT VER  --  mutasyon rastgele")
 	local rarityChips: { any } = {}
 	for _, id in Rarity.Order do
@@ -486,6 +506,25 @@ local function buildPanel(info: any)
 		})
 	end
 	chipRow(rarityChips)
+
+	--[[
+		KIMLIKSIZ BRAINROT
+
+		Siyah (acilmamis) halde geliyor: kademesinin yumurtasi olarak
+		cantaya giriyor, kimligi Detective'te aciliyor. Yumurta boylarini
+		ve Divine ustu efektleri sinamak icin.
+	]]
+	section("KIMLIKSIZ BRAINROT VER  --  Detective'te acilir")
+	local gizliChips: { any } = {}
+	for _, id in Rarity.Order do
+		table.insert(gizliChips, {
+			label = string.sub(Rarity.get(id).displayName, 1, 4),
+			command = "giveGizliBrainrot",
+			arg = id,
+			color = Rarity.color(id),
+		})
+	end
+	chipRow(gizliChips)
 
 	section("TEHLIKELI")
 	actionButton("Envanteri temizle", "clearInventory", nil, UI.Colors.bad)

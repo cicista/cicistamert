@@ -1331,6 +1331,34 @@ function Beams.spawnKind(player: Player, kind: string, istenen: Vector3?): Beam?
 	return createBeam(player, kind, spot :: Vector3, false, ada)
 end
 
+--[[
+	ISTENEN TURDE GIRDAP dogurur (admin paneli).
+
+	spawnKind'in deniz surumu: cekilis yok, sans yok, adet siniri yok.
+	Nokta once gercek suda aranir; su bulunamazsa oyuncunun ONUNE konur --
+	girdabin gorunumu ve donusu susuz bir yerde de sinanabilsin diye. O
+	durumda "su yok" bilgisi cagirana dondurulur ki panel bunu yazabilsin.
+
+	Arama yaricapi oltaninkinden GENIS ama SONSUZ DEGIL: findSeaSpot
+	yaricapi carpimla hesapliyor, sonsuzla bozulur.
+]]
+function Beams.spawnWhirlKind(player: Player, kind: string): (Beam?, boolean)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return nil, false
+	end
+
+	local spot = findSeaSpot(player, 400)
+	local suda = spot ~= nil
+
+	if not spot then
+		spot = root.Position + root.CFrame.LookVector * 14 - Vector3.new(0, 3, 0)
+	end
+
+	return createBeam(player, kind, spot :: Vector3, true), suda
+end
+
 function Beams.get(id: string): Beam?
 	return active[id]
 end

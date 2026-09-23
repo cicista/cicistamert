@@ -1,0 +1,710 @@
+--!strict
+--[[
+	HOTBAR  (LocalScript)
+	Yeri: StarterPlayer > StarterPlayerScripts > Hotbar
+
+	Roblox'un KENDI hotbar'inin yerini alan cubuk.
+
+	NEDEN KENDIMIZ CIZIYORUZ
+	Roblox'un hotbar'i bir Tool'un ya IKONUNU (Tool.TextureId) ya da ADINI
+	gosterir, ikisini birden degil. Parsomenin adinda adet yaziyor
+	("Hacker Mutation Scroll x3") ama ikonu oldugu icin o ad hic gorunmuyor;
+	ikonun uzerine rozet basmanin da yolu yok. Adet rozeti isteniyorsa
+	cubugu kendimiz cizmekten baska secenek kalmiyor.
+
+	NE YAPIYOR
+	  - Alt ortada 10 yuva; 1..9 ve 0 tuslari o yuvayi kusanir/birakir
+	  - Yuvaya tiklamak da ayni sey
+	  - Ikon: Tool.TextureId varsa o, yoksa Tool'un KENDI modeli kucuk bir
+	    ViewportFrame'de (parsomen, lucky block, brainrot burada gorunur)
+	  - Sag alt kosede ADET rozeti: "x3" (bkz. ADET NITELIGI)
+	  - Yuvaya sigmayan esyalar "..." dugmesindeki cekmecede
+
+	YUVA SIRASI SABIT
+	Bir esya bir kez yuva aldi mi, kusanilip birakilsa da o yuvada kalir.
+	Kusanilan Tool Backpack'ten cikip karaktere tasindigi icin her
+	degisiklikte yeniden dagitsaydik esyalar yuva degistirip dururdu.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Assets = require(Shared:WaitForChild("Assets"))
+
+local UI = require(script.Parent:WaitForChild("UI"))
+
+------------------------------------------------------------------
+-- OLCULER
+------------------------------------------------------------------
+local SLOT_SAYISI = 10
+local SLOT_BOY = 62
+local SLOT_ARA = 6
+-- Cubugun ekranin altindan yuksekligi
+local ALT_PAY = 14
+
+--[[
+	Tuslar yuva sirasiyla: 1..9 sonra 0. Roblox'un kendi hotbar'inda da
+	boyle.
+]]
+local TUSLAR = {
+	Enum.KeyCode.One,
+	Enum.KeyCode.Two,
+	Enum.KeyCode.Three,
+	Enum.KeyCode.Four,
+	Enum.KeyCode.Five,
+	Enum.KeyCode.Six,
+	Enum.KeyCode.Seven,
+	Enum.KeyCode.Eight,
+	Enum.KeyCode.Nine,
+	Enum.KeyCode.Zero,
+}
+
+------------------------------------------------------------------
+-- ROBLOX'UN HOTBAR'INI KAPAT
+------------------------------------------------------------------
+--[[
+	Ilk karelerde CoreGui cagrilari reddedilebiliyor; basarana kadar
+	deneniyor (Sistem.client'taki ayni kalip).
+]]
+task.spawn(function()
+	for _ = 1, 20 do
+		local ok = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+		end)
+		if ok then
+			return
+		end
+		task.wait(0.25)
+	end
+end)
+
+------------------------------------------------------------------
+-- EKRAN
+------------------------------------------------------------------
+local ekran = Instance.new("ScreenGui")
+ekran.Name = "Hotbar"
+-- XP barinin (0) ustunde, menu butonlarinin (5) altinda
+ekran.DisplayOrder = 3
+ekran.ResetOnSpawn = false
+ekran.IgnoreGuiInset = true
+ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ekran.Parent = playerGui
+
+local cubuk = Instance.new("Frame")
+cubuk.Name = "Cubuk"
+cubuk.AnchorPoint = Vector2.new(0.5, 1)
+cubuk.Position = UDim2.new(0.5, 0, 1, -ALT_PAY)
+cubuk.Size = UDim2.fromOffset(SLOT_SAYISI * (SLOT_BOY + SLOT_ARA) - SLOT_ARA, SLOT_BOY)
+cubuk.BackgroundTransparency = 1
+cubuk.Parent = ekran
+
+local dizilim = Instance.new("UIListLayout")
+dizilim.FillDirection = Enum.FillDirection.Horizontal
+dizilim.Padding = UDim.new(0, SLOT_ARA)
+dizilim.SortOrder = Enum.SortOrder.LayoutOrder
+dizilim.HorizontalAlignment = Enum.HorizontalAlignment.Center
+dizilim.VerticalAlignment = Enum.VerticalAlignment.Bottom
+dizilim.Parent = cubuk
+
+--[[
+	IKON HAVUZU
+
+	Uretilen ViewportFrame'ler burada saklaniyor. Esya yuva degistirince
+	ikon YENIDEN KURULMUYOR, yalnizca yeni yuvaya tasiniyor: her tazelemede
+	10 tane viewport kurmak goze carpan bir takilma yapiyordu.
+]]
+local havuz = Instance.new("Frame")
+havuz.Name = "IkonHavuzu"
+havuz.Size = UDim2.fromOffset(0, 0)
+havuz.BackgroundTransparency = 1
+havuz.Visible = false
+havuz.Parent = ekran
+
+------------------------------------------------------------------
+-- YUVALAR
+------------------------------------------------------------------
+type Yuva = {
+	kap: TextButton,
+	ikonKap: Frame,
+	yazi: TextLabel,
+	adet: TextLabel,
+	numara: TextLabel,
+	kenar: UIStroke,
+}
+
+local yuvalar: { Yuva } = {}
+
+-- Yuva -> Tool ve Tool -> yuva (ikisi de tek kaynaktan yazilir)
+local yuvaninEsyasi: { [number]: Tool } = {}
+local esyaninYuvasi: { [Tool]: number } = {}
+
+-- Tool -> onun ikonu (havuzda ya da bir yuvada)
+local ikonlar: { [Tool]: GuiObject } = {}
+-- Tool -> ad/adet degisimini dinleyen baglantilar
+local baglantilar: { [Tool]: { RBXScriptConnection } } = {}
+
+local function yuvaKur(sira: number): Yuva
+	local kap = Instance.new("TextButton")
+	kap.Name = `Yuva{sira}`
+	kap.LayoutOrder = sira
+	kap.Size = UDim2.fromOffset(SLOT_BOY, SLOT_BOY)
+	kap.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
+	kap.BackgroundTransparency = 0.25
+	kap.BorderSizePixel = 0
+	kap.AutoButtonColor = false
+	kap.Text = ""
+	kap.Parent = cubuk
+	UI.corner(kap, 10)
+
+	local kenar = UI.stroke(kap, Color3.fromRGB(0, 0, 0), 2)
+
+	-- Ikonun oturdugu alan: yuvanin numara ve rozet paylari disinda kalani
+	local ikonKap = Instance.new("Frame")
+	ikonKap.Name = "Ikon"
+	ikonKap.AnchorPoint = Vector2.new(0.5, 0.5)
+	ikonKap.Position = UDim2.fromScale(0.5, 0.5)
+	ikonKap.Size = UDim2.fromOffset(SLOT_BOY - 12, SLOT_BOY - 12)
+	ikonKap.BackgroundTransparency = 1
+	ikonKap.ZIndex = 2
+	ikonKap.Parent = kap
+
+	--[[
+		IKON YOKSA AD YAZAR. Roblox'un hotbar'i da boyle yapiyordu; ikonu
+		olmayan esyalarda (kimligi acilmamis brainrot gibi) yazi kaliyor.
+	]]
+	local yazi = UI.text({
+		text = "",
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(235, 238, 245),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, -6, 1, -14),
+		position = UDim2.fromOffset(3, 7),
+		parent = kap,
+		zIndex = 3,
+		name = "Ad",
+	})
+	yazi.TextWrapped = true
+
+	-- Sol ust: tus numarasi
+	local numara = UI.text({
+		text = if sira == 10 then "0" else tostring(sira),
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(180, 188, 200),
+		align = Enum.TextXAlignment.Left,
+		outline = false,
+		frameSize = UDim2.fromOffset(16, 14),
+		position = UDim2.fromOffset(5, 3),
+		parent = kap,
+		zIndex = 4,
+		name = "Numara",
+	})
+
+	--[[
+		SAG ALT: ADET ROZETI  --  bu cubugun butun sebebi.
+		Tek tane olan esyada gizli; "x3", "x12" diye yazar.
+	]]
+	local adet = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = Color3.fromRGB(255, 226, 120),
+		align = Enum.TextXAlignment.Right,
+		frameSize = UDim2.fromOffset(SLOT_BOY - 10, 18),
+		position = UDim2.new(1, -(SLOT_BOY - 6), 1, -20),
+		parent = kap,
+		zIndex = 5,
+		name = "Adet",
+	})
+	UI.stroke(adet, Color3.fromRGB(0, 0, 0), 3)
+
+	return {
+		kap = kap,
+		ikonKap = ikonKap,
+		yazi = yazi,
+		adet = adet,
+		numara = numara,
+		kenar = kenar,
+	}
+end
+
+for sira = 1, SLOT_SAYISI do
+	yuvalar[sira] = yuvaKur(sira)
+end
+
+------------------------------------------------------------------
+-- ESYA BILGISI
+------------------------------------------------------------------
+--[[
+	ADET NITELIGI
+
+	Sunucu adedi hem Tool adina hem "Adet" niteligine yaziyor (bkz.
+	ServerScriptService > Modules > Tools). Nitelik yoksa adin sonundaki
+	"x3" ya da "(3)" okunuyor -- eski kayitlardan gelen ya da elle konmus
+	Tool'lar da rozet gostersin.
+]]
+local function adetOf(tool: Tool): number
+	local nitelik = tool:GetAttribute(Assets.CountAttribute)
+	if type(nitelik) == "number" and nitelik > 0 then
+		return math.floor(nitelik)
+	end
+
+	local xli = string.match(tool.Name, "x(%d+)%s*$")
+	if xli then
+		return tonumber(xli) or 1
+	end
+
+	local parantezli = string.match(tool.Name, "%((%d+)%)%s*$")
+	if parantezli then
+		return tonumber(parantezli) or 1
+	end
+
+	return 1
+end
+
+--[[
+	Rozetin yaninda duracak ad: sondaki adet ekini atar, cunku adet zaten
+	rozette yaziyor ("Hacker Mutation Scroll x3" -> "Hacker Mutation Scroll").
+]]
+local function adOf(tool: Tool): string
+	local ad = string.gsub(tool.Name, "%s*x%d+%s*$", "")
+	ad = string.gsub(ad, "%s*%(%d+%)%s*$", "")
+	return ad
+end
+
+--[[
+	ESYANIN IKONU
+
+	Once Tool.TextureId (kurek, gps, olta). Yoksa Tool'un KENDI modeli
+	kucuk bir ViewportFrame'de -- parsomen, lucky block ve brainrotlar
+	boyle gorunuyor. Ikisi de olmazsa nil doner ve yuvada ad yazar.
+
+	UI.modelKaresi verilen nesneyi TUKETIYOR (parcalari alip aslini
+	siliyor), o yuzden Tool'un KOPYASI veriliyor.
+]]
+local function ikonOf(tool: Tool): GuiObject?
+	local var = ikonlar[tool]
+	if var and var.Parent then
+		return var
+	end
+
+	if tool.TextureId ~= "" then
+		local resim = Instance.new("ImageLabel")
+		resim.Name = "Resim"
+		resim.Size = UDim2.fromScale(1, 1)
+		resim.BackgroundTransparency = 1
+		resim.ScaleType = Enum.ScaleType.Fit
+		resim.Image = tool.TextureId
+		resim.ZIndex = 3
+		resim.Parent = havuz
+		ikonlar[tool] = resim
+		return resim
+	end
+
+	if not tool:FindFirstChildWhichIsA("BasePart", true) then
+		return nil
+	end
+
+	local kopya = tool:Clone()
+	local kare = UI.modelKaresi(havuz, kopya, SLOT_BOY - 12, 3)
+	if not kare then
+		return nil
+	end
+
+	kare.AnchorPoint = Vector2.new(0.5, 0.5)
+	kare.Position = UDim2.fromScale(0.5, 0.5)
+	ikonlar[tool] = kare
+	return kare
+end
+
+local function ikonuBirak(tool: Tool)
+	local ikon = ikonlar[tool]
+	if ikon then
+		ikon:Destroy()
+		ikonlar[tool] = nil
+	end
+	for _, baglanti in baglantilar[tool] or {} do
+		baglanti:Disconnect()
+	end
+	baglantilar[tool] = nil
+end
+
+------------------------------------------------------------------
+-- CIZIM
+------------------------------------------------------------------
+local karakter: Model? = nil
+
+local function kusanilmisMi(tool: Tool): boolean
+	return karakter ~= nil and tool.Parent == karakter
+end
+
+local function yuvayiCiz(sira: number)
+	local yuva = yuvalar[sira]
+	local tool = yuvaninEsyasi[sira]
+
+	if not tool then
+		yuva.yazi.Text = ""
+		yuva.adet.Text = ""
+		yuva.kap.BackgroundTransparency = 0.55
+		yuva.kenar.Color = Color3.fromRGB(0, 0, 0)
+		yuva.numara.TextTransparency = 0.5
+		return
+	end
+
+	local ikon = ikonOf(tool)
+	if ikon then
+		ikon.Parent = yuva.ikonKap
+		yuva.yazi.Text = ""
+	else
+		yuva.yazi.Text = adOf(tool)
+	end
+
+	local adet = adetOf(tool)
+	yuva.adet.Text = if adet > 1 then `x{adet}` else ""
+
+	-- Kusanilmis esya: zemin acilir, kenar sari
+	local acik = kusanilmisMi(tool)
+	yuva.kap.BackgroundTransparency = if acik then 0.05 else 0.25
+	yuva.kenar.Color = if acik then Color3.fromRGB(255, 214, 60) else Color3.fromRGB(0, 0, 0)
+	yuva.kenar.Thickness = if acik then 3 else 2
+	yuva.numara.TextTransparency = 0
+end
+
+local function hepsiniCiz()
+	for sira = 1, SLOT_SAYISI do
+		yuvayiCiz(sira)
+	end
+end
+
+------------------------------------------------------------------
+-- CEKMECE  (yuvaya sigmayanlar)
+------------------------------------------------------------------
+local cekmeceDugme = Instance.new("TextButton")
+cekmeceDugme.Name = "Cekmece"
+cekmeceDugme.AnchorPoint = Vector2.new(0, 1)
+cekmeceDugme.Position = UDim2.new(0.5, cubuk.Size.X.Offset / 2 + SLOT_ARA, 1, -ALT_PAY)
+cekmeceDugme.Size = UDim2.fromOffset(34, SLOT_BOY)
+cekmeceDugme.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
+cekmeceDugme.BackgroundTransparency = 0.25
+cekmeceDugme.BorderSizePixel = 0
+cekmeceDugme.AutoButtonColor = false
+cekmeceDugme.Text = "..."
+cekmeceDugme.TextColor3 = Color3.fromRGB(230, 234, 242)
+cekmeceDugme.TextSize = 22
+cekmeceDugme.FontFace = UI.Fonts.bold
+cekmeceDugme.Visible = false
+cekmeceDugme.Parent = ekran
+UI.corner(cekmeceDugme, 10)
+UI.stroke(cekmeceDugme, Color3.fromRGB(0, 0, 0), 2)
+UI.hover(cekmeceDugme)
+
+local cekmece = Instance.new("Frame")
+cekmece.Name = "CekmecePaneli"
+cekmece.AnchorPoint = Vector2.new(0.5, 1)
+cekmece.Position = UDim2.new(0.5, 0, 1, -(ALT_PAY + SLOT_BOY + 10))
+cekmece.Size = UDim2.fromOffset(SLOT_SAYISI * (SLOT_BOY + SLOT_ARA) - SLOT_ARA, 150)
+cekmece.BackgroundColor3 = Color3.fromRGB(20, 22, 27)
+cekmece.BackgroundTransparency = 0.12
+cekmece.BorderSizePixel = 0
+cekmece.Visible = false
+cekmece.Parent = ekran
+UI.corner(cekmece, 12)
+UI.stroke(cekmece, Color3.fromRGB(0, 0, 0), 2)
+
+local cekmeceListe = Instance.new("ScrollingFrame")
+cekmeceListe.Name = "Liste"
+cekmeceListe.Position = UDim2.fromOffset(8, 8)
+cekmeceListe.Size = UDim2.new(1, -16, 1, -16)
+cekmeceListe.BackgroundTransparency = 1
+cekmeceListe.BorderSizePixel = 0
+cekmeceListe.ScrollBarThickness = 5
+cekmeceListe.CanvasSize = UDim2.new()
+cekmeceListe.AutomaticCanvasSize = Enum.AutomaticSize.Y
+cekmeceListe.Parent = cekmece
+
+local cekmeceDizilim = Instance.new("UIListLayout")
+cekmeceDizilim.Padding = UDim.new(0, 4)
+cekmeceDizilim.SortOrder = Enum.SortOrder.LayoutOrder
+cekmeceDizilim.Parent = cekmeceListe
+
+------------------------------------------------------------------
+-- KUSANMA
+------------------------------------------------------------------
+local function esyaSec(tool: Tool?)
+	if not tool then
+		return
+	end
+
+	local govde = karakter
+	local humanoid = govde and govde:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+
+	if kusanilmisMi(tool) then
+		humanoid:UnequipTools()
+	else
+		humanoid:EquipTool(tool)
+	end
+end
+
+for sira = 1, SLOT_SAYISI do
+	yuvalar[sira].kap.Activated:Connect(function()
+		esyaSec(yuvaninEsyasi[sira])
+	end)
+end
+
+UserInputService.InputBegan:Connect(function(girdi, islendi)
+	if islendi then
+		return
+	end
+	for sira, tus in TUSLAR do
+		if girdi.KeyCode == tus then
+			esyaSec(yuvaninEsyasi[sira])
+			return
+		end
+	end
+end)
+
+------------------------------------------------------------------
+-- ESYA LISTESI
+------------------------------------------------------------------
+--[[
+	TAZELEME TEK YERDEN
+
+	Backpack ve karakterdeki butun Tool'lar taranip yuvalar guncelleniyor.
+	Tek tek ChildAdded/ChildRemoved islenseydi KUSANMA sorun olurdu: esya
+	Backpack'ten cikip karaktere giriyor, yani "silindi" gibi gorunuyor.
+	Taramada ikisi de ayni torbada oldugu icin oyle bir an hic olusmuyor.
+
+	Cagrilar bir kareye toplanir: on tane esya ayni anda gelince (giris
+	anindaki envanter yuklemesi) tarama on kez degil bir kez calisir.
+]]
+local tazelemeBekliyor = false
+
+local function esyalariTopla(): { Tool }
+	local liste: { Tool } = {}
+
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if backpack then
+		for _, node in backpack:GetChildren() do
+			if node:IsA("Tool") then
+				table.insert(liste, node)
+			end
+		end
+	end
+
+	if karakter then
+		for _, node in karakter:GetChildren() do
+			if node:IsA("Tool") then
+				table.insert(liste, node)
+			end
+		end
+	end
+
+	return liste
+end
+
+local function cekmeceyiCiz(disarida: { Tool })
+	for _, node in cekmeceListe:GetChildren() do
+		if not node:IsA("UIListLayout") then
+			node:Destroy()
+		end
+	end
+
+	cekmeceDugme.Visible = #disarida > 0
+	if #disarida == 0 then
+		cekmece.Visible = false
+		return
+	end
+
+	for sira, tool in disarida do
+		local satir = Instance.new("TextButton")
+		satir.Name = tool.Name
+		satir.LayoutOrder = sira
+		satir.Size = UDim2.new(1, -4, 0, 30)
+		satir.BackgroundColor3 = Color3.fromRGB(34, 37, 45)
+		satir.BorderSizePixel = 0
+		satir.AutoButtonColor = false
+		satir.Text = ""
+		satir.Parent = cekmeceListe
+		UI.corner(satir, 8)
+		UI.hover(satir)
+
+		local adet = adetOf(tool)
+		UI.text({
+			text = if adet > 1 then `{adOf(tool)}   x{adet}` else adOf(tool),
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = Color3.fromRGB(232, 236, 244),
+			frameSize = UDim2.new(1, -16, 1, 0),
+			position = UDim2.fromOffset(10, 0),
+			parent = satir,
+			zIndex = 2,
+		})
+
+		satir.Activated:Connect(function()
+			esyaSec(tool)
+		end)
+	end
+end
+
+local function tazele()
+	local mevcut = esyalariTopla()
+
+	local var: { [Tool]: boolean } = {}
+	for _, tool in mevcut do
+		var[tool] = true
+	end
+
+	-- Artik olmayan esyalarin yuvasi bosalir
+	for tool, sira in esyaninYuvasi do
+		if not var[tool] then
+			esyaninYuvasi[tool] = nil
+			if yuvaninEsyasi[sira] == tool then
+				yuvaninEsyasi[sira] = nil
+			end
+			ikonuBirak(tool)
+		end
+	end
+
+	--[[
+		Yuvasi olmayan esyalara EN KUCUK BOS yuva veriliyor. Backpack
+		sirasiyla geziliyor: sunucu parsomenleri en basa aliyor (bkz.
+		Modules > Envanter > reorderBackpack), boylece ilk tusta parsomen
+		oluyor.
+	]]
+	local disarida: { Tool } = {}
+	for _, tool in mevcut do
+		if not esyaninYuvasi[tool] then
+			local yerlesti = false
+			for sira = 1, SLOT_SAYISI do
+				if not yuvaninEsyasi[sira] then
+					yuvaninEsyasi[sira] = tool
+					esyaninYuvasi[tool] = sira
+					yerlesti = true
+					break
+				end
+			end
+			if not yerlesti then
+				table.insert(disarida, tool)
+			end
+		end
+
+		--[[
+			ADI ya da ADEDI degisince yalnizca rozet tazelenir. Sunucu
+			parsomen harcandiginda Tool'u silmeyip adini degistiriyor
+			("... x3" -> "... x2"); rozet ona bagli.
+		]]
+		if not baglantilar[tool] then
+			local sira = esyaninYuvasi[tool]
+			local function yeniden()
+				local s = esyaninYuvasi[tool]
+				if s then
+					yuvayiCiz(s)
+				end
+			end
+			baglantilar[tool] = {
+				tool:GetPropertyChangedSignal("Name"):Connect(yeniden),
+				tool:GetAttributeChangedSignal(Assets.CountAttribute):Connect(yeniden),
+			}
+			if sira then
+				yuvayiCiz(sira)
+			end
+		end
+	end
+
+	hepsiniCiz()
+	cekmeceyiCiz(disarida)
+end
+
+local function tazelemeIste()
+	if tazelemeBekliyor then
+		return
+	end
+	tazelemeBekliyor = true
+	task.defer(function()
+		tazelemeBekliyor = false
+		tazele()
+	end)
+end
+
+cekmeceDugme.Activated:Connect(function()
+	cekmece.Visible = not cekmece.Visible
+end)
+
+------------------------------------------------------------------
+-- BAGLANTILAR
+------------------------------------------------------------------
+local karakterBaglantilari: { RBXScriptConnection } = {}
+
+local function karakteriIzle(yeni: Model)
+	for _, baglanti in karakterBaglantilari do
+		baglanti:Disconnect()
+	end
+	table.clear(karakterBaglantilari)
+
+	karakter = yeni
+	table.insert(karakterBaglantilari, yeni.ChildAdded:Connect(tazelemeIste))
+	table.insert(karakterBaglantilari, yeni.ChildRemoved:Connect(tazelemeIste))
+	tazelemeIste()
+end
+
+if player.Character then
+	karakteriIzle(player.Character)
+end
+player.CharacterAdded:Connect(karakteriIzle)
+
+--[[
+	BACKPACK HER DOGUMDA YENIDEN URETILIR: nesneye bir kez baglanmak
+	yetmiyor, yenisi gelince ona da baglanmak gerekiyor.
+]]
+local backpackBaglantilari: { RBXScriptConnection } = {}
+
+local function backpackiIzle(backpack: Instance)
+	for _, baglanti in backpackBaglantilari do
+		baglanti:Disconnect()
+	end
+	table.clear(backpackBaglantilari)
+
+	table.insert(backpackBaglantilari, backpack.ChildAdded:Connect(tazelemeIste))
+	table.insert(backpackBaglantilari, backpack.ChildRemoved:Connect(tazelemeIste))
+	tazelemeIste()
+end
+
+local ilkBackpack = player:FindFirstChildOfClass("Backpack")
+if ilkBackpack then
+	backpackiIzle(ilkBackpack)
+end
+
+player.ChildAdded:Connect(function(node)
+	if node:IsA("Backpack") then
+		backpackiIzle(node)
+	end
+end)
+
+--[[
+	SON CARE TAZELEME
+
+	Tool'lar sunucudan gelirken arada bir olay kacabiliyor (ayni karede
+	Backpack yeniden uretilirse). Saniyede bir tarama hem ucuz hem de
+	cubugun bayat kalmasini kesin olarak engelliyor.
+]]
+task.spawn(function()
+	while true do
+		task.wait(1)
+		tazele()
+	end
+end)
+
+-- Ilk cizim: Backpack henuz bos olabilir, zararsiz
+RunService.Heartbeat:Wait()
+tazele()

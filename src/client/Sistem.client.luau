@@ -39,7 +39,13 @@ local function setCoreGui()
 	for _ = 1, 20 do
 		local ok = pcall(function()
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
-			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+			--[[
+				ROBLOX'UN HOTBAR'I KAPALI: yerini kendi cubugumuz aliyor
+				(bkz. StarterPlayerScripts > Hotbar). Sebebi: Roblox'un
+				cubugu bir Tool'un ya ikonunu ya adini gosteriyor, ikisini
+				birden degil -- parsomenin adedi bu yuzden hic gorunmuyordu.
+			]]
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 		end)
 		if ok then
 			return
