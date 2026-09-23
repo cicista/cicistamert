@@ -458,273 +458,119 @@ end
 
 --[[
 	=====================================================================
-	DUZ ZEMINLERE DOKU
+	DUZ ZEMINLERE DOKU  --  seramik karo
 	=====================================================================
 
-	Panellerin zemini duz renkti ve bos duruyordu; uzerine seramik bir doku
-	DOSENIYOR (ScaleType.Tile).
+	Panellerin zemini duz renkti ve bos duruyordu; uzerine ince bir karo
+	deseni ciziliyor.
 
-	DOKU BIR RESIMDIR, MALZEME DEGIL
-	Arayuz bir malzemeyi (MaterialVariant) kullanamiyor; kullanabilecegi tek
-	sey bir resim kimligi. MaterialService'teki varyanttan resmi OKUMAK da
-	mumkun degil -- ColorMap yalnizca eklenti guvenlik seviyesinde okunuyor.
-	Bu yuzden resim ya UI.DokuResmi'ne yaziliyor ya da Assets icine bir
-	Decal/ImageLabel/StringValue olarak konuyor (bkz. dokuyuAra).
+	NEDEN RESIM DEGIL, CIZIM
 
-	Doku BULUNAMAZSA hicbir sey olmaz: panel eskisi gibi duz renk kalir,
-	Output'a bir kez uyari yazilir. Yani doku olmasa da arayuz calismaya
-	devam eder.
+	Once MaterialService'teki "Seramik" malzemesinin resmi kullanilmak
+	istendi. Iki duvara toslandi:
+
+	  1. MaterialVariant.ColorMap yalnizca EKLENTI guvenlik seviyesinde
+	     okunuyor; oyun icinden okunamiyor.
+	  2. Kimlik elle verildiginde de olmadi: o resim BASKA BIR HESABIN
+	     (ChebsterOnRBLX) ve herkese acik degil. ImageLabel baskasinin ozel
+	     resmini yuklemiyor -- hata da vermiyor, sessizce bos kaliyor.
+
+	Yani hangi kimlik verilirse verilsin calismayacakti. Desen artik ince
+	cerceveler ciziliyor: hicbir varliga bagli degil, her yerde calisiyor.
+
+	GORUNUM
+	Her karo cizgisi ikili: ustte koyu (yiv), altinda acik (isik). Ikisi
+	birlikte kabartma hissi veriyor. Bir CanvasGroup icinde duruyorlar ki
+	tek bir saydamlikla (GroupTransparency) kisilabilsinler ve UICorner
+	yuvarlak panelin kosesinden tasmayi kessin.
 ]]
+
+-- Bir karonun kenari (piksel). Buyudukce karolar irilesir.
+UI.DokuBoyu = 86
 --[[
-	Dokunun aranacagi adlar. Ilki Output'taki ornekte gecen ad; gerisi ayni
-	seyin baska yazilislari. Turkce "Seramik" de listede -- malzemenin adi
-	Studio'da elle degistirilebiliyor ve "c/k" farki yuzunden eslesme
-	kaciyordu.
+	Desenin gorunurlugu: 0 = tamamen belirgin, 1 = hic yok.
+	0.86 = hafif bir dokunus; zemin rengini bastirmadan yuzeyi kiriyor.
 ]]
-local DOKU_ADLARI = {
-	"Seramik",
-	"[2024] Seramic Tiles",
-	"2024 Seramic Tiles",
-	"Seramic Tiles",
-	"SeramicTiles",
-	"Seramik Tiles",
-	"Ceramic Tiles",
-}
+UI.DokuSaydamlik = 0.86
 
-
---[[
-	DOKUNUN RESMI  --  en kisa yol
-
-	Buraya "rbxassetid://123456789" yazarsan baska hicbir sey gerekmez;
-	butun panel zeminleri o resimle doseniyor.
-
-	DIKKAT: burasi DISKTEKI dosya. Studio'daki kopyaya yazmak ise yaramaz --
-	Rojo her senkronda diskteki surumu Studio'ya basiyor ve orada yazilan
-	sey siliniyor. Studio'dan vermek istiyorsan asagidaki NITELIGI kullan.
-]]
-UI.DokuResmi = "rbxassetid://15985615564"
+-- Desenin yiv ve isik renkleri
+local DOKU_YIV = Color3.fromRGB(0, 0, 0)
+local DOKU_ISIK = Color3.fromRGB(255, 255, 255)
 
 --[[
-	STUDIO'DAN VERMENIN YOLU
-
-	ReplicatedStorage > Assets klasorune bu adda bir nitelik (Attribute)
-	eklersen doku oradan okunur. Nitelikler Rojo'nun dokunmadigi yerde
-	durdugu icin senkron onlari silmiyor:
-
-	    Assets  ->  Attributes  ->  PanelDokusu = rbxassetid://123456789
-
-	Komut cubugundan tek satirla da konur:
-	    game.ReplicatedStorage.Assets:SetAttribute("PanelDokusu", "rbxassetid://123")
+	Cizilecek en cok cizgi sayisi. Cok buyuk bir cerceveye sinirsiz cizgi
+	koymak anlamsiz; bu sinirdan sonra karolar buyutulup sayi sabit
+	tutuluyor.
 ]]
-UI.DokuNiteligi = "PanelDokusu"
+local DOKU_EN_COK_CIZGI = 24
 
--- Dokunun kapladigi kare kenari (piksel). Buyudukce desen irilesir.
-UI.DokuBoyu = 128
--- Dokunun gorunurlugu: 0 = tamamen ortuyor, 1 = hic yok
-UI.DokuSaydamlik = 0.8
-
-local dokuKimligi: string? = nil
-
---[[
-	DOKU GEC GELEBILIR
-
-	Paneller istemci acilir acilmaz kuruluyor; Assets'in icerigi o an daha
-	replike olmamis olabilir. Bir kez arayip pes etseydik oyunun tamaminda
-	zemin duz kalirdi.
-
-	Bu yuzden katman HER ZAMAN kuruluyor (resmi bos olarak) ve doku bulunana
-	kadar bekleyenler listesinde tutuluyor; bulununca hepsine birden
-	yaziliyor. Arama birkac saniye surer, sonra bir kez uyarip susar.
-]]
-local bekleyenDokular: { ImageLabel } = {}
-local dokuAramasiBasladi = false
-
-local function sadeDokuAdi(ad: string): string
-	return string.lower((string.gsub(ad, "[%s_%-%[%]]", "")))
+local function dokuCizgisi(kap: Instance, yatay: boolean, konum: number, renk: Color3, kalinlik: number)
+	local cizgi = Instance.new("Frame")
+	cizgi.Name = if yatay then "Yatay" else "Dikey"
+	cizgi.BorderSizePixel = 0
+	cizgi.BackgroundColor3 = renk
+	cizgi.Size = if yatay
+		then UDim2.new(1, 0, 0, kalinlik)
+		else UDim2.new(0, kalinlik, 1, 0)
+	cizgi.Position = if yatay
+		then UDim2.fromOffset(0, konum)
+		else UDim2.fromOffset(konum, 0)
+	cizgi.Parent = kap
 end
 
 --[[
-	MATERIALSERVICE'TEN DOKU OKUNAMIYOR
-
-	Ilk surum MaterialVariant.ColorMap'i okumaya calisiyordu ve Output'a
-	su hatayi basiyordu:
-
-	    The current thread cannot read 'ColorMap' (lacking capability Plugin)
-
-	ColorMap yalnizca PLUGIN guvenlik seviyesinde okunabiliyor; ne sunucu ne
-	istemci scriptleri erisebiliyor. Hata arama dongusunu de oldurdugu icin
-	zemin sessizce duz kaliyordu. O yol tamamen kaldirildi.
-
-	Arayuz zaten bir MALZEMEYI kullanamiyor, yalnizca bir RESIM kimligini
-	kullanabiliyor. Bu yuzden doku uc yoldan verilebiliyor (sirayla
-	bakiliyor):
-
-	    1. UI.DokuResmi  --  diskteki bu dosyaya yazilan kimlik
-	    2. Assets uzerindeki UI.DokuNiteligi niteligi  --  Studio'dan
-	       verilen yol; komut cubugu ColorMap'i OKUYABILDIGI icin sunu tek
-	       satirda yapmak yetiyor:
-
-	         for _,v in game:GetService("MaterialService"):GetDescendants() do
-	           if v:IsA("MaterialVariant") then local n = v.Name:lower()
-	             if n:find("seram") or n:find("ceram") or n:find("tile") then
-	               game.ReplicatedStorage.Assets:SetAttribute("PanelDokusu", v.ColorMap)
-	             end
-	           end
-	         end
-
-	    3. Assets icine konmus bir Decal / Texture / ImageLabel /
-	       StringValue (adi DOKU_ADLARI'ndan biri olmali)
-
-	Hicbiri yoksa paneller duz renk kalir ve Output'a bir kez yazilir.
+	Deseni cercevenin OLCUSUNE gore kurar. Olcu degisince yeniden
+	cagriliyor: sabit sayida cizgi koysaydik kucuk panelde tasar, buyuk
+	panelde yarida kalirdi.
 ]]
---[[
-	Kimligi kullanilabilir hale getirir.
-
-	Studio'dan kopyalanan degerler bazen duz sayi oluyor ("18339548312");
-	ImageLabel.Image duz sayiyi kabul etmiyor, basina rbxassetid:// gerekiyor.
-]]
-local function dokuKimligiDuzelt(deger: string?): string?
-	if type(deger) ~= "string" then
-		return nil
-	end
-
-	local temiz = (string.gsub(deger, "%s", ""))
-	if temiz == "" then
-		return nil
-	end
-	if string.match(temiz, "^%d+$") then
-		return `rbxassetid://{temiz}`
-	end
-	return temiz
-end
-
-local function dokuyuAra(): string?
-	local elle = dokuKimligiDuzelt(UI.DokuResmi)
-	if elle then
-		return elle
-	end
-
-	local kok = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
-
-	--[[
-		NITELIK: Studio'dan verilen yol (bkz. UI.DokuNiteligi). Rojo
-		niteliklere dokunmadigi icin senkron bunu silmiyor.
-	]]
-	if kok then
-		local nitelik = dokuKimligiDuzelt(kok:GetAttribute(UI.DokuNiteligi) :: any)
-		if nitelik then
-			return nitelik
+local function dokuyuKur(kap: Frame, en: number, boy: number)
+	for _, cocuk in kap:GetChildren() do
+		if cocuk:IsA("Frame") then
+			cocuk:Destroy()
 		end
 	end
 
-	if kok then
-		for _, node in kok:GetDescendants() do
-			local ad = sadeDokuAdi(node.Name)
-			for _, hedef in DOKU_ADLARI do
-				if ad == sadeDokuAdi(hedef) then
-					if (node:IsA("Decal") or node:IsA("Texture")) and node.Texture ~= "" then
-						return node.Texture
-					elseif node:IsA("ImageLabel") and node.Image ~= "" then
-						return node.Image
-					elseif node:IsA("StringValue") and node.Value ~= "" then
-						return node.Value
-					end
-				end
-			end
-		end
-	end
-
-	return nil
-end
-
---[[
-	Doku bulunamayinca NE YAPILMASI GEREKTIGINI yazar. Kuru bir
-	"bulunamadi" ise yaramiyor: dokunun neden gelmedigi ancak sebebi
-	yazilinca anlasiliyor.
-]]
-local function dokuRaporu()
-	--[[
-		NE BULUNDUGUNU da yaziyor. "Doku yok" tek basina ise yaramiyor:
-		nitelik hic konmamis da olabilir, yanlis yere konmus da, degeri bos
-		da olabilir -- ucunun caresi ayri.
-	]]
-	local kok = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
-
-	local durum: string
-	if not kok then
-		durum = "ReplicatedStorage > Assets klasoru YOK"
-	else
-		local deger = kok:GetAttribute(UI.DokuNiteligi)
-		if deger == nil then
-			durum = `Assets uzerinde "{UI.DokuNiteligi}" niteligi YOK`
-		elseif type(deger) ~= "string" or deger == "" then
-			durum = `"{UI.DokuNiteligi}" niteligi BOS ({typeof(deger)})`
-		else
-			durum = `"{UI.DokuNiteligi}" = "{deger}" (resim yuklenemedi)`
-		end
-	end
-
-	warn(
-		`[UI] Panel dokusu yok, zeminler duz renk kaliyor. Durum: {durum}. `
-			.. "MaterialService'teki malzeme ARAYUZDE KULLANILAMIYOR (ColorMap'i "
-			.. "yalnizca eklentiler okuyor), o yuzden kimlik ya bu nitelige ya da "
-			.. "UI.DokuResmi'ne yazilmali. Studio'da EDIT modunda komut cubuguna: "
-			.. 'for _,v in game:GetService("MaterialService"):GetDescendants() do '
-			.. 'if v:IsA("MaterialVariant") then local n=v.Name:lower() '
-			.. 'if n:find("seram") or n:find("ceram") or n:find("tile") then '
-			.. `game.ReplicatedStorage.Assets:SetAttribute("{UI.DokuNiteligi}", v.ColorMap) `
-			.. 'print("kondu:", v.Name, v.ColorMap) end end end'
-	)
-end
-
-local function dokuyuDagit()
-	for _, katman in bekleyenDokular do
-		if katman.Parent then
-			katman.Image = dokuKimligi or ""
-		end
-	end
-	table.clear(bekleyenDokular)
-end
-
-local function dokuAramasiniBaslat()
-	if dokuAramasiBasladi then
+	if en <= 0 or boy <= 0 then
 		return
 	end
-	dokuAramasiBasladi = true
 
-	task.spawn(function()
-		-- ~10 saniye: replikasyon icin fazlasiyla yeterli
-		for _ = 1, 20 do
-			dokuKimligi = dokuyuAra()
-			if dokuKimligi then
-				dokuyuDagit()
-				return
-			end
-			task.wait(0.5)
-		end
+	--[[
+		Karo boyu: istenen boy, ama cizgi sayisi siniri asmayacak kadar
+		buyutuluyor.
+	]]
+	local adim = math.max(UI.DokuBoyu, math.ceil(math.max(en, boy) / DOKU_EN_COK_CIZGI))
 
-		dokuRaporu()
-		dokuyuDagit()
-	end)
+	for x = adim, en, adim do
+		dokuCizgisi(kap, false, x - 1, DOKU_YIV, 1)
+		dokuCizgisi(kap, false, x, DOKU_ISIK, 1)
+	end
+
+	for y = adim, boy, adim do
+		dokuCizgisi(kap, true, y - 1, DOKU_YIV, 1)
+		dokuCizgisi(kap, true, y, DOKU_ISIK, 1)
+	end
 end
 
 --[[
-	Verilen cercevenin zeminine dokuyu doser ve konan katmani dondurur.
-	Katman en altta durur: `zIndex` cercevenin kendi ZIndex'iyle ayni, once
-	eklendigi icin kardeslerinin ARKASINDA kalir.
+	Verilen cercevenin zeminine karo desenini doser ve konan katmani
+	dondurur. Katman en altta durur: ZIndex cercevenin kendi ZIndex'iyle
+	ayni, once eklendigi icin kardeslerinin ARKASINDA kalir.
 
-	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa doku
+	`kose` verilirse katmana ayni yaricapta UICorner takilir -- yoksa desen
 	yuvarlak panelin kosesinden tasar.
 ]]
-function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel
-	local katman = Instance.new("ImageLabel")
+function UI.dokuZemini(cerceve: GuiObject, kose: number?): Frame
+	--[[
+		CANVASGROUP: butun cizgiler tek bir yuzeye ciziliyor, sonra o yuzey
+		GroupTransparency ile kisiliyor. Cizgileri tek tek saydamlastirmak
+		kesisme noktalarinda koyulasma yapiyordu.
+	]]
+	local katman = Instance.new("CanvasGroup")
 	katman.Name = "Doku"
 	katman.Size = UDim2.fromScale(1, 1)
 	katman.BackgroundTransparency = 1
-	katman.Image = dokuKimligi or ""
-	katman.ImageTransparency = UI.DokuSaydamlik
-	katman.ScaleType = Enum.ScaleType.Tile
-	katman.TileSize = UDim2.fromOffset(UI.DokuBoyu, UI.DokuBoyu)
+	katman.BorderSizePixel = 0
+	katman.GroupTransparency = UI.DokuSaydamlik
 	katman.ZIndex = cerceve.ZIndex
 	-- Uzerine tiklanmasin: altindaki dugmeler ve liste calismaya devam etsin
 	katman.Active = false
@@ -734,11 +580,13 @@ function UI.dokuZemini(cerceve: GuiObject, kose: number?): ImageLabel
 		UI.corner(katman, kose)
 	end
 
-	-- Doku henuz gelmediyse siraya gir; gelince resmi yazilir
-	if not dokuKimligi then
-		table.insert(bekleyenDokular, katman)
-		dokuAramasiniBaslat()
+	local function tazele()
+		local olcu = katman.AbsoluteSize
+		dokuyuKur(katman :: any, olcu.X, olcu.Y)
 	end
+
+	tazele()
+	katman:GetPropertyChangedSignal("AbsoluteSize"):Connect(tazele)
 
 	return katman
 end
