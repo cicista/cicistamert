@@ -145,10 +145,18 @@ export type Data = {
 	pickaxes: { [string]: boolean },
 	-- Arayuz olcegi yuzdesi (Settings > Interface Scale); 100 = varsayilan
 	uiScale: number,
-	-- Arka plan muzigi: ses yuzdesi (0..100) ve kapali mi
+	--[[
+		SES AYARLARI
+
+		Yeni oyuncu VARSAYILAN_MUZIK / VARSAYILAN_SFX ile basliyor (bkz.
+		asagidaki sabitler). Tam sesle acmak fazla geliyordu: oyuncunun ilk
+		isi sesi kismak oluyordu, bazisi da hic acmadan sessize aliyordu.
+
+		Bir kez ayar yapan oyuncunun degeri kayitta; bu sabitler yalnizca
+		HIC ayar yapmamis olanlar icin gecerli.
+	]]
 	musicVolume: number,
 	musicMuted: boolean,
-	-- Ses efektleri (muzik haric butun sesler): yuzde ve kapali mi
 	sfxVolume: number,
 	sfxMuted: boolean,
 	-- Ekran sarsintisi kapali mi (Settings > Screen Shake)
@@ -211,6 +219,19 @@ export type Data = {
 
 local PlayerData = {}
 
+--[[
+	SESIN VARSAYILAN SEVIYESI  (yuzde)
+
+	Yeni oyuncu bu degerlerle basliyor. Tam sesle acmak fazla geliyordu:
+	oyuncunun ilk isi sesi kismak oluyordu. Muzik arka planda kalsin,
+	efektler duyulsun ama bagirmasin.
+
+	Bir kez ayar yapan oyuncuyu ETKILEMEZ -- onun degeri kayitta duruyor.
+]]
+PlayerData.VarsayilanMuzik = 10
+PlayerData.VarsayilanSfx = 30
+
+
 -- Ekip testi icin sifirlandi (v1 kayitlari silinmedi, kullanilmiyor)
 local STORE_NAME = "BrainrotDig_v2"
 local store = if RunService:IsStudio() then nil else DataStoreService:GetDataStore(STORE_NAME)
@@ -254,9 +275,9 @@ local function defaultData(): Data
 		ores = {},
 		pickaxes = {},
 		uiScale = 100,
-		musicVolume = 100,
+		musicVolume = PlayerData.VarsayilanMuzik,
 		musicMuted = false,
-		sfxVolume = 100,
+		sfxVolume = PlayerData.VarsayilanSfx,
 		sfxMuted = false,
 		shakeOff = false,
 		speedLevel = 0,
@@ -429,11 +450,10 @@ local function migrate(raw: any): Data
 
 	-- Ayar oncesi kayitlarda uiScale yok; varsayilan %100 ile acilir
 	data.uiScale = math.clamp(tonumber(raw.uiScale) or 100, 50, 150)
-	-- Muzik ayari oncesi kayitlar: tam ses, acik
-	data.musicVolume = math.clamp(tonumber(raw.musicVolume) or 100, 0, 100)
+	-- Ayar oncesi kayitlar da yeni varsayilanla acilir
+	data.musicVolume = math.clamp(tonumber(raw.musicVolume) or PlayerData.VarsayilanMuzik, 0, 100)
 	data.musicMuted = raw.musicMuted == true
-	-- Ses efekti ayari oncesi kayitlar: tam ses, acik
-	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or 100, 0, 100)
+	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or PlayerData.VarsayilanSfx, 0, 100)
 	data.sfxMuted = raw.sfxMuted == true
 	data.shakeOff = raw.shakeOff == true
 	-- Hiz yukseltmesi oncesi kayitlar 0'dan baslar
