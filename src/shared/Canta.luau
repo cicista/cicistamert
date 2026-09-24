@@ -6,7 +6,7 @@
 	Oyuncunun cantasinda (base slotlarina KONMAMIS) en fazla kac brainrot
 	durabilecegi ve bunun Rot ile nasil buyutuldugu.
 
-	    20 ile baslar  ->  10'ar 10'ar artar  ->  100'de durur
+	    20 ile baslar  ->  5'er 5'er artar  ->  100'de durur
 
 	NEDEN SINIR VAR
 	Sinirsiz canta iki seyi bozuyordu: oyuncu yuzlerce brainrotu satmadan
@@ -19,14 +19,16 @@
 	ayri bir yukseltmeyle artiyor (bkz. Shared > Bases > Upgrade).
 
 	FIYAT
-	Sekiz yukseltme var (20->30 ... 90->100). Ilki IlkFiyat, sonuncusu
+	Onalti yukseltme var (20->25 ... 95->100). Ilki IlkFiyat, sonuncusu
 	SonFiyat; aradakiler ussel olarak dagiliyor. Yani iki uc degeri
 	degistirmek butun egriyi yeniden dagitiyor, arada elle sayi yazmak
 	gerekmiyor.
 
-	    10M  65M  425M  2.77B  18.1B  118B  767B  5T      (toplam ~5.9T)
+	    10M   24M   57M   138M  331M  794M  1.9B  4.6B
+	    11B   26B   63B   151B  362B  869B  2.1T  5T      (toplam ~8.6T)
 
-	Ilki ucuz: oyuncu sinirin varligini ogrenirken duvara toslamasin.
+	Her adim bir oncekinin 2.4 kati: ne basta duvar var ne sonda ucurum.
+	Ilki ucuz, oyuncu sinirin varligini ogrenirken takilip kalmasin.
 ]]
 
 local Canta = {}
@@ -34,8 +36,19 @@ local Canta = {}
 -- Oyuna yeni baslayan oyuncunun canta kapasitesi
 Canta.Baslangic = 20
 
--- Her yukseltmede kac slot eklenir
-Canta.Adim = 10
+--[[
+	Her yukseltmede kac slot eklenir.
+
+	5, 10 DEGIL. Sebebi fiyat egrisi: 20-100 arasi 10'ar gidince sekiz
+	yukseltme oluyor ve 10M ile 5T arasini sekize bolmek adim basina
+	6.5 kat demek -- son adim tek basina 767B'den 5T'ye zipliyordu.
+	5'er gidince onalti adim oluyor ve her adim 2.4 kat: basi da sonu da
+	yumusak.
+
+	10 yapilirsa ucurum geri gelir' o zaman ya IlkFiyat'i yukseltmek ya da
+	SonFiyat'i dusurmek gerekir.
+]]
+Canta.Adim = 5
 
 -- Kapasitenin ulasabilecegi en yuksek deger
 Canta.EnCok = 100

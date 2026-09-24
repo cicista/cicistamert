@@ -108,7 +108,7 @@ export type Data = {
 	--[[
 		CANTA KAPASITESI  --  slota KONMAMIS brainrot siniri
 
-		20 ile baslar, Rot ile 10'ar 10'ar 100'e kadar buyur
+		20 ile baslar, Rot ile 5'er 5'er 100'e kadar buyur
 		(bkz. Shared > Canta). Base slotundaki brainrotlar bu sayiya
 		girmiyor' onlar base'de duruyor.
 	]]
