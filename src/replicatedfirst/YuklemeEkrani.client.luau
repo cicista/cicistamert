@@ -164,17 +164,25 @@ local function coreGuiAyarla(acik: boolean)
 	end
 end
 
+--[[
+	BIR KEZ KAPATMAK YETMIYOR
+
+	Roblox kendi arayuz modullerini yuklerken bizim kapatmamizi eziyor:
+	tek sefer kapatinca sohbet ve oyuncu listesi birkac saniye sonra geri
+	geliyordu. Bu yuzden ekran kapanana kadar SUREKLI kapali tutuluyor.
+
+	Ust seritteki dugmeler (sohbet, menu) da kapatiliyor; onlar CoreGui
+	turlerine degil SetCore'a bakiyor.
+]]
+local coreGuiSuruyor = true
+
 task.spawn(function()
-	-- Basarana kadar dene: ilk karelerde CoreGui cagrilari reddedilebiliyor
-	for _ = 1, 20 do
-		local ok = pcall(function()
-			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+	while coreGuiSuruyor do
+		coreGuiAyarla(false)
+		pcall(function()
+			StarterGui:SetCore("TopbarEnabled", false)
 		end)
-		if ok then
-			coreGuiAyarla(false)
-			return
-		end
-		task.wait(0.15)
+		task.wait(0.25)
 	end
 end)
 
@@ -184,6 +192,9 @@ end)
 	Roblox'un cubugu bizimkinin yanina geri gelirdi.
 ]]
 local function coreGuiGeriAc()
+	-- Once dongu dursun, yoksa actigimizi hemen geri kapatir
+	coreGuiSuruyor = false
+
 	for _, tur in KAPATILAN_COREGUI do
 		if tur ~= Enum.CoreGuiType.Backpack then
 			pcall(function()
@@ -191,6 +202,10 @@ local function coreGuiGeriAc()
 			end)
 		end
 	end
+
+	pcall(function()
+		StarterGui:SetCore("TopbarEnabled", true)
+	end)
 end
 
 ------------------------------------------------------------------
@@ -279,19 +294,39 @@ gokGecis.Color = ColorSequence.new({
 gokGecis.Parent = gokyuzu
 
 --[[
-	RESIM KABI
+	RESIM KABI  --  ekrani tam kaplar, tasani keser
 
-	Resim kabin KENDISINDEN buyuk duruyor ve yavasca daha da buyuyor:
-	durgun bir fotograf yerine sinema gibi hafif bir kaydirma. Kap
-	ClipsDescendants ile tasan kismi kesiyor.
+	SABIT duruyor ve ekranin TAM ORTASINDA: AnchorPoint verilmeseydi
+	(varsayilan 0,0) sol ust koseye yapisirdi.
 ]]
 local resimKabi = Instance.new("Frame")
 resimKabi.Name = "ResimKabi"
+resimKabi.AnchorPoint = Vector2.new(0.5, 0.5)
+resimKabi.Position = UDim2.fromScale(0.5, 0.5)
 resimKabi.Size = UDim2.fromScale(1, 1)
 resimKabi.BackgroundTransparency = 1
 resimKabi.ClipsDescendants = true
 resimKabi.ZIndex = 2
 resimKabi.Parent = perde
+
+--[[
+	YAKLASAN KATMAN
+
+	Resmin yavasca buyumesi BU cercevede; kirpan kap sabit kaliyor.
+
+	Once buyuyen sey kabin KENDISIYDI ve kap sol ust koseden bagliydi:
+	buyudukce sag alta dogru tasiyor, ekranda resmin ortasi degil bir
+	kosesi kaliyordu. Simdi buyuyen cerceve ORTADAN bagli, yani her iki
+	yana esit aciliyor ve resmin ortasi hep ortada duruyor.
+]]
+local resimYaklasma = Instance.new("Frame")
+resimYaklasma.Name = "Yaklasma"
+resimYaklasma.AnchorPoint = Vector2.new(0.5, 0.5)
+resimYaklasma.Position = UDim2.fromScale(0.5, 0.5)
+resimYaklasma.Size = UDim2.fromScale(1, 1)
+resimYaklasma.BackgroundTransparency = 1
+resimYaklasma.ZIndex = 2
+resimYaklasma.Parent = resimKabi
 
 --[[
 	BULANIKLIK
@@ -326,7 +361,7 @@ for sira, kayma in BULANIK_KAYMA do
 	katman.ImageTransparency = if sira == 1 then 0.1 else 0.55
 	katman.ZIndex = 2
 	katman.Visible = false
-	katman.Parent = resimKabi
+	katman.Parent = resimYaklasma
 	table.insert(resimKatmanlari, katman)
 end
 
@@ -378,7 +413,7 @@ task.spawn(function()
 	]]
 	TweenService
 		:Create(
-			resimKabi,
+			resimYaklasma,
 			TweenInfo.new(18, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
 			{ Size = UDim2.fromScale(1.12, 1.12) }
 		)
