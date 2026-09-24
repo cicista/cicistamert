@@ -2046,6 +2046,24 @@ sayacKutu.BorderSizePixel = 0
 sayacKutu.Visible = false
 sayacKutu.Parent = screen
 
+--[[
+	KUTU KUCULTULDU  --  tek sayidan
+
+	Ilk hali ekranin sag ustunde fazla yer kapliyordu. Kucultme tek tek
+	yazi boyu ve dugme olcusu degistirilerek degil, kabin tamamina konan
+	bir UIScale ile yapiliyor: icindeki her sey (basliklar, sayac, davet
+	dugmesi) AYNI oranda kuculuyor, yani aralarindaki denge bozulmuyor --
+	dugme yazidan daha buyuk kalmiyor.
+
+	AnchorPoint sag ust kosede oldugu icin kutu o koseye dogru buzusuyor,
+	kenardan uzaklasmiyor.
+]]
+do
+	local olcek = Instance.new("UIScale")
+	olcek.Scale = 0.7
+	olcek.Parent = sayacKutu
+end
+
 UI.text({
 	text = "LUCKY BLOCK RAIN",
 	size = UI.Sizes.tiny,
@@ -2090,10 +2108,16 @@ UI.text({
 	gereksiz bir ag cagrisi yapilmiyor.
 ]]
 do
+	--[[
+		Dugme kutunun TAMAMINI kaplamiyor: ustundeki "5 / 6 PLAYERS"
+		yazisindan genis durunca kutunun icinde fazla iri gorunuyordu.
+		Biraz dar ve ortalanmis.
+	]]
 	local davet = Instance.new("TextButton")
 	davet.Name = "Davet"
-	davet.Position = UDim2.fromOffset(0, 72)
-	davet.Size = UDim2.new(1, 0, 0, 32)
+	davet.AnchorPoint = Vector2.new(0.5, 0)
+	davet.Position = UDim2.new(0.5, 0, 0, 72)
+	davet.Size = UDim2.new(0.78, 0, 0, 30)
 	davet.BackgroundColor3 = Color3.fromRGB(60, 130, 230)
 	davet.BorderSizePixel = 0
 	davet.AutoButtonColor = false
