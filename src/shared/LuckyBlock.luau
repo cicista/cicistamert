@@ -148,7 +148,19 @@ LuckyBlock.Event = {
 		son saniyede oyundan atilmasin diye.
 	]]
 	gerekenOyuncu = 6,
-	geriSayim = 15,
+	--[[
+		Sunucu doldugunda baslayan geri sayim (saniye). 300 = 5 dakika:
+		oyuncularin flyboardlarini alip adalara yayilmasina yetecek kadar.
+	]]
+	geriSayim = 300,
+	--[[
+		BILDIRIM KAC KISIDEN SONRA GORUNUR
+
+		Ekranin sag ustundeki "4/6 PLAYERS" kutusu bu sayidan itibaren
+		cikiyor. Altina dusunce kayboluyor: iki kisilik bir sunucuda
+		"2/6" yazisi umut vermiyor, yalnizca yer kapliyor.
+	]]
+	bildirimOyuncu = 4,
 	-- Iki yagmur arasindaki en az sure (3600 = 1 saat)
 	interval = 3600,
 	--[[
@@ -164,18 +176,35 @@ LuckyBlock.Event = {
 	]]
 	zeminAdi = "luckyzemin",
 
-	--[[
-		HER YAGMURDA NE DUSER  --  sirayla
+	-- Her yagmurda kac blok duser
+	blokSayisi = 5,
 
-		Ozel bloklar listenin BASINDA: zemin sayisi yetmezse once onlar
-		yerlesir. Elmas ve altindan her etkinlikte BIRER tane var, gerisi
-		normal blok.
+	--[[
+		HER BLOK AYRI CEKILIYOR
+
+		Bloklarin hepsi Normal olarak baslar; her biri icin asagidaki
+		liste SIRAYLA deneniyor ve ilk tutan kademe kazaniyor. Sira
+		NADIRDEN BOLA: Hacker'in %0.5'i Golden'in %30'unun icinde
+		kaybolmasin.
+
+		Hicbiri tutmazsa blok Normal kalir (su degerlerle ~%59.5).
+
+		Bloklar birbirinden bagimsiz: bes blogun besi de Normal cikabilir,
+		ikisi birden Diamond da cikabilir.
 	]]
-	dagilim = {
-		{ tier = "Diamond", adet = 1 },
-		{ tier = "Golden", adet = 1 },
-		{ tier = "Normal", adet = 15 },
+	tierSanslari = {
+		{ tier = "Hacker", sans = 0.5 },
+		{ tier = "Diamond", sans = 10 },
+		{ tier = "Golden", sans = 30 },
 	},
+
+	--[[
+		BIR OYUNCU BIR YAGMURDA EN COK KAC BLOK ALABILIR
+
+		Bes blok var ve hepsi herkese acik; sinir olmasa en hizli oyuncu
+		besini birden toplardi. 1 = herkes en fazla bir tane.
+	]]
+	oyuncuBasiLimit = 1,
 
 	--[[
 		KADEME GORUNUMU  --  ozel bloklar uzaktan bagirsin
@@ -210,7 +239,7 @@ LuckyBlock.Event = {
 	]]
 	firstDelay = 60,
 	-- Toplanmayan blok kac saniye sonra kaybolur (0 = hic kaybolmasin)
-	despawn = 1200,
+	despawn = 120,
 	--[[
 		ISIK KONISI
 
@@ -286,11 +315,22 @@ end
 
 -- Bir yagmurda dusen toplam blok sayisi (zemin yeterse)
 function LuckyBlock.toplamBlok(): number
-	local toplam = 0
-	for _, satir in LuckyBlock.Event.dagilim do
-		toplam += satir.adet
+	return LuckyBlock.Event.blokSayisi
+end
+
+--[[
+	BIR BLOGUN KADEMESI  --  her blok icin ayri cekilis
+
+	Liste nadirden bola sirali (bkz. Event.tierSanslari); ilk tutan kademe
+	kazaniyor, hicbiri tutmazsa Normal.
+]]
+function LuckyBlock.etkinlikKademesi(rng: Random): string
+	for _, satir in LuckyBlock.Event.tierSanslari do
+		if rng:NextNumber() * 100 < satir.sans then
+			return satir.tier
+		end
 	end
-	return toplam
+	return LuckyBlock.Default
 end
 
 function LuckyBlock.get(id: string?): Tier

@@ -2005,32 +2005,45 @@ end)
 
 
 ------------------------------------------------------------------
--- BLOK YAGMURU BILGISI (ekranin sol alti)
+-- BLOK YAGMURU BILGISI (ekranin sag ustu, oyuncu listesinin altinda)
 --
 -- Yagmur iki sarta bagli: sunucuda 6 kisi olacak VE son yagmurun
 -- uzerinden 1 saat gecmis olacak (bkz. Shared > LuckyBlock > Event).
--- Kutu ikisini birden gosteriyor:
+-- Sunucu dolunca 5 dakikalik geri sayim basliyor.
 --
 --     LUCKY BLOCK RAIN
 --     4 / 6 PLAYERS
---     next in 42:10        (ya da DROPPING SOON / NOW!)
+--     2 more to start      (ya da DROPPING IN 4:37 / next in 42:10)
+--     [ INVITE FRIENDS ]
+--
+-- Kutu 4 KISIDEN ITIBAREN gorunuyor (Event.bildirimOyuncu); altina
+-- dusunce kayboluyor.
 --
 -- Sunucu durumu iki saniyede bir yolluyor, arada client kendi icinde
 -- sayiyor: yazi her saniye ilerler ama sunucuyla arasi acilmaz.
 ------------------------------------------------------------------
 local sayacKutu = Instance.new("Frame")
 sayacKutu.Name = "LuckyYagmurBilgisi"
--- Sol altta, para gostergesinin ustunde. Kesin yeri solSutunuYerlestir'de
--- hesaplaniyor: arayuz olcegi degisince para kutusuyla cakismasin
-sayacKutu.AnchorPoint = Vector2.new(0, 1)
-sayacKutu.Position = UDim2.new(0, 20, 1, -200)
-sayacKutu.Size = UDim2.fromOffset(250, 66)
+--[[
+	SAG UST: Roblox'un oyuncu listesinin ALTINDA.
+
+	Liste ekranin sag ustunde duruyor ve yuksekligi oyuncu sayisiyla
+	degisiyor; Roblox onun yerini scripte sormuyor. 210 piksel dolu bir
+	sunucunun listesini rahatca gecen bir pay -- listeyle cakismasin diye
+	buradan asagi baslatiliyor.
+
+	Altinda da oyunun kendi ARKADAS DAVET dugmesi duruyor (asagida): kutu
+	"iki kisi daha lazim" derken davet dugmesi hemen elinin altinda olsun.
+]]
+sayacKutu.AnchorPoint = Vector2.new(1, 0)
+sayacKutu.Position = UDim2.new(1, -16, 0, 210)
+sayacKutu.Size = UDim2.fromOffset(250, 108)
 -- Kutu degil: bildirimler gibi bu da yalnizca yazi. Cerceve ve zemin yok,
 -- okunurlugu yazilarin kendi siyah konturu sagliyor
 sayacKutu.BackgroundTransparency = 1
 sayacKutu.BorderSizePixel = 0
--- Bastan gorunur: sol menu sutunu yerini ona gore hesapliyor (bkz. solSutunuYerlestir)
-sayacKutu.Visible = LuckyBlock.Event.enabled
+-- Oyuncu sayisi esige varana kadar kapali (bkz. tazeleGorunurluk)
+sayacKutu.Visible = false
 sayacKutu.Parent = screen
 
 UI.text({
@@ -2053,7 +2066,7 @@ local sayacYazi = UI.text({
 	parent = sayacKutu,
 })
 
--- Alt satir: bekleme suresi ya da "DROPPING SOON"
+-- Alt satir: bekleme suresi ya da "2 more to start"
 UI.text({
 	text = "",
 	size = UI.Sizes.small,
@@ -2064,6 +2077,61 @@ UI.text({
 	parent = sayacKutu,
 	name = "Durum",
 })
+
+--[[
+	ARKADAS DAVET DUGMESI  --  kutunun hemen altinda
+
+	Kutu "2 more to start" derken oyuncunun yapabilecegi tek sey arkadas
+	cagirmak; dugme de tam orada duruyor. Roblox'un KENDI davet penceresini
+	aciyor (SocialService), yani davet listesi ve gonderimi Roblox'ta.
+
+	Servis ve izin denetimi tiklama aninda yapiliyor: ust seviyede yeni
+	degisken acilmiyor (bu dosya 200 yerel sinirinda) ve oyun acilirken
+	gereksiz bir ag cagrisi yapilmiyor.
+]]
+do
+	local davet = Instance.new("TextButton")
+	davet.Name = "Davet"
+	davet.Position = UDim2.fromOffset(0, 72)
+	davet.Size = UDim2.new(1, 0, 0, 32)
+	davet.BackgroundColor3 = Color3.fromRGB(60, 130, 230)
+	davet.BorderSizePixel = 0
+	davet.AutoButtonColor = false
+	davet.Text = ""
+	davet.Parent = sayacKutu
+	UI.corner(davet, 8)
+	UI.stroke(davet, Color3.fromRGB(0, 0, 0), 2)
+	UI.hover(davet)
+
+	UI.text({
+		text = "INVITE FRIENDS",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = davet,
+		zIndex = 2,
+	})
+
+	davet.Activated:Connect(function()
+		local social = game:GetService("SocialService")
+		--[[
+			Izin denetimi pcall icinde: Studio'da ve bazi platformlarda
+			CanSendGameInviteAsync hata veriyor. Hata alinca yine de
+			deneniyor -- en kotusu Roblox pencereyi acmaz.
+		]]
+		local ok, izin = pcall(function()
+			return social:CanSendGameInviteAsync(player)
+		end)
+		if ok and izin == false then
+			return
+		end
+		pcall(function()
+			social:PromptGameInvite(player)
+		end)
+	end)
+end
 
 local kalanSure = -1
 
@@ -2083,17 +2151,30 @@ end
 --[[
 	KUTUYU CIZ
 
-	Oyuncu sayisi ve bekleme sunucudan geliyor, sayim (son 15 saniye) de
-	oyle. Sayilar nitelik olarak kutunun ustunde duruyor: bu dosya 200
-	yerel sinirinda, ust seviyede yeni degisken acilmiyor.
+	Oyuncu sayisi, bekleme ve sayim sunucudan geliyor. Sayilar nitelik
+	olarak kutunun ustunde duruyor: bu dosya 200 yerel sinirinda, ust
+	seviyede yeni degisken acilmiyor.
+
+	    LUCKY BLOCK RAIN
+	    4 / 6 PLAYERS
+	    2 more to start        (ya da DROPPING IN 4:37 / next in 42:10)
+	    [ INVITE FRIENDS ]
 ]]
 local function tazeleGorunurluk()
 	local oyuncu = sayacKutu:GetAttribute("Oyuncu") or 0
 	local gereken = sayacKutu:GetAttribute("Gereken") or LuckyBlock.Event.gerekenOyuncu
+	local esik = sayacKutu:GetAttribute("Esik") or LuckyBlock.Event.bildirimOyuncu
 	local sayim = sayacKutu:GetAttribute("Sayim") or -1
 	local durum = sayacKutu:FindFirstChild("Durum")
 
-	sayacKutu.Visible = LuckyBlock.Event.enabled
+	--[[
+		ESIGIN ALTINDA HIC GORUNMEZ
+
+		Iki kisilik bir sunucuda "2/6" yazisi umut vermiyor, yalnizca yer
+		kapliyor. Sayim BASLADIYSA esik aranmiyor: biri cikip sayi duse bile
+		yagmur iptal olmuyor, kutu da ortadan kaybolmamali.
+	]]
+	sayacKutu.Visible = LuckyBlock.Event.enabled and (oyuncu >= esik or sayim >= 0)
 
 	local yeterli = oyuncu >= gereken
 	sayacYazi.Text = `{oyuncu} / {gereken} PLAYERS`
@@ -2105,8 +2186,8 @@ local function tazeleGorunurluk()
 	end
 
 	if sayim >= 0 then
-		-- Son sayim: bloklar dusmek uzere
-		durum.Text = `DROPPING IN {sayim}s`
+		-- Sayim basladi: bloklar dusmek uzere (5 dakika -> "4:37")
+		durum.Text = `DROPPING IN {sureMetni(sayim)}`
 		durum.TextColor3 = Rarity.LuckyBlock.colorA
 	elseif kalanSure > 0 then
 		-- Bir onceki yagmurdan sonraki bekleme
@@ -2129,6 +2210,7 @@ EtkinlikSayaci.OnClientEvent:Connect(function(veri)
 	if type(veri) == "table" then
 		sayacKutu:SetAttribute("Oyuncu", math.floor(tonumber(veri.oyuncu) or 0))
 		sayacKutu:SetAttribute("Gereken", math.floor(tonumber(veri.gereken) or LuckyBlock.Event.gerekenOyuncu))
+		sayacKutu:SetAttribute("Esik", math.floor(tonumber(veri.esik) or LuckyBlock.Event.bildirimOyuncu))
 		sayacKutu:SetAttribute("Sayim", math.floor(tonumber(veri.sayim) or -1))
 		kalanSure = math.max(0, tonumber(veri.bekleme) or 0)
 	else
@@ -2278,13 +2360,9 @@ local function solSutunuYerlestir()
 	end
 
 	--[[
-		Blok yagmuru bilgisi de ayni yigina giriyor: para -> buff'lar ->
-		yagmur -> menu butonlari. Gorunmuyorsa yer kaplamaz.
+		Blok yagmuru bilgisi artik SAG USTTE (oyuncu listesinin altinda),
+		bu yigina girmiyor.
 	]]
-	sayacKutu.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi + buffYuksekligi))
-	if sayacKutu.Visible then
-		buffYuksekligi += sayacKutu.Size.Y.Offset * carpan
-	end
 
 	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + SUTUN_BOSLUK))
 end

@@ -448,6 +448,15 @@ end
 	Bir blok dusurur. Nokta verilmezse haritadaki herhangi bir kum secilir
 	(admin panelinden elle tetiklemede boyle olur).
 ]]
+--[[
+	BU YAGMURDA KIM BLOK ALDI
+
+	Her yagmurun basinda temizleniyor (bkz. runEvent). Oyuncu basina sinir
+	Event.oyuncuBasiLimit'te; sinir olmasa bes blogun besini de en hizli
+	kosan toplardi.
+]]
+local etkinlikteAlan: { [Player]: number } = {}
+
 local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 	local nokta = spot or Sand.randomSpot(rng)
 	if not nokta then
@@ -551,6 +560,22 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 		if taken then
 			return
 		end
+
+		--[[
+			OYUNCU BASINA SINIR. Blok ALINMAMIS sayiliyor: oyuncu hakkini
+			doldurmussa blok yerinde kaliyor ve baskasi alabiliyor.
+		]]
+		local sinir = LuckyBlock.Event.oyuncuBasiLimit
+		if sinir > 0 and (etkinlikteAlan[player] or 0) >= sinir then
+			Bildirim:FireClient(
+				player,
+				`You can only take {sinir} Lucky Block per rain -- leave the rest to others!`,
+				Color3.fromRGB(255, 200, 90)
+			)
+			return
+		end
+		etkinlikteAlan[player] = (etkinlikteAlan[player] or 0) + 1
+
 		taken = true
 		prompt.Enabled = false
 
@@ -670,9 +695,9 @@ end
 	bastan kullanildigi icin HER ZEMINE EN COK BIR BLOK gelir: ayni yerde
 	iki blok olmaz, zeminlerin de hepsi dolmaz (fazlasi bos kalir).
 
-	Ne dusecegi Event.dagilim'da: once ozel bloklar (birer Elmas ve Altin),
-	sonra normaller. Zemin sayisi yetmezse listenin basindakiler yerlesir,
-	yani ozel bloklar hicbir zaman kaybolmaz.
+	Kac blok dusecegi Event.blokSayisi'nda; her blogun kademesi AYRI
+	cekiliyor (bkz. LuckyBlock.etkinlikKademesi): hepsi Normal olarak
+	baslar, her biri kendi sansiyla Golden / Diamond / Hacker'a donebilir.
 
 	Hic "luckyzemin" yoksa eski davranisa donulur: her adanin kumuna bir
 	blok (Event.islandSands) -- ve Output'a neden oldugunu yazan bir uyari.
@@ -681,13 +706,15 @@ local function runEvent()
 	local E = LuckyBlock.Event
 
 	--[[
-		SIRA: ozel bloklar bastan. Dagilim listesi ne diyorsa o.
+		YENI YAGMUR, YENI HAK: gecen yagmurda blok almis oyuncular yeniden
+		alabilir (bkz. etkinlikteAlan).
 	]]
+	table.clear(etkinlikteAlan)
+
+	-- Her blogun kademesi kendi cekilisinden
 	local sira: { string } = {}
-	for _, satir in E.dagilim do
-		for _ = 1, satir.adet do
-			table.insert(sira, satir.tier)
-		end
+	for _ = 1, E.blokSayisi do
+		table.insert(sira, LuckyBlock.etkinlikKademesi(rng))
 	end
 
 	local zeminler = luckyZeminleri()
@@ -745,8 +772,17 @@ local function runEvent()
 		return
 	end
 
+	--[[
+		BASLANGIC BILDIRIMI
+
+		Ne yapmasi gerektigini soyluyor: bloklar adalara dagiliyor, en hizli
+		yol flyboard. Kac tanesinin ozel oldugu da yaziyor -- ozel yoksa o
+		kisim hic gorunmuyor, "0 special" umut kirici duruyordu.
+	]]
+	local ozelYazi = if ozel > 0 then ` ({ozel} special!)` else ""
 	Bildirim:FireAllClients(
-		`LUCKY BLOCK RAIN! {spawned} blocks dropped ({ozel} special)`,
+		`LUCKY BLOCK RAIN STARTED! {spawned} blocks on the islands{ozelYazi} -- `
+			.. "hop on your flyboard and hunt them down!",
 		Rarity.LuckyBlock.colorA
 	)
 
@@ -773,11 +809,27 @@ end
 local sonEtkinlik = 0
 local sayimKalan = -1
 
+--[[
+	SAHTE OYUNCU SAYISI  --  yalnizca sinama icin
+
+	Admin panelinden "sunucuda 4/5/6 kisi varmis gibi davran" denince
+	buraya yaziliyor (0 = kapali, gercek sayi kullanilir). Tek basina
+	test ederken bildirimin 4'te cikip 3'te kaybolmasini ve 6'da sayimin
+	baslamasini gormenin baska yolu yok.
+]]
+local sahteOyuncu = 0
+
+local function oyuncuSayisi(): number
+	return if sahteOyuncu > 0 then sahteOyuncu else #Players:GetPlayers()
+end
+
 local function etkinlikDurumu(): { [string]: any }
 	local E = LuckyBlock.Event
 	return {
-		oyuncu = #Players:GetPlayers(),
+		oyuncu = oyuncuSayisi(),
 		gereken = E.gerekenOyuncu,
+		-- Kutu bu sayidan itibaren gorunur
+		esik = E.bildirimOyuncu,
 		-- Bir sonraki yagmurun serbest kalmasina kalan sure
 		bekleme = math.max(0, (sonEtkinlik + E.interval) - os.clock()),
 		-- Sayim basladiysa kalan saniye, yoksa -1
@@ -809,10 +861,15 @@ if LuckyBlock.Event.enabled then
 				continue
 			end
 
-			-- Sartlar tamam: herkes gorsun diye kisa sayim
+			--[[
+				Sunucu doldu: bes dakikalik sayim basliyor. Sayi dakika
+				olarak yaziliyor, "300s" kimseye bir sey anlatmiyor.
+			]]
 			sayimKalan = E.geriSayim
+			local dakika = math.floor(E.geriSayim / 60)
 			Bildirim:FireAllClients(
-				`LUCKY BLOCK RAIN in {E.geriSayim}s! {durum.gereken}/{durum.gereken} players`,
+				`LUCKY BLOCK RAIN in {if dakika > 0 then `{dakika} min` else `{E.geriSayim}s`}! `
+					.. `Server is full ({durum.gereken}/{durum.gereken})`,
 				Rarity.LuckyBlock.colorA
 			)
 
@@ -843,6 +900,17 @@ if LuckyBlock.Event.enabled then
 			broadcastTimer(player)
 		end
 	end)
+end
+
+--[[
+	SAHTE OYUNCU SAYISINI AYARLA (admin paneli).
+	0 verilince gercek sayiya donulur.
+]]
+function LuckyBlockOdul.sahteOyuncuAyarla(sayi: number): number
+	sahteOyuncu = math.max(0, math.floor(sayi))
+	-- Degisiklik ekranlara hemen yansisin
+	broadcastTimer(nil)
+	return sahteOyuncu
 end
 
 -- Admin panelinden elle tetiklemek icin

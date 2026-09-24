@@ -14,6 +14,7 @@
 	  revealAll      -- envanterdeki tum siyah brainrotlarin kimligini acar
 	  giveLuckyBlock -- secilen turden BIR Lucky Block verir (arg: tur id'si)
 	  luckyEvent     -- blok yagmuru etkinligini hemen baslatir
+	  sahteOyuncu    -- sunucuda N kisi varmis gibi davranir (arg: 0 = kapat)
 	  giveBrainrot   -- secilen rarity'de brainrot uretir
 	                    (arg: rarity ya da { rarity = ..., mutation = ... })
 	  setShovel      -- kurek seviyesi ayarlar (arg: shovelId)
@@ -262,6 +263,22 @@ end
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()
 	return `Etkinlik baslatildi ({LuckyBlock.toplamBlok()} blok)`
+end
+
+--[[
+	SAHTE OYUNCU SAYISI
+
+	"Sunucuda 4 kisi varmis gibi davran" der. Blok yagmuru bildirimi
+	4 kisiden itibaren cikip 3'te kayboldugu ve 6'da geri sayim basladigi
+	icin tek basina sinamanin baska yolu yok.
+
+	arg = 0 ise gercek oyuncu sayisina donulur.
+]]
+function commands.sahteOyuncu(player, data, arg)
+	local sayi = LuckyBlockOdul.sahteOyuncuAyarla(tonumber(arg) or 0)
+	return if sayi > 0
+		then `Sunucuda {sayi} kisi varmis gibi davraniliyor`
+		else "Gercek oyuncu sayisina donuldu"
 end
 
 -- Her tikta TEK blok verir; tur arg ile gelir

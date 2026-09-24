@@ -221,6 +221,31 @@ local function buildPanel(info: any)
 		UI.Colors.warn
 	)
 
+	--[[
+		SAHTE OYUNCU SAYISI
+
+		Yagmur bildirimi sag ustte 4 kisiden itibaren cikiyor, 3'e dusunce
+		kayboluyor, 6'da geri sayim basliyor. Tek basina test ederken
+		bunlari gormenin tek yolu sunucuya "su kadar kisi var" dedirtmek.
+	]]
+	section("SAHTE OYUNCU SAYISI  --  yagmur bildirimini sina")
+	local oyuncuChips: { any } = {}
+	for _, sayi in { 4, 5, 6 } do
+		table.insert(oyuncuChips, {
+			label = `{sayi} kisi`,
+			command = "sahteOyuncu",
+			arg = sayi,
+			color = Rarity.LuckyBlock.colorA,
+		})
+	end
+	table.insert(oyuncuChips, {
+		label = "Kapat",
+		command = "sahteOyuncu",
+		arg = 0,
+		color = UI.Colors.bad,
+	})
+	chipRow(oyuncuChips)
+
 	-- Her tur icin ayri buton; her tik tek blok verir
 	for _, tier in LuckyBlock.Tiers do
 		actionButton(`{tier.displayName} ver  (+1)`, "giveLuckyBlock", tier.id, tier.color)
