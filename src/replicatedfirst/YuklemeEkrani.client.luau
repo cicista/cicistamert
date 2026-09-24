@@ -1,0 +1,732 @@
+--!strict
+--[[
+	YuklemeEkrani  (LocalScript)
+	Yeri: ReplicatedFirst > YuklemeEkrani
+
+	Oyun acilirken gorunen ozel yukleme ekrani. Roblox'un kendi gri
+	yukleme ekranini kaldirip yerine geciyor.
+
+	    [ bulanik LoadingScreen resmi, hafifce yaklasiyor ]
+
+	         L O A D I N G . . .
+	    +---------------------------------+
+	    |#############              70%   |
+	    +---------------------------------+
+	      Loading world assets...
+
+	    (o)  <- donen disli                cicistamert
+
+	NEDEN ReplicatedFirst
+	Yukleme ekrani, oyunun geri kalani daha yuklenmeden gorunmek zorunda.
+	ReplicatedFirst istemcide CALISAN ILK yer; StarterPlayerScripts'teki
+	betikler sahne hazir olduktan sonra basliyor, oraya konsa ekran is
+	bittikten sonra acilirdi.
+
+	BURADA BASKA MODUL KULLANILMIYOR
+	Shared klasoru (UI, Assets, Icons...) bu noktada daha replike olmamis
+	olabilir; require etmek ekrani kilitler. Bu yuzden dosya kendi kendine
+	yetiyor -- renkler, sekiller, yardimcilar hep burada.
+
+	ILERLEME GERCEK
+	Cubuk sahte degil: ReplicatedStorage'daki varliklar ContentProvider ile
+	obek obek onbellege aliniyor ve yuzde gercekten yuklenen orandan
+	cikiyor. Son adim oyunun kendisinin hazir olmasi (game.Loaded).
+
+	ASILI KALMAZ
+	Her sey ters giderse EN_COK_BEKLEME saniye sonunda ekran yine de
+	aciliyor: oyuncu asla yukleme ekraninda kilitli kalmiyor.
+]]
+
+local ContentProvider = game:GetService("ContentProvider")
+local Players = game:GetService("Players")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+------------------------------------------------------------------
+-- AYARLAR
+------------------------------------------------------------------
+--[[
+	ARKA PLAN RESMI
+
+	ReplicatedStorage > Assets > Backgrounds > LoadingScreen. Resmi tasiyan
+	nesne Decal, Texture, ImageLabel ya da resim kimligini tutan bir
+	StringValue olabilir.
+
+	Resim gec gelebilir (Assets o an daha replike olmamis olabilir); o yuzden
+	ekran once gradyanla aciliyor, resim gelince arkasina yerlesiyor.
+]]
+local ARKA_PLAN_KLASORU = { "Assets", "Backgrounds" }
+local ARKA_PLAN_ADI = "LoadingScreen"
+
+-- Oyunun adi (alt kosede durur)
+local OYUN_ADI = "CICISTAMERT"
+
+-- Ne olursa olsun bu kadar saniye sonra ekran kapanir
+local EN_COK_BEKLEME = 30
+
+-- Renkler
+local NEON = Color3.fromRGB(70, 190, 255)
+local NEON_KOYU = Color3.fromRGB(20, 90, 160)
+local BEYAZ = Color3.fromRGB(255, 255, 255)
+local SOLGUN = Color3.fromRGB(170, 185, 200)
+
+-- Cubugun olculeri
+local CUBUK_EN = 520
+local CUBUK_BOY = 34
+
+--[[
+	Cubugun etrafinda suzulen toz tanesi sayisi. Cok olmasi gerekmiyor;
+	birkac tanesi bile ekrani "canli" yapiyor.
+]]
+local TOZ_SAYISI = 22
+
+------------------------------------------------------------------
+-- ROBLOX'UN KENDI EKRANINI KALDIR
+------------------------------------------------------------------
+--[[
+	pcall: bazi baglamlarda (Studio'da bazi test modlari) bu cagri hata
+	veriyor ve hatasi butun betigi durdururdu.
+]]
+pcall(function()
+	ReplicatedFirst:RemoveDefaultLoadingScreen()
+end)
+
+------------------------------------------------------------------
+-- KUCUK YARDIMCILAR  (Shared > UI burada kullanilamiyor)
+------------------------------------------------------------------
+local function kose(nesne: Instance, yaricap: number)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, yaricap)
+	c.Parent = nesne
+end
+
+local function kontur(nesne: Instance, renk: Color3, kalinlik: number): UIStroke
+	local s = Instance.new("UIStroke")
+	s.Color = renk
+	s.Thickness = kalinlik
+	s.Parent = nesne
+	return s
+end
+
+local function yazi(ayar: { [string]: any }): TextLabel
+	local etiket = Instance.new("TextLabel")
+	etiket.Name = ayar.name or "Yazi"
+	etiket.BackgroundTransparency = 1
+	etiket.Size = ayar.size or UDim2.fromScale(1, 1)
+	etiket.Position = ayar.position or UDim2.new()
+	etiket.AnchorPoint = ayar.anchor or Vector2.zero
+	etiket.Font = ayar.font or Enum.Font.GothamBold
+	etiket.Text = ayar.text or ""
+	etiket.TextColor3 = ayar.color or BEYAZ
+	etiket.TextSize = ayar.textSize or 18
+	etiket.TextXAlignment = ayar.align or Enum.TextXAlignment.Center
+	etiket.ZIndex = ayar.zIndex or 5
+	etiket.Parent = ayar.parent
+	return etiket
+end
+
+------------------------------------------------------------------
+-- EKRAN
+------------------------------------------------------------------
+local ekran = Instance.new("ScreenGui")
+ekran.Name = "YuklemeEkrani"
+-- Her seyin ustunde: hata ekrani bile (100) bunun altinda kalmali
+ekran.DisplayOrder = 1000
+ekran.IgnoreGuiInset = true
+ekran.ResetOnSpawn = false
+ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ekran.Parent = playerGui
+
+--[[
+	KOK PERDE
+
+	Tamami tek bir CanvasGroup: kapanirken tek bir GroupTransparency
+	tweeni butun ekrani birlikte soluyor. Tek tek nesneleri soldurmak hem
+	daha fazla tween hem de birinin geride kalma riski demekti.
+]]
+local perde = Instance.new("CanvasGroup")
+perde.Name = "Perde"
+perde.Size = UDim2.fromScale(1, 1)
+perde.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
+perde.BorderSizePixel = 0
+perde.ZIndex = 1
+perde.Parent = ekran
+
+------------------------------------------------------------------
+-- ARKA PLAN
+------------------------------------------------------------------
+--[[
+	GRADYAN ZEMIN  --  resim gelene kadar (ve resmin altinda) duruyor.
+	Sicak ust, koyu alt: gun batimi hissi.
+]]
+local gokyuzu = Instance.new("Frame")
+gokyuzu.Name = "Gokyuzu"
+gokyuzu.Size = UDim2.fromScale(1, 1)
+gokyuzu.BackgroundColor3 = BEYAZ
+gokyuzu.BorderSizePixel = 0
+gokyuzu.ZIndex = 1
+gokyuzu.Parent = perde
+
+local gokGecis = Instance.new("UIGradient")
+gokGecis.Rotation = 90
+gokGecis.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(96, 74, 120)),
+	ColorSequenceKeypoint.new(0.45, Color3.fromRGB(48, 44, 78)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 14, 26)),
+})
+gokGecis.Parent = gokyuzu
+
+--[[
+	RESIM KABI
+
+	Resim kabin KENDISINDEN buyuk duruyor ve yavasca daha da buyuyor:
+	durgun bir fotograf yerine sinema gibi hafif bir kaydirma. Kap
+	ClipsDescendants ile tasan kismi kesiyor.
+]]
+local resimKabi = Instance.new("Frame")
+resimKabi.Name = "ResimKabi"
+resimKabi.Size = UDim2.fromScale(1, 1)
+resimKabi.BackgroundTransparency = 1
+resimKabi.ClipsDescendants = true
+resimKabi.ZIndex = 2
+resimKabi.Parent = perde
+
+--[[
+	BULANIKLIK
+
+	Roblox'ta arayuz icin gercek bir blur YOK (BlurEffect yalnizca 3B
+	kamerada calisir). Ayni resim birkac kez, birbirine gore birkac piksel
+	kaydirilmis ve daha soluk olarak ust uste seriliyor; kenarlar birbirine
+	karisiyor, goz bunu bulaniklik olarak okuyor.
+
+	Katman sayisi az: yukleme ekrani, makine zaten mesgul.
+]]
+local BULANIK_KAYMA = { Vector2.new(0, 0), Vector2.new(3, 2), Vector2.new(-3, -2), Vector2.new(2, -3) }
+local resimKatmanlari: { ImageLabel } = {}
+
+for sira, kayma in BULANIK_KAYMA do
+	local katman = Instance.new("ImageLabel")
+	katman.Name = `Resim{sira}`
+	katman.AnchorPoint = Vector2.new(0.5, 0.5)
+	katman.Position = UDim2.new(0.5, math.floor(kayma.X), 0.5, math.floor(kayma.Y))
+	katman.Size = UDim2.fromScale(1, 1)
+	katman.BackgroundTransparency = 1
+	katman.ScaleType = Enum.ScaleType.Crop
+	-- Ilk katman tam, digerleri gittikce soluk: uzerine bindikce yumusuyor
+	katman.ImageTransparency = if sira == 1 then 0.1 else 0.55
+	katman.ZIndex = 2
+	katman.Visible = false
+	katman.Parent = resimKabi
+	table.insert(resimKatmanlari, katman)
+end
+
+--[[
+	Resmi ARARKEN oyun beklemiyor: arama ayri bir iplikte, bulununca
+	katmanlara yaziliyor ve yavasca beliriyor.
+]]
+task.spawn(function()
+	--[[
+		Assets gec replike olabilir. WaitForChild'in zaman asimi var ki
+		klasor hic yoksa bu iplik sonsuza kadar beklemesin; o durumda
+		ekran gradyanla kaliyor.
+	]]
+	local node: Instance? = ReplicatedStorage
+	for _, ad in ARKA_PLAN_KLASORU do
+		node = if node then node:WaitForChild(ad, 10) else nil
+	end
+
+	local hedef = if node then node:WaitForChild(ARKA_PLAN_ADI, 10) else nil
+	if not hedef then
+		return
+	end
+
+	--[[
+		Resmi tasiyan nesne turu serbest: Decal/Texture'da Texture,
+		ImageLabel'da Image, StringValue'da dogrudan kimlik.
+	]]
+	local kimlik: string? = nil
+	if hedef:IsA("Decal") or hedef:IsA("Texture") then
+		kimlik = hedef.Texture
+	elseif hedef:IsA("ImageLabel") or hedef:IsA("ImageButton") then
+		kimlik = hedef.Image
+	elseif hedef:IsA("StringValue") then
+		kimlik = hedef.Value
+	end
+
+	if not kimlik or kimlik == "" then
+		return
+	end
+
+	for _, katman in resimKatmanlari do
+		katman.Image = kimlik
+		katman.Visible = true
+	end
+
+	--[[
+		YAVAS YAKLASMA: resim %100'den %112'ye buyuyor. Tek yonlu ve uzun
+		(yukleme ne kadar surerse sursun bitmiyor gibi duruyor).
+	]]
+	TweenService
+		:Create(
+			resimKabi,
+			TweenInfo.new(18, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+			{ Size = UDim2.fromScale(1.12, 1.12) }
+		)
+		:Play()
+end)
+
+--[[
+	KARARTMA: resmin uzerine koyu bir perde. Yazilarin okunmasi resme
+	degil buna bagli -- hangi resim konursa konsun metin okunur kaliyor.
+]]
+local karartma = Instance.new("Frame")
+karartma.Name = "Karartma"
+karartma.Size = UDim2.fromScale(1, 1)
+karartma.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
+karartma.BackgroundTransparency = 0.35
+karartma.BorderSizePixel = 0
+karartma.ZIndex = 3
+karartma.Parent = perde
+
+-- Kenarlara dogru koyulasan vinyet: goz ortaya, panele gidiyor
+local vinyet = Instance.new("UIGradient")
+vinyet.Rotation = 90
+vinyet.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0),
+	NumberSequenceKeypoint.new(0.5, 0.65),
+	NumberSequenceKeypoint.new(1, 0),
+})
+vinyet.Parent = karartma
+
+------------------------------------------------------------------
+-- ORTADAKI PANEL
+------------------------------------------------------------------
+local panel = Instance.new("Frame")
+panel.Name = "Panel"
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
+panel.Size = UDim2.fromOffset(CUBUK_EN + 80, 240)
+panel.BackgroundColor3 = Color3.fromRGB(14, 17, 26)
+panel.BackgroundTransparency = 0.25
+panel.BorderSizePixel = 0
+panel.ZIndex = 4
+panel.Parent = perde
+kose(panel, 18)
+kontur(panel, Color3.fromRGB(45, 60, 82), 2)
+
+--[[
+	BASLIK
+
+	Beyaz govde + neon mavi kontur. Konturun saydamligi nabiz gibi gidip
+	geliyor: durgun bir ekranda tek hareketli sey bu olunca goz once
+	buraya geliyor.
+]]
+local baslik = yazi({
+	text = "LOADING...",
+	textSize = 46,
+	color = BEYAZ,
+	size = UDim2.new(1, 0, 0, 56),
+	position = UDim2.fromOffset(0, 26),
+	parent = panel,
+	zIndex = 6,
+	name = "Baslik",
+})
+
+local baslikKontur = kontur(baslik, NEON, 3)
+
+local baslikOlcek = Instance.new("UIScale")
+baslikOlcek.Parent = baslik
+
+TweenService
+	:Create(
+		baslikOlcek,
+		TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.04 }
+	)
+	:Play()
+
+TweenService
+	:Create(
+		baslikKontur,
+		TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Transparency = 0.55 }
+	)
+	:Play()
+
+------------------------------------------------------------------
+-- ILERLEME CUBUGU
+------------------------------------------------------------------
+local cubuk = Instance.new("Frame")
+cubuk.Name = "Cubuk"
+cubuk.AnchorPoint = Vector2.new(0.5, 0)
+cubuk.Position = UDim2.new(0.5, 0, 0, 104)
+cubuk.Size = UDim2.fromOffset(CUBUK_EN, CUBUK_BOY)
+cubuk.BackgroundColor3 = Color3.fromRGB(28, 33, 44)
+cubuk.BorderSizePixel = 0
+-- Dolgu yuvarlak kosenin disina tasmasin
+cubuk.ClipsDescendants = true
+cubuk.ZIndex = 5
+cubuk.Parent = panel
+kose(cubuk, CUBUK_BOY // 2)
+kontur(cubuk, Color3.fromRGB(52, 66, 88), 2)
+
+local dolgu = Instance.new("Frame")
+dolgu.Name = "Dolgu"
+dolgu.Size = UDim2.fromScale(0, 1)
+dolgu.BackgroundColor3 = BEYAZ
+dolgu.BorderSizePixel = 0
+dolgu.ZIndex = 6
+dolgu.Parent = cubuk
+kose(dolgu, CUBUK_BOY // 2)
+
+-- Dolgunun kendi icinde koyudan parlaga gecisi: duz renk yerine isik
+local dolguGecis = Instance.new("UIGradient")
+dolguGecis.Color = ColorSequence.new(NEON_KOYU, NEON)
+dolguGecis.Parent = dolgu
+
+--[[
+	DOLGUNUN UCUNDAKI PARLAMA
+
+	Dolgunun sag ucunda duran, ileri geri kayan acik bir bant: cubuk
+	"calisiyor" gibi duruyor, yuzde artmasa bile hareket var.
+]]
+local parlama = Instance.new("Frame")
+parlama.Name = "Parlama"
+parlama.AnchorPoint = Vector2.new(1, 0)
+parlama.Position = UDim2.fromScale(1, 0)
+parlama.Size = UDim2.new(0, 90, 1, 0)
+parlama.BackgroundColor3 = BEYAZ
+parlama.BorderSizePixel = 0
+parlama.ZIndex = 7
+parlama.Parent = dolgu
+
+local parlamaGecis = Instance.new("UIGradient")
+parlamaGecis.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.6, 0.72),
+	NumberSequenceKeypoint.new(1, 0.45),
+})
+parlamaGecis.Parent = parlama
+
+-- Cubugun ICINDE duran yuzde yazisi
+local yuzdeYazi = yazi({
+	text = "0% Completed",
+	textSize = 18,
+	color = BEYAZ,
+	size = UDim2.fromScale(1, 1),
+	parent = cubuk,
+	zIndex = 9,
+	name = "Yuzde",
+})
+kontur(yuzdeYazi, Color3.fromRGB(0, 0, 0), 2)
+
+-- Cubugun altindaki aciklama satiri
+local durumYazi = yazi({
+	text = "Loading world assets... Please wait",
+	textSize = 16,
+	color = SOLGUN,
+	font = Enum.Font.Gotham,
+	size = UDim2.new(1, 0, 0, 22),
+	position = UDim2.fromOffset(0, 150),
+	parent = panel,
+	zIndex = 6,
+	name = "Durum",
+})
+
+------------------------------------------------------------------
+-- TOZ TANELERI
+------------------------------------------------------------------
+--[[
+	Cubugun etrafinda yavasca yukari suzulen kucuk isiklar. Her biri kendi
+	hizinda ve kendi gecikmesiyle basliyor; hepsi ayni anda hareket etse
+	yagmur gibi gorunurdu.
+]]
+local tozKabi = Instance.new("Frame")
+tozKabi.Name = "Toz"
+tozKabi.AnchorPoint = Vector2.new(0.5, 0.5)
+tozKabi.Position = UDim2.new(0.5, 0, 0, 120)
+tozKabi.Size = UDim2.fromOffset(CUBUK_EN + 60, 150)
+tozKabi.BackgroundTransparency = 1
+tozKabi.ZIndex = 4
+tozKabi.Parent = panel
+
+local rastgele = Random.new()
+
+for i = 1, TOZ_SAYISI do
+	local tane = Instance.new("Frame")
+	tane.Name = "Tane"
+	tane.AnchorPoint = Vector2.new(0.5, 0.5)
+	tane.BackgroundColor3 = NEON
+	tane.BorderSizePixel = 0
+	tane.ZIndex = 4
+
+	local boy = rastgele:NextInteger(2, 5)
+	tane.Size = UDim2.fromOffset(boy, boy)
+	kose(tane, boy)
+	tane.Parent = tozKabi
+
+	task.spawn(function()
+		-- Baslangic gecikmesi: hepsi ayni anda dogmasin
+		task.wait(rastgele:NextNumber(0, 3))
+
+		while tane.Parent do
+			local x = rastgele:NextNumber(0.02, 0.98)
+			local sure = rastgele:NextNumber(2.5, 5)
+
+			tane.Position = UDim2.fromScale(x, 1.05)
+			tane.BackgroundTransparency = rastgele:NextNumber(0.25, 0.6)
+
+			local ucus = TweenService:Create(
+				tane,
+				TweenInfo.new(sure, Enum.EasingStyle.Linear),
+				{ Position = UDim2.fromScale(x + rastgele:NextNumber(-0.05, 0.05), -0.05) }
+			)
+			-- Yol boyunca sonuyor: tepeye varinca yok olmus oluyor
+			TweenService
+				:Create(tane, TweenInfo.new(sure, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 })
+				:Play()
+
+			ucus:Play()
+			ucus.Completed:Wait()
+		end
+	end)
+end
+
+------------------------------------------------------------------
+-- DONEN DISLI  (sol alt)
+------------------------------------------------------------------
+--[[
+	Disli bir resim degil, CIZIM: sekiz cubuk bir daire etrafinda. Boylece
+	hicbir varliga bagli degil ve yukleme ekrani bir resmin yuklenmesini
+	beklemiyor -- ki bu ekranin butun amaci o beklemeyi doldurmak.
+]]
+local disli = Instance.new("Frame")
+disli.Name = "Disli"
+disli.AnchorPoint = Vector2.new(0, 1)
+disli.Position = UDim2.new(0, 36, 1, -36)
+disli.Size = UDim2.fromOffset(44, 44)
+disli.BackgroundTransparency = 1
+disli.ZIndex = 5
+disli.Parent = perde
+
+for i = 1, 8 do
+	local dis = Instance.new("Frame")
+	dis.AnchorPoint = Vector2.new(0.5, 0.5)
+	dis.Position = UDim2.fromScale(0.5, 0.5)
+	dis.Size = UDim2.fromOffset(6, 44)
+	dis.Rotation = (i - 1) * (180 / 8)
+	dis.BackgroundColor3 = NEON
+	dis.BackgroundTransparency = 0.25
+	dis.BorderSizePixel = 0
+	dis.ZIndex = 5
+	dis.Parent = disli
+	kose(dis, 3)
+end
+
+-- Ortadaki koyu goz: cubuklar disli gibi gorunsun
+local dislGobek = Instance.new("Frame")
+dislGobek.AnchorPoint = Vector2.new(0.5, 0.5)
+dislGobek.Position = UDim2.fromScale(0.5, 0.5)
+dislGobek.Size = UDim2.fromOffset(22, 22)
+dislGobek.BackgroundColor3 = Color3.fromRGB(10, 13, 20)
+dislGobek.BorderSizePixel = 0
+dislGobek.ZIndex = 6
+dislGobek.Parent = disli
+kose(dislGobek, 11)
+
+yazi({
+	text = "SETTING UP",
+	textSize = 13,
+	color = SOLGUN,
+	font = Enum.Font.Gotham,
+	align = Enum.TextXAlignment.Left,
+	size = UDim2.fromOffset(200, 20),
+	anchor = Vector2.new(0, 1),
+	position = UDim2.new(0, 92, 1, -48),
+	parent = perde,
+	zIndex = 5,
+	name = "DisliYazi",
+})
+
+------------------------------------------------------------------
+-- ALT KOSE  (oyunun adi)
+------------------------------------------------------------------
+--[[
+	Burada ROBLOX LOGOSU ve "(c) Roblox Corporation" YOK, bilerek: bu senin
+	oyunun yukleme ekrani, Roblox'un degil. Baskasinin markasini kendi
+	ekranina koymak hem yaniltici olur hem de Roblox'un marka kurallarina
+	girer. Yerine oyunun kendi adi duruyor; degistirmek icin yukaridaki
+	OYUN_ADI yeter.
+]]
+yazi({
+	text = OYUN_ADI,
+	textSize = 15,
+	color = SOLGUN,
+	align = Enum.TextXAlignment.Right,
+	size = UDim2.fromOffset(300, 20),
+	anchor = Vector2.new(1, 1),
+	position = UDim2.new(1, -36, 1, -36),
+	parent = perde,
+	zIndex = 5,
+	name = "OyunAdi",
+})
+
+------------------------------------------------------------------
+-- ILERLEME
+------------------------------------------------------------------
+--[[
+	CUBUK GERIYE GITMEZ, SICRAMAZ
+
+	Hedef yuzde adim adim degisiyor ama cubuk ona YUMUSAKCA yaklasiyor:
+	her karede aradaki farkin bir kismi kapaniyor. Bir obek aninda yuklenip
+	yuzde birden ziplasa bile cubuk akici kaliyor.
+]]
+local hedefYuzde = 0
+local gorunenYuzde = 0
+
+local function ilerle(deger: number, metin: string?)
+	hedefYuzde = math.clamp(math.max(deger, hedefYuzde), 0, 1)
+	if metin then
+		durumYazi.Text = metin
+	end
+end
+
+local cizimBagi: RBXScriptConnection? = nil
+
+cizimBagi = RunService.RenderStepped:Connect(function(dt: number)
+	-- Kare hizindan bagimsiz yumusatma
+	gorunenYuzde += (hedefYuzde - gorunenYuzde) * math.min(1, dt * 5)
+
+	dolgu.Size = UDim2.fromScale(gorunenYuzde, 1)
+	yuzdeYazi.Text = `{math.floor(gorunenYuzde * 100)}% Completed`
+
+	-- Uctaki parlama yalnizca dolgu gorunurken anlamli
+	parlama.Visible = gorunenYuzde > 0.02
+end)
+
+--[[
+	VARLIKLARI ONBELLEGE AL
+
+	ContentProvider varliklari obek obek indiriyor; her obekten sonra yuzde
+	ilerliyor. Obek kucuk tutuluyor ki cubuk sik sik ilerlesin -- tek
+	seferde hepsini vermek yuzdeyi 0'dan 100'e ziplatirdi.
+
+	PreloadAsync bir varlikta patlarsa butun yukleme durmasin diye her obek
+	pcall icinde.
+]]
+local function varliklariYukle()
+	ilerle(0.05, "Reaching the server...")
+
+	local kok = ReplicatedStorage:WaitForChild("Assets", 15)
+	if not kok then
+		-- Assets gelmedi: yalniz oyunun kendi yuklenmesini bekleyecegiz
+		ilerle(0.6, "Loading world...")
+		return
+	end
+
+	ilerle(0.12, "Loading world assets...")
+
+	--[[
+		Yalnizca RESIM ve SES veren nesneler. Modellerin kendisini
+		PreloadAsync'e vermek butun mesh ve dokularini indirmeye calisir;
+		bu paket icin dakikalar surebiliyor.
+	]]
+	local liste: { Instance } = {}
+	for _, node in kok:GetDescendants() do
+		if node:IsA("Decal") or node:IsA("Texture") or node:IsA("ImageLabel") or node:IsA("Sound") then
+			table.insert(liste, node)
+		end
+	end
+
+	if #liste == 0 then
+		ilerle(0.6, "Loading world...")
+		return
+	end
+
+	local OBEK = 12
+	local islenen = 0
+
+	for bas = 1, #liste, OBEK do
+		local obek: { Instance } = {}
+		for i = bas, math.min(bas + OBEK - 1, #liste) do
+			table.insert(obek, liste[i])
+		end
+
+		pcall(function()
+			ContentProvider:PreloadAsync(obek)
+		end)
+
+		islenen += #obek
+		-- Varliklar toplamin %12 ile %75'i arasini dolduruyor
+		ilerle(0.12 + (islenen / #liste) * 0.63, `Loading world assets...  {islenen} / {#liste}`)
+	end
+end
+
+------------------------------------------------------------------
+-- KAPANIS
+------------------------------------------------------------------
+local kapandi = false
+
+local function kapat()
+	if kapandi then
+		return
+	end
+	kapandi = true
+
+	ilerle(1, "Ready!")
+
+	-- Cubugun dolusu gorunsun diye kisa bir bekleme
+	task.wait(0.45)
+
+	local sonme = TweenService:Create(
+		perde,
+		TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ GroupTransparency = 1 }
+	)
+	sonme:Play()
+	sonme.Completed:Wait()
+
+	-- Her kare calisan cizim dongusu ekranla birlikte bitsin
+	if cizimBagi then
+		cizimBagi:Disconnect()
+		cizimBagi = nil
+	end
+
+	ekran:Destroy()
+end
+
+--[[
+	GUVENLIK AGI
+
+	Ne olursa olsun ekran EN_COK_BEKLEME saniye sonunda kapaniyor. Bir
+	varlik takilirsa, sunucu gec cevap verirse ya da burada bir hata
+	olursa oyuncu yukleme ekraninda kilitli kalmamali.
+]]
+task.delay(EN_COK_BEKLEME, kapat)
+
+task.spawn(function()
+	local ok, hata = pcall(varliklariYukle)
+	if not ok then
+		warn(`[YuklemeEkrani] Varliklar yuklenemedi: {tostring(hata)}`)
+	end
+
+	ilerle(0.8, "Waiting for the world...")
+
+	if not game:IsLoaded() then
+		game.Loaded:Wait()
+	end
+
+	ilerle(0.92, "Almost there...")
+
+	-- Karakter gelene kadar bekle: ekran kalkinca oyuncu bosluga dusmesin
+	if not player.Character then
+		player.CharacterAdded:Wait()
+	end
+
+	kapat()
+end)
