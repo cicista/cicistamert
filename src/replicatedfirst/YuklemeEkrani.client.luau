@@ -84,6 +84,36 @@ local playerGui = player:WaitForChild("PlayerGui")
 local ARKA_PLAN_KLASORU = { "Assets", "Backgrounds" }
 local ARKA_PLAN_ADI = "LoadingScreen"
 
+--[[
+	RESIM EKRANI NASIL DOLDURUR
+
+	ScaleType.Crop: resim, ekrani TAMAMEN kaplayana kadar buyutulur ve
+	tasan kismi kirpilir. En-boy orani korunur, yani resim asla ezilmez --
+	ama ekranin orani resmin oranindan farkliysa bir yerlerden kirpilir.
+
+	  16:9 resim,  16:9 ekran  ->  hicbir sey kirpilmaz
+	  1:1 resim,   16:9 ekran  ->  ustten ve alttan buyuk parca gider
+	  16:9 resim,  4:3 ekran   ->  saglan ve soldan gider
+
+	YANI: resmi 16:9 hazirla. 1920x1080 ideal. (Roblox yuklerken en buyuk
+	kenari 1024'e indiriyor, 1024x576 oluyor; bulanik bir zemin icin bu
+	fazlasiyla yeterli.)
+
+	ODAK  --  kirpilirken NERESI kalsin
+
+	Resmin onemli yeri ortada degilse burayi oynat. Yaklasma da bu
+	noktadan yapiliyor, yani secilen nokta hic kaymadan yerinde kaliyor:
+
+	    (0.5, 0.5)  orta          (varsayilan)
+	    (0.5, 0.25) ust taraf     (gokyuzu / logo yukaridaysa)
+	    (0.5, 0.75) alt taraf
+	    (0.25, 0.5) sol taraf
+]]
+local RESIM_ODAK = Vector2.new(0.5, 0.5)
+
+-- Yukleme boyunca resim bu orana kadar yavasca yaklasir (1 = hic yaklasma)
+local RESIM_YAKLASMA = 1.12
+
 -- Oyunun adi (alt kosede durur)
 local OYUN_ADI = "CICISTAMERT"
 
@@ -319,10 +349,16 @@ resimKabi.Parent = perde
 	kosesi kaliyordu. Simdi buyuyen cerceve ORTADAN bagli, yani her iki
 	yana esit aciliyor ve resmin ortasi hep ortada duruyor.
 ]]
+--[[
+	AnchorPoint ile Position AYNI nokta (RESIM_ODAK): cerceve buyurken o
+	nokta yerinde kaliyor, buyume onun etrafina dagiliyor. Ortada iken
+	iki yana esit aciliyor; ust tarafa alinirsa yaklasma asagi dogru
+	oluyor ve ustteki detay kadrajdan cikmiyor.
+]]
 local resimYaklasma = Instance.new("Frame")
 resimYaklasma.Name = "Yaklasma"
-resimYaklasma.AnchorPoint = Vector2.new(0.5, 0.5)
-resimYaklasma.Position = UDim2.fromScale(0.5, 0.5)
+resimYaklasma.AnchorPoint = RESIM_ODAK
+resimYaklasma.Position = UDim2.fromScale(RESIM_ODAK.X, RESIM_ODAK.Y)
 resimYaklasma.Size = UDim2.fromScale(1, 1)
 resimYaklasma.BackgroundTransparency = 1
 resimYaklasma.ZIndex = 2
@@ -415,7 +451,7 @@ task.spawn(function()
 		:Create(
 			resimYaklasma,
 			TweenInfo.new(18, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-			{ Size = UDim2.fromScale(1.12, 1.12) }
+			{ Size = UDim2.fromScale(RESIM_YAKLASMA, RESIM_YAKLASMA) }
 		)
 		:Play()
 end)
