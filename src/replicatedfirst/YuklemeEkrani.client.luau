@@ -279,7 +279,23 @@ local ekran = Instance.new("ScreenGui")
 ekran.Name = "YuklemeEkrani"
 -- Her seyin ustunde: hata ekrani bile (100) bunun altinda kalmali
 ekran.DisplayOrder = 1000
+--[[
+	EKRANIN TAMAMINI KAPLA  --  IKI AYAR BIRDEN
+
+	IgnoreGuiInset eski ozellik; yeni surumlerde yerini ScreenInsets aldi
+	ve varsayilani CoreUISafeInsets. O ayarda arayuz, ust seridin ve sol
+	ustteki Roblox/menu dugmelerinin yerini BOS BIRAKIYOR: ekran soldan ve
+	ustten iceri kayiyor, ortaya konan panel de saga kaymis gorunuyordu.
+	Soldaki bosluk da buydu.
+
+	None demek "hicbir sey icin yer birakma": arayuz pencerenin tam
+	kosesinden baslar. Eski surumlerde ScreenInsets yok, o yuzden pcall;
+	orada IgnoreGuiInset zaten isi goruyor.
+]]
 ekran.IgnoreGuiInset = true
+pcall(function()
+	(ekran :: any).ScreenInsets = Enum.ScreenInsets.None
+end)
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ekran.Parent = playerGui
