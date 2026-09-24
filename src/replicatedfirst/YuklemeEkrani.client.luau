@@ -28,9 +28,20 @@
 	yetiyor -- renkler, sekiller, yardimcilar hep burada.
 
 	ILERLEME GERCEK
-	Cubuk sahte degil: ReplicatedStorage'daki varliklar ContentProvider ile
-	obek obek onbellege aliniyor ve yuzde gercekten yuklenen orandan
-	cikiyor. Son adim oyunun kendisinin hazir olmasi (game.Loaded).
+	Cubuk sahte degil: Assets altindaki mesh, doku, resim, ses ve
+	animasyonlarin hepsi ContentProvider ile obek obek onbellege aliniyor
+	ve yuzde gercekten yuklenen orandan cikiyor. Sirayla:
+
+	    varliklar -> game.Loaded -> oyuncunun kaydi -> karakter
+
+	Yani ekran kalktiginda oyuncunun hicbir seyi "yukleniyor" halinde
+	olmuyor.
+
+	EN AZ 5 SANIYE
+	Her sey onbellekteyse yukleme bir saniyeden kisa suruyordu ve ekran
+	goz kirpmasi gibi gelip geciyordu. Artik bir ALT SINIR var; cubuk da o
+	sureye yayiliyor. Yukleme daha uzun surerse ekran acik kalmaya devam
+	ediyor.
 
 	ASILI KALMAZ
 	Her sey ters giderse EN_COK_BEKLEME saniye sonunda ekran yine de
@@ -67,7 +78,23 @@ local ARKA_PLAN_ADI = "LoadingScreen"
 local OYUN_ADI = "CICISTAMERT"
 
 -- Ne olursa olsun bu kadar saniye sonra ekran kapanir
-local EN_COK_BEKLEME = 30
+local EN_COK_BEKLEME = 45
+
+--[[
+	EN AZ GORUNME SURESI
+
+	Varliklar onbellekteyse (Studio'da her zaman, oyuna ikinci kez giren
+	oyuncuda cogu zaman) yukleme bir saniyeden kisa suruyor; ekran
+	dolmadan kapanip goz kirpmasi gibi duruyordu.
+
+	Ekran bu sureden once KAPANMIYOR ve cubuk da bu sureye yayiliyor
+	(bkz. asagida zamanSiniri): yukleme anlik bitse bile cubuk 0'dan
+	100'e duzgunce doluyor.
+
+	Yukleme daha UZUN surerse ekran acik kalmaya devam ediyor; bu bir
+	alt sinir, ust sinir degil.
+]]
+local EN_AZ_GORUNME = 5
 
 -- Renkler
 local NEON = Color3.fromRGB(70, 190, 255)
@@ -589,6 +616,13 @@ yazi({
 local hedefYuzde = 0
 local gorunenYuzde = 0
 
+-- Ekranin acildigi an; hem cubugun hizi hem kapanma izni buna bagli
+local basladi = os.clock()
+
+local function gecenSure(): number
+	return os.clock() - basladi
+end
+
 local function ilerle(deger: number, metin: string?)
 	hedefYuzde = math.clamp(math.max(deger, hedefYuzde), 0, 1)
 	if metin then
@@ -599,8 +633,19 @@ end
 local cizimBagi: RBXScriptConnection? = nil
 
 cizimBagi = RunService.RenderStepped:Connect(function(dt: number)
+	--[[
+		CUBUK ZAMANI GECEMEZ
+
+		Gercek ilerleme anlik %100 olsa bile cubuk en az EN_AZ_GORUNME
+		saniyede doluyor. Yukleme daha yavassa bu sinir devreye girmiyor:
+		ikisinden KUCUK olan kullaniliyor, yani cubuk her zaman gercek
+		ilerlemenin gerisinde ya da esitinde.
+	]]
+	local zamanSiniri = math.clamp(gecenSure() / EN_AZ_GORUNME, 0, 1)
+	local hedef = math.min(hedefYuzde, zamanSiniri)
+
 	-- Kare hizindan bagimsiz yumusatma
-	gorunenYuzde += (hedefYuzde - gorunenYuzde) * math.min(1, dt * 5)
+	gorunenYuzde += (hedef - gorunenYuzde) * math.min(1, dt * 5)
 
 	dolgu.Size = UDim2.fromScale(gorunenYuzde, 1)
 	yuzdeYazi.Text = `{math.floor(gorunenYuzde * 100)}% Completed`
@@ -632,13 +677,28 @@ local function varliklariYukle()
 	ilerle(0.12, "Loading world assets...")
 
 	--[[
-		Yalnizca RESIM ve SES veren nesneler. Modellerin kendisini
-		PreloadAsync'e vermek butun mesh ve dokularini indirmeye calisir;
-		bu paket icin dakikalar surebiliyor.
+		NE YUKLENIYOR
+
+		Assets altindaki icerik tasiyan HER sey: brainrot ve blok
+		modellerinin mesh'leri, dokular, resimler, sesler, animasyonlar.
+		Oyuncu oyuna girdiginde hicbiri "yukleniyor" halinde olmasin.
+
+		Modellerin KENDISI listeye girmiyor, icindeki parcalar giriyor:
+		PreloadAsync bir Model verilince zaten icini geziyor, ama parca
+		parca vermek ilerlemeyi olcmeyi sagliyor -- tek bir devasa model
+		verilseydi cubuk o model bitene kadar hic kimildamazdi.
 	]]
 	local liste: { Instance } = {}
 	for _, node in kok:GetDescendants() do
-		if node:IsA("Decal") or node:IsA("Texture") or node:IsA("ImageLabel") or node:IsA("Sound") then
+		if
+			node:IsA("MeshPart")
+			or node:IsA("SpecialMesh")
+			or node:IsA("Decal")
+			or node:IsA("Texture")
+			or node:IsA("ImageLabel")
+			or node:IsA("Sound")
+			or node:IsA("Animation")
+		then
 			table.insert(liste, node)
 		end
 	end
@@ -679,6 +739,16 @@ local function kapat()
 	kapandi = true
 
 	ilerle(1, "Ready!")
+
+	--[[
+		EN AZ GORUNME: her sey hazir olsa bile ekran bu sureyi doldurmadan
+		kapanmiyor. Cubuk da ayni sureye yayildigi icin (bkz. zamanSiniri)
+		burada beklerken dolmaya devam ediyor -- bos bir bekleme degil.
+	]]
+	local kalan = EN_AZ_GORUNME - gecenSure()
+	if kalan > 0 then
+		task.wait(kalan)
+	end
 
 	-- Cubugun dolusu gorunsun diye kisa bir bekleme
 	task.wait(0.45)
@@ -721,7 +791,20 @@ task.spawn(function()
 		game.Loaded:Wait()
 	end
 
-	ilerle(0.92, "Almost there...")
+	--[[
+		OYUNCUNUN KENDI VERISI
+
+		leaderstats, sunucu oyuncunun kaydini yukledikten SONRA olusuyor
+		(bkz. ServerScriptService > Leaderstats). Yani o geldiyse oyuncunun
+		rotu, seviyesi, envanteri hazir demektir.
+
+		Zaman asimi var: veri bir sebeple hic gelmezse ekran burada
+		takilmasin, oyuncu yine de oyuna girsin.
+	]]
+	ilerle(0.88, "Loading your progress...")
+	player:WaitForChild("leaderstats", 15)
+
+	ilerle(0.94, "Almost there...")
 
 	-- Karakter gelene kadar bekle: ekran kalkinca oyuncu bosluga dusmesin
 	if not player.Character then
