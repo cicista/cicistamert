@@ -224,8 +224,29 @@ local KAZMA_ACI = 0
 local ikonAci = IKON_ACI
 local kazmaUyarisiVerildi = false
 
--- Barin sag kenardan uzakligi: sag alttaki ayarlar dugmesiyle cakismasin
-local SAG_BOSLUK = 150
+--[[
+	BAR NEREDE DURUR  --  OTO TIKLAYICI DUGMESININ TAM USTUNDE
+
+	Bar eskiden ekranin sag ortasindaydi ve oradaki Lucky Block yagmuru
+	bildirimiyle ust uste biniyordu. Artik konumu kendi basina degil,
+	oto tiklayici dugmesine GORE hesaplaniyor: ikisi tek bir yigin, dugme
+	nereye tasinirsa bar da onunla gidiyor ve bir daha ayrilmiyorlar.
+
+	Olcu ORAN (0-1), ofset degil: arayuz olcegi nesnelerin boyutunu
+	carpiyor ama ofsetini carpmiyor; ofsetle yerlestirilseydi olcek
+	degisince bar dugmeden kayardi.
+]]
+local OTO_X = 0.72
+local OTO_Y = 0.8
+
+-- Oto tiklayici kutusunun boyu; bar bunun ustune oturuyor
+local OTO_BOY = 92
+
+-- Barla dugme arasinda birakilan bosluk (piksel)
+local KAZI_ARA = 14
+
+-- Barin boyu. Dugmeyle ekranin ustu arasina sigacak kadar
+local KAZI_BOY = 360
 
 -- Alttaki kaybetme bolgesi: imlec buraya inerse brainrot kacmak uzeredir
 local TEHLIKE_ORANI = 0.16
@@ -240,9 +261,10 @@ kaziEkran.Parent = playerGui
 
 local kaziCerceve = Instance.new("Frame")
 kaziCerceve.Name = "Cerceve"
-kaziCerceve.AnchorPoint = Vector2.new(1, 0.5)
-kaziCerceve.Position = UDim2.new(1, -SAG_BOSLUK, 0.5, 0)
-kaziCerceve.Size = UDim2.fromOffset(74, 430)
+-- Alt kenari dugmenin hemen ustunde; yukari dogru uzuyor
+kaziCerceve.AnchorPoint = Vector2.new(0.5, 1)
+kaziCerceve.Position = UDim2.new(OTO_X, 0, OTO_Y, -(OTO_BOY / 2 + KAZI_ARA))
+kaziCerceve.Size = UDim2.fromOffset(74, KAZI_BOY)
 kaziCerceve.BackgroundColor3 = Color3.fromRGB(74, 55, 36)
 kaziCerceve.BorderSizePixel = 0
 kaziCerceve.ClipsDescendants = true
@@ -372,30 +394,14 @@ kaziIkon.Parent = kaziKatman
 ------------------------------------------------------------------
 
 --[[
-	DUGMENIN YERI  --  piksel ofseti degil EKRAN ORANI
-
-	Once bara gore piksel ofsetiyle konuluyordu ve barin tam soluna,
-	orta yukseklige denk geliyordu. Iki sebeple orana cevrildi:
-
-	  1. Istenen yer orasi degil: kazi sirasinda fare ekranin ALT
-	     tarafinda duruyor, dugme de oraya yakin olmali ki oyuncu
-	     fareyi yukari tasimadan basabilsin.
-
-	  2. Arayuz olcegi (UI.setScale) nesnelerin BOYUTUNU carpiyor ama
-	     konum OFSETINI carpmiyor. Ofsetle yerlestirilen dugme, olcek
-	     degistiginde bardan kayiyordu; oran her olcekte ayni noktada
-	     durur.
-
-	Kaydirmak istersen yalnizca bu iki sayi: 0 = sol/ust, 1 = sag/alt.
+	Dugmenin yeri yukarida, barla BIRLIKTE tanimli (OTO_X / OTO_Y): bar
+	dugmenin tam ustunde duruyor, ikisi tek yigin.
 ]]
-local OTO_X = 0.72
-local OTO_Y = 0.8
-
 local otoKutu = Instance.new("Frame")
 otoKutu.Name = "OtoTiklayici"
 otoKutu.AnchorPoint = Vector2.new(0.5, 0.5)
 otoKutu.Position = UDim2.fromScale(OTO_X, OTO_Y)
-otoKutu.Size = UDim2.fromOffset(176, 92)
+otoKutu.Size = UDim2.fromOffset(176, OTO_BOY)
 otoKutu.BackgroundTransparency = 1
 otoKutu.Visible = true
 otoKutu.ZIndex = 8
