@@ -27,6 +27,10 @@ local Tools = require(script.Parent:WaitForChild("Tools"))
 local Scrolls = require(Shared:WaitForChild("Scrolls"))
 -- Tool adet niteligi (hotbar rozeti) icin
 local Assets = require(Shared:WaitForChild("Assets"))
+-- Canta kapasitesi ve yukseltme fiyati
+local Canta = require(Shared:WaitForChild("Canta"))
+-- Yukseltme bildiriminde fiyat yazisi
+local Format = require(Shared:WaitForChild("Format"))
 local Olta = require(script.Parent:WaitForChild("Olta"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
@@ -80,6 +84,9 @@ function Envanter.push(player: Player)
 		pickaxes = data.pickaxes,
 		-- Envanter ekrani base bolumunu 1..acik slot sayisi kadar ciziyor
 		baseSlots = data.baseSlots,
+		-- Canta kapasitesi ve siradaki yukseltmenin bedeli (bkz. Shared > Canta)
+		inventoryMax = PlayerData.cantaKapasitesi(player),
+		inventoryUpgrade = Canta.fiyat(PlayerData.cantaKapasitesi(player)),
 		-- Isinlayici menusu acik adalari bundan ciziyor
 		islands = data.islands,
 	})
@@ -609,5 +616,62 @@ function Envanter.refresh(player: Player)
 	Envanter.syncScrolls(player)
 	Envanter.push(player)
 end
+
+------------------------------------------------------------------
+-- CANTA KAPASITESI YUKSELTME
+--
+-- Envanter panelindeki dugme bu olayi yolluyor. Fiyat ve sinirlar
+-- Shared > Canta'da; burasi yalnizca odemeyi alip kapasiteyi buyutuyor.
+--
+-- BAGLANTI task.spawn ICINDE: Net.event remote'u beklerken bu modulun
+-- yuklenmesi durmasin -- Envanter neredeyse butun sunucu betikleri
+-- tarafindan require ediliyor, burada takilmak oyunu acmazdi.
+------------------------------------------------------------------
+task.spawn(function()
+	local CantaYukselt = Net.event("CantaYukselt")
+	local Bildirim = Net.event("Bildirim")
+
+	CantaYukselt.OnServerEvent:Connect(function(player)
+		local data = PlayerData.get(player)
+		if not data then
+			return
+		end
+
+		local kapasite = PlayerData.cantaKapasitesi(player)
+		local fiyat = Canta.fiyat(kapasite)
+
+		if not fiyat then
+			Bildirim:FireClient(
+				player,
+				`Your backpack is already at its maximum ({Canta.EnCok}).`,
+				Color3.fromRGB(255, 200, 90)
+			)
+			return
+		end
+
+		if data.rot < fiyat then
+			Bildirim:FireClient(
+				player,
+				`Not enough Rot! You need {Format.short(fiyat - data.rot)} more to upgrade your backpack.`,
+				Color3.fromRGB(255, 120, 120)
+			)
+			return
+		end
+
+		if not PlayerData.cantayiYukselt(player) then
+			return
+		end
+
+		-- Odeme yukseltme BASARILI olduktan sonra: basarisizsa para gitmesin
+		PlayerData.addRot(player, -fiyat)
+		Envanter.push(player)
+
+		Bildirim:FireClient(
+			player,
+			`Backpack upgraded to {PlayerData.cantaKapasitesi(player)} brainrots!`,
+			Color3.fromRGB(120, 255, 150)
+		)
+	end)
+end)
 
 return Envanter

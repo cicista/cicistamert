@@ -406,7 +406,8 @@ local ENVANTER_ZEMIN = Color3.fromRGB(84, 58, 38)
 	    ( 12 Brainrots ) ( 3 Unidentified ) ( 4/10 On Base )
 	    ON YOUR BASE  4/10
 	      #1 ....  #2 ....  #3 (bos)  ...            <- slot sirasiyla, bos slotlar da
-	    IN YOUR BACKPACK  (8)
+	    IN YOUR BACKPACK  8 / 20
+	      [ UPGRADE BACKPACK +10          1.00B Rot ]
 	      pahalidan ucuza ...
 
 	Base'deki bir brainrota tiklamak onu cantaya geri alir.
@@ -644,7 +645,75 @@ local function refreshEnvanter()
 	-- sey burasi. Base slotlari oturmus bir duzen, onlara bakmak icin
 	-- asagi inmek yeterli.
 	------------------------------------------------------------------
-	sectionHeader(envanterListe, `IN YOUR BACKPACK   ({#cantada})`, 1, Color3.fromRGB(60, 130, 230))
+	--[[
+		Baslikta DOLULUK yaziyor: "8 / 20". Oyuncu sinirin varligini ve
+		nereye geldigini listenin basinda gorsun.
+	]]
+	-- Modul burada isteniyor: dosya 200 yerel sinirinda, require onbellekli
+	local Canta = require(Shared:WaitForChild("Canta")) :: any
+	local kapasite = tonumber(inventory.inventoryMax) or Canta.Baslangic
+	sectionHeader(
+		envanterListe,
+		`IN YOUR BACKPACK   {#cantada} / {kapasite}`,
+		1,
+		Color3.fromRGB(60, 130, 230)
+	)
+
+	--[[
+		KAPASITE YUKSELTME SATIRI
+
+		Basligin hemen altinda: dolulugu goren oyuncunun bir sonraki
+		hamlesi burasi. Fiyat sunucudan geliyor (Shared > Canta);
+		kapasite doluysa satir "MAX" der ve tiklanmaz.
+	]]
+	do
+		local fiyat = tonumber(inventory.inventoryUpgrade)
+
+		local satir = Instance.new("TextButton")
+		satir.Name = "CantaYukselt"
+		satir.Size = UDim2.new(1, -6, 0, 40)
+		satir.LayoutOrder = 2
+		satir.BackgroundColor3 = if fiyat then UI.Colors.good else UI.Colors.panelLight
+		satir.BorderSizePixel = 0
+		satir.AutoButtonColor = false
+		satir.Text = ""
+		satir.Parent = envanterListe
+		UI.corner(satir, 10)
+		UI.stroke(satir, Color3.fromRGB(0, 0, 0), 2)
+
+		UI.text({
+			text = if fiyat
+				then `UPGRADE BACKPACK  +{Canta.Adim}`
+				else `BACKPACK MAXED  ({Canta.EnCok})`,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = Color3.new(1, 1, 1),
+			frameSize = UDim2.new(1, -170, 1, 0),
+			position = UDim2.fromOffset(12, 0),
+			parent = satir,
+			zIndex = 5,
+		})
+
+		if fiyat then
+			UI.text({
+				text = `{Format.short(fiyat)} Rot`,
+				size = UI.Sizes.small,
+				font = UI.Fonts.bold,
+				color = Color3.fromRGB(255, 232, 140),
+				align = Enum.TextXAlignment.Right,
+				frameSize = UDim2.fromOffset(150, 40),
+				anchor = Vector2.new(1, 0.5),
+				position = UDim2.new(1, -12, 0.5, 0),
+				parent = satir,
+				zIndex = 5,
+			})
+
+			UI.hover(satir)
+			satir.MouseButton1Click:Connect(function()
+				Net.event("CantaYukselt"):FireServer()
+			end)
+		end
+	end
 
 	if #cantada == 0 then
 		UI.text({
@@ -655,7 +724,7 @@ local function refreshEnvanter()
 			frameSize = UDim2.new(1, 0, 0, 36),
 			parent = envanterListe,
 			wrapped = true,
-		}).LayoutOrder = 2
+		}).LayoutOrder = 3
 	else
 		table.sort(cantada, function(a, b)
 			local acikA = a.revealed == true and a.name ~= nil
@@ -667,7 +736,7 @@ local function refreshEnvanter()
 		end)
 
 		for index, item in cantada do
-			eleAlTikla(brainrotRow(envanterListe, item, 1 + index, envanterPencere), item)
+			eleAlTikla(brainrotRow(envanterListe, item, 10 + index, envanterPencere), item)
 		end
 	end
 

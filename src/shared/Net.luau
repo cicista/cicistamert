@@ -29,6 +29,7 @@ Net.Events = {
 	-- Envanter
 	"EnvanterGuncelle", -- server -> client: tam envanter
 	"EnvanterAc",       -- client -> server: envanteri istiyorum
+	"CantaYukselt",     -- client -> server: canta kapasitesini bir adim buyut
 
 	-- Brainrot Detective
 	"DetectiveAc",      -- server -> client: teslim edilebilir siyah brainrotlar

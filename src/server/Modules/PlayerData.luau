@@ -37,6 +37,10 @@ local Passler = require(Shared:WaitForChild("Passler"))
 -- Gunluk odul takviminin gun sayisi (rewardDay sinirlari)
 local Rewards = require(Shared:WaitForChild("Rewards"))
 local Ores = require(Shared:WaitForChild("Ores"))
+-- Canta kapasitesi ve yukseltme fiyatlari
+local Canta = require(Shared:WaitForChild("Canta"))
+-- Canta dolunca oyuncuyu uyarmak icin
+local Net = require(Shared:WaitForChild("Net"))
 
 export type InventoryItem = {
 	uid: string,
@@ -101,6 +105,14 @@ export type Data = {
 	-- Base gelisimi: kac kat acik ve toplam kac slot kullanilabilir
 	baseFloors: number,
 	baseSlots: number,
+	--[[
+		CANTA KAPASITESI  --  slota KONMAMIS brainrot siniri
+
+		20 ile baslar, Rot ile 10'ar 10'ar 100'e kadar buyur
+		(bkz. Shared > Canta). Base slotundaki brainrotlar bu sayiya
+		girmiyor' onlar base'de duruyor.
+	]]
+	inventoryMax: number,
 	-- Gunluk odul ve gecici sans
 	lastReward: number,
 	-- Gunluk odul takviminde siradaki gun (bkz. Shared > Rewards)
@@ -259,6 +271,7 @@ local function defaultData(): Data
 		-- 1. kat bedava gelir (bkz. Bases.Upgrade.startingSlots)
 		baseFloors = 1,
 		baseSlots = 10,
+		inventoryMax = Canta.Baslangic,
 		lastReward = 0,
 		rewardDay = 1,
 		luckUntil = 0,
@@ -463,6 +476,8 @@ local function migrate(raw: any): Data
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)
 	data.baseSlots = math.clamp(tonumber(raw.baseSlots) or 10, 10, 30)
+	-- Canta yukseltmesi oncesi kayitlar baslangic kapasitesiyle acilir
+	data.inventoryMax = Canta.duzelt(tonumber(raw.inventoryMax))
 
 	-- Odul oncesi kayitlarda bu alanlar yok; sifirdan baslarlar
 	data.lastReward = math.max(0, tonumber(raw.lastReward) or 0)
@@ -781,6 +796,7 @@ function PlayerData.release(player: Player)
 
 	PlayerData.save(player)
 	cache[player] = nil
+	sonDoluUyarisi[player] = nil
 end
 
 ------------------------------------------------------------------
@@ -797,6 +813,82 @@ end
 
 	Eski kayitlarda bu alan yok; nil gelirse butun havuza dusuluyor.
 ]]
+--[[
+	CANTA DOLU UYARISI
+
+	Uyari BURADA veriliyor cunku dolulugu gorebilen tek yer burasi; kazi,
+	olta, Fuse ve Lucky Block yollarinin hepsi addBrainrot'tan geciyor.
+
+	SEYRELTILIYOR: oyuncu canta doluyken kazmaya devam ederse her vurusta
+	bir bildirim cikardi. Ayni oyuncuya UYARI_ARASI saniyede bir kez.
+]]
+local UYARI_ARASI = 6
+local sonDoluUyarisi: { [Player]: number } = {}
+
+local function cantaDoluUyar(player: Player, data: Data)
+	local simdi = os.clock()
+	if simdi - (sonDoluUyarisi[player] or -math.huge) < UYARI_ARASI then
+		return
+	end
+	sonDoluUyarisi[player] = simdi
+
+	local kapasite = Canta.duzelt(data.inventoryMax)
+	local mesaj = if Canta.dolu(kapasite)
+		then `Backpack full ({kapasite})! Sell some brainrots or place them on your base.`
+		else `Backpack full ({kapasite})! Sell some, place them on your base, or upgrade in your Inventory.`
+
+	pcall(function()
+		Net.event("Bildirim"):FireClient(player, mesaj, Color3.fromRGB(255, 160, 90))
+	end)
+end
+
+--[[
+	CANTADAKI (slota konmamis) brainrot sayisi.
+
+	Base slotundakiler sayilmiyor: onlar base'de duruyor ve kendi
+	siniri var (bkz. Shared > Bases > Upgrade).
+]]
+function PlayerData.cantaSayisi(player: Player): number
+	local data = cache[player]
+	if not data then
+		return 0
+	end
+
+	local n = 0
+	for _, item in data.inventory do
+		if not item.slot then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- Cantanin su anki kapasitesi
+function PlayerData.cantaKapasitesi(player: Player): number
+	local data = cache[player]
+	return if data then Canta.duzelt(data.inventoryMax) else Canta.Baslangic
+end
+
+--[[
+	Kapasiteyi bir adim buyutur. Odeme CAGIRAN tarafta yapiliyor
+	(bkz. ServerScriptService > Envanter kapasitesi); burasi yalnizca
+	sayiyi artiriyor. Buyutulemezse false doner.
+]]
+function PlayerData.cantayiYukselt(player: Player): boolean
+	local data = cache[player]
+	if not data then
+		return false
+	end
+
+	local simdiki = Canta.duzelt(data.inventoryMax)
+	if simdiki >= Canta.EnCok then
+		return false
+	end
+
+	data.inventoryMax = math.min(Canta.EnCok, simdiki + Canta.Adim)
+	return true
+end
+
 function PlayerData.addBrainrot(
 	player: Player,
 	rarity: string,
@@ -806,6 +898,18 @@ function PlayerData.addBrainrot(
 ): InventoryItem?
 	local data = cache[player]
 	if not data then
+		return nil
+	end
+
+	--[[
+		CANTA DOLUYSA BRAINROT ALINMIYOR
+
+		Denetim BURADA, cagiran yerlerde degil: kazi, olta, Fuse, Lucky
+		Block ve gorev odulu -- hepsi bu fonksiyondan geciyor, tek satirla
+		hepsi kapsaniyor. Cagiranlar zaten nil donusunu bekliyor.
+	]]
+	if PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
+		cantaDoluUyar(player, data)
 		return nil
 	end
 
