@@ -23,6 +23,10 @@
 	SonFiyat; aradakiler ussel olarak dagiliyor. Yani iki uc degeri
 	degistirmek butun egriyi yeniden dagitiyor, arada elle sayi yazmak
 	gerekmiyor.
+
+	    10M  65M  425M  2.77B  18.1B  118B  767B  5T      (toplam ~5.9T)
+
+	Ilki ucuz: oyuncu sinirin varligini ogrenirken duvara toslamasin.
 ]]
 
 local Canta = {}
@@ -37,7 +41,7 @@ Canta.Adim = 10
 Canta.EnCok = 100
 
 -- Ilk yukseltmenin (20 -> 30) bedeli
-Canta.IlkFiyat = 1_000_000_000
+Canta.IlkFiyat = 10_000_000
 
 -- Son yukseltmenin (90 -> 100) bedeli
 Canta.SonFiyat = 5_000_000_000_000
