@@ -677,6 +677,91 @@ function UI.listePayi(liste: GuiObject, pay: number?): UIPadding
 	return dolgu
 end
 
+--[[
+	=====================================================================
+	ROBUX FIYATI  --  ikon + sayi
+	=====================================================================
+
+	"BUY 500 R$" yerine Robux ikonunun kendisi ve yaninda sayi. Ikon
+	Assets > Icons > Robux; MeshPart olarak konmus.
+
+	  - Uzerinde doku varsa duz bir resim gibi kullaniliyor (en ucuzu)
+	  - Doku yoksa (rengi mesh'ten geliyorsa) nesnenin KENDISI kucuk bir
+	    ViewportFrame'de gosteriliyor
+	  - Ikisi de yoksa eskisi gibi "R$ 500" yazisi kaliyor
+
+	Yani ikon konmadan once de fiyat dogru gorunuyor; ikon gelince
+	kendiliginden yerini aliyor.
+
+	Donen cerceve YATAYDA KENDI BOYUNDA (AutomaticSize): cagiran taraf
+	istedigi yere ortalayabilir.
+]]
+-- Ikon yazidan buyuk cizilir: ayni boyda oldugunda dugmenin icinde kayboluyor
+UI.RobuxIkonOrani = 1.5
+
+local function robuxNesnesi(): Instance?
+	local assets = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
+	local ikonlar = assets and assets:FindFirstChild("Icons")
+	local node = ikonlar and ikonlar:FindFirstChild("Robux", true)
+	return if node and (node:IsA("BasePart") or node:IsA("Model")) then node:Clone() else nil
+end
+
+function UI.robuxFiyati(parent: GuiObject, miktar: number, boyut: number, zIndex: number?): Frame
+	local Icons = require(Shared:WaitForChild("Icons")) :: any
+	local resim = Icons.asset("Robux")
+	local nesne = if resim then nil else robuxNesnesi()
+	local katman = zIndex or 5
+	local ikonBoy = math.floor(boyut * UI.RobuxIkonOrani)
+
+	local kutu = Instance.new("Frame")
+	kutu.Name = "Fiyat"
+	kutu.AnchorPoint = Vector2.new(0.5, 0.5)
+	kutu.Position = UDim2.fromScale(0.5, 0.5)
+	kutu.Size = UDim2.fromOffset(0, math.max(ikonBoy, boyut + 4))
+	kutu.AutomaticSize = Enum.AutomaticSize.X
+	kutu.BackgroundTransparency = 1
+	kutu.ZIndex = katman
+	kutu.Parent = parent
+
+	local dizilim = Instance.new("UIListLayout")
+	dizilim.FillDirection = Enum.FillDirection.Horizontal
+	dizilim.VerticalAlignment = Enum.VerticalAlignment.Center
+	dizilim.Padding = UDim.new(0, 5)
+	dizilim.SortOrder = Enum.SortOrder.LayoutOrder
+	dizilim.Parent = kutu
+
+	if resim then
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "Ikon"
+		ikon.BackgroundTransparency = 1
+		ikon.Image = resim
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.Size = UDim2.fromOffset(ikonBoy, ikonBoy)
+		ikon.LayoutOrder = 1
+		ikon.ZIndex = katman
+		ikon.Parent = kutu
+	elseif nesne then
+		local kare = UI.modelKaresi(kutu, nesne, ikonBoy + 4, katman)
+		if kare then
+			kare.Name = "Ikon"
+			kare.LayoutOrder = 1
+		end
+	end
+
+	local sayi = UI.text({
+		text = if resim or nesne then tostring(miktar) else `R$ {miktar}`,
+		size = boyut,
+		font = UI.Fonts.bold,
+		frameSize = UDim2.fromOffset(0, math.max(ikonBoy, boyut + 4)),
+		parent = kutu,
+		zIndex = katman,
+	})
+	sayi.AutomaticSize = Enum.AutomaticSize.X
+	sayi.LayoutOrder = 2
+
+	return kutu
+end
+
 function UI.panel(parent: Instance, size: UDim2, name: string?): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = name or "Panel"

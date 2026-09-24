@@ -3041,16 +3041,52 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		end
 	end
 
+	--[[
+		ODUL YAZISI IKI SATIRA SIGAR
+
+		"Detective Pass (1 Day)" tek satira sigmiyor ve sonu kesiliyordu --
+		tam da SURENIN yazdigi yer. Sarma acik, kutu iki satir boyunda.
+	]]
 	UI.text({
 		text = Rewards.label(gun),
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		color = Color3.fromRGB(255, 255, 255),
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, -8, 0, 20),
-		position = UDim2.new(0, 4, 1, -66),
+		frameSize = UDim2.new(1, -8, 0, 36),
+		position = UDim2.new(0, 4, 1, -82),
 		parent = kart,
+		wrapped = true,
 	})
+
+	--[[
+		YANINDA VERILEN SURELI GECIS  (5. gun: 12 saat Teleporter)
+
+		Ana odul Lucky Block oldugu icin gecis hicbir yerde gorunmuyordu;
+		oyuncu ancak odulu alinca bildirimde fark ediyordu. Artik kartta
+		kendi satiri var -- Rot Coin satiriyla ayni mantik.
+	]]
+	if odul.pass and odul.passSeconds and odul.kind ~= "pass" then
+		--[[
+			Modul burada isteniyor (ust seviyede degil): dosya 200 yerel
+			sinirinin dibinde. require onbellekli, tekrari bedava.
+		]]
+		local Passler = require(Shared:WaitForChild("Passler")) :: any
+		local bilgi = Passler.get(odul.pass)
+		local gecisYazi = UI.text({
+			text = `+ {if bilgi then bilgi.ad else odul.pass} {Rewards.passSuresi(odul.passSeconds)}`,
+			size = UI.Sizes.tiny,
+			font = UI.Fonts.bold,
+			color = Color3.fromRGB(190, 150, 255),
+			align = Enum.TextXAlignment.Center,
+			outline = false,
+			frameSize = UDim2.new(1, -8, 0, 16),
+			position = UDim2.new(0, 4, 1, -48),
+			parent = kart,
+			name = "GecisOdulu",
+		})
+		UI.stroke(gecisYazi, Color3.fromRGB(0, 0, 0), 2)
+	end
 
 	-- Alt dugme cubugu: durum yazisi + (yalnizca bugun hazirken) tiklanir
 	local cubuk = Instance.new("Frame")
@@ -3435,15 +3471,23 @@ task.spawn(function()
 				Icons.bind(ikon, SosyalOdul.ikon(odul))
 			end
 
+			--[[
+				IKI SATIRA SIGAR
+
+				"Auto Clicker 15 min" tek satira sigmiyor ve sonu "..." ile
+				kesiliyordu: odulun SURESI tam da kesilen yerde kaliyordu.
+				Sarma acik ve kutu iki satir boyunda.
+			]]
 			UI.text({
 				text = SosyalOdul.etiket(odul),
 				size = UI.Sizes.small,
 				font = UI.Fonts.bold,
 				color = BEYAZ,
 				align = Enum.TextXAlignment.Center,
-				frameSize = UDim2.new(1, -6, 0, 20),
-				position = UDim2.new(0, 3, 1, -70),
+				frameSize = UDim2.new(1, -6, 0, 36),
+				position = UDim2.new(0, 3, 1, -84),
 				parent = kart,
+				wrapped = true,
 			})
 
 			local dugme, yazi = durumDugmesi(kart, UDim2.new(1, -16, 0, 38), UI.Colors.gold)
@@ -5357,10 +5401,21 @@ do
 				parent = satir,
 			})
 
-			local al = UI.button(satir, `BUY  {if pass then pass.fiyat else 0} R$`, UDim2.fromOffset(140, 42), UI.Colors.good)
+			--[[
+				Fiyat "R$" yazisi degil ROBUX IKONU + sayi (bkz.
+				UI.robuxFiyati). Dugmenin kendi yazisi bos birakiliyor,
+				ikon ve sayi onun ortasina konuyor.
+			]]
+			local al = UI.button(satir, "", UDim2.fromOffset(150, 42), UI.Colors.good)
 			al.AnchorPoint = Vector2.new(1, 0.5)
 			al.Position = UDim2.new(1, -10, 0.5, 0)
 			UI.stroke(al, Color3.fromRGB(0, 0, 0), 2)
+
+			local yuz = al:FindFirstChild("Label")
+			if yuz and yuz:IsA("TextLabel") then
+				yuz.Text = ""
+			end
+			UI.robuxFiyati(al, if pass then pass.fiyat else 0, UI.Sizes.body, 4)
 			al.MouseButton1Click:Connect(function()
 				PassSatinAl:FireServer("Teleporter")
 			end)

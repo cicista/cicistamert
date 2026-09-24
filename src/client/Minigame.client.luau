@@ -386,7 +386,7 @@ kaziIkon.Parent = kaziKatman
 --
 -- Barin SOLUNDA, kurek ikonuyla ayni yukseklikte durur. Uc hali var:
 --
---   pass yok         ->  "BUY 500 R$"  (tiklayinca satin alma penceresi)
+--   pass yok         ->  Robux ikonu + fiyat (tiklayinca satin alma penceresi)
 --   pass var, kapali ->  "OFF"
 --   pass var, acik   ->  "ON"          (kurek kendi kendine vurur)
 --
@@ -491,15 +491,38 @@ local function otoCalisiyorMu(): boolean
 	return otoSahip and otoAcik
 end
 
+--[[
+	FIYAT KUTUSU  --  ikon + sayi
+
+	Pass alinmamisken dugmede "BUY 500 R$" yazisi yerine Robux ikonu ve
+	sayi duruyor (bkz. UI.robuxFiyati). Kutu bir kez kuruluyor ve pass
+	alininca gizleniyor: her cizimde yeniden kurmak gereksiz.
+]]
+local otoFiyat: Frame? = nil
+
 local function otoDugmeyiCiz()
 	otoKutu.Visible = true
 
 	if not otoSahip then
 		local pass = Passler.get("AutoClicker")
-		otoYazi.Text = `BUY  {if pass then pass.fiyat else 0} R$`
+
+		if not otoFiyat then
+			otoFiyat = UI.robuxFiyati(otoDugme, if pass then pass.fiyat else 0, UI.Sizes.label, 10)
+		end
+		local kutu = otoFiyat
+		if kutu then
+			kutu.Visible = true
+		end
+
+		otoYazi.Text = ""
 		otoRenk = UI.Colors.gold
 		otoDugme.BackgroundColor3 = otoRenk
 		return
+	end
+
+	local kutu = otoFiyat
+	if kutu then
+		kutu.Visible = false
 	end
 
 	otoYazi.Text = if otoAcik then "ON" else "OFF"
