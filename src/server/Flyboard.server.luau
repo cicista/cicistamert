@@ -38,6 +38,8 @@ local Fonts = require(Shared:WaitForChild("Fonts"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+-- Ilk flyboardun kurek sarti icin (bkz. Flyboard.KurekSarti)
+local Shovels = require(Shared:WaitForChild("Shovels"))
 local Assets = require(Shared:WaitForChild("Assets"))
 
 local Modules = script.Parent:WaitForChild("Modules")
@@ -985,6 +987,27 @@ FlyboardAl.OnServerEvent:Connect(function(player, id)
 	if info.level ~= enYuksek + 1 then
 		Bildirim:FireClient(player, "Buy the previous flyboard first.", Color3.fromRGB(255, 200, 90))
 		return
+	end
+
+	--[[
+		ILK FLYBOARD KUREK SARTINA BAGLI (bkz. Shared > Flyboard.KurekSarti).
+		Sonrakilerde aranmiyor: ilkini alan zaten sarti gecmis oluyor.
+	]]
+	if info.level == 1 and Flyboard.KurekSarti > 0 then
+		local kurek = Shovels.Info[data.shovelMax]
+		local seviye = if kurek then kurek.level else 0
+		if seviye < Flyboard.KurekSarti then
+			local gereken = Shovels.Order[Flyboard.KurekSarti]
+			local gerekenAd = if gereken and Shovels.Info[gereken]
+				then Shovels.Info[gereken].displayName
+				else `a level {Flyboard.KurekSarti} shovel`
+			Bildirim:FireClient(
+				player,
+				`You need {gerekenAd} (shovel level {Flyboard.KurekSarti}) before your first flyboard.`,
+				Color3.fromRGB(255, 200, 90)
+			)
+			return
+		end
 	end
 
 	if data.rot < info.price then

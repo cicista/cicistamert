@@ -57,6 +57,21 @@ export type FlyboardInfo = {
 
 Flyboard.Order = { "Basic", "Wave", "Storm", "Nebula", "Inferno" } :: { FlyboardId }
 
+--[[
+	ILK FLYBOARD ICIN KUREK SARTI
+
+	Flyboard denizi aciyor; deniz de oyunun son bolumu. Karada isini
+	bitirmemis bir oyuncu oraya gitsin diye degil, BITIRMIS oyuncu gitsin
+	diye: en az bu seviyede bir kurek isteniyor.
+
+	15 = Aurora Shovel, Snow Island'in SON kuregi (bkz. Shared > Shovels;
+	Order'daki sira seviyeyle ayni). Yani oyuncunun Snow Island'i acmis ve
+	oradaki bes kuregi de bitirmis olmasi gerekiyor.
+
+	Sifir yapilirsa sart kalkar.
+]]
+Flyboard.KurekSarti = 15
+
 Flyboard.Info = {
 	Basic = {
 		id = "Basic",

@@ -1671,9 +1671,24 @@ do
 	end)
 end
 
-UI.closeButton(luckyPanel).MouseButton1Click:Connect(function()
-	luckyPanel.Visible = false
-end)
+--[[
+	KAPATMA TUSU YOK
+
+	Panel kendi kendine kapaniyor: odul belli olduktan KAPANMA_GECIKMESI
+	saniye sonra (bkz. Rulet.run > onFinish). Kapatma tusu vardi ama iki
+	sorunu vardi -- oyuncu carki donerken kapatip odulu hic gormuyordu, ve
+	gorduklen sonra da kapatmak icin ayrica tiklamasi gerekiyordu.
+
+	Panel zaten oyuncunun bir sey yapmadigi bir gosteri; bittiginde
+	cekilmesi dogru olani.
+]]
+local KAPANMA_GECIKMESI = 1.5
+
+--[[
+	Kapanmayi bekleyen sayac. Her acilista artiyor: cark donerken oyuncu
+	yeni bir blok acarsa ESKI sayim yeni paneli kapatmasin.
+]]
+local luckyAcilis = 0
 
 local luckyReel = Rulet.new(luckyPanel, {
 	position = UDim2.new(0.5, 0, 0, 108),
@@ -1784,6 +1799,9 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" or type(data.rarityCells) ~= "table" or type(data.cells) ~= "table" then
 		return
 	end
+
+	-- Yeni acilis: bekleyen eski kapanma sayimi bu paneli kapatmasin
+	luckyAcilis += 1
 
 	--[[
 		ACILIS SESLERI
@@ -1898,6 +1916,19 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			if special then
 				MutasyonGosterisi.goster(winner.mutation, winner.name)
 			end
+
+			--[[
+				ODUL GORULDU, PANEL CEKILIYOR
+
+				Sayac karsilastirmasi sart: oyuncu bu gecikme dolmadan
+				baska bir blok acarsa bu sayim YENI paneli kapatirdi.
+			]]
+			local buAcilis = luckyAcilis
+			task.delay(KAPANMA_GECIKMESI, function()
+				if luckyAcilis == buAcilis and luckyPanel.Visible then
+					luckyPanel.Visible = false
+				end
+			end)
 		end,
 	})
 
