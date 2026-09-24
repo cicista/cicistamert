@@ -64,6 +64,8 @@ local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+-- Yerlesim ekranin GERCEK olcusune baglaniyor (bkz. yerlesimiTazele)
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -503,16 +505,74 @@ vinyet.Parent = karartma
 ------------------------------------------------------------------
 -- ORTADAKI PANEL
 ------------------------------------------------------------------
+--[[
+	KONUM ORANLA DEGIL, PIKSELLE
+
+	Panel "cercevenin ortasi" (0.5) yerine "EKRANIN ortasi" olarak
+	konumlaniyor; konumu yerlesimiTazele veriyor.
+
+	Sebep: oran, icinde bulundugu cercevenin cozulmus olcusune bagli.
+	Cerceve bir sebeple pencereden genis cozulursa (arayuz eki, olcek,
+	kirpilmayan tasma) "ortasi" pencerenin ortasi olmuyor ve panel yana
+	kayiyor -- nitekim kayiyordu. Kameranin ViewportSize'i ise pencerenin
+	kendisi; tartisma birakmiyor.
+]]
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.AnchorPoint = Vector2.new(0.5, 0.5)
-panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.Size = UDim2.fromOffset(CUBUK_EN + 80, 262)
 panel.BackgroundColor3 = Color3.fromRGB(14, 17, 26)
 panel.BackgroundTransparency = 0.25
 panel.BorderSizePixel = 0
 panel.ZIndex = 4
 panel.Parent = perde
+
+--[[
+	YERLESIM  --  perdenin boyu ve panelin yeri ekranin gercek olcusunden
+
+	perde de oranla degil PIKSELLE olculuyor: oranla verilince cercevenin
+	pencereden genis cozulme ihtimali kaliyordu ve icindeki her sey onunla
+	birlikte kayiyordu.
+
+	Ekran boyu degisince (pencere boyutlandirma, tam ekran, telefon cevirme)
+	yeniden hesaplaniyor.
+]]
+local function yerlesimiTazele()
+	local kamera = Workspace.CurrentCamera
+	if not kamera then
+		return
+	end
+
+	local olcu = kamera.ViewportSize
+	if olcu.X <= 0 or olcu.Y <= 0 then
+		return
+	end
+
+	perde.Position = UDim2.fromOffset(0, 0)
+	perde.Size = UDim2.fromOffset(olcu.X, olcu.Y)
+	panel.Position = UDim2.fromOffset(olcu.X / 2, olcu.Y / 2)
+end
+
+yerlesimiTazele()
+
+do
+	local olcuBagi: RBXScriptConnection? = nil
+
+	local function kamerayiIzle()
+		if olcuBagi then
+			olcuBagi:Disconnect()
+		end
+		local kamera = Workspace.CurrentCamera
+		if kamera then
+			olcuBagi = kamera:GetPropertyChangedSignal("ViewportSize"):Connect(yerlesimiTazele)
+		end
+		yerlesimiTazele()
+	end
+
+	kamerayiIzle()
+	-- Kamera oyun acilirken degisebiliyor: yenisine de baglan
+	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(kamerayiIzle)
+end
 kose(panel, 18)
 kontur(panel, Color3.fromRGB(45, 60, 82), 2)
 
