@@ -35,9 +35,20 @@ export type RarityInfo = {
 	incomeMax: number,
 	-- Minigame zorlugu: brainrot ikonunun kacis agresifligi (bkz. DigMinigame)
 	escapeDifficulty: number,
-	-- Brainrot Detective'in bu kademeyi temizlemesi kac saniye surer
-	-- Detective'in bu kademeyi acma suresi (saniye). Toplu acmada sureler toplanir.
-	-- Degerler dengeleme icin YARIYA indirildi.
+	--[[
+		Detective'in bu kademeyi acma suresi (saniye). Toplu acmada
+		sureler TOPLANIR.
+
+		Mythic'e kadar saniyeler: oyuncu dedektifin yaninda bekleyip alir.
+		DIVINE'DAN SONRA dakikalara ciktiyor -- degerli brainrot bir
+		bekleyise degsin, oyuncu da o sure boyunca baska isine baksin:
+
+		    Divine 2 dk    Cosmic 8 dk    Secret 15 dk
+		    Infernal 30 dk    Abyssal 1 saat
+
+		Sureyi beklemek istemeyen Robux ile atlayabiliyor
+		(bkz. Shared > Passler > Detective ekrani).
+	]]
 	revealTime: number,
 }
 --[[
@@ -169,7 +180,7 @@ Rarity.Info = {
 		incomeMin = 500_000,
 		incomeMax = 2_500_000,
 		escapeDifficulty = 6,
-		revealTime = 12.5,
+		revealTime = 120,
 	},
 
 	--[[
@@ -195,7 +206,7 @@ Rarity.Info = {
 		incomeMin = 5_000_000,
 		incomeMax = 25_000_000,
 		escapeDifficulty = 7.5,
-		revealTime = 15,
+		revealTime = 480,
 	},
 
 	--[[
@@ -216,7 +227,7 @@ Rarity.Info = {
 		incomeMin = 50_000_000,
 		incomeMax = 250_000_000,
 		escapeDifficulty = 9,
-		revealTime = 17.5,
+		revealTime = 900,
 	},
 
 	-- ALEVKUM: volkan turuncusu <-> beyaz
@@ -231,7 +242,7 @@ Rarity.Info = {
 		incomeMin = 500_000_000,
 		incomeMax = 2_500_000_000,
 		escapeDifficulty = 11,
-		revealTime = 20,
+		revealTime = 1800,
 	},
 
 	-- DENIZ: derin deniz mavisi <-> beyaz
@@ -246,7 +257,7 @@ Rarity.Info = {
 		incomeMin = 5_000_000_000,
 		incomeMax = 25_000_000_000,
 		escapeDifficulty = 13,
-		revealTime = 22.5,
+		revealTime = 3600,
 	},
 } :: { [RarityId]: RarityInfo }
 

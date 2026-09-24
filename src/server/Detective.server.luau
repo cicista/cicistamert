@@ -195,8 +195,15 @@ end
 	            Oyuncu Detective'e gidip konusunca brainrotlar envantere
 	            geri gelir.
 ]]
+--[[
+	Sure yazisi. Divine ustu kademeler saatlere ciktigi icin saat de
+	yaziliyor: "60:00" yerine "1:00:00".
+]]
 local function sureYazisi(saniye: number): string
 	local t = math.max(0, math.ceil(saniye))
+	if t >= 3600 then
+		return string.format("%d:%02d:%02d", t // 3600, (t % 3600) // 60, t % 60)
+	end
 	return string.format("%d:%02d", t // 60, t % 60)
 end
 
@@ -352,6 +359,46 @@ local function isiBitir(player: Player, data: any)
 		`The Detective identified {#is.items} brainrot(s)! Go to the Detective to collect them.`,
 		Color3.fromRGB(255, 236, 180)
 	)
+end
+
+------------------------------------------------------------------
+-- SUREYI ATLAMA  (Robux)
+--
+-- Odeme RobuxMagaza'da isleniyor (ProcessReceipt oyunda TEK yerde
+-- olabiliyor). Oraya iki kapi aciliyor:
+--
+--   DedektifBekliyorMu  -- satin alma penceresi acilmadan once sorulur;
+--                          bekleyen is yoksa pencere hic acilmaz, yani
+--                          oyuncu bos yere odemez
+--   DedektifAtla        -- odeme alininca cagrilir, sureyi siler
+--
+-- BindableFunction cunku ikisinin de CEVABI onemli.
+------------------------------------------------------------------
+local BekliyorMu = Instance.new("BindableFunction")
+BekliyorMu.Name = "DedektifBekliyorMu"
+BekliyorMu.Parent = script
+
+BekliyorMu.OnInvoke = function(player: Player): boolean
+	local data = PlayerData.get(player)
+	local is = data and data.detectiveJob
+	return is ~= nil and not is.bitti
+end
+
+local Atla = Instance.new("BindableFunction")
+Atla.Name = "DedektifAtla"
+Atla.Parent = script
+
+Atla.OnInvoke = function(player: Player): boolean
+	local data = PlayerData.get(player)
+	local is = data and data.detectiveJob
+	if not is or is.bitti then
+		return false
+	end
+
+	-- Sure bitmis sayiliyor; is normal yolundan tamamlaniyor
+	is.bitis = os.time()
+	isiBitir(player, data)
+	return true
 end
 
 DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)

@@ -72,6 +72,32 @@ local function sansVer(player: Player, data: any, carpan: number, saniye: number
 	end
 end
 
+--[[
+	DEDEKTIF KAPILARI
+
+	Inceleme suresini atlama urunu burada odeniyor ama isi Detective
+	betigi yapiyor. Iki BindableFunction'la konusuluyor (bkz.
+	ServerScriptService > Detective > SUREYI ATLAMA).
+
+	Tembel aliniyor: betikler ayni anda yukleniyor, ust seviyede
+	WaitForChild ile beklemek bu betigi kilitleyebilirdi.
+]]
+local function dedektifKapisi(ad: string): BindableFunction?
+	local betik = script.Parent:FindFirstChild("Detective")
+	local kapi = betik and betik:FindFirstChild(ad)
+	return if kapi and kapi:IsA("BindableFunction") then kapi else nil
+end
+
+local function dedektifAtla(player: Player): boolean
+	local kapi = dedektifKapisi("DedektifAtla")
+	return kapi ~= nil and kapi:Invoke(player) == true
+end
+
+local function dedektifBekliyor(player: Player): boolean
+	local kapi = dedektifKapisi("DedektifBekliyorMu")
+	return kapi ~= nil and kapi:Invoke(player) == true
+end
+
 -- Urunu verir. Yalnizca kayittaki veriyi degistirir; bekleme yapmaz.
 local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 	if urun.tur == "luckyblock" and urun.tier then
@@ -80,6 +106,23 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 		sansVer(player, data, urun.carpan or 2, urun.saniye or 0)
 	elseif urun.tur == "rotcoin" then
 		PlayerData.addRotCoins(player, urun.rotCoin or 0)
+	elseif urun.tur == "detectiveSkip" then
+		--[[
+			Dedektifin suresini siler. Isi Detective betigi yapiyor; burasi
+			yalnizca odemeyi isleyen yer (ProcessReceipt oyunda TEK yerde
+			olabiliyor, bkz. dosya basi).
+
+			Bekleyen is yoksa false doner. Fis yine de kabul ediliyor --
+			ProcessReceipt'ten para iadesi yok; onun yerine pencere
+			ACILMADAN once bekleyen is var mi diye bakiliyor (asagida).
+		]]
+		if not dedektifAtla(player) then
+			Bildirim:FireClient(
+				player,
+				"The Detective had already finished -- nothing to skip.",
+				Color3.fromRGB(255, 200, 90)
+			)
+		end
 	else
 		error(`bilinmeyen urun turu: {urun.tur}`)
 	end
@@ -167,6 +210,17 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 		return
 	end
 	sonPencere[player] = simdi
+
+	--[[
+		ATLANACAK BIR SEY YOKSA PENCERE ACILMAZ
+
+		ProcessReceipt'ten para iadesi yok: pencere acilip oyuncu oderse
+		odeme gecer. Bu yuzden denetim odemeden ONCE burada yapiliyor.
+	]]
+	if urun.tur == "detectiveSkip" and not dedektifBekliyor(player) then
+		Bildirim:FireClient(player, "The Detective is not working on anything.", SARI)
+		return
+	end
 
 	if not RobuxMagaza.satista(urun) then
 		Bildirim:FireClient(player, `{urun.ad} is coming soon!`, SARI)

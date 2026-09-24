@@ -1078,6 +1078,60 @@ local detektifDugmeYazi = UI.text({
 	parent = detektifDugme,
 })
 
+--[[
+	SUREYI ATLA  --  COLLECT dugmesinin yerinde
+
+	Dedektif calisirken ayni dugme "SKIP" oluyor: bastiginda Robux satin
+	alma penceresi aciliyor, odeme gecince sure siliniyor ve brainrotlar
+	teslim alinmaya hazir oluyor. Is bitince dugme yerini yine COLLECT'e
+	birakiyor.
+
+	Fiyat "99 R$" olarak degil ROBUX IKONU + sayi olarak yaziliyor
+	(bkz. UI.robuxFiyati). Kutu bir kez kuruluyor, durum degistikce
+	yalnizca gorunurlugu degisiyor; ust seviyede yeni degisken acmamak
+	icin de adiyla bulunuyor ("AtlaKutusu").
+]]
+do
+	local kap = Instance.new("Frame")
+	kap.Name = "AtlaKutusu"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	kap.Position = UDim2.fromScale(0.5, 0.5)
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.Visible = false
+	kap.ZIndex = 3
+	kap.Parent = detektifDugme
+
+	local dizilim = Instance.new("UIListLayout")
+	dizilim.FillDirection = Enum.FillDirection.Horizontal
+	dizilim.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dizilim.VerticalAlignment = Enum.VerticalAlignment.Center
+	dizilim.Padding = UDim.new(0, 8)
+	dizilim.SortOrder = Enum.SortOrder.LayoutOrder
+	dizilim.Parent = kap
+
+	local yazi = UI.text({
+		text = "SKIP",
+		size = UI.Sizes.heading,
+		font = UI.Fonts.bold,
+		color = Color3.new(1, 1, 1),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromOffset(0, 32),
+		parent = kap,
+		zIndex = 3,
+	})
+	yazi.AutomaticSize = Enum.AutomaticSize.X
+	yazi.LayoutOrder = 1
+
+	-- Modul burada isteniyor: dosya 200 yerel sinirinda, require onbellekli
+	local Magaza = require(Shared:WaitForChild("RobuxMagaza")) :: any
+	local fiyat = UI.robuxFiyati(kap, Magaza.AtlaFiyati(), UI.Sizes.label, 3)
+	-- Liste icinde duruyor: kendi ortalamasi yerine sira alsin
+	fiyat.AnchorPoint = Vector2.new(0, 0)
+	fiyat.Position = UDim2.new()
+	fiyat.LayoutOrder = 2
+end
+
 -- Durum
 local detektifBekleyen: { any } = {}
 -- Secilen kartlar (uid -> true); bossa dugme hepsini birakir
@@ -1085,8 +1139,15 @@ local detektifSecili: { [string]: boolean } = {}
 local detektifIs: any = nil
 local detektifBitis = 0
 
+--[[
+	Kalan sure. Divine ustu kademeler saatlere ciktigi icin saat de
+	yaziliyor: "60:00" yerine "1:00:00".
+]]
 local function detektifSure(saniye: number): string
 	local t = math.max(0, math.ceil(saniye))
+	if t >= 3600 then
+		return string.format("%d:%02d:%02d", t // 3600, (t % 3600) // 60, t % 60)
+	end
 	return string.format("%d:%02d", t // 60, t % 60)
 end
 
@@ -1224,6 +1285,12 @@ end
 
 -- Yalnizca cubuk ve dugme yazilari (her saniye)
 function detektifDurumCiz()
+	-- Atla kutusu yalnizca dedektif calisirken gorunur
+	local atlaKutusu = detektifDugme:FindFirstChild("AtlaKutusu")
+	if atlaKutusu and atlaKutusu:IsA("GuiObject") then
+		atlaKutusu.Visible = detektifCalisiyor()
+	end
+
 	if detektifCalisiyor() then
 		local kalan = detektifBitis - os.clock()
 		local toplam = math.max(1, tonumber(detektifIs.toplam) or 1)
@@ -1231,8 +1298,12 @@ function detektifDurumCiz()
 		detektifDolgu.Size = UDim2.fromScale(math.clamp(1 - kalan / toplam, 0, 1), 1)
 		detektifBarYazi.Text = `{detektifSure(kalan)} left  -  you can leave!`
 		detektifOzet.Text = `Identifying {detektifIs.adet or 0} brainrot(s)...`
-		detektifDugme.BackgroundColor3 = UI.Colors.panel
-		detektifDugmeYazi.Text = "WORKING..."
+		--[[
+			CALISIRKEN DUGME "SKIP" OLUYOR: oyuncu beklemek istemezse
+			Robux'la sureyi siliyor (bkz. AtlaKutusu).
+		]]
+		detektifDugme.BackgroundColor3 = UI.Colors.gold
+		detektifDugmeYazi.Text = ""
 	elseif detektifIs and detektifIs.bitti then
 		--[[
 			IS BITTI: TESLIM ALMA
@@ -1311,6 +1382,16 @@ local function detektifCiz()
 end
 
 detektifDugme.MouseButton1Click:Connect(function()
+	--[[
+		DEDEKTIF CALISIYORSA dugme "SKIP": Robux satin alma penceresi
+		aciliyor. Odeme gecince sunucu sureyi siliyor ve is bitmis oluyor
+		(bkz. ServerScriptService > Detective > SUREYI ATLAMA).
+	]]
+	if detektifCalisiyor() then
+		Net.event("RobuxUrunAl"):FireServer("DetectiveSkip")
+		return
+	end
+
 	--[[
 		Is bitmisse dugme YALNIZCA teslim alir: "collect" isteginde sunucu
 		brainrotlari verip durur, bekleyenleri yeniden ise sokmaz.

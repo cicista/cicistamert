@@ -47,7 +47,7 @@ export type Urun = {
 	etiket: string,
 	-- Bildirimde yazan tam ad
 	ad: string,
-	tur: string, -- "luckyblock" | "luck" | "rotcoin"
+	tur: string, -- "luckyblock" | "luck" | "rotcoin" | "detectiveSkip"
 	-- luckyblock
 	tier: string?,
 	adet: number?,
@@ -175,18 +175,50 @@ RobuxMagaza.Kartlar = {
 -- Magazada gosterilen Game Pass'ler (Shared > Passler adlari), bu sirayla
 RobuxMagaza.Gecisler = { "AutoClicker", "Teleporter", "DetectivePass" }
 
+--[[
+	MAGAZADA GORUNMEYEN URUNLER
+
+	Store'un kartlarinda cikmayan ama satin alinabilen urunler. Kendi
+	ekranlarinda satiliyorlar; magazada da gorunmeleri kalabalik yapardi.
+
+	ProcessReceipt tek yerde (bkz. ServerScriptService > RobuxMagaza), o
+	yuzden bunlar da ayni listeye giriyor: fis geldiginde ID'den bulunuyor.
+]]
+RobuxMagaza.GizliUrunler = {
+	--[[
+		Dedektifin inceleme suresini siler. Detective ekranindaki COLLECT
+		dugmesinin yerinde duruyor; is bitince yerini yine COLLECT aliyor.
+	]]
+	{
+		anahtar = "DetectiveSkip",
+		id = 0,
+		fiyat = 99,
+		etiket = "SKIP",
+		ad = "Instant Identify",
+		tur = "detectiveSkip",
+	},
+} :: { Urun }
+
 local anahtarla: { [string]: Urun } = {}
 local idile: { [number]: Urun } = {}
 
+local function kaydet(urun: Urun)
+	assert(anahtarla[urun.anahtar] == nil, `[RobuxMagaza] ayni anahtar iki kez: {urun.anahtar}`)
+	anahtarla[urun.anahtar] = urun
+	if urun.id > 0 then
+		assert(idile[urun.id] == nil, `[RobuxMagaza] ayni ID iki urunde: {urun.id}`)
+		idile[urun.id] = urun
+	end
+end
+
 for _, kart in RobuxMagaza.Kartlar do
 	for _, urun in kart.urunler do
-		assert(anahtarla[urun.anahtar] == nil, `[RobuxMagaza] ayni anahtar iki kez: {urun.anahtar}`)
-		anahtarla[urun.anahtar] = urun
-		if urun.id > 0 then
-			assert(idile[urun.id] == nil, `[RobuxMagaza] ayni ID iki urunde: {urun.id}`)
-			idile[urun.id] = urun
-		end
+		kaydet(urun)
 	end
+end
+
+for _, urun in RobuxMagaza.GizliUrunler do
+	kaydet(urun)
 end
 
 function RobuxMagaza.get(anahtar: string): Urun?
@@ -200,6 +232,12 @@ end
 
 function RobuxMagaza.satista(urun: Urun): boolean
 	return urun.id > 0
+end
+
+-- Dedektif suresini atlamanin Robux fiyati (arayuz bunu yaziyor)
+function RobuxMagaza.AtlaFiyati(): number
+	local urun = anahtarla["DetectiveSkip"]
+	return if urun then urun.fiyat else 0
 end
 
 return RobuxMagaza
