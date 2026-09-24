@@ -43,9 +43,19 @@
 	sureye yayiliyor. Yukleme daha uzun surerse ekran acik kalmaya devam
 	ediyor.
 
+	KAPANMA KARARI OYUNCUNUN
+	Yukleme bitince ekran kendiliginden kapanmiyor: PLAY dugmesi
+	beliriyor ve oyuncu basana kadar bekliyor. Kendiliginden kapandiginda
+	oyuncu daha ekrana bakarken kendini oyunun ortasinda buluyordu.
+
 	ASILI KALMAZ
-	Her sey ters giderse EN_COK_BEKLEME saniye sonunda ekran yine de
-	aciliyor: oyuncu asla yukleme ekraninda kilitli kalmiyor.
+	Her sey ters giderse EN_COK_BEKLEME saniye sonunda dugme yine de
+	cikiyor: oyuncu asla "yukleniyor" halinde kilitli kalmiyor.
+
+	ROBLOX'UN ARAYUZU DE KAPALI
+	Sohbet ve oyuncu listesi yukleme boyunca gizli (CoreGui bizim
+	ScreenGui'mizin USTUNDE ciziliyor, baska turlu ortulemiyor); ekran
+	kapanirken geri aciliyor.
 ]]
 
 local ContentProvider = game:GetService("ContentProvider")
@@ -122,6 +132,66 @@ local TOZ_SAYISI = 22
 pcall(function()
 	ReplicatedFirst:RemoveDefaultLoadingScreen()
 end)
+
+------------------------------------------------------------------
+-- ROBLOX'UN KENDI ARAYUZU DE KAPALI
+------------------------------------------------------------------
+--[[
+	Sohbet kutusu ve sag ustteki oyuncu listesi CoreGui'ye ait; bizim
+	ScreenGui'miz DisplayOrder ne olursa olsun onlarin ALTINDA kaliyor.
+	Yukleme ekraninin uzerinde durduklarinda ekran yarim kalmis gibi
+	gorunuyordu.
+
+	Kapatmanin tek yolu SetCoreGuiEnabled. Ekran kapanirken geri
+	aciliyor (bkz. coreGuiGeriAc) -- oyuncu sohbetsiz kalmasin.
+
+	Ilk karelerde bu cagri reddedilebiliyor; basarana kadar deneniyor.
+]]
+local KAPATILAN_COREGUI = {
+	Enum.CoreGuiType.Chat,
+	Enum.CoreGuiType.PlayerList,
+	Enum.CoreGuiType.Backpack,
+	Enum.CoreGuiType.EmotesMenu,
+}
+
+local StarterGui = game:GetService("StarterGui")
+
+local function coreGuiAyarla(acik: boolean)
+	for _, tur in KAPATILAN_COREGUI do
+		pcall(function()
+			StarterGui:SetCoreGuiEnabled(tur, acik)
+		end)
+	end
+end
+
+task.spawn(function()
+	-- Basarana kadar dene: ilk karelerde CoreGui cagrilari reddedilebiliyor
+	for _ = 1, 20 do
+		local ok = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+		end)
+		if ok then
+			coreGuiAyarla(false)
+			return
+		end
+		task.wait(0.15)
+	end
+end)
+
+--[[
+	GERI ACARKEN Backpack'e DOKUNULMUYOR: onu kendi hotbar'imiz bilerek
+	kapali tutuyor (bkz. StarterPlayerScripts > Hotbar). Burada da acsaydik
+	Roblox'un cubugu bizimkinin yanina geri gelirdi.
+]]
+local function coreGuiGeriAc()
+	for _, tur in KAPATILAN_COREGUI do
+		if tur ~= Enum.CoreGuiType.Backpack then
+			pcall(function()
+				StarterGui:SetCoreGuiEnabled(tur, true)
+			end)
+		end
+	end
+end
 
 ------------------------------------------------------------------
 -- KUCUK YARDIMCILAR  (Shared > UI burada kullanilamiyor)
@@ -233,7 +303,15 @@ resimKabi.Parent = perde
 
 	Katman sayisi az: yukleme ekrani, makine zaten mesgul.
 ]]
-local BULANIK_KAYMA = { Vector2.new(0, 0), Vector2.new(3, 2), Vector2.new(-3, -2), Vector2.new(2, -3) }
+local BULANIK_KAYMA = {
+	Vector2.new(0, 0),
+	Vector2.new(6, 4),
+	Vector2.new(-6, -4),
+	Vector2.new(5, -6),
+	Vector2.new(-5, 6),
+	Vector2.new(9, 0),
+	Vector2.new(-9, 0),
+}
 local resimKatmanlari: { ImageLabel } = {}
 
 for sira, kayma in BULANIK_KAYMA do
@@ -315,7 +393,12 @@ local karartma = Instance.new("Frame")
 karartma.Name = "Karartma"
 karartma.Size = UDim2.fromScale(1, 1)
 karartma.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
-karartma.BackgroundTransparency = 0.35
+--[[
+	Koyuluk yuksek: arka plan resmi ne kadar parlak ve kalabalik olursa
+	olsun baslik ve cubuk okunur kalsin. Resmin kendisi yine seciliyor,
+	ama artik yazilarla yarismiyor.
+]]
+karartma.BackgroundTransparency = 0.18
 karartma.BorderSizePixel = 0
 karartma.ZIndex = 3
 karartma.Parent = perde
@@ -337,7 +420,7 @@ local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.AnchorPoint = Vector2.new(0.5, 0.5)
 panel.Position = UDim2.fromScale(0.5, 0.5)
-panel.Size = UDim2.fromOffset(CUBUK_EN + 80, 240)
+panel.Size = UDim2.fromOffset(CUBUK_EN + 80, 262)
 panel.BackgroundColor3 = Color3.fromRGB(14, 17, 26)
 panel.BackgroundTransparency = 0.25
 panel.BorderSizePixel = 0
@@ -459,11 +542,67 @@ local durumYazi = yazi({
 	color = SOLGUN,
 	font = Enum.Font.Gotham,
 	size = UDim2.new(1, 0, 0, 22),
-	position = UDim2.fromOffset(0, 150),
+	position = UDim2.fromOffset(0, 146),
 	parent = panel,
 	zIndex = 6,
 	name = "Durum",
 })
+
+------------------------------------------------------------------
+-- BASLA DUGMESI
+------------------------------------------------------------------
+--[[
+	EKRAN KENDILIGINDEN KAPANMIYOR
+
+	Yukleme bitince ekran kapanmiyor, bu dugme beliriyor ve oyuncu
+	basana kadar bekliyor. Sebebi: oyuncu oyuna hazir OLDUGUNDA girsin.
+	Kendiliginden kapandiginda oyuncu daha ekrana bakarken kendini
+	oyunun ortasinda buluyordu.
+
+	Dugme yukleme bitene kadar GORUNMUYOR; hazir olunca asagidan
+	yukari kucuk bir yaylanmayla giriyor.
+]]
+local baslaDugme = Instance.new("TextButton")
+baslaDugme.Name = "Basla"
+baslaDugme.AnchorPoint = Vector2.new(0.5, 0)
+baslaDugme.Position = UDim2.new(0.5, 0, 0, 182)
+baslaDugme.Size = UDim2.fromOffset(240, 52)
+baslaDugme.BackgroundColor3 = NEON
+baslaDugme.BorderSizePixel = 0
+baslaDugme.AutoButtonColor = false
+baslaDugme.Text = ""
+baslaDugme.Visible = false
+baslaDugme.ZIndex = 8
+baslaDugme.Parent = panel
+kose(baslaDugme, 12)
+kontur(baslaDugme, Color3.fromRGB(0, 0, 0), 3)
+
+-- Ustten asagi hafif isik: duz renk yerine kabarik dugme
+local baslaGecis = Instance.new("UIGradient")
+baslaGecis.Rotation = 90
+baslaGecis.Color = ColorSequence.new(Color3.fromRGB(140, 220, 255), NEON)
+baslaGecis.Parent = baslaDugme
+
+local baslaYazi = yazi({
+	text = "PLAY",
+	textSize = 26,
+	color = Color3.fromRGB(10, 22, 34),
+	size = UDim2.fromScale(1, 1),
+	parent = baslaDugme,
+	zIndex = 9,
+	name = "Yazi",
+})
+
+local baslaOlcek = Instance.new("UIScale")
+baslaOlcek.Parent = baslaDugme
+
+-- Fare ustundeyken hafifce buyur: tiklanabilir oldugu belli olsun
+baslaDugme.MouseEnter:Connect(function()
+	TweenService:Create(baslaOlcek, TweenInfo.new(0.12), { Scale = 1.06 }):Play()
+end)
+baslaDugme.MouseLeave:Connect(function()
+	TweenService:Create(baslaOlcek, TweenInfo.new(0.12), { Scale = 1 }):Play()
+end)
 
 ------------------------------------------------------------------
 -- TOZ TANELERI
@@ -738,20 +877,8 @@ local function kapat()
 	end
 	kapandi = true
 
-	ilerle(1, "Ready!")
-
-	--[[
-		EN AZ GORUNME: her sey hazir olsa bile ekran bu sureyi doldurmadan
-		kapanmiyor. Cubuk da ayni sureye yayildigi icin (bkz. zamanSiniri)
-		burada beklerken dolmaya devam ediyor -- bos bir bekleme degil.
-	]]
-	local kalan = EN_AZ_GORUNME - gecenSure()
-	if kalan > 0 then
-		task.wait(kalan)
-	end
-
-	-- Cubugun dolusu gorunsun diye kisa bir bekleme
-	task.wait(0.45)
+	-- Sohbet ve oyuncu listesi geri gelsin
+	coreGuiGeriAc()
 
 	local sonme = TweenService:Create(
 		perde,
@@ -770,14 +897,62 @@ local function kapat()
 	ekran:Destroy()
 end
 
+------------------------------------------------------------------
+-- HAZIR: DUGMEYI GOSTER
+------------------------------------------------------------------
+--[[
+	Her sey yuklendiginde (ya da guvenlik agi devreye girdiginde) ekran
+	KAPANMIYOR: cubuk doluyor, PLAY dugmesi beliriyor ve oyuncu basana
+	kadar bekliyor.
+
+	EN AZ GORUNME burada da gecerli: yukleme anlik bitse bile cubuk o
+	sureye yayildigi icin dugme ancak cubuk dolunca cikiyor.
+]]
+local hazirlandi = false
+
+local function hazirOl()
+	if hazirlandi or kapandi then
+		return
+	end
+	hazirlandi = true
+
+	ilerle(1, "Everything is ready")
+
+	-- Cubuk dolana kadar bekle (bkz. zamanSiniri)
+	local kalan = EN_AZ_GORUNME - gecenSure()
+	if kalan > 0 then
+		task.wait(kalan)
+	end
+	task.wait(0.35)
+
+	if kapandi then
+		return
+	end
+
+	durumYazi.Text = "Click PLAY to start"
+	baslaDugme.Visible = true
+
+	-- Asagidan kucuk bir yaylanmayla girer
+	baslaOlcek.Scale = 0.6
+	TweenService
+		:Create(
+			baslaOlcek,
+			TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		)
+		:Play()
+end
+
+baslaDugme.Activated:Connect(kapat)
+
 --[[
 	GUVENLIK AGI
 
-	Ne olursa olsun ekran EN_COK_BEKLEME saniye sonunda kapaniyor. Bir
-	varlik takilirsa, sunucu gec cevap verirse ya da burada bir hata
-	olursa oyuncu yukleme ekraninda kilitli kalmamali.
+	Yukleme takilirsa EN_COK_BEKLEME saniye sonunda dugme yine de cikar.
+	Ekrani KAPATMIYOR -- kapatma karari oyuncunun; bu yalnizca "artik
+	bekleme" demek.
 ]]
-task.delay(EN_COK_BEKLEME, kapat)
+task.delay(EN_COK_BEKLEME, hazirOl)
 
 task.spawn(function()
 	local ok, hata = pcall(varliklariYukle)
@@ -811,5 +986,5 @@ task.spawn(function()
 		player.CharacterAdded:Wait()
 	end
 
-	kapat()
+	hazirOl()
 end)
