@@ -2157,8 +2157,6 @@ do
 	end)
 end
 
-local kalanSure = -1
-
 -- 3725 -> "1:02:05", 125 -> "02:05"
 local function sureMetni(seconds: number): string
 	local total = math.max(0, math.floor(seconds))
@@ -2188,8 +2186,24 @@ local function tazeleGorunurluk()
 	local oyuncu = sayacKutu:GetAttribute("Oyuncu") or 0
 	local gereken = sayacKutu:GetAttribute("Gereken") or LuckyBlock.Event.gerekenOyuncu
 	local esik = sayacKutu:GetAttribute("Esik") or LuckyBlock.Event.bildirimOyuncu
-	local sayim = sayacKutu:GetAttribute("Sayim") or -1
 	local durum = sayacKutu:FindFirstChild("Durum")
+
+	--[[
+		SURELER SON PAKETTEN HESAPLANIYOR, AYRICA AZALTILMIYOR
+
+		Once istemci kendi kopyasini her saniye bir azaltiyordu; sunucu da
+		iki saniyede bir kendi sayisini yolluyordu. Iki ayri saat oldugu
+		icin sayilar birbirini tutmuyor ve her yayinda ileri geri
+		ziplayarak duzeliyordu (10 -> 11 -> 9 ...).
+
+		Artik tek kaynak sunucunun yolladigi deger: uzerinden GECEN SURE
+		cikarilarak gosteriliyor. Iki yayin arasinda da duzgun ilerliyor,
+		yayin gelince de ziplamiyor -- cunku ayni seyi olcuyorlar.
+	]]
+	local gecen = os.clock() - (sayacKutu:GetAttribute("Zaman") or os.clock())
+	local hamSayim = sayacKutu:GetAttribute("Sayim") or -1
+	local sayim = if hamSayim >= 0 then math.max(0, hamSayim - gecen) else -1
+	local bekleme = math.max(0, (sayacKutu:GetAttribute("Bekleme") or 0) - gecen)
 
 	--[[
 		ESIGIN ALTINDA HIC GORUNMEZ
@@ -2213,9 +2227,9 @@ local function tazeleGorunurluk()
 		-- Sayim basladi: bloklar dusmek uzere (5 dakika -> "4:37")
 		durum.Text = `DROPPING IN {sureMetni(sayim)}`
 		durum.TextColor3 = Rarity.LuckyBlock.colorA
-	elseif kalanSure > 0 then
+	elseif bekleme > 0 then
 		-- Bir onceki yagmurdan sonraki bekleme
-		durum.Text = `next in {sureMetni(kalanSure)}`
+		durum.Text = `next in {sureMetni(bekleme)}`
 		durum.TextColor3 = UI.Colors.textDim
 	elseif yeterli then
 		durum.Text = "STARTING..."
@@ -2231,33 +2245,36 @@ EtkinlikSayaci.OnClientEvent:Connect(function(veri)
 		Sunucu artik tablo yolluyor; eski surumden duz sayi gelirse o da
 		bekleme suresi sayilir (sunucu ve istemci ayri guncellenebilir).
 	]]
+	--[[
+		Degerler KUSURATLI saklaniyor (floor yok): gosterirken zaten
+		yuvarlaniyor, ama arada yuvarlarsak her pakette yarim saniyelik
+		bir sicrama olurdu.
+
+		"Zaman" paketin geldigi an; aradaki sure ondan olculuyor.
+	]]
 	if type(veri) == "table" then
 		sayacKutu:SetAttribute("Oyuncu", math.floor(tonumber(veri.oyuncu) or 0))
 		sayacKutu:SetAttribute("Gereken", math.floor(tonumber(veri.gereken) or LuckyBlock.Event.gerekenOyuncu))
 		sayacKutu:SetAttribute("Esik", math.floor(tonumber(veri.esik) or LuckyBlock.Event.bildirimOyuncu))
-		sayacKutu:SetAttribute("Sayim", math.floor(tonumber(veri.sayim) or -1))
-		kalanSure = math.max(0, tonumber(veri.bekleme) or 0)
+		sayacKutu:SetAttribute("Sayim", tonumber(veri.sayim) or -1)
+		sayacKutu:SetAttribute("Bekleme", math.max(0, tonumber(veri.bekleme) or 0))
 	else
-		kalanSure = math.max(0, tonumber(veri) or 0)
+		sayacKutu:SetAttribute("Sayim", -1)
+		sayacKutu:SetAttribute("Bekleme", math.max(0, tonumber(veri) or 0))
 	end
 
+	sayacKutu:SetAttribute("Zaman", os.clock())
 	tazeleGorunurluk()
 end)
 
+--[[
+	Ekrani sik tazeliyoruz ama hicbir sey AZALTMIYORUZ: sayilar son
+	paketten hesaplaniyor (bkz. tazeleGorunurluk). Yarim saniye, saniyenin
+	dondugu ani kacirmamak icin yeterli.
+]]
 task.spawn(function()
 	while true do
-		task.wait(1)
-
-		-- Sunucu tazelemesi arasinda sayilar yerinde saymasin
-		if kalanSure > 0 then
-			kalanSure -= 1
-		end
-
-		local sayim = sayacKutu:GetAttribute("Sayim") or -1
-		if sayim > 0 then
-			sayacKutu:SetAttribute("Sayim", sayim - 1)
-		end
-
+		task.wait(0.5)
 		tazeleGorunurluk()
 	end
 end)

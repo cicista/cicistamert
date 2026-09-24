@@ -807,7 +807,29 @@ end
 	(bkz. StarterPlayerScripts > Menuler > blok yagmuru bilgisi).
 ]]
 local sonEtkinlik = 0
-local sayimKalan = -1
+--[[
+	SAYIM MUTLAK BITIS ANIYLA TUTULUYOR
+
+	Once her saniye bir sayac azaltiliyordu ve istemci de kendi kopyasini
+	ayrica azaltiyordu: iki ayri saat. task.wait(1) her turda birazcik
+	geciktigi icin sunucunun sayisi geride kaliyor, istemcininki ileri
+	gidiyor ve her yayinda sayi ileri geri ziplayarak duzeliyordu
+	(10 -> 11 -> 9 ...).
+
+	Artik tek gercek var: sayimin BITECEGI an. Kalan sure her sorulusta
+	ondan hesaplaniyor, yani kimse kimseyi kovalamiyor.
+
+	0 = sayim yok.
+]]
+local sayimBitis = 0
+
+-- Kalan saniye (kusuratli); sayim yoksa -1
+local function sayimKalani(): number
+	if sayimBitis <= 0 then
+		return -1
+	end
+	return math.max(0, sayimBitis - os.clock())
+end
 
 --[[
 	SAHTE OYUNCU SAYISI  --  yalnizca sinama icin
@@ -833,7 +855,7 @@ local function etkinlikDurumu(): { [string]: any }
 		-- Bir sonraki yagmurun serbest kalmasina kalan sure
 		bekleme = math.max(0, (sonEtkinlik + E.interval) - os.clock()),
 		-- Sayim basladiysa kalan saniye, yoksa -1
-		sayim = sayimKalan,
+		sayim = sayimKalani(),
 	}
 end
 
@@ -865,7 +887,7 @@ if LuckyBlock.Event.enabled then
 				Sunucu doldu: bes dakikalik sayim basliyor. Sayi dakika
 				olarak yaziliyor, "300s" kimseye bir sey anlatmiyor.
 			]]
-			sayimKalan = E.geriSayim
+			sayimBitis = os.clock() + E.geriSayim
 			local dakika = math.floor(E.geriSayim / 60)
 			Bildirim:FireAllClients(
 				`LUCKY BLOCK RAIN in {if dakika > 0 then `{dakika} min` else `{E.geriSayim}s`}! `
@@ -873,13 +895,18 @@ if LuckyBlock.Event.enabled then
 				Rarity.LuckyBlock.colorA
 			)
 
-			while sayimKalan > 0 do
+			--[[
+				Yayin yarim saniyede bir: istemci arayi kendi icinde
+				dolduruyor ama iki yayin arasi cok acilirsa sayi
+				kayabilirdi. Sayimin ne zaman bitecegi mutlak oldugu icin
+				bu dongunun kendi hizinin bir onemi yok.
+			]]
+			while sayimKalani() > 0 do
 				broadcastTimer(nil)
-				task.wait(1)
-				sayimKalan -= 1
+				task.wait(0.5)
 			end
 
-			sayimKalan = -1
+			sayimBitis = 0
 			sonEtkinlik = os.clock()
 			runEvent()
 			broadcastTimer(nil)
