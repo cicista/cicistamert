@@ -699,6 +699,12 @@ end
 -- Ikon yazidan buyuk cizilir: ayni boyda oldugunda dugmenin icinde kayboluyor
 UI.RobuxIkonOrani = 1.5
 
+--[[
+	Robux simgesinin siyah konturunun kalinligi. Sayinin kendi konturuyla
+	ayni: ikisi tek bir parca gibi dursun.
+]]
+UI.RobuxKonturu = 2
+
 local function robuxNesnesi(): Instance?
 	local assets = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
 	local ikonlar = assets and assets:FindFirstChild("Icons")
@@ -740,6 +746,16 @@ function UI.robuxFiyati(parent: GuiObject, miktar: number, boyut: number, zIndex
 		ikon.LayoutOrder = 1
 		ikon.ZIndex = katman
 		ikon.Parent = kutu
+
+		--[[
+			SIYAH KONTUR  --  yanindaki sayiyla ayni dil
+
+			UIStroke bir ImageLabel'da cercevenin kenarini degil RESMIN
+			KENDI kenarini ciziyor (saydam olmayan piksellerin siniri), yani
+			Robux simgesinin etrafini sariyor. Acik zeminli dugmelerde
+			(altin, yesil) simge zemine karisiyordu.
+		]]
+		UI.stroke(ikon, Color3.fromRGB(0, 0, 0), UI.RobuxKonturu)
 	elseif nesne then
 		local kare = UI.modelKaresi(kutu, nesne, ikonBoy + 4, katman)
 		if kare then

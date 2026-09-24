@@ -326,6 +326,13 @@ local function robuxYazisi(yuz: Frame, miktar: number, boyut: number, y: number,
 		ikon.LayoutOrder = 1
 		ikon.ZIndex = 5
 		ikon.Parent = kutu
+
+		--[[
+			SIYAH KONTUR: UIStroke bir ImageLabel'da resmin KENDI kenarini
+			ciziyor, cercevenin kenarini degil -- simge zemine karismasin
+			(ayrintisi icin bkz. UI.robuxFiyati).
+		]]
+		UI.stroke(ikon, Color3.fromRGB(0, 0, 0), UI.RobuxKonturu)
 	elseif nesne then
 		local kare = UI.modelKaresi(kutu, nesne, ikonBoy + 4, 5)
 		if kare then
