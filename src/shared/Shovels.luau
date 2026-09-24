@@ -175,19 +175,19 @@ adaKuregi("CandyCaneShovel", "Candy Cane Shovel", 8, "sekerkum", "Cosmic", 5_500
 adaKuregi("CaramelShovel", "Caramel Shovel", 9, "sekerkum", "Cosmic", 7_000_000_000, Color3.fromRGB(240, 120, 190))
 adaKuregi("SugarCrystalShovel", "Sugar Crystal Shovel", 10, "sekerkum", "Cosmic", 8_000_000_000, Color3.fromRGB(255, 90, 200))
 
--- SNOW ISLAND  (Lv 11-15) -- Lv15 Secret'i zor alir
-adaKuregi("FrostShovel", "Frost Shovel", 11, "snowkum", "Gizli", 35_000_000_000, Color3.fromRGB(170, 230, 255))
-adaKuregi("GlacierShovel", "Glacier Shovel", 12, "snowkum", "Gizli", 38_000_000_000, Color3.fromRGB(140, 215, 255))
-adaKuregi("BlizzardShovel", "Blizzard Shovel", 13, "snowkum", "Gizli", 43_000_000_000, Color3.fromRGB(120, 200, 250))
-adaKuregi("PermafrostShovel", "Permafrost Shovel", 14, "snowkum", "Gizli", 50_000_000_000, Color3.fromRGB(100, 185, 245))
-adaKuregi("AuroraShovel", "Aurora Shovel", 15, "snowkum", "Gizli", 55_000_000_000, Color3.fromRGB(110, 240, 230))
+-- SNOW ISLAND  (Lv 11-15) -- Lv15 Secret'i zor alir  --  50B .. 100B
+adaKuregi("FrostShovel", "Frost Shovel", 11, "snowkum", "Gizli", 50_000_000_000, Color3.fromRGB(170, 230, 255))
+adaKuregi("GlacierShovel", "Glacier Shovel", 12, "snowkum", "Gizli", 62_000_000_000, Color3.fromRGB(140, 215, 255))
+adaKuregi("BlizzardShovel", "Blizzard Shovel", 13, "snowkum", "Gizli", 75_000_000_000, Color3.fromRGB(120, 200, 250))
+adaKuregi("PermafrostShovel", "Permafrost Shovel", 14, "snowkum", "Gizli", 87_000_000_000, Color3.fromRGB(100, 185, 245))
+adaKuregi("AuroraShovel", "Aurora Shovel", 15, "snowkum", "Gizli", 100_000_000_000, Color3.fromRGB(110, 240, 230))
 
--- VOLCANO ISLAND  (Lv 16-20) -- Lv20 Infernal'i zor alir
-adaKuregi("EmberShovel", "Ember Shovel", 16, "alevkum", "Infernal", 300_000_000_000, Color3.fromRGB(255, 170, 70))
-adaKuregi("MagmaShovel", "Magma Shovel", 17, "alevkum", "Infernal", 330_000_000_000, Color3.fromRGB(255, 145, 50))
-adaKuregi("BlazeShovel", "Blaze Shovel", 18, "alevkum", "Infernal", 370_000_000_000, Color3.fromRGB(255, 120, 40))
-adaKuregi("InfernoShovel", "Inferno Shovel", 19, "alevkum", "Infernal", 420_000_000_000, Color3.fromRGB(255, 95, 30))
-adaKuregi("EruptionShovel", "Eruption Shovel", 20, "alevkum", "Infernal", 490_000_000_000, Color3.fromRGB(255, 70, 20))
+-- VOLCANO ISLAND  (Lv 16-20) -- Lv20 Infernal'i zor alir  --  500B .. 1T
+adaKuregi("EmberShovel", "Ember Shovel", 16, "alevkum", "Infernal", 500_000_000_000, Color3.fromRGB(255, 170, 70))
+adaKuregi("MagmaShovel", "Magma Shovel", 17, "alevkum", "Infernal", 620_000_000_000, Color3.fromRGB(255, 145, 50))
+adaKuregi("BlazeShovel", "Blaze Shovel", 18, "alevkum", "Infernal", 750_000_000_000, Color3.fromRGB(255, 120, 40))
+adaKuregi("InfernoShovel", "Inferno Shovel", 19, "alevkum", "Infernal", 870_000_000_000, Color3.fromRGB(255, 95, 30))
+adaKuregi("EruptionShovel", "Eruption Shovel", 20, "alevkum", "Infernal", 1_000_000_000_000, Color3.fromRGB(255, 70, 20))
 
 Shovels.Default = "Wooden" :: ShovelId
 

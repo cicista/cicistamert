@@ -31,8 +31,11 @@ Hiz.TabanHiz = 16
 Hiz.MaxCarpan = 10
 
 Hiz.IlkFiyat = 2_500
--- Shared > Rods > Leviathan ile ayni
-Hiz.SonFiyat = 1_300_000_000_000
+--[[
+	Son kademe 5T: oyundaki en pahali tek satin alma. Bir ust basamak
+	Coming Soon adasiyla (5T) ayni; en pahali olta ve flyboard 3T.
+]]
+Hiz.SonFiyat = 5_000_000_000_000
 
 -- Her adimin fiyat carpani: IlkFiyat * oran^(Max-1) = SonFiyat
 Hiz.Oran = (Hiz.SonFiyat / Hiz.IlkFiyat) ^ (1 / (Hiz.Max - 1))
@@ -41,7 +44,7 @@ Hiz.Oran = (Hiz.SonFiyat / Hiz.IlkFiyat) ^ (1 / (Hiz.Max - 1))
 Hiz.Nitelik = "SpeedLevel"
 
 local function yuvarla(x: number): number
-	-- Ilk 3 basamak: 2.5K, 3.06K ... 1.3T
+	-- Ilk 3 basamak: 2.5K, 3.11K ... 5T
 	local basamak = 10 ^ math.max(0, math.floor(math.log10(x)) - 2)
 	return math.floor(x / basamak + 0.5) * basamak
 end

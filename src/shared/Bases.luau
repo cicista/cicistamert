@@ -58,19 +58,23 @@ Bases.Upgrade = {
 	-- Bedava gelen slot sayisi (1. kat)
 	startingSlots = 10,
 	--[[
-		Kat acma bedeli (Rot). 2. kat = Snow Island'i acma bedeli (10B).
+		Kat acma bedeli (Rot). 2. kat = Snow Island'i acma bedeli (30B).
 		3. kat su an kapali (maxFloors 2).
 	]]
-	floorCost = { [2] = 10_000_000_000, [3] = 2_000_000_000_000 },
+	floorCost = { [2] = 30_000_000_000, [3] = 5_000_000_000_000 },
 	-- Kat acilinca o kattan kac slot hediye gelir
 	slotsWithFloor = 1,
 	--[[
 		Tek slot bedeli (Rot). Her alinan slotta slotGrowth katina cikar.
-		2. katin 9 slotu 17B'den baslar; SON slot (20.) en pahali oltayla
-		(Leviathan Rod, 1.3T) ayni fiyattadir: 10B x 1.7174^9 = 1.3T.
+
+		11. slot 30B, SON slot (20.) 3T: en pahali oltayla (Leviathan Rod)
+		ve en pahali flyboardla (Inferno) ayni fiyat. Aradaki dokuz adim
+		30B x 1.6681^9 = 3T olacak sekilde kendiliginden dagiliyor:
+
+		    30B  50B  84B  139B  232B  388B  646B  1.1T  1.8T  3T
 	]]
-	slotBaseCost = 10_000_000_000,
-	slotGrowth = (1_300_000_000_000 / 10_000_000_000) ^ (1 / 9),
+	slotBaseCost = 30_000_000_000,
+	slotGrowth = (3_000_000_000_000 / 30_000_000_000) ^ (1 / 9),
 	-- Kilitli kat modellerinin adi: Kat2, Kat3
 	floorPrefix = "Kat",
 	-- Tabelanin yerini haritada belirleyen isaretci parca
@@ -123,7 +127,7 @@ function Bases.slotCost(unlocked: number): number
 	local U = Bases.Upgrade
 	local step = math.max(0, unlocked - U.startingSlots)
 	local ham = U.slotBaseCost * U.slotGrowth ^ step
-	-- Ilk 3 basamaga yuvarlanir: 17.2B, 29.5B ... 1.3T (kusurat kalmaz)
+	-- Ilk 3 basamaga yuvarlanir: 50.0B, 83.5B ... 3T (kusurat kalmaz)
 	local basamak = 10 ^ math.max(0, math.floor(math.log10(ham)) - 2)
 	return math.floor(ham / basamak + 0.5) * basamak
 end
