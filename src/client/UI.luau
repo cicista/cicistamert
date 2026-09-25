@@ -1212,9 +1212,23 @@ local function nesneyeUygula(nesne: Instance)
 	olcek.Parent = nesne
 end
 
+--[[
+	OLCEK DISI EKRANLAR
+
+	"OlcekDisi" niteligi true olan ScreenGui'ye olcek TAKILMAZ. Yukleme
+	ekrani boyle: tam ekran bir perde ve ortalanmis bir panelden ibaret.
+	Olcek (varsayilan 1.25) perdeyi sol ust kosesinden buyutuyordu -- ekran
+	pencereden tasiyor, panel saga-asagi kayiyor, arka plan resminin sagi
+	ve alti gorunmuyordu. Tam ekran bir seyin buyutulecek bir yani yok.
+]]
+UI.OlcekDisiNitelik = "OlcekDisi"
+
 -- Bir ScreenGui'yi olcege baglar; sonradan eklenen cocuklari da yakalar
 local function guiIzle(gui: Instance)
 	if not gui:IsA("ScreenGui") then
+		return
+	end
+	if gui:GetAttribute(UI.OlcekDisiNitelik) == true then
 		return
 	end
 

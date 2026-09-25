@@ -65,7 +65,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 -- Yerlesim ekranin GERCEK olcusune baglaniyor (bkz. yerlesimiTazele)
-local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -114,7 +113,7 @@ local ARKA_PLAN_ADI = "LoadingScreen"
 local RESIM_ODAK = Vector2.new(0.5, 0.5)
 
 -- Yukleme boyunca resim bu orana kadar yavasca yaklasir (1 = hic yaklasma)
-local RESIM_YAKLASMA = 1.12
+local RESIM_YAKLASMA = 1.04
 
 -- Oyunun adi (alt kosede durur)
 local OYUN_ADI = "CICISTAMERT"
@@ -300,17 +299,60 @@ pcall(function()
 end)
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+--[[
+	ARAYUZ OLCEGI BU EKRANA UYGULANMAZ
+
+	Asil sorun buydu: StarterPlayerScripts > UI, PlayerGui'deki HER
+	ekranin ust duzey cocuklarina 1.25'lik bir UIScale takiyor (ayarlardaki
+	"Interface Scale"). Perde de ust duzey oldugu icin sol ust kosesinden
+	1.25 kat buyuyordu:
+
+	    panel merkezi 960 yerine ~1210, boyu 600 yerine ~750 mantiksal
+	    arka plan resmi pencereden tasip sagi/alti kesiliyor
+
+	Bu nitelik UI modulune "bu ekrana dokunma" diyor. Nitelik ekran
+	PlayerGui'ye GIRMEDEN yaziliyor; sonradan yazilsaydi olcek o arada
+	takilmis olabilirdi.
+]]
+ekran:SetAttribute("OlcekDisi", true)
 ekran.Parent = playerGui
 
 --[[
-	KOK PERDE
+	KOK PERDE  --  DUZ FRAME, CanvasGroup DEGIL
 
-	Tamami tek bir CanvasGroup: kapanirken tek bir GroupTransparency
-	tweeni butun ekrani birlikte soluyor. Tek tek nesneleri soldurmak hem
-	daha fazla tween hem de birinin geride kalma riski demekti.
+	Eskiden butun ekran tek bir CanvasGroup'un icindeydi (kapanirken tek
+	bir GroupTransparency tweeni icin). CanvasGroup icerigini once bir
+	dokuya cizip sonra ekrana basiyor; tam ekran boyunda bir CanvasGroup'ta
+	(ozellikle Windows ekran olceklendirmesi %100 degilken) o doku YANLIS
+	OLCEKTE basildi -- ekran goruntusunden olculen:
+
+	    koddaki panel 600x262  ->  ekranda ~940x412
+	    merkezi 960            ->  ekranda ~1210
+
+	Yani her sey sol ust koseden ~1.26 kat buyuyordu: panel saga-asagi
+	kayiyor, arka plan resmi buyuyup sagi ve alti kesiliyor, yazilar da
+	dokudan buyutuldugu icin bulanik/cift gorunuyordu. Pikselle, oranla,
+	kamerayla yapilan butun "ortalama" denemeleri bu yuzden ise yaramadi --
+	sorun konumda degil, cizimdeydi.
+
+	Duz Frame'de boyle bir ara doku yok: her sey tam yerinde ve net
+	ciziliyor. Kapanistaki solma artik nesne nesne yapiliyor (bkz. KAPANIS
+	> hepsiniSoldur).
 ]]
-local perde = Instance.new("CanvasGroup")
+local perde = Instance.new("Frame")
 perde.Name = "Perde"
+--[[
+	EMNIYET: nitelige ragmen perdeye bir olcek takilirsa (eski surum bir
+	UI modulu, baska bir script) aninda sokulur. Perde her zaman pencerenin
+	kendisi kadar kalir.
+]]
+perde.ChildAdded:Connect(function(cocuk)
+	if cocuk:IsA("UIScale") then
+		task.defer(function()
+			cocuk:Destroy()
+		end)
+	end
+end)
 perde.Size = UDim2.fromScale(1, 1)
 perde.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
 perde.BorderSizePixel = 0
@@ -346,12 +388,17 @@ gokGecis.Parent = gokyuzu
 
 	SABIT duruyor ve ekranin TAM ORTASINDA: AnchorPoint verilmeseydi
 	(varsayilan 0,0) sol ust koseye yapisirdi.
+
+	TASMA PAYI: her kenardan birkac piksel BUYUK. Olcu yuvarlamasi ya da
+	perdenin bir piksel eksik cozulmesi yuzunden kenarda sacim gibi bir
+	bosluk kalabiliyordu; bu payla resim her zaman kenarlarin disina
+	tasiyor, yani ekranda hicbir bosluk gorunmuyor.
 ]]
 local resimKabi = Instance.new("Frame")
 resimKabi.Name = "ResimKabi"
 resimKabi.AnchorPoint = Vector2.new(0.5, 0.5)
 resimKabi.Position = UDim2.fromScale(0.5, 0.5)
-resimKabi.Size = UDim2.fromScale(1, 1)
+resimKabi.Size = UDim2.new(1, 12, 1, 12)
 resimKabi.BackgroundTransparency = 1
 resimKabi.ClipsDescendants = true
 resimKabi.ZIndex = 2
@@ -392,14 +439,16 @@ resimYaklasma.Parent = resimKabi
 
 	Katman sayisi az: yukleme ekrani, makine zaten mesgul.
 ]]
+--[[
+	ARTIK TEK KATMAN: resim NET.
+
+	Kaydirilmis kopyalar resmin uzerindeki yaziyi (MYSTERY BEAMS logosu)
+	cift ve okunmaz yapiyordu. Arka plan butun potansiyeliyle gorunsun
+	diye bulaniklik kaldirildi; liste yine duruyor, istenirse kopya
+	eklenebilir.
+]]
 local BULANIK_KAYMA = {
 	Vector2.new(0, 0),
-	Vector2.new(6, 4),
-	Vector2.new(-6, -4),
-	Vector2.new(5, -6),
-	Vector2.new(-5, 6),
-	Vector2.new(9, 0),
-	Vector2.new(-9, 0),
 }
 local resimKatmanlari: { ImageLabel } = {}
 
@@ -412,7 +461,7 @@ for sira, kayma in BULANIK_KAYMA do
 	katman.BackgroundTransparency = 1
 	katman.ScaleType = Enum.ScaleType.Crop
 	-- Ilk katman tam, digerleri gittikce soluk: uzerine bindikce yumusuyor
-	katman.ImageTransparency = if sira == 1 then 0.1 else 0.55
+	katman.ImageTransparency = if sira == 1 then 0 else 0.55
 	katman.ZIndex = 2
 	katman.Visible = false
 	katman.Parent = resimYaklasma
@@ -462,7 +511,7 @@ task.spawn(function()
 	end
 
 	--[[
-		YAVAS YAKLASMA: resim %100'den %112'ye buyuyor. Tek yonlu ve uzun
+		YAVAS YAKLASMA: resim %100'den %104'e buyuyor. Tek yonlu ve uzun
 		(yukleme ne kadar surerse sursun bitmiyor gibi duruyor).
 	]]
 	TweenService
@@ -487,7 +536,7 @@ karartma.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
 	olsun baslik ve cubuk okunur kalsin. Resmin kendisi yine seciliyor,
 	ama artik yazilarla yarismiyor.
 ]]
-karartma.BackgroundTransparency = 0.18
+karartma.BackgroundTransparency = 0.35
 karartma.BorderSizePixel = 0
 karartma.ZIndex = 3
 karartma.Parent = perde
@@ -495,9 +544,14 @@ karartma.Parent = perde
 -- Kenarlara dogru koyulasan vinyet: goz ortaya, panele gidiyor
 local vinyet = Instance.new("UIGradient")
 vinyet.Rotation = 90
+--[[
+	Ust hafif koyu, ORTA TAMAMEN ACIK (logo orada), alt koyu (panel orada
+	durdugu icin yazilar okunsun).
+]]
 vinyet.Transparency = NumberSequence.new({
-	NumberSequenceKeypoint.new(0, 0),
-	NumberSequenceKeypoint.new(0.5, 0.65),
+	NumberSequenceKeypoint.new(0, 0.55),
+	NumberSequenceKeypoint.new(0.4, 1),
+	NumberSequenceKeypoint.new(0.62, 1),
 	NumberSequenceKeypoint.new(1, 0),
 })
 vinyet.Parent = karartma
@@ -528,51 +582,47 @@ panel.ZIndex = 4
 panel.Parent = perde
 
 --[[
-	YERLESIM  --  perdenin boyu ve panelin yeri ekranin gercek olcusunden
+	YERLESIM  --  ORANLA, kamera olcusuyle degil
 
-	perde de oranla degil PIKSELLE olculuyor: oranla verilince cercevenin
-	pencereden genis cozulme ihtimali kaliyordu ve icindeki her sey onunla
-	birlikte kayiyordu.
+	Perde ekranin tamamini, panel de tam ortasini ORANLA aliyor.
 
-	Ekran boyu degisince (pencere boyutlandirma, tam ekran, telefon cevirme)
-	yeniden hesaplaniyor.
+	Onceden ikisi de kameranin ViewportSize'indan piksel piksel
+	hesaplaniyordu. Bu script ReplicatedFirst'te, yani oyunun EN BASINDA
+	calisiyor: o anda kamera henuz yok ya da olcusu gecici (1x1) olabiliyor
+	ve perde o gecici olcuye gore kuruluyordu -- arka plan ekranin bir
+	kismini kaplamiyor, panel de ortadan kayiyordu.
+
+	Oranla verince boyle bir an yok: perde her zaman ekranin kendisi kadar,
+	panel de her zaman tam ortasinda. Pencere boyutu degisince (tam ekran,
+	telefon cevirme) kendiliginden uyuyor, dinlemeye gerek kalmiyor.
+
+	Oranin guvenli olmasinin sebebi ekranin ScreenInsets = None +
+	IgnoreGuiInset olmasi: arayuz alani pencerenin TAMAMI, yani "%100"
+	gercekten tam ekran demek (bkz. EKRAN bolumu).
 ]]
-local function yerlesimiTazele()
-	local kamera = Workspace.CurrentCamera
-	if not kamera then
-		return
-	end
+perde.Position = UDim2.fromScale(0, 0)
+perde.Size = UDim2.fromScale(1, 1)
 
-	local olcu = kamera.ViewportSize
-	if olcu.X <= 0 or olcu.Y <= 0 then
-		return
-	end
+--[[
+	PANEL ALTTA: arka plan resminin logosu ("MYSTERY BEAMS") ortada duruyor
+	ve panel ortadayken tam onu kapatiyordu. Panel artik alt ortada; resim
+	ve logo ustte tamamen gorunuyor.
+]]
+panel.AnchorPoint = Vector2.new(0.5, 1)
+panel.Position = UDim2.new(0.5, 0, 1, -24)
 
-	perde.Position = UDim2.fromOffset(0, 0)
-	perde.Size = UDim2.fromOffset(olcu.X, olcu.Y)
-	panel.Position = UDim2.fromOffset(olcu.X / 2, olcu.Y / 2)
-end
+--[[
+	PANEL KUCUK: logonun altindaki Lucky Block da gorunsun
 
-yerlesimiTazele()
-
-do
-	local olcuBagi: RBXScriptConnection? = nil
-
-	local function kamerayiIzle()
-		if olcuBagi then
-			olcuBagi:Disconnect()
-		end
-		local kamera = Workspace.CurrentCamera
-		if kamera then
-			olcuBagi = kamera:GetPropertyChangedSignal("ViewportSize"):Connect(yerlesimiTazele)
-		end
-		yerlesimiTazele()
-	end
-
-	kamerayiIzle()
-	-- Kamera oyun acilirken degisebiliyor: yenisine de baglan
-	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(kamerayiIzle)
-end
+	Tam boyda panel blogun yuzunu kapatiyordu. Icindeki her seyi tek tek
+	kucultmek yerine panelin tamamina bir olcek veriliyor; AnchorPoint alt
+	ortada oldugu icin panel kuculurken yerinden kaymiyor, dibe oturuyor.
+]]
+local PANEL_OLCEK = 0.72
+local panelOlcek = Instance.new("UIScale")
+panelOlcek.Name = "PanelOlcek"
+panelOlcek.Scale = PANEL_OLCEK
+panelOlcek.Parent = panel
 kose(panel, 18)
 kontur(panel, Color3.fromRGB(45, 60, 82), 2)
 
@@ -1027,13 +1077,41 @@ local function kapat()
 	-- Sohbet ve oyuncu listesi geri gelsin
 	coreGuiGeriAc()
 
-	local sonme = TweenService:Create(
-		perde,
-		TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ GroupTransparency = 1 }
-	)
-	sonme:Play()
-	sonme.Completed:Wait()
+	--[[
+		HEPSINI BIRLIKTE SOLDUR
+
+		Perde artik CanvasGroup degil (bkz. KOK PERDE); tek bir
+		GroupTransparency yok. Onun yerine perde ve icindeki her nesnenin
+		saydamlik ozellikleri AYNI tweenle 1'e cekiliyor -- ekranda yine
+		tek parca soluyormus gibi gorunuyor.
+	]]
+	local solma = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local sonTween: Tween? = nil
+
+	local function soldur(nesne: Instance, hedef: { [string]: any })
+		local tween = TweenService:Create(nesne, solma, hedef)
+		tween:Play()
+		sonTween = tween
+	end
+
+	local nesneler = perde:GetDescendants()
+	table.insert(nesneler, perde)
+
+	for _, nesne in nesneler do
+		if nesne:IsA("UIStroke") then
+			soldur(nesne, { Transparency = 1 })
+		elseif nesne:IsA("TextLabel") or nesne:IsA("TextButton") or nesne:IsA("TextBox") then
+			soldur(nesne, { BackgroundTransparency = 1, TextTransparency = 1, TextStrokeTransparency = 1 })
+		elseif nesne:IsA("ImageLabel") or nesne:IsA("ImageButton") or nesne:IsA("ViewportFrame") then
+			soldur(nesne, { BackgroundTransparency = 1, ImageTransparency = 1 })
+		elseif nesne:IsA("GuiObject") then
+			soldur(nesne, { BackgroundTransparency = 1 })
+		end
+	end
+
+	if sonTween then
+		sonTween.Completed:Wait()
+	end
 
 	-- Her kare calisan cizim dongusu ekranla birlikte bitsin
 	if cizimBagi then
