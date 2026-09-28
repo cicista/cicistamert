@@ -812,21 +812,32 @@ function PlayerData.load(player: Player): Data?
 		sinir burada. DataStore coktugunde oyuncu bozuk oyunda sonsuza kadar
 		beklemesin, atilsin. Oturum devri (~40 sn) bu sureye sigar.
 	]]
-	local baslangic = os.clock()
-	local profile = kaynak:StartSessionAsync(tostring(player.UserId), {
-		-- Oyuncu yukleme sirasinda cikarsa ya da sure dolarsa istek birakilir
-		Cancel = function()
-			return not oyunda(player) or os.clock() - baslangic > YUKLEME_SINIRI
-		end,
-	})
-
-	if profile == nil then
+	-- Yukleme basarisiz: bekleyenler serbest kalir, oyuncu atilir
+	local function vazgec(sebep: string): nil
 		yukleniyor[player] = nil
 		if oyunda(player) then
-			warn(`[PlayerData] {player.Name} verisi acilamadi, oyuncu atiliyor`)
+			warn(`[PlayerData] {player.Name} verisi acilamadi ({sebep}), oyuncu atiliyor`)
 			player:Kick("Your data could not be loaded. Please rejoin in a moment.")
 		end
 		return nil
+	end
+
+	local baslangic = os.clock()
+	-- ProfileStore hata da firlatabilir; yakalanmazsa yukleniyor hep true kalirdi
+	local basladi, profile = pcall(function()
+		return kaynak:StartSessionAsync(tostring(player.UserId), {
+			-- Oyuncu yukleme sirasinda cikarsa ya da sure dolarsa istek birakilir
+			Cancel = function()
+				return not oyunda(player) or os.clock() - baslangic > YUKLEME_SINIRI
+			end,
+		})
+	end)
+
+	if not basladi then
+		return vazgec(tostring(profile))
+	end
+	if profile == nil then
+		return vazgec("oturum acilamadi")
 	end
 
 	-- Oturum acilirken oyuncu cikti: veriyi hemen birak, cache'e koyma
@@ -839,7 +850,17 @@ function PlayerData.load(player: Player): Data?
 	profile:AddUserId(player.UserId)
 
 	-- Yeni profil bos tablo gelir: ogreticiyle baslayan temiz veri alir
-	local data = if next(profile.Data) == nil then defaultData() else migrate(profile.Data)
+	local okundu, data = pcall(function(): Data
+		return if next(profile.Data) == nil then defaultData() else migrate(profile.Data)
+	end)
+	if not okundu then
+		--[[
+			Kayit okunamadi. Oturum kapatilir: profile.Data hala kayittaki ham
+			veri, yani son kayit ayni veriyi geri yazar -- hicbir sey kaybolmaz.
+		]]
+		profile:EndSession()
+		return vazgec(`kayit okunamadi: {tostring(data)}`)
+	end
 	profile.Data = data
 
 	profile.OnLastSave:Connect(function()
