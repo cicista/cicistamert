@@ -13,3 +13,6 @@
 # Gecici dosyalar
 /tmp/
 *.log
+
+# Claude Code kisisel ayarlari -- her makinede ayri
+.claude/settings.local.json
