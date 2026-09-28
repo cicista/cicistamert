@@ -100,8 +100,8 @@ AfkSans.MinAralik = 2
 -- Zemin kenarindan birakilan pay (stud)
 AfkSans.KenarPayi = 2
 -- Rastgele boyut araligi
-AfkSans.OlcekMin = 0.25
-AfkSans.OlcekMax = 1
+AfkSans.OlcekMin = 0.3
+AfkSans.OlcekMax = 0.75
 -- Bir yoncanin toplanma suresi (saniye)
 AfkSans.ToplamaSuresi = 3
 -- Toplamaya baslamak icin yoncaya en fazla bu kadar yaklasmak gerek (yonca yaricapina ek)

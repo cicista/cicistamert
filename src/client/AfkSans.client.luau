@@ -1029,7 +1029,7 @@ end)
 -- Sunucu listeleri oyuncu hazir olunca zaten yolluyor; bu script gec baslarsa kacirmasin
 YoncaIste:FireServer()
 
-YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni)
+YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
 	if type(id) ~= "number" then
 		return
 	end
@@ -1037,6 +1037,15 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni)
 	local t = toplanan
 	if t and t.id == id then
 		toplamaBirak(false)
+	end
+
+	-- Sunucuda artik olmayan yonca: sahneden kaldir, baska yoncaya gec
+	if not ok and yok == true then
+		yoncaSil(id, false)
+		if hedefId == id then
+			hedefId = nil
+		end
+		return
 	end
 
 	if not ok then

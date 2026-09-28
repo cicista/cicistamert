@@ -354,9 +354,18 @@ local function bitir(player: Player, durum: Durum, is: Toplama)
 
 	yoncalar[is.id] = nil
 	local z = zemin(is.alan)
-	local yeni = if z then yeniYonca(durum, is.alan, z) else nil
+	-- Yeni yonca kurulurken hata olsa bile istemci cevapsiz kalmasin (bar takili kalirdi)
+	local yeni: Yonca? = nil
+	if z then
+		local ok, sonuc = pcall(yeniYonca, durum, is.alan, z)
+		if ok then
+			yeni = sonuc
+		else
+			warn(`[AfkSans] yeni yonca kurulamadi: {sonuc}`)
+		end
+	end
 
-	YoncaSonuc:FireClient(player, is.id, true, math.floor(kazanc), if yeni then paket(yeni) else nil)
+	YoncaSonuc:FireClient(player, is.id, true, math.floor(kazanc), if yeni then paket(is.alan, yeni) else nil)
 end
 
 local function toplaIstegi(player: Player, id: any)
@@ -379,7 +388,15 @@ local function toplaIstegi(player: Player, id: any)
 	local yoncalar = alanId and durum.yoncalar[alanId]
 	local yonca = yoncalar and yoncalar[id]
 	if not alanId or not yonca or not yaninda(player, yonca, ERISIM_PAYI) then
-		Net.event("YoncaSonuc"):FireClient(player, id, false)
+		-- Yonca sunucuda hic yoksa (5. deger true) istemci onu sahneden de siler
+		local yok = true
+		for _, liste in durum.yoncalar do
+			if liste[id] then
+				yok = false
+				break
+			end
+		end
+		Net.event("YoncaSonuc"):FireClient(player, id, false, 0, nil, yok)
 		return
 	end
 
