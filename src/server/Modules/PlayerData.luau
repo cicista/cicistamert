@@ -1058,7 +1058,9 @@ function PlayerData.addBrainrot(
 	rarity: string,
 	condition: string,
 	mutation: string?,
-	island: string?
+	island: string?,
+	-- Robux ile alinan odul: canta dolu olsa da girer (para geri verilemiyor)
+	kapasiteyiGec: boolean?
 ): InventoryItem?
 	local data = cache[player]
 	if not data then
@@ -1072,7 +1074,7 @@ function PlayerData.addBrainrot(
 		Block ve gorev odulu -- hepsi bu fonksiyondan geciyor, tek satirla
 		hepsi kapsaniyor. Cagiranlar zaten nil donusunu bekliyor.
 	]]
-	if PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
+	if not kapasiteyiGec and PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
 		cantaDoluUyar(player, data)
 		return nil
 	end

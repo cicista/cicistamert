@@ -82,6 +82,11 @@ export type Cell = {
 	brainrot: { name: string, mutation: string? }?,
 	-- Bolmenin kademesi: cercevedeki canli efekt buna gore secilir
 	rarity: string?,
+	--[[
+		Verilirse bolmede o kademenin YUMURTASI (kimliksiz brainrot modeli)
+		durur; yazi altta. Gacha carki boyle cizilir.
+	]]
+	yumurta: string?,
 }
 
 export type Reel = {
@@ -332,8 +337,9 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 		efektTak(reel.strip, cell, entry.color, entry.rarity)
 
 		local resim = if showText then entry.brainrot else nil
+		local yumurta = if showText then entry.yumurta else nil
 
-		if resim then
+		if resim or yumurta then
 			--[[
 				BRAINROT BOLMESI: ustte resmi, altta adi.
 
@@ -347,7 +353,12 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 			yuva.Size = UDim2.new(1, -8, 1, -24)
 			yuva.Parent = cell
 
-			reel.onizleme.ekle(yuva, { name = resim.name, mutation = resim.mutation, revealed = true })
+			if resim then
+				reel.onizleme.ekle(yuva, { name = resim.name, mutation = resim.mutation, revealed = true })
+			else
+				-- Kimliksiz: kademenin yumurta modeli (bkz. Assets.hiddenBrainrotModel)
+				reel.onizleme.ekle(yuva, { revealed = false, rarity = yumurta })
+			end
 
 			-- Isim beyaz + siyah kontur: renkli kartin ustunde okunur
 			local ad = UI.text({

@@ -148,6 +148,11 @@ Net.Events = {
 	"AfkAlanAl",         -- client -> server: siradaki alani satin al (alanId)
 	"AfkYenidenBaglan",  -- client -> server: alanda AFK'yim, atilmadan beni ayni sunucuya yeniden bagla
 
+	-- Yumurta gachasi (bkz. Shared > Gacha); satin alma RobuxUrunAl ile ("Gacha")
+	"GachaAc",          -- server -> client: pencereyi ac ({ admin })
+	"GachaSonuc",       -- server -> client: cevirme sonucu ({ rarity, ad })
+	"GachaDene",        -- client -> server: admin denemesi (ucretsiz cevirme)
+
 	-- Admin
 	"AdminPanelAc",     -- server -> client: panel + yetki
 	"AdminKomut",       -- client -> server: komut calistir

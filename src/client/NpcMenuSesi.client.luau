@@ -28,6 +28,7 @@ local NPC_MENULERI: { [string]: boolean } = {
 	FuseMakinesi = true,
 	Detective = true,
 	SaticiPenceresi = true, -- brainrot saticisi
+	GachaPenceresi = true, -- Gacha NPC'si (yumurta gachasi)
 }
 
 local ISARET = "NpcMenuSesi"

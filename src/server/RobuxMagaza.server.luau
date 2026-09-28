@@ -33,6 +33,9 @@ local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
+-- Yumurta gachasi (bkz. Modules > Gacha)
+local Gacha = require(Modules:WaitForChild("Gacha"))
+local Canta = require(Shared:WaitForChild("Canta"))
 
 local Bildirim = Net.event("Bildirim")
 local RobuxUrunAl = Net.event("RobuxUrunAl")
@@ -123,6 +126,9 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 				Color3.fromRGB(255, 200, 90)
 			)
 		end
+	elseif urun.tur == "gacha" then
+		-- Yumurta kayda hemen yazilir, carki ve patlamayi Gacha modulu oynatir
+		Gacha.ver(player)
 	else
 		error(`bilinmeyen urun turu: {urun.tur}`)
 	end
@@ -130,6 +136,13 @@ end
 
 -- Urun verildikten sonra ekrandakiler (canta, bakiye, iksir yazisi) tazelenir
 local function ekraniTazele(player: Player, urun: RobuxMagaza.Urun)
+	--[[
+		Gacha: yumurta cark DURUNCA gorunmeli; envanteri Gacha modulu
+		tazeliyor (simdi tazelenirse cark donerken cantada belirirdi).
+	]]
+	if urun.tur == "gacha" then
+		return
+	end
 	if urun.tur == "luckyblock" then
 		Envanter.syncLuckyBlocks(player)
 	elseif urun.tur == "luck" then
@@ -183,7 +196,12 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 
 	-- Ekran hatasi satin almayi bozmasin
 	pcall(ekraniTazele, player, urun)
-	Bildirim:FireClient(player, `Thank you! You got {urun.ad}!`, YESIL)
+	-- Gacha kendi sonucunu cark durunca soyluyor; simdi "tesekkurler" yeter
+	Bildirim:FireClient(
+		player,
+		if urun.tur == "gacha" then "Thank you! Spinning the Egg Gacha..." else `Thank you! You got {urun.ad}!`,
+		YESIL
+	)
 
 	if not PlayerData.fisKaydedildi(player, fisId) then
 		-- Urun ve fis bellekte; kayit sonra (otomatik ya da cikista) gider
@@ -226,6 +244,19 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 	if urun.tur == "detectiveSkip" and not dedektifBekliyor(player) then
 		Bildirim:FireClient(player, "The Detective is not working on anything.", SARI)
 		return
+	end
+
+	--[[
+		GACHA: CANTA DOLUYSA PENCERE ACILMAZ
+		Yumurta dolu cantaya da girer (para geri verilemez), ama oyuncu
+		bunu bilerek almasin: once yer acsin.
+	]]
+	if urun.tur == "gacha" then
+		local data = PlayerData.get(player)
+		if data and PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
+			Bildirim:FireClient(player, "Your backpack is full! Make room before spinning the Egg Gacha.", SARI)
+			return
+		end
 	end
 
 	if not RobuxMagaza.satista(urun) then

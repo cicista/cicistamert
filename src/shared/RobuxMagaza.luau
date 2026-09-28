@@ -31,6 +31,7 @@
 ]]
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
+local Gacha = require(script.Parent.Gacha)
 
 local RobuxMagaza = {}
 
@@ -47,7 +48,7 @@ export type Urun = {
 	etiket: string,
 	-- Bildirimde yazan tam ad
 	ad: string,
-	tur: string, -- "luckyblock" | "luck" | "rotcoin" | "detectiveSkip"
+	tur: string, -- "luckyblock" | "luck" | "rotcoin" | "detectiveSkip" | "gacha"
 	-- luckyblock
 	tier: string?,
 	adet: number?,
@@ -196,6 +197,19 @@ RobuxMagaza.GizliUrunler = {
 		etiket = "SKIP",
 		ad = "Instant Identify",
 		tur = "detectiveSkip",
+	},
+
+	--[[
+		Yumurta gachasi: Gacha NPC'sinin penceresindeki satin alma dugmesi.
+		Oyundaki en pahali gacha; bkz. Shared > Gacha.
+	]]
+	{
+		anahtar = Gacha.UrunAnahtari,
+		id = 0,
+		fiyat = Gacha.Fiyat,
+		etiket = "OPEN",
+		ad = "Egg Gacha Spin",
+		tur = "gacha",
 	},
 } :: { Urun }
 
