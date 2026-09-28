@@ -442,9 +442,16 @@ cizgi.Transparency = NumberSequence.new({
 	NumberSequenceKeypoint.new(0.85, 0.15),
 	NumberSequenceKeypoint.new(1, 0.85),
 })
--- Hafif kavis: dumduz bir cizgi zeminle ic ice girip kayboluyordu
-cizgi.CurveSize0 = 6
-cizgi.CurveSize1 = 6
+--[[
+	KAVIS YOK: cizgi dumduz gider.
+	Onceden CurveSize 6 idi. Kavis tutamaklarin X ekseni yonunde bukulur;
+	baslangic tutamagi karakterle birlikte donuyor, hedefinki de hedef
+	parcanin yonunde duruyor. Karakter dondukce kavis de yon degistiriyor,
+	cizgi yamuk yumuk gorunuyordu. Iki uc da govde ortasinda (zeminin
+	ustunde) oldugu icin duz cizgi zemine gomulmuyor.
+]]
+cizgi.CurveSize0 = 0
+cizgi.CurveSize1 = 0
 cizgi.Enabled = false
 cizgi.Parent = kokTutamak
 

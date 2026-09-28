@@ -962,6 +962,23 @@ Assets.CountAttribute = "Adet"
 ]]
 Assets.RarityVFXMaxScale = 3
 
+-- Kademe efektinin brainrotun boyuna gore carpani (bkz. attachRarityVFX)
+function Assets.rarityVFXScale(model: Instance): number
+	-- Tool da gelebilir; worldBounds yalnizca torunlara bakiyor
+	local enAz, enCok = Assets.worldBounds(model :: any)
+	if not enAz or not enCok then
+		return 1
+	end
+
+	local boy = enCok - enAz
+	local uzun = math.max(boy.X, boy.Y, boy.Z)
+	local taban = Assets.BrainrotSize.slotSize
+	if taban > 0 and uzun > 0 then
+		return math.clamp(uzun / taban, 0.75, Assets.RarityVFXMaxScale)
+	end
+	return 1
+end
+
 function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePart?): Instance?
 	local ad = if type(rarityId) == "string" then RARITY_VFX[rarityId] else nil
 	if not ad then
@@ -991,9 +1008,69 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		return nil
 	end
 
-	local sablon = Assets.vfxTemplate(ad)
-	if not sablon then
+	local bulunanSablon = Assets.vfxTemplate(ad)
+	if not bulunanSablon then
 		return nil
+	end
+	local sablon: Instance = bulunanSablon
+
+	--[[
+		SABLON HER YAPIDA CALISMALI
+
+		Asagidaki yerlestirme yalnizca BasePart ya da Model taniyordu.
+		DivineVFX gibi Folder, Attachment ya da ciplak ParticleEmitter
+		olarak hazirlanmis bir sablon modelin icine oylece birakiliyordu:
+		Model'in altindaki Attachment ve yayici hic cizilmez, Folder'daki
+		parca da haritadaki eski yerinde kalir. Efekt "hic yok" gorunuyordu.
+
+		  parcali Folder vb.   -> bir Model'e tasinir, Model gibi yerlesir
+		  parcasiz her sey     -> govdeye takilan bir Attachment'a toplanir
+	]]
+	local parcaVar = sablon:IsA("BasePart") or sablon:FindFirstChildWhichIsA("BasePart", true) ~= nil
+
+	if not parcaVar then
+		local tutamak = Instance.new("Attachment")
+		tutamak.Name = ad
+		tutamak.Visible = false
+		tutamak:SetAttribute(Assets.RarityVFXAttribute, true)
+
+		--[[
+			Attachment'in icindeki Attachment cizilmez; ic ice tutamaklarin
+			yayicilari da bu tek tutamaga toplanir.
+		]]
+		local function topla(node: Instance)
+			if node:IsA("Attachment") or node:IsA("Folder") or node:IsA("Model") or node:IsA("Configuration") then
+				for _, cocuk in node:GetChildren() do
+					topla(cocuk)
+				end
+			else
+				node.Parent = tutamak
+			end
+		end
+		topla(sablon)
+		sablon:Destroy()
+
+		if #tutamak:GetChildren() == 0 then
+			tutamak:Destroy()
+			Assets.warnOnce(
+				`vfx bos: {ad}`,
+				`[Assets] "{ad}" icinde efekt yok (parca, parcacik ya da isik bulunamadi).`
+			)
+			return nil
+		end
+
+		tutamak.Parent = govde
+		Assets.scaleEffects(tutamak, Assets.rarityVFXScale(model))
+		return tutamak
+	end
+
+	if not sablon:IsA("BasePart") and not sablon:IsA("Model") then
+		local sarici = Instance.new("Model")
+		for _, cocuk in sablon:GetChildren() do
+			cocuk.Parent = sarici
+		end
+		sablon:Destroy()
+		sablon = sarici
 	end
 
 	sablon.Name = ad
@@ -1029,18 +1106,7 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		sinir var: kucuk brainrotta efekt yok olmasin, devasa olanda da
 		ekrani kaplamasin.
 	]]
-	local carpan = 1
-	do
-		local enAz, enCok = Assets.worldBounds(model)
-		if enAz and enCok then
-			local boy = enCok - enAz
-			local uzun = math.max(boy.X, boy.Y, boy.Z)
-			local taban = Assets.BrainrotSize.slotSize
-			if taban > 0 and uzun > 0 then
-				carpan = math.clamp(uzun / taban, 0.75, Assets.RarityVFXMaxScale)
-			end
-		end
-	end
+	local carpan = Assets.rarityVFXScale(model)
 
 	local function olcekle(parca: BasePart)
 		parca.Size *= carpan
@@ -1053,6 +1119,28 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		sablon.CFrame = govde.CFrame
 		yerlestir(sablon)
 	elseif sablon:IsA("Model") then
+		--[[
+			PIVOT EFEKTIN DISINDAYSA ORTAYA AL
+
+			PivotTo modelin PIVOTUNU govdeye koyar. Pivot, Studio'da
+			efektin cok uzaginda kalmissa (Folder'dan donusen modelde pivot
+			haritanin merkezi olur) efekt brainrottan metrelerce uzakta
+			beliriyordu. Pivot efektin kendi kutusunun disindaysa kutunun
+			ortasina tasiniyor; duzgun hazirlanmis sablonlara dokunulmuyor.
+		]]
+		local kutuCF, kutuBoy = sablon:GetBoundingBox()
+		local pivot = sablon:GetPivot()
+		if (pivot.Position - kutuCF.Position).Magnitude > math.max(kutuBoy.X, kutuBoy.Y, kutuBoy.Z) then
+			local yeniPivot = CFrame.new(kutuCF.Position) * pivot.Rotation
+			-- PrimaryPart varsa WorldPivot yok sayilir; pivot onun uzerinden
+			local ana = sablon.PrimaryPart
+			if ana then
+				ana.PivotOffset = ana.CFrame:ToObjectSpace(yeniPivot)
+			else
+				sablon.WorldPivot = yeniPivot
+			end
+		end
+
 		if carpan ~= 1 then
 			--[[
 				ScaleTo modelin PIVOTUNDAN olcekler ve PrimaryPart ister;
