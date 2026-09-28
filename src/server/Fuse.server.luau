@@ -761,7 +761,13 @@ PlayerData.onBeforeRelease(function(player: Player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-	pending[player] = nil
+	--[[
+		pending BURADA SILINMEZ, geri verilir. PlayerRemoving baglantilarinin
+		sirasi garanti degil: bu satir PlayerData'nin kaydindan once calisirsa
+		silmek, kancanin geri yazacagi esyalari yok ederdi. Kanca once
+		calistiysa pending zaten bostur ve bu cagri hicbir sey yapmaz.
+	]]
+	returnItems(player, nil)
 	nearby[player] = nil
 	fusing[player] = nil
 end)
