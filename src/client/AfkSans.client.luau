@@ -928,7 +928,7 @@ local hud = Instance.new("Frame")
 hud.Name = "SansHUD"
 hud.AnchorPoint = Vector2.new(0.5, 1)
 hud.Position = UDim2.new(0.5, 0, 1, -140)
-hud.Size = UDim2.fromOffset(420, 84)
+hud.Size = UDim2.fromOffset(480, 84)
 hud.BackgroundColor3 = UI.Colors.panel
 hud.BackgroundTransparency = 0.1
 hud.BorderSizePixel = 0
@@ -937,12 +937,16 @@ hud.Parent = screen
 UI.corner(hud, 12)
 UI.stroke(hud, SIYAH, 3)
 
+-- Iki sutun yan yana: CLOVER LUCK ve XP GAIN (ayni yazi tipi, boyu ve dizilisi)
+local SUTUN_GENISLIK = 170
+local XP_SUTUN_X = 14 + SUTUN_GENISLIK + 12
+
 local hudBaslik = UI.text({
 	text = "CLOVER LUCK",
 	size = UI.Sizes.small,
 	font = UI.Fonts.bold,
 	color = YONCA_YESIL,
-	frameSize = UDim2.new(1, -150, 0, 20),
+	frameSize = UDim2.fromOffset(SUTUN_GENISLIK, 20),
 	position = UDim2.fromOffset(14, 6),
 	parent = hud,
 })
@@ -952,7 +956,7 @@ local hudPuan = UI.text({
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
-	frameSize = UDim2.new(1, -150, 0, 32),
+	frameSize = UDim2.fromOffset(SUTUN_GENISLIK, 32),
 	position = UDim2.fromOffset(14, 25),
 	parent = hud,
 })
@@ -961,40 +965,45 @@ hudPuanOlcek.Parent = hudPuan
 
 --[[
 	XP GAIN  --  bu alanda AFK kalirken toplanan oyuncu XP'sinin TOPLAMI.
-	Her yoncada artar ve parlar; alandan cikip girince (ya da alan
+	CLOVER LUCK'in yaninda, onunla ayni dizilis: ustte baslik, altta buyuk
+	sayi. Her yoncada artar ve parlar; alandan cikip girince (ya da alan
 	degisince) sifirlanir (bkz. AfkAlan olayi).
 ]]
 local toplamXp = 0
-local hudXpGain = UI.text({
-	text = "",
+local hudXpBaslik = UI.text({
+	text = "XP GAIN",
 	size = UI.Sizes.small,
 	font = UI.Fonts.bold,
-	color = Color3.fromRGB(120, 255, 150),
-	align = Enum.TextXAlignment.Right,
-	frameSize = UDim2.new(1, -150, 0, 20),
-	position = UDim2.fromOffset(14, 6),
+	color = YONCA_YESIL,
+	frameSize = UDim2.fromOffset(140, 20),
+	position = UDim2.fromOffset(XP_SUTUN_X, 6),
+	parent = hud,
+})
+
+local hudXpMiktar = UI.text({
+	text = "+0",
+	size = UI.Sizes.title,
+	font = UI.Fonts.bold,
+	color = BEYAZ,
+	frameSize = UDim2.fromOffset(140, 32),
+	position = UDim2.fromOffset(XP_SUTUN_X, 25),
 	parent = hud,
 })
 local hudXpOlcek = Instance.new("UIScale")
-hudXpOlcek.Parent = hudXpGain
-local xpSonme: Tween? = nil
+hudXpOlcek.Parent = hudXpMiktar
 
 local function xpGainYaz()
-	hudXpGain.Text = if toplamXp > 0 then `XP GAIN +{virgullu(toplamXp)}` else ""
+	hudXpMiktar.Text = `+{virgullu(toplamXp)}`
 end
 
+-- CLOVER LUCK sayisiyla ayni parlama: bir an buyur, altin olur, beyaza doner
 local function xpGainGoster(miktar: number)
-	if xpSonme then
-		xpSonme:Cancel()
-	end
 	toplamXp += miktar
 	xpGainYaz()
-	hudXpGain.TextColor3 = BEYAZ
-	hudXpOlcek.Scale = 1.3
-	TweenService:Create(hudXpOlcek, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	local renk = TweenService:Create(hudXpGain, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(120, 255, 150) })
-	xpSonme = renk
-	renk:Play()
+	hudXpOlcek.Scale = 1.2
+	hudXpMiktar.TextColor3 = UI.Colors.gold
+	TweenService:Create(hudXpOlcek, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	TweenService:Create(hudXpMiktar, TweenInfo.new(0.6), { TextColor3 = BEYAZ }):Play()
 end
 
 local function xpGainSifirla()
@@ -1394,6 +1403,7 @@ Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	end
 
 	hudBaslik.TextColor3 = Rarity.textColor(aktifAlan)
+	hudXpBaslik.TextColor3 = hudBaslik.TextColor3
 	hudGuncelle()
 	otoCiz()
 	hud.Visible = true
