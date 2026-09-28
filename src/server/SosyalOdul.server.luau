@@ -277,8 +277,24 @@ task.spawn(function()
 	end
 end)
 
+--[[
+	SON DILIM  --  son kayittan hemen once islenir
+
+	PlayerData'nin ayrilma kancasi: oyuncu cikarken, sunucu kapanirken ve
+	oturum baska sunucuya gecerken calisir, veri hala acikken. Yalnizca
+	PlayerRemoving'e baglansaydi sira sansa kalirdi.
+
+	oturum yoksa (PlayerRemoving once calisip sildiyse) dilim zaten islendi;
+	playtimeTazele'yi cagirmak bos bir oturum kaydi yaratirdi.
+]]
+PlayerData.onBeforeRelease(function(player: Player)
+	if oturum[player] then
+		playtimeTazele(player)
+	end
+end)
+
 Players.PlayerRemoving:Connect(function(player)
-	-- Kayit alinmadan once son dilimi de isle
+	-- Kanca henuz calismadiysa dilim burada islenir (veri hala acik)
 	playtimeTazele(player)
 	oturum[player] = nil
 	mesgul[player] = nil
