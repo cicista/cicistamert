@@ -38,10 +38,21 @@
 	Sunucuda barikat hep kati. Alani acan oyuncunun istemcisi barikati
 	kendi tarafinda gecilebilir yapiyor (karakter fizigi istemcide). Kilitli
 	alana bir sekilde giren oyuncuya yonca verilmez.
+
+	AFK YENIDEN BAGLANMA
+	Roblox 20 dk girdisiz kalan oyuncuyu atiyor. Alandaki oyuncunun
+	istemcisi YenidenBaglanSuresi dolunca AfkYenidenBaglan yollar; sunucu
+	oyuncuyu AYNI sunucuya teleport eder (olmazsa herhangi bir sunucuya).
+	Ayrilan her oyuncunun alan konumu DonusGecerlilik boyunca hatirlanir:
+	ayni sunucuya donen oyuncu (bu yolla ya da atilip kendisi girerek)
+	ayni noktaya isinlanir ve istemci toplamaya kendiliginden baslar.
+	Baska sunucuya dusen oyuncu teleport verisindeki alanin ortasina
+	konur. Alan kilitliyse hicbir sey yapilmaz.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -558,6 +569,126 @@ local function npcBagla(): number
 end
 
 ------------------------------------------------------------------
+-- AFK YENIDEN BAGLANMA (bkz. ust aciklama)
+------------------------------------------------------------------
+type Donus = { alan: string, pos: Vector3?, zaman: number }
+
+-- UserId -> ayrildigi andaki alan ve konum (yalnizca bu sunucuda)
+local donusler: { [number]: Donus } = {}
+-- Teleportu baslatilmis oyuncular (ikinci istek yok sayilir)
+local baglananlar: { [Player]: boolean } = {}
+
+local function donusuHatirla(player: Player)
+	local durum = durumlar[player]
+	if not durum or not durum.alan then
+		return
+	end
+	local root = kok(player)
+	donusler[player.UserId] = {
+		alan = durum.alan,
+		pos = if root then root.Position else nil,
+		zaman = os.clock(),
+	}
+end
+
+local function teleportEt(player: Player, ayniSunucu: boolean): boolean
+	local secenek = Instance.new("TeleportOptions")
+	if ayniSunucu then
+		secenek.ServerInstanceId = game.JobId
+	end
+	-- Yalnizca alan adi gidiyor; konumu donulen sunucu kendisi seciyor
+	local durum = durumlar[player]
+	local alan = donusler[player.UserId] and donusler[player.UserId].alan or (durum and durum.alan)
+	secenek:SetTeleportData({ [Ayar.TeleportVeriAnahtari] = alan or true })
+
+	local ok, hata = pcall(function()
+		TeleportService:TeleportAsync(game.PlaceId, { player }, secenek)
+	end)
+	if not ok then
+		warn(`[AfkSans] {player.Name} yeniden baglanamadi (ayni sunucu: {ayniSunucu}): {hata}`)
+	end
+	return ok
+end
+
+local function yenidenBaglan(player: Player)
+	local durum = durumlar[player]
+	-- Yalnizca acik bir alanda duran oyuncu; istemcinin "AFK'yim" demesi yeterli
+	-- cunku bu istek yalnizca oyuncunun KENDISINI teleport ediyor
+	if not durum or not durum.alan or baglananlar[player] then
+		return
+	end
+	baglananlar[player] = true
+	donusuHatirla(player)
+
+	if not teleportEt(player, true) and not teleportEt(player, false) then
+		baglananlar[player] = nil
+	end
+end
+
+-- Teleport baslayip sonra patlarsa (sunucu dolu vb.) herhangi bir sunucuya
+local function teleportPatladi(player: Player, _sonuc: Enum.TeleportResult, mesaj: string, _yer: number, secenek: TeleportOptions?)
+	if not baglananlar[player] or not player.Parent then
+		return
+	end
+	warn(`[AfkSans] {player.Name} teleportu basarisiz: {mesaj}`)
+	if secenek and secenek.ServerInstanceId ~= "" and teleportEt(player, false) then
+		return
+	end
+	baglananlar[player] = nil
+end
+
+-- Donulecek alan ve konum: once bu sunucunun hafizasi, yoksa teleport verisi
+local function donusBul(player: Player): (string?, Vector3?)
+	local kayit = donusler[player.UserId]
+	donusler[player.UserId] = nil
+	if kayit and os.clock() - kayit.zaman <= Ayar.DonusGecerlilik then
+		return kayit.alan, kayit.pos
+	end
+
+	local ok, katilim = pcall(function()
+		return player:GetJoinData()
+	end)
+	local veri = if ok and type(katilim) == "table" then katilim.TeleportData else nil
+	if type(veri) == "table" and katilim.SourcePlaceId == game.PlaceId then
+		local alan = veri[Ayar.TeleportVeriAnahtari]
+		if type(alan) == "string" then
+			return alan, nil
+		end
+	end
+	return nil, nil
+end
+
+local function afkSpotunaDon(player: Player)
+	local alanId, pos = donusBul(player)
+	if not alanId then
+		return
+	end
+
+	local sira = Ayar.sira(alanId)
+	local data = PlayerData.get(player)
+	local z = zemin(alanId)
+	-- Kilitli (ya da artik olmayan) alana isinlanilmaz
+	if not sira or not data or sira > data.afkSeviye or not z then
+		return
+	end
+
+	local sinir = os.clock() + 20
+	while player.Parent and not kok(player) and os.clock() < sinir do
+		task.wait(0.2)
+	end
+	local char = player.Character
+	if not player.Parent or not char or not kok(player) then
+		return
+	end
+
+	-- Kayitli konum HumanoidRootPart'inki; alanin disinda kaldiysa zeminin ortasi
+	local hedef = if pos and Ayar.icinde(z, pos)
+		then pos + Vector3.new(0, 0.5, 0)
+		else (z.CFrame * CFrame.new(0, z.Size.Y / 2 + 3.5, 0)).Position
+	char:PivotTo(CFrame.new(hedef))
+end
+
+------------------------------------------------------------------
 -- BASLAT
 ------------------------------------------------------------------
 local function oyuncuHazirla(player: Player)
@@ -574,6 +705,7 @@ local function oyuncuHazirla(player: Player)
 	}
 	durumlar[player] = durum
 	hepsiniYolla(player, durum)
+	afkSpotunaDon(player)
 end
 
 -- Istemci script'i sonradan baslarsa (ya da yeniden yuklenirse) listeleri yeniden ister
@@ -640,14 +772,32 @@ function AfkSans.baslat()
 	Net.event("YoncaTopla").OnServerEvent:Connect(toplaIstegi)
 	Net.event("AfkAlanAl").OnServerEvent:Connect(satinAl)
 	Net.event("YoncaIste").OnServerEvent:Connect(listeIstegi)
+	Net.event("AfkYenidenBaglan").OnServerEvent:Connect(yenidenBaglan)
+	TeleportService.TeleportInitFailed:Connect(teleportPatladi)
 
 	Players.PlayerAdded:Connect(oyuncuHazirla)
 	for _, player in Players:GetPlayers() do
 		task.spawn(oyuncuHazirla, player)
 	end
 	Players.PlayerRemoving:Connect(function(player)
+		-- Atilan ya da cikan oyuncu ayni sunucuya donerse ayni noktaya konur
+		donusuHatirla(player)
 		durumlar[player] = nil
 		sonIstek[player] = nil
+		baglananlar[player] = nil
+	end)
+
+	-- Eski donus kayitlari birikmesin
+	task.spawn(function()
+		while true do
+			task.wait(60)
+			local simdi = os.clock()
+			for userId, kayit in donusler do
+				if simdi - kayit.zaman > Ayar.DonusGecerlilik then
+					donusler[userId] = nil
+				end
+			end
+		end
 	end)
 
 	-- NPC sonradan gelebilir (Rojo, akis, elle ekleme): eklenince yeniden baglanir

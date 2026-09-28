@@ -137,6 +137,35 @@ local EN_COK_BEKLEME = 45
 ]]
 local EN_AZ_GORUNME = 5
 
+--[[
+	AFK DONUSU: EKRAN KENDILIGINDEN KAPANIR
+
+	Yonca alaninda AFK kalan oyuncu, Roblox'un 20 dakikalik atmasindan
+	once sunucu tarafindan AYNI sunucuya yeniden baglaniyor (bkz.
+	ServerScriptService > Modules > AfkSans). O sirada oyuncu bilgisayarin
+	basinda degil: PLAY dugmesini bekleyen ekran onu burada tutar,
+	sohbet ve oyuncu listesi de kapali kalirdi.
+
+	Teleport verisinde AFK donus isareti varsa en az gorunme suresi
+	kisalir ve ekran PLAY beklemeden kendiliginden kapanir. Anahtar
+	Shared > AfkSans > TeleportVeriAnahtari ile ayni olmali (burada
+	Shared require edilemiyor, bkz. ust aciklama).
+]]
+local AFK_DONUS_ANAHTARI = "AfkDonus"
+
+local afkDonusu = false
+do
+	local ok, veri = pcall(function()
+		return game:GetService("TeleportService"):GetLocalPlayerTeleportData()
+	end)
+	afkDonusu = ok and type(veri) == "table" and veri[AFK_DONUS_ANAHTARI] ~= nil
+end
+
+if afkDonusu then
+	-- 0 olamaz: cubuk bu sureye bolunerek doluyor
+	EN_AZ_GORUNME = 0.5
+end
+
 -- Renkler
 local NEON = Color3.fromRGB(70, 190, 255)
 local NEON_KOYU = Color3.fromRGB(20, 90, 160)
@@ -1151,6 +1180,12 @@ local function hazirOl()
 	task.wait(0.35)
 
 	if kapandi then
+		return
+	end
+
+	-- AFK donusunde oyuncu basinda degil: PLAY beklemeden kapan
+	if afkDonusu then
+		kapat()
 		return
 	end
 

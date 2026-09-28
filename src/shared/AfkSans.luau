@@ -113,6 +113,28 @@ AfkSans.YoncaXp = 1
 -- Toplama animasyonu (ToplamaSuresi kadar surer; farkliysa hizi ayarlanir)
 AfkSans.ToplamaAnimasyonu = "rbxassetid://112929077414582"
 
+--[[
+	OTOMATIK BASLAMA
+	Acik alanda duran oyuncu bu kadar saniye kendisi yurumezse toplama
+	kendiliginden baslar (AUTO'ya basmak gerekmez). Oyuncu STOP'a basarsa
+	alandan cikip girene ya da tekrar AUTO'ya basana kadar baslamaz.
+]]
+AfkSans.OtoBaslamaBekleme = 1
+
+--[[
+	AFK YENIDEN BAGLANMA
+
+	Roblox 20 dakika girdi almayan oyuncuyu atiyor; oyun bunu kapatamaz.
+	Alanda bu kadar saniye girdisiz kalan oyuncu atilmadan once AYNI
+	sunucuya yeniden baglanir, ayni noktaya isinlanir ve toplamaya devam
+	eder (bkz. Modules > AfkSans). 20 dakikaya pay birakiliyor.
+]]
+AfkSans.YenidenBaglanSuresi = 18 * 60
+-- Ayrilan oyuncunun alan konumu sunucuda bu kadar saniye hatirlanir
+AfkSans.DonusGecerlilik = 10 * 60
+-- Teleport verisindeki anahtar (ReplicatedFirst > YuklemeEkrani de bunu okur)
+AfkSans.TeleportVeriAnahtari = "AfkDonus"
+
 -- Isimler
 AfkSans.KlasorAdi = "CloverAreas"
 AfkSans.NpcAdi = "Leprechaun"

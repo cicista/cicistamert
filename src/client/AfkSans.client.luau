@@ -8,10 +8,14 @@
 	  YONCALAR     sunucunun yolladigi konumlara Assets > Clovers modelleri
 	               dizilir (yalnizca bu oyuncu gorur) ve ruzgarda sallanir.
 	               Model yoksa yedek yonca cizilir.
-	  OTOMATIK     alandayken sol tik (ya da ekrana dokunma / AUTO dugmesi)
-	               karakteri yoncadan yoncaya yurutur. Tiklamadan HICBIR yonca
-	               toplanmaz. Oyuncu kendisi yururse, tekrar tiklarsa ya da
-	               alandan cikarsa durur.
+	  OTOMATIK     acik alanda OtoBaslamaBekleme saniye kendisi yurumeyen
+	               oyuncuda KENDILIGINDEN baslar ve karakteri yoncadan yoncaya
+	               yurutur. Oyuncu kendisi yururse durur, durunca yine baslar.
+	               Sol tik / ekrana dokunma / STOP ile kapatilirsa alandan
+	               cikip girene ya da tekrar AUTO'ya basana kadar baslamaz.
+	  AFK DONUSU   alanda YenidenBaglanSuresi girdisiz kalinca sunucudan
+	               ayni sunucuya yeniden baglanma istenir (Roblox 20 dk'da
+	               atiyor); sunucu oyuncuyu ayni noktaya geri koyar.
 	  HIZ          otomatik modda yurume hizi TabanHiz'a (16) sabitlenir; hizli
 	               oyuncu yoncayi gecip geri donmesin. Mod kapaninca hiz
 	               yukseltmesinin degeri geri gelir.
@@ -1018,6 +1022,7 @@ local IPUCLARI = {
 	"Clover Luck never runs out - it's permanent!",
 	"Better fields give WAY more Clover Luck!",
 	"Up to x20 Luck on every dig!",
+	"Stand still and collecting starts by itself!",
 }
 local hudIpucu = UI.text({
 	text = IPUCLARI[1],
@@ -1076,6 +1081,10 @@ hudGuncelle()
 -- OTOMATIK MOD + HIZ SABITLEME
 ------------------------------------------------------------------
 local oto = false
+-- Oyuncu kendisi kapattiysa otomatik baslama bekler (bkz. Shared > AfkSans > OtoBaslamaBekleme)
+local elleKapatildi = false
+-- Oyuncunun kendisi en son ne zaman yurudu
+local sonKendiYurume = os.clock()
 local hedefId: number? = nil
 local sonYurume = 0
 local reddedilen: { [number]: number } = {}
@@ -1265,7 +1274,15 @@ end
 local sonIkon = 0
 
 RunService.Heartbeat:Connect(function(dt)
+	if oyuncuYuruyor() then
+		sonKendiYurume = os.clock()
+	end
+
+	-- OTOMATIK BASLAMA: alanda durup beklemek yeter, AUTO'ya basmak gerekmez
 	if not oto then
+		if aktifAlan and not elleKapatildi and os.clock() - sonKendiYurume >= Ayar.OtoBaslamaBekleme then
+			otoAyarla(true)
+		end
 		return
 	end
 
@@ -1339,24 +1356,74 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+-- Oyuncunun kendi ac-kapa istegi: kapatirsa otomatik baslama da susar
+local function elleCevir()
+	local acilsin = not oto
+	otoAyarla(acilsin)
+	elleKapatildi = not acilsin
+end
+
 -- Sol tik / ekrana dokunma: alandayken otomatik modu ac-kapa
 UserInputService.InputBegan:Connect(function(input, islendi)
 	if islendi or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 		return
 	end
 	if aktifAlan then
-		otoAyarla(not oto)
+		elleCevir()
 	end
 end)
 
 UserInputService.TouchTapInWorld:Connect(function(_, islendi)
 	if not islendi and aktifAlan then
-		otoAyarla(not oto)
+		elleCevir()
 	end
 end)
 
-otoDugme.MouseButton1Click:Connect(function()
-	otoAyarla(not oto)
+otoDugme.MouseButton1Click:Connect(elleCevir)
+
+------------------------------------------------------------------
+-- AFK DONUSU (bkz. Shared > AfkSans > YenidenBaglanSuresi)
+------------------------------------------------------------------
+--[[
+	Roblox'un atmasi girdiye bakiyor (karakterin otomatik yurumesi sayilmaz).
+	Iki kaynak birlikte izleniyor: Roblox'un kendi Idled olayi ve son
+	girdinin zamani. Hangisi once sinira varirsa istek o an gider.
+]]
+local AfkYenidenBaglan = Net.event("AfkYenidenBaglan")
+local sonGirdi = os.clock()
+local istendi = false
+
+local function girdiGeldi()
+	sonGirdi = os.clock()
+end
+UserInputService.InputBegan:Connect(girdiGeldi)
+UserInputService.InputChanged:Connect(girdiGeldi)
+
+local function yenidenBaglanIste()
+	if istendi or not aktifAlan then
+		return
+	end
+	istendi = true
+	AfkYenidenBaglan:FireServer()
+	-- Teleport tutmazsa bir sure sonra yeniden denenebilsin
+	task.delay(30, function()
+		istendi = false
+	end)
+end
+
+player.Idled:Connect(function(sure)
+	if sure >= Ayar.YenidenBaglanSuresi then
+		yenidenBaglanIste()
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(5)
+		if os.clock() - sonGirdi >= Ayar.YenidenBaglanSuresi then
+			yenidenBaglanIste()
+		end
+	end
 end)
 
 ------------------------------------------------------------------
@@ -1393,6 +1460,8 @@ end)
 ]]
 Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	otoAyarla(false)
+	-- Yeni alanda toplama yine kendiliginden baslayabilsin
+	elleKapatildi = false
 	-- Cikip girince / alan degisince XP GAIN toplami bastan baslar
 	xpGainSifirla()
 	aktifAlan = if type(alanId) == "string" and Ayar.get(alanId) then alanId else nil

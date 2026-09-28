@@ -146,6 +146,7 @@ Net.Events = {
 	"YoncaSonuc",        -- server -> client: toplama bitti/iptal (id, tuttu mu, kazanilan puan, yeni yonca?)
 	"LeprechaunAc",      -- server -> client: alan yukseltme paneli
 	"AfkAlanAl",         -- client -> server: siradaki alani satin al (alanId)
+	"AfkYenidenBaglan",  -- client -> server: alanda AFK'yim, atilmadan beni ayni sunucuya yeniden bagla
 
 	-- Admin
 	"AdminPanelAc",     -- server -> client: panel + yetki
