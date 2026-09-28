@@ -145,7 +145,13 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	local data = PlayerData.get(player)
+	--[[
+		Veri henuz yukleniyor olabilir (sunucu degisiminde 40 sn'yi gecebilir).
+		Hemen NotProcessedYet donulse Roblox fisi bir sonraki girise kadar
+		tekrar denemeyebilirdi. bekle, veri gelince ya da oyuncu cikinca /
+		atilinca doner.
+	]]
+	local data = PlayerData.bekle(player)
 	if not data then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
