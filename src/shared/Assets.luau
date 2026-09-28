@@ -1196,6 +1196,11 @@ end
 	Assets'in icinde duruyor ve adi da tam tutmayabiliyor ("Divine VFX",
 	"divineVFX"). Bu yuzden bulunamazsa Assets'in ve Workspace'in tamami
 	bosluk/harf farki gozetmeden bir kez taraniyor.
+
+	REPLICATEDSTORAGE'IN KOKU DE ARANIYOR
+	DivineVFX dogrudan ReplicatedStorage'in icine (Assets klasorune degil)
+	konmustu; arama yalnizca Assets ve Workspace'e baktigi icin hic
+	bulunamiyor, Divine brainrotlar efektsiz kaliyordu.
 ]]
 local function vfxAra(name: string): Instance?
 	local hedef = string.lower((string.gsub(name, "[%s_%-]", "")))
@@ -1205,6 +1210,7 @@ local function vfxAra(name: string): Instance?
 	if assetKok then
 		table.insert(koklar, assetKok)
 	end
+	table.insert(koklar, ReplicatedStorage)
 	table.insert(koklar, Workspace)
 
 	for _, kok in koklar do
@@ -1218,6 +1224,9 @@ local function vfxAra(name: string): Instance?
 	return nil
 end
 
+-- vfxAra ile bulunan sablonlarin temiz kopyalari (grabTemplate'in onbellegi gibi)
+local vfxAraOnbellek: { [string]: Instance } = {}
+
 function Assets.vfxTemplate(name: string): Instance?
 	local template = grabTemplate(
 		name,
@@ -1228,11 +1237,18 @@ function Assets.vfxTemplate(name: string): Instance?
 	)
 
 	if not template then
-		local bulunan = vfxAra(name)
-		if bulunan then
-			template = bulunan:Clone()
-			if bulunan:IsDescendantOf(Workspace) then
-				silence(bulunan)
+		local onbellek = vfxAraOnbellek[name]
+		if onbellek then
+			template = onbellek:Clone()
+		else
+			local bulunan = vfxAra(name)
+			if bulunan then
+				-- Her cagrida ReplicatedStorage'i bastan taramamak icin sakla
+				vfxAraOnbellek[name] = bulunan:Clone()
+				template = bulunan:Clone()
+				if bulunan:IsDescendantOf(Workspace) then
+					silence(bulunan)
+				end
 			end
 		end
 	end
