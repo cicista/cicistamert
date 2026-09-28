@@ -8,7 +8,7 @@
 	tek panel, acilis/kapanis animasyonu, sag ustte X, NPC menu sesi.
 
 	    +------------------------------------------------------+
-	    |  EGG GACHA                                        X  |
+	    |  PREMIUM SPIN!                                    X  |
 	    |        THE MOST POWERFUL GACHA IN THE GAME           |
 	    |  [Divine] [Cosmic] [Secret] [Infernal] [Abyssal]     |
 	    |    40%      27%      18%       10%        5%         |
@@ -98,11 +98,11 @@ efektEkrani.Parent = playerGui
 -- PANEL
 ------------------------------------------------------------------
 -- Adi NpcMenuSesi'nde de yazili: acilinca ve dugmelerde tiklama sesi
-local panel = UI.panel(screen, UDim2.fromOffset(660, 560), "GachaPenceresi")
+local panel = UI.panel(screen, UDim2.fromOffset(660, 620), "GachaPenceresi")
 UI.closeButton(panel).MouseButton1Click:Connect(function()
 	panel.Visible = false
 end)
-UI.baslikCubugu(panel, "EGG GACHA", MOR_ACIK, MOR, nil, MOR_KOYU)
+UI.baslikCubugu(panel, "PREMIUM SPIN!", MOR_ACIK, MOR, nil, MOR_KOYU)
 
 -- Konturda donen mor / pembe / altin isik
 local kontur = panel:FindFirstChildOfClass("UIStroke")
@@ -166,7 +166,7 @@ UI.corner(panelFlasi, 14)
 ------------------------------------------------------------------
 -- Ilk bakista en nadir yumurtanin sansi: "5% CHANCE FOR ABYSSAL!"
 local altBaslik = UI.text({
-	text = `{Ayar.sans("Abyssal")}% CHANCE FOR {string.upper(Rarity.displayName("Abyssal"))}!`,
+	text = `{Ayar.yuzde(Ayar.sans("Abyssal"))} CHANCE FOR {string.upper(Rarity.displayName("Abyssal"))}!`,
 	size = UI.Sizes.heading + 2,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
@@ -242,8 +242,10 @@ for i, y in Ayar.Yumurtalar do
 	})
 	UI.rarityStyle(ad, y.rarity)
 
+	-- Yuzde sans artisiyla degisir (bkz. sanslariCiz; adiyla bulunur)
 	UI.text({
-		text = `{y.sans}%`,
+		name = "Yuzde",
+		text = Ayar.yuzde(y.sans),
 		size = UI.Sizes.label,
 		font = UI.Fonts.bold,
 		color = BEYAZ,
@@ -294,10 +296,307 @@ local function yumurtalariKur()
 end
 
 ------------------------------------------------------------------
+-- SANS ARTISI CUBUGU (pity; bkz. Shared > Gacha > SANS ARTISI)
+------------------------------------------------------------------
+--[[
+	Infernal ya da Abyssal cikmayan her cevirme ikisinin de sansini
+	Ayar.Artis kadar buyutur; biri cikinca sifirlanir. Cubuk bu artisi
+	gosteriyor:
+
+	    JACKPOT BOOST                       +2.5% INFERNAL & ABYSSAL
+	    [#########>                                               ]
+
+	Dolum Infernal renginden Abyssal rengine akan bir gecis; ustunden
+	parilti bandi gecer, ucunda nabiz atan bir kivilcim durur. Artinca
+	cubuk yaylanarak dolar ve ucundan kivilcim sacar; sifirlaninca beyaz
+	bir flasla bosalir. Tavanda (kesin cevirme) "GUARANTEED!" nabiz atar.
+]]
+local INFERNAL = Rarity.color("Infernal")
+local ABYSSAL = Rarity.color("Abyssal")
+local RAY_ZEMIN = Color3.fromRGB(18, 6, 32)
+local CUBUK_EN = 600
+-- Kivilcimin dikey konumu (rayin ortasi)
+local UC_Y = 38
+
+local artisKap = Instance.new("Frame")
+artisKap.Name = "SansArtisi"
+artisKap.AnchorPoint = Vector2.new(0.5, 0)
+artisKap.Position = UDim2.new(0.5, 0, 0, 240)
+artisKap.Size = UDim2.fromOffset(CUBUK_EN, 52)
+artisKap.BackgroundTransparency = 1
+artisKap.ZIndex = 8
+artisKap.Parent = panel
+
+local artisBaslik = UI.text({
+	text = "JACKPOT BOOST",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = BEYAZ,
+	frameSize = UDim2.new(0.5, 0, 0, 22),
+	position = UDim2.fromOffset(4, 0),
+	parent = artisKap,
+	zIndex = 8,
+})
+do
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, INFERNAL),
+		ColorSequenceKeypoint.new(0.5, ALTIN),
+		ColorSequenceKeypoint.new(1, ABYSSAL:Lerp(BEYAZ, 0.3)),
+	})
+	g.Parent = artisBaslik
+end
+
+local artisBilgi = UI.text({
+	text = "",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = BEYAZ,
+	align = Enum.TextXAlignment.Right,
+	frameSize = UDim2.new(0.62, 0, 0, 22),
+	position = UDim2.new(0.38, -4, 0, 1),
+	parent = artisKap,
+	zIndex = 8,
+})
+
+-- Ray: koyu, mor konturlu
+local ray = Instance.new("Frame")
+ray.Name = "Ray"
+ray.Position = UDim2.fromOffset(0, 26)
+ray.Size = UDim2.new(1, 0, 0, 24)
+ray.BackgroundColor3 = RAY_ZEMIN
+ray.BorderSizePixel = 0
+ray.ZIndex = 8
+ray.ClipsDescendants = true
+ray.Parent = artisKap
+UI.corner(ray, 12)
+local rayKontur = UI.stroke(ray, MOR_ACIK, 2)
+
+-- Her ceyrekte ince bir cizgi: tavana ne kadar kaldigi gorulsun
+for i = 1, 3 do
+	local cizgi = Instance.new("Frame")
+	cizgi.AnchorPoint = Vector2.new(0.5, 0)
+	cizgi.Position = UDim2.fromScale(i / 4, 0)
+	cizgi.Size = UDim2.new(0, 2, 1, 0)
+	cizgi.BackgroundColor3 = MOR_ACIK
+	cizgi.BackgroundTransparency = 0.6
+	cizgi.BorderSizePixel = 0
+	cizgi.ZIndex = 10
+	cizgi.Parent = ray
+end
+
+local dolum = Instance.new("Frame")
+dolum.Name = "Dolum"
+dolum.Size = UDim2.fromScale(0, 1)
+dolum.BackgroundColor3 = BEYAZ
+dolum.BorderSizePixel = 0
+dolum.ZIndex = 9
+dolum.ClipsDescendants = true
+dolum.Parent = ray
+UI.corner(dolum, 12)
+do
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, INFERNAL),
+		ColorSequenceKeypoint.new(0.5, PEMBE),
+		ColorSequenceKeypoint.new(1, ABYSSAL:Lerp(BEYAZ, 0.2)),
+	})
+	g.Parent = dolum
+
+	-- Dolumun ustunden gecen parilti bandi
+	local bant = Instance.new("Frame")
+	bant.AnchorPoint = Vector2.new(0.5, 0.5)
+	bant.Position = UDim2.fromScale(-0.2, 0.5)
+	bant.Size = UDim2.new(0, 60, 2, 0)
+	bant.Rotation = 20
+	bant.BackgroundColor3 = BEYAZ
+	bant.BorderSizePixel = 0
+	bant.ZIndex = 10
+	bant.Parent = dolum
+	local bg = Instance.new("UIGradient")
+	bg.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	bg.Parent = bant
+	TweenService:Create(
+		bant,
+		TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, false, 0.6),
+		{ Position = UDim2.fromScale(1.2, 0.5) }
+	):Play()
+end
+
+-- Ortadaki yazi: "+2.5%" ya da "GUARANTEED!"
+local artisYazi = UI.text({
+	text = "",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = BEYAZ,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromScale(1, 1),
+	parent = ray,
+	zIndex = 12,
+})
+local artisYaziOlcek = Instance.new("UIScale")
+artisYaziOlcek.Parent = artisYazi
+
+-- Dolumun ucunda nabiz atan kivilcim (rayin DISINDA: kirpilmasin)
+local uc = Instance.new("Frame")
+uc.Name = "Kivilcim"
+uc.AnchorPoint = Vector2.new(0.5, 0.5)
+uc.Position = UDim2.fromOffset(0, UC_Y)
+uc.Size = UDim2.fromOffset(18, 18)
+uc.Rotation = 45
+uc.BackgroundColor3 = BEYAZ
+uc.BorderSizePixel = 0
+uc.ZIndex = 13
+uc.Visible = false
+uc.Parent = artisKap
+UI.corner(uc, 4)
+UI.stroke(uc, ALTIN, 2)
+do
+	local ucOlcek = Instance.new("UIScale")
+	ucOlcek.Parent = uc
+	TweenService:Create(ucOlcek, TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.35 }):Play()
+	TweenService:Create(uc, TweenInfo.new(1.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 405 }):Play()
+end
+
+-- Rayin konturu nabiz atar; dolum arttikca altina doner ve hizlanir
+local konturNabzi: Tween? = nil
+local function konturuAyarla(oran: number)
+	if konturNabzi then
+		konturNabzi:Cancel()
+	end
+	rayKontur.Thickness = 2
+	rayKontur.Color = MOR_ACIK:Lerp(ALTIN, oran)
+	local nabiz = TweenService:Create(
+		rayKontur,
+		TweenInfo.new(math.max(0.25, 0.9 - oran * 0.6), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Thickness = 2 + 2 * oran }
+	)
+	nabiz:Play()
+	konturNabzi = nabiz
+end
+
+-- Bir noktadan disa sacilan kivilcimlar
+local function kivilcimSac(x: number, renk: Color3, adet: number)
+	for _ = 1, adet do
+		local k = Instance.new("Frame")
+		k.AnchorPoint = Vector2.new(0.5, 0.5)
+		k.Position = UDim2.fromOffset(x, UC_Y)
+		local boy = math.random(5, 10)
+		k.Size = UDim2.fromOffset(boy, boy)
+		k.Rotation = 45
+		k.BackgroundColor3 = if math.random() < 0.5 then renk else ALTIN
+		k.BorderSizePixel = 0
+		k.ZIndex = 13
+		k.Parent = artisKap
+		local aci = math.random() * math.pi * 2
+		local uzak = math.random(20, 55)
+		TweenService:Create(k, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.fromOffset(x + math.cos(aci) * uzak, UC_Y + math.sin(aci) * uzak * 0.6),
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(2, 2),
+		}):Play()
+		task.delay(0.55, function()
+			k:Destroy()
+		end)
+	end
+end
+
+local gosterilenIska = 0
+local tavanNabzi: Tween? = nil
+
+--[[
+	Kartlardaki yuzdeleri, ust yaziyi ve cubugu iska sayisina gore cizer.
+	animasyonlu: cubuk yaylanarak dolar/bosalir, kivilcim ya da flas cikar.
+]]
+local function sanslariCiz(iska: number, animasyonlu: boolean?)
+	local maxIska = math.max(Ayar.maxIska(), 1)
+	local n = math.clamp(math.floor(iska), 0, maxIska)
+	local sanslar = Ayar.sanslar(n)
+	local oran = n / maxIska
+	local onceki = gosterilenIska
+	gosterilenIska = n
+
+	for _, kart in kartlar do
+		local yazi = kart:FindFirstChild("Yuzde", true)
+		if yazi and yazi:IsA("TextLabel") then
+			yazi.Text = Ayar.yuzde(sanslar[kart.Name] or 0)
+			-- Artan kademelerin yuzdesi artis varken altin renginde
+			yazi.TextColor3 = if Ayar.ArtanKademeler[kart.Name] and n > 0 then ALTIN else BEYAZ
+		end
+	end
+
+	altBaslik.Text = `{Ayar.yuzde(sanslar.Abyssal or 0)} CHANCE FOR {string.upper(Rarity.displayName("Abyssal"))}!`
+
+	local artis = Ayar.Artis * n
+	artisBilgi.Text = if n > 0
+		then `+{Ayar.yuzde(artis)} {string.upper(Rarity.displayName("Infernal"))} & {string.upper(Rarity.displayName("Abyssal"))}`
+		else `Every miss: +{Ayar.yuzde(Ayar.Artis)} to both!`
+
+	local tavan = n >= maxIska
+	artisYazi.Text = if tavan then "GUARANTEED!" elseif n > 0 then `+{Ayar.yuzde(artis)}` else "0%"
+
+	if tavanNabzi then
+		tavanNabzi:Cancel()
+		tavanNabzi = nil
+		artisYaziOlcek.Scale = 1
+	end
+	if tavan then
+		local nabiz = TweenService:Create(
+			artisYaziOlcek,
+			TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Scale = 1.15 }
+		)
+		nabiz:Play()
+		tavanNabzi = nabiz
+	end
+
+	konturuAyarla(oran)
+
+	-- Artis varsa cubuk en az biraz dolu: ilk iskada da kivilcim gorunsun
+	local hedef = UDim2.fromScale(if n > 0 then math.max(oran, 0.03) else 0, 1)
+	local ucX = CUBUK_EN * hedef.X.Scale
+	uc.Visible = n > 0
+
+	if not animasyonlu or n == onceki then
+		dolum.Size = hedef
+		uc.Position = UDim2.fromOffset(ucX, UC_Y)
+		return
+	end
+
+	if n > onceki then
+		-- ARTTI: yaylanarak dolar, ucundan kivilcim, yazi ziplar, ray parlar
+		local bilgi = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		TweenService:Create(dolum, bilgi, { Size = hedef }):Play()
+		TweenService:Create(uc, bilgi, { Position = UDim2.fromOffset(ucX, UC_Y) }):Play()
+		task.delay(0.35, function()
+			kivilcimSac(ucX, PEMBE, 14)
+		end)
+		artisYaziOlcek.Scale = 1.5
+		TweenService:Create(artisYaziOlcek, TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), { Scale = if tavan then 1.15 else 1 }):Play()
+		ray.BackgroundColor3 = MOR_ACIK
+		TweenService:Create(ray, TweenInfo.new(0.5), { BackgroundColor3 = RAY_ZEMIN }):Play()
+	else
+		-- SIFIRLANDI (jackpot): beyaz flas, cubuk bosalir, butun raydan kivilcim
+		ray.BackgroundColor3 = BEYAZ
+		TweenService:Create(ray, TweenInfo.new(0.8), { BackgroundColor3 = RAY_ZEMIN }):Play()
+		TweenService:Create(dolum, TweenInfo.new(0.9, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Size = hedef }):Play()
+		uc.Position = UDim2.fromOffset(ucX, UC_Y)
+		for i = 0, 6 do
+			kivilcimSac(CUBUK_EN * i / 6, ALTIN, 5)
+		end
+	end
+end
+sanslariCiz(0, false)
+
+------------------------------------------------------------------
 -- CARK
 ------------------------------------------------------------------
 local reel = Rulet.new(panel, {
-	position = UDim2.new(0.5, 0, 0, 246),
+	position = UDim2.new(0.5, 0, 0, 300),
 	width = 616,
 	height = 132,
 	color = MOR_ACIK,
@@ -311,7 +610,7 @@ local sonucYazi = UI.text({
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
 	frameSize = UDim2.new(1, -20, 0, 36),
-	position = UDim2.fromOffset(10, 386),
+	position = UDim2.fromOffset(10, 440),
 	parent = panel,
 	zIndex = 8,
 })
@@ -323,7 +622,7 @@ local detayYazi = UI.text({
 	color = UI.Colors.textDim,
 	align = Enum.TextXAlignment.Center,
 	frameSize = UDim2.new(1, -20, 0, 22),
-	position = UDim2.fromOffset(10, 422),
+	position = UDim2.fromOffset(10, 476),
 	parent = panel,
 	zIndex = 8,
 })
@@ -345,7 +644,7 @@ bekleSeridi()
 local dugmeKap = Instance.new("Frame")
 dugmeKap.Name = "SatinAlma"
 dugmeKap.AnchorPoint = Vector2.new(0.5, 0)
-dugmeKap.Position = UDim2.new(0.5, 0, 0, 456)
+dugmeKap.Position = UDim2.new(0.5, 0, 0, 512)
 dugmeKap.Size = UDim2.fromOffset(280, 72)
 dugmeKap.BackgroundTransparency = 1
 dugmeKap.ZIndex = 8
@@ -435,7 +734,7 @@ end
 -- Yalnizca adminlere: ucretsiz deneme (yetki sunucuda da denetleniyor)
 local adminDugme = UI.dugme3B(panel, "ADMIN TEST", UDim2.fromOffset(130, 44), UI.Colors.warn)
 adminDugme.AnchorPoint = Vector2.new(1, 0)
-adminDugme.Position = UDim2.new(1, -16, 0, 470)
+adminDugme.Position = UDim2.new(1, -16, 0, 526)
 adminDugme.ZIndex = 9
 adminDugme.Visible = false
 
@@ -772,10 +1071,12 @@ local function rastgeleKademe(): string
 	return Ayar.sec(dolguZari)
 end
 
-local function cevir(rarityId: string, ad: string)
+local function cevir(rarityId: string, ad: string, onceki: number, yeni: number)
 	if donuyor then
 		return
 	end
+	-- Cark donerken bu cevirmenin sanslari; artis cark durunca yansir
+	sanslariCiz(onceki, false)
 	donuyor = true
 	dugmeleriCiz()
 	yumurtalariKur()
@@ -816,6 +1117,8 @@ local function cevir(rarityId: string, ad: string)
 		onFinish = function()
 			YerelSes.durdur(acilisSesi)
 			kutla(rarityId, ad)
+			-- Iska: cubuk dolar; Infernal/Abyssal: sifirlanir (bir an sonra, kutlamanin ardindan)
+			task.delay(0.4, sanslariCiz, yeni, true)
 			task.delay(1.2, function()
 				donuyor = false
 				dugmeleriCiz()
@@ -861,6 +1164,7 @@ GachaAc.OnClientEvent:Connect(function(veri)
 	yumurtalariKur()
 	if not donuyor then
 		bekleSeridi()
+		sanslariCiz(if type(veri) == "table" then tonumber(veri.iska) or 0 else 0, false)
 		sonucYazi.Text = ""
 		detayYazi.Text = "Every egg hatches into a top-tier Brainrot!"
 		detayYazi.TextColor3 = UI.Colors.textDim
@@ -875,7 +1179,7 @@ GachaSonuc.OnClientEvent:Connect(function(veri)
 		return
 	end
 	local ad = if type(veri.ad) == "string" then veri.ad else Ayar.yumurtaAdi(Rarity.displayName(veri.rarity))
-	cevir(veri.rarity, ad)
+	cevir(veri.rarity, ad, tonumber(veri.onceki) or 0, tonumber(veri.iska) or 0)
 end)
 
 dugmeleriCiz()

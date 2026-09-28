@@ -66,35 +66,117 @@ Gacha.CevirmeSuresi = 6.5
 -- Sonuc gorundukten sonra pencere bu kadar acik kalir, sonra kapanabilir
 Gacha.SonucSuresi = 3
 
+--[[
+	SANS ARTISI (pity)
+
+	Infernal ya da Abyssal CIKMAYAN her cevirmede ikisinin de sansi Artis
+	kadar (yuzde puani) artar; biri cikinca artis sifirlanir. Sayac oyuncu
+	kaydinda: PlayerData > gachaIska.
+
+	Eklenen pay diger yumurtalardan (Divine, Cosmic, Secret) KENDI
+	oranlarinda dusulur; toplam hep 100. Diger yumurtalarin payi bitince
+	artis durur (maxIska): o cevirmede Infernal ya da Abyssal kesin cikar.
+
+	    iska  Infernal  Abyssal
+	      0     10%       5%
+	     10     15%      10%
+	     40     30%      25%
+	     85    52.5%    47.5%   (kesin)
+]]
+Gacha.Artis = 0.5
+Gacha.ArtanKademeler = { Infernal = true, Abyssal = true } :: { [string]: boolean }
+
+local function tabanlar(): (number, number)
+	local artan, diger = 0, 0
+	for _, y in Gacha.Yumurtalar do
+		if Gacha.ArtanKademeler[y.rarity] then
+			artan += y.sans
+		else
+			diger += y.sans
+		end
+	end
+	return artan, diger
+end
+
+-- Artisin durdugu iska sayisi: diger yumurtalarin payi burada biter
+function Gacha.maxIska(): number
+	local _, diger = tabanlar()
+	local sayi = 0
+	for _ in Gacha.ArtanKademeler do
+		sayi += 1
+	end
+	if sayi == 0 or Gacha.Artis <= 0 then
+		return 0
+	end
+	return math.floor(diger / (Gacha.Artis * sayi) + 1e-6)
+end
+
+-- Iska sayisina gore her yumurtanin sansi (yuzde, toplam 100)
+function Gacha.sanslar(iska: number?): { [string]: number }
+	local n = math.clamp(math.floor(iska or 0), 0, Gacha.maxIska())
+	local artis = Gacha.Artis * n
+	local _, diger = tabanlar()
+
+	local eklenen = 0
+	local sonuc: { [string]: number } = {}
+	for _, y in Gacha.Yumurtalar do
+		if Gacha.ArtanKademeler[y.rarity] then
+			sonuc[y.rarity] = y.sans + artis
+			eklenen += artis
+		end
+	end
+	-- Diger yumurtalar eklenen kadar, kendi oranlarinda kuculur
+	local kalan = math.max(diger - eklenen, 0)
+	for _, y in Gacha.Yumurtalar do
+		if not Gacha.ArtanKademeler[y.rarity] then
+			sonuc[y.rarity] = if diger > 0 then y.sans * kalan / diger else 0
+		end
+	end
+	return sonuc
+end
+
+-- Ekranda yazan yuzde: tam sayiysa "5%", degilse "7.5%"
+function Gacha.yuzde(deger: number): string
+	local yuvarlak = math.floor(deger * 10 + 0.5) / 10
+	if yuvarlak == math.floor(yuvarlak) then
+		return `{math.floor(yuvarlak)}%`
+	end
+	return `{string.format("%.1f", yuvarlak)}%`
+end
+
 -- Yumurtanin ekranda gorunen adi: "Divine Egg"
 function Gacha.yumurtaAdi(displayName: string): string
 	return `{displayName} Egg`
 end
 
-function Gacha.sans(rarity: string): number
-	for _, y in Gacha.Yumurtalar do
-		if y.rarity == rarity then
-			return y.sans
-		end
-	end
-	return 0
+-- Bir yumurtanin sansi (iska verilirse artisla birlikte)
+function Gacha.sans(rarity: string, iska: number?): number
+	return Gacha.sanslar(iska)[rarity] or 0
 end
 
--- Agirliga gore bir kademe secer
-function Gacha.sec(rng: Random): string
+-- Agirliga gore bir kademe secer (iska verilirse artisla birlikte)
+function Gacha.sec(rng: Random, iska: number?): string
+	local sanslar = Gacha.sanslar(iska)
 	local toplam = 0
 	for _, y in Gacha.Yumurtalar do
-		toplam += y.sans
+		toplam += sanslar[y.rarity] or 0
 	end
 
 	local zar = rng:NextNumber(0, toplam)
+	local son = Gacha.Yumurtalar[1].rarity
 	for _, y in Gacha.Yumurtalar do
-		zar -= y.sans
+		local agirlik = sanslar[y.rarity] or 0
+		-- Payi bitmis yumurta (kesin cevirmede Divine) hic secilmez
+		if agirlik <= 0 then
+			continue
+		end
+		son = y.rarity
+		zar -= agirlik
 		if zar <= 0 then
 			return y.rarity
 		end
 	end
-	return Gacha.Yumurtalar[1].rarity
+	return son
 end
 
 -- Istemcide bekleme toplami: sunucu patlamayi bu kadar sonra oynatir

@@ -73,7 +73,7 @@ end
 ------------------------------------------------------------------
 -- GOSTERI
 ------------------------------------------------------------------
-local function gosteri(player: Player, rarityId: string)
+local function gosteri(player: Player, rarityId: string, onceki: number, yeni: number)
 	-- Onceki cevirme bitene kadar sira bekle
 	while mesgul[player] and player.Parent do
 		task.wait(0.2)
@@ -84,7 +84,8 @@ local function gosteri(player: Player, rarityId: string)
 	mesgul[player] = true
 
 	local ad = Ayar.yumurtaAdi(Rarity.displayName(rarityId))
-	Net.event("GachaSonuc"):FireClient(player, { rarity = rarityId, ad = ad })
+	-- onceki: cark donerken gosterilen sanslar; yeni: cark durunca bara yansiyan
+	Net.event("GachaSonuc"):FireClient(player, { rarity = rarityId, ad = ad, onceki = onceki, iska = yeni })
 
 	-- Yumurtanin elde edildigi an: FuseExplosion + kademe renginde FuseVFX
 	task.wait(Ayar.toplamSure())
@@ -111,7 +112,9 @@ function Gacha.ver(player: Player)
 		error("oyuncu verisi yok")
 	end
 
-	local rarityId = Ayar.sec(rng)
+	-- Sans artisi (pity): Infernal/Abyssal cikmayan her cevirme ikisini de buyutur
+	local onceki = data.gachaIska
+	local rarityId = Ayar.sec(rng, onceki)
 	-- Kazidakiyle ayni: boyut ve mutasyon da cikar, mutasyon acilana kadar gizli
 	local condition = Condition.roll(rng)
 	local mutation = Mutations.roll(rng)
@@ -122,7 +125,10 @@ function Gacha.ver(player: Player)
 		error("yumurta cantaya eklenemedi")
 	end
 
-	task.spawn(gosteri, player, rarityId)
+	-- Biri cikinca artis sifirlanir; cikmazsa bir artar (tavan: kesin cevirme)
+	data.gachaIska = if Ayar.ArtanKademeler[rarityId] then 0 else math.min(onceki + 1, Ayar.maxIska())
+
+	task.spawn(gosteri, player, rarityId, onceki, data.gachaIska)
 end
 
 ------------------------------------------------------------------
@@ -147,7 +153,12 @@ local function tutunmaParcasi(node: Instance): BasePart?
 end
 
 local function pencereyiAc(player: Player)
-	Net.event("GachaAc"):FireClient(player, { admin = adminMi(player) })
+	local data = PlayerData.get(player)
+	Net.event("GachaAc"):FireClient(player, {
+		admin = adminMi(player),
+		-- Sans artisi cubugu bununla cizilir
+		iska = if data then data.gachaIska else 0,
+	})
 end
 
 -- Bu adla butun NPC'lere prompt takar; zaten takiliysa atlar. Kac tane bulundugunu dondurur
@@ -179,7 +190,7 @@ local function npcBagla(): number
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "GachaPrompt"
 		prompt.ActionText = "Open"
-		prompt.ObjectText = "Egg Gacha"
+		prompt.ObjectText = "Premium Spin"
 		prompt.HoldDuration = 0.2
 		prompt.MaxActivationDistance = Ayar.PromptMesafe
 		prompt.RequiresLineOfSight = false

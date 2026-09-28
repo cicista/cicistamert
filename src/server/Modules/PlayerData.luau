@@ -46,6 +46,7 @@ local Ores = require(Shared:WaitForChild("Ores"))
 local Canta = require(Shared:WaitForChild("Canta"))
 -- AFK sans puani tavani ve alan sayisi
 local AfkSans = require(Shared:WaitForChild("AfkSans"))
+local Gacha = require(Shared:WaitForChild("Gacha"))
 -- Canta dolunca oyuncuyu uyarmak icin
 local Net = require(Shared:WaitForChild("Net"))
 
@@ -193,6 +194,8 @@ export type Data = {
 	]]
 	afkPuan: number,
 	afkSeviye: number,
+	-- Yumurta gachasinda ust uste Infernal/Abyssal CIKMAYAN cevirme sayisi (bkz. Shared > Gacha)
+	gachaIska: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
 	--[[
@@ -336,6 +339,7 @@ local function defaultData(): Data
 		speedRebirth = 0,
 		afkPuan = 0,
 		afkSeviye = 1,
+		gachaIska = 0,
 		quests ={ cycle = 0, progress = {}, done = {} },
 		-- Yeni oyuncu ogreticinin ilk adiminda baslar
 		tutorial = { adim = 1, bitti = false },
@@ -517,6 +521,7 @@ local function migrate(raw: any): Data
 	-- AFK sans oncesi kayitlar sifir puan ve yalnizca Common alaniyla acilir
 	data.afkPuan = math.clamp(tonumber(raw.afkPuan) or 0, 0, AfkSans.MaxPuan)
 	data.afkSeviye = math.clamp(math.floor(tonumber(raw.afkSeviye) or 1), 1, #AfkSans.Alanlar)
+	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
 
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)

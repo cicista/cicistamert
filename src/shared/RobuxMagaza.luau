@@ -208,7 +208,7 @@ RobuxMagaza.GizliUrunler = {
 		id = 0,
 		fiyat = Gacha.Fiyat,
 		etiket = "OPEN",
-		ad = "Egg Gacha Spin",
+		ad = "Premium Spin",
 		tur = "gacha",
 	},
 } :: { Urun }

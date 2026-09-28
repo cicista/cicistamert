@@ -199,7 +199,7 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 	-- Gacha kendi sonucunu cark durunca soyluyor; simdi "tesekkurler" yeter
 	Bildirim:FireClient(
 		player,
-		if urun.tur == "gacha" then "Thank you! Spinning the Egg Gacha..." else `Thank you! You got {urun.ad}!`,
+		if urun.tur == "gacha" then "Thank you! Premium Spin is spinning..." else `Thank you! You got {urun.ad}!`,
 		YESIL
 	)
 
@@ -254,7 +254,7 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 	if urun.tur == "gacha" then
 		local data = PlayerData.get(player)
 		if data and PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
-			Bildirim:FireClient(player, "Your backpack is full! Make room before spinning the Egg Gacha.", SARI)
+			Bildirim:FireClient(player, "Your backpack is full! Make room before using the Premium Spin.", SARI)
 			return
 		end
 	end
