@@ -960,9 +960,11 @@ local hudPuanOlcek = Instance.new("UIScale")
 hudPuanOlcek.Parent = hudPuan
 
 --[[
-	XP GAIN  --  son toplanan yoncanin verdigi oyuncu XP'si.
-	Birikmez: her toplamada yeniden yazilir, parlar ve yavasca soner.
+	XP GAIN  --  bu alanda AFK kalirken toplanan oyuncu XP'sinin TOPLAMI.
+	Her yoncada artar ve parlar; alandan cikip girince (ya da alan
+	degisince) sifirlanir (bkz. AfkAlan olayi).
 ]]
+local toplamXp = 0
 local hudXpGain = UI.text({
 	text = "",
 	size = UI.Sizes.small,
@@ -977,21 +979,27 @@ local hudXpOlcek = Instance.new("UIScale")
 hudXpOlcek.Parent = hudXpGain
 local xpSonme: Tween? = nil
 
+local function xpGainYaz()
+	hudXpGain.Text = if toplamXp > 0 then `XP GAIN +{virgullu(toplamXp)}` else ""
+end
+
 local function xpGainGoster(miktar: number)
 	if xpSonme then
 		xpSonme:Cancel()
 	end
-	hudXpGain.Text = `XP GAIN +{miktar}`
-	hudXpGain.TextTransparency = 0
+	toplamXp += miktar
+	xpGainYaz()
+	hudXpGain.TextColor3 = BEYAZ
 	hudXpOlcek.Scale = 1.3
 	TweenService:Create(hudXpOlcek, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	local sonme = TweenService:Create(
-		hudXpGain,
-		TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 1.4),
-		{ TextTransparency = 0.6 }
-	)
-	xpSonme = sonme
-	sonme:Play()
+	local renk = TweenService:Create(hudXpGain, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(120, 255, 150) })
+	xpSonme = renk
+	renk:Play()
+end
+
+local function xpGainSifirla()
+	toplamXp = 0
+	xpGainYaz()
 end
 
 -- Donen kisa yazilar: burada AFK kalmanin ne kazandirdigi
@@ -1376,6 +1384,8 @@ end)
 ]]
 Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	otoAyarla(false)
+	-- Cikip girince / alan degisince XP GAIN toplami bastan baslar
+	xpGainSifirla()
 	aktifAlan = if type(alanId) == "string" and Ayar.get(alanId) then alanId else nil
 
 	if not aktifAlan then
