@@ -276,6 +276,8 @@ local profiller: { [Player]: any } = {}
 local yukleniyor: { [Player]: boolean } = {}
 -- Veri bu kadar saniyede acilamazsa oyuncu atilir (bkz. PlayerData.load)
 local YUKLEME_SINIRI = 90
+-- Oturumu release ile kapatilan (kendisi cikan) oyuncular
+local ayriliyor: { [Player]: boolean } = {}
 local uidCounter = 0
 
 local function defaultData(): Data
@@ -815,7 +817,8 @@ function PlayerData.load(player: Player): Data?
 	-- Yukleme basarisiz: bekleyenler serbest kalir, oyuncu atilir
 	local function vazgec(sebep: string): nil
 		yukleniyor[player] = nil
-		if oyunda(player) then
+		-- Sunucu kapaniyorsa oyuncu zaten cikarilacak; "yuklenemedi" demek yaniltir
+		if oyunda(player) and not ProfileStore.IsClosing then
 			warn(`[PlayerData] {player.Name} verisi acilamadi ({sebep}), oyuncu atiliyor`)
 			player:Kick("Your data could not be loaded. Please rejoin in a moment.")
 		end
@@ -871,7 +874,10 @@ function PlayerData.load(player: Player): Data?
 		profiller[player] = nil
 		cache[player] = nil
 		-- Oturumu baska sunucu devraldi: bu sunucudaki kopya artik kaydedilmiyor
-		if oyunda(player) and not ProfileStore.IsClosing then
+		-- Normal cikista (release) ve sunucu kapanirken atma yok
+		local cikiyor = ayriliyor[player]
+		ayriliyor[player] = nil
+		if oyunda(player) and not cikiyor and not ProfileStore.IsClosing then
 			player:Kick("Your data was opened on another server. Please rejoin.")
 		end
 	end)
@@ -936,6 +942,8 @@ end
 function PlayerData.release(player: Player)
 	local profile = profiller[player]
 	if profile then
+		-- OnSessionEnd bunu gorup "baska sunucu" diye atmaz
+		ayriliyor[player] = true
 		profile:EndSession()
 	end
 end
@@ -1393,6 +1401,8 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	PlayerData.release(player)
 	sonDoluUyarisi[player] = nil
+	-- OnSessionEnd release icinde hemen calisir; burasi yalnizca yedek temizlik
+	ayriliyor[player] = nil
 end)
 
 return PlayerData
