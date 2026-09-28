@@ -53,6 +53,8 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
+-- Her yonca oyuncu XP'si de verir (Level sistemi)
+local Seviye = require(script.Parent:WaitForChild("Seviye"))
 
 local AfkSans = {}
 
@@ -351,6 +353,8 @@ local function bitir(player: Player, durum: Durum, is: Toplama)
 	data.afkPuan = math.min(Ayar.MaxPuan, data.afkPuan + alan.puanYonca)
 	local kazanc = data.afkPuan - once
 	nitelikleriYaz(player)
+	-- Her yonca oyuncu XP'si de verir (Level sistemi)
+	Seviye.xpVer(player, Ayar.YoncaXp)
 
 	yoncalar[is.id] = nil
 	local z = zemin(is.alan)

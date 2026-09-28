@@ -108,6 +108,8 @@ AfkSans.ToplamaSuresi = 3
 AfkSans.Erisim = 3
 -- Bar titremesi son bu kadar saniyede baslar
 AfkSans.TitremeSuresi = 1
+-- Her toplanan yoncanin verdigi oyuncu XP'si (Level sistemi, bkz. Modules > Seviye)
+AfkSans.YoncaXp = 1
 -- Toplama animasyonu (ToplamaSuresi kadar surer; farkliysa hizi ayarlanir)
 AfkSans.ToplamaAnimasyonu = "rbxassetid://112929077414582"
 

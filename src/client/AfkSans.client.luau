@@ -959,6 +959,41 @@ local hudPuan = UI.text({
 local hudPuanOlcek = Instance.new("UIScale")
 hudPuanOlcek.Parent = hudPuan
 
+--[[
+	XP GAIN  --  son toplanan yoncanin verdigi oyuncu XP'si.
+	Birikmez: her toplamada yeniden yazilir, parlar ve yavasca soner.
+]]
+local hudXpGain = UI.text({
+	text = "",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = Color3.fromRGB(120, 255, 150),
+	align = Enum.TextXAlignment.Right,
+	frameSize = UDim2.new(1, -150, 0, 20),
+	position = UDim2.fromOffset(14, 6),
+	parent = hud,
+})
+local hudXpOlcek = Instance.new("UIScale")
+hudXpOlcek.Parent = hudXpGain
+local xpSonme: Tween? = nil
+
+local function xpGainGoster(miktar: number)
+	if xpSonme then
+		xpSonme:Cancel()
+	end
+	hudXpGain.Text = `XP GAIN +{miktar}`
+	hudXpGain.TextTransparency = 0
+	hudXpOlcek.Scale = 1.3
+	TweenService:Create(hudXpOlcek, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	local sonme = TweenService:Create(
+		hudXpGain,
+		TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 1.4),
+		{ TextTransparency = 0.6 }
+	)
+	xpSonme = sonme
+	sonme:Play()
+end
+
 -- Donen kisa yazilar: burada AFK kalmanin ne kazandirdigi
 local IPUCLARI = {
 	"Every clover makes your digs LUCKIER!",
@@ -1396,6 +1431,7 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
 	if g then
 		yazdirKazanc(g.pos, tonumber(kazanc) or 0, Rarity.textColor(g.alan))
 	end
+	xpGainGoster(Ayar.YoncaXp)
 	yoncaSil(id, true)
 
 	if hedefId == id then
