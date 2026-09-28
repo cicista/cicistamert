@@ -512,6 +512,10 @@ end)
 -- Oyuna donen oyuncu isini gorsun (sol menudeki Detective butonu)
 local function girisDurumu(player: Player)
 	task.spawn(function()
+		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
+		if not PlayerData.bekle(player) then
+			return
+		end
 		for _ = 1, 3 do
 			task.wait(2)
 			local data = player.Parent and PlayerData.get(player)

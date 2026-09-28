@@ -24,6 +24,7 @@ local Net = require(Shared:WaitForChild("Net"))
 local Modules = script.Parent:WaitForChild("Modules")
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local GorevOdul = require(Modules:WaitForChild("GorevOdul"))
+local PlayerData = require(Modules:WaitForChild("PlayerData"))
 
 local Bildirim = Net.event("Bildirim")
 local GorevAc = Net.event("GorevAc")
@@ -44,9 +45,13 @@ end)
 --[[
 	Oyuncu girer girmez pano hazir olsun. Kayit birkac saniye sonra
 	yuklendigi icin gonder() basarana kadar denenir; basardigi anda durur.
+	Once veri beklenir: oturum cakismasinda yukleme 20 saniyeyi gecebilir.
 ]]
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(function()
+		if not PlayerData.bekle(player) then
+			return
+		end
 		for _ = 1, 20 do
 			task.wait(1)
 			if not player.Parent then

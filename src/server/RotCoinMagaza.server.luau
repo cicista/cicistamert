@@ -130,8 +130,10 @@ end)
 
 -- Girince aktif iksir (oyundan cikmadan once alinmis) Rot'un ustunde gorunsun
 Players.PlayerAdded:Connect(function(player)
-	task.delay(3, function()
-		if player.Parent then
+	task.spawn(function()
+		task.wait(3)
+		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
+		if PlayerData.bekle(player) then
 			durumGonder(player)
 		end
 	end)

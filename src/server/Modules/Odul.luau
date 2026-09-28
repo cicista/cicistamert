@@ -205,8 +205,10 @@ end
 ]]
 Players.PlayerAdded:Connect(function(player)
 	girisZamani[player] = os.clock()
-	task.delay(3, function()
-		if player.Parent then
+	task.spawn(function()
+		task.wait(3)
+		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
+		if PlayerData.bekle(player) then
 			Odul.push(player)
 		end
 	end)

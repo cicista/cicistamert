@@ -1012,7 +1012,10 @@ local function onCharacterAdded(player: Player)
 	end
 
 	task.wait(0.5)
-	Envanter.refresh(player)
+	-- Ilk giriste veri henuz gelmemis olabilir: kurek ve GPS veri gelince verilir
+	if PlayerData.bekle(player) then
+		Envanter.refresh(player)
+	end
 end
 
 Players.PlayerAdded:Connect(function(player)

@@ -201,8 +201,10 @@ local function oyuncuHazirla(player: Player)
 	end
 
 	-- Veri yuklenince bar ve bas ustu yazisi gorunsun
-	task.delay(3, function()
-		if player.Parent then
+	task.spawn(function()
+		task.wait(3)
+		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
+		if PlayerData.bekle(player) then
 			etiketGuncelle(player)
 			Seviye.push(player)
 		end
