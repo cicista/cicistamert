@@ -274,6 +274,8 @@ local cache: { [Player]: Data } = {}
 local profiller: { [Player]: any } = {}
 -- Yuklemesi suren oyuncular: ayni oyuncu icin ikinci yukleme baslamaz
 local yukleniyor: { [Player]: boolean } = {}
+-- Veri bu kadar saniyede acilamazsa oyuncu atilir (bkz. PlayerData.load)
+local YUKLEME_SINIRI = 90
 local uidCounter = 0
 
 local function defaultData(): Data
@@ -805,10 +807,16 @@ function PlayerData.load(player: Player): Data?
 
 	yukleniyor[player] = true
 
+	--[[
+		Cancel verilince ProfileStore kendi 120 sn'lik siniri KAPATIYOR;
+		sinir burada. DataStore coktugunde oyuncu bozuk oyunda sonsuza kadar
+		beklemesin, atilsin. Oturum devri (~40 sn) bu sureye sigar.
+	]]
+	local baslangic = os.clock()
 	local profile = kaynak:StartSessionAsync(tostring(player.UserId), {
-		-- Oyuncu yukleme sirasinda cikarsa istek birakilir
+		-- Oyuncu yukleme sirasinda cikarsa ya da sure dolarsa istek birakilir
 		Cancel = function()
-			return not oyunda(player)
+			return not oyunda(player) or os.clock() - baslangic > YUKLEME_SINIRI
 		end,
 	})
 
