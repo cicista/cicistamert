@@ -948,8 +948,30 @@ local RARITY_VFX: { [string]: string } = {
 	parcacik boyu ve hizi, isik menzili). Yazilmayan kademe 1.
 ]]
 Assets.RarityVFXScale = {
-	Secret = 0.5, -- DivineVFX asiri buyuktu
+	Secret = 0.4, -- DivineVFX asiri buyuktu
 } :: { [string]: number }
+
+--[[
+	KADEMEYE OZEL PARCACIK SIKLIGI
+
+	Efektteki her ParticleEmitter.Rate bu sayiyla carpilir. Yazilmayan
+	kademe 1 (sablondaki gibi).
+]]
+Assets.RarityVFXRate = {
+	Secret = 0.5, -- DivineVFX cok sik patliyordu
+} :: { [string]: number }
+
+-- Efektteki parcacik yayicilarinin sikligini carpar
+local function vfxSikligi(root: Instance, carpan: number)
+	if carpan == 1 then
+		return
+	end
+	for _, node in root:GetDescendants() do
+		if node:IsA("ParticleEmitter") then
+			node.Rate *= carpan
+		end
+	end
+end
 
 Assets.RarityVFXAttribute = "KademeEfekti"
 
@@ -1072,6 +1094,7 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 
 		tutamak.Parent = govde
 		Assets.scaleEffects(tutamak, Assets.rarityVFXScale(model) * (Assets.RarityVFXScale[rarityId :: string] or 1))
+		vfxSikligi(tutamak, Assets.RarityVFXRate[rarityId :: string] or 1)
 		return tutamak
 	end
 
@@ -1184,6 +1207,7 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 
 	-- Parcacik boyu, hizi ve isik menzili de ayni oranda buyur
 	Assets.scaleEffects(sablon, carpan)
+	vfxSikligi(sablon, Assets.RarityVFXRate[rarityId :: string] or 1)
 
 	return sablon
 end
