@@ -154,7 +154,7 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 
 	-- Daha once verilmis: yalnizca kaydin DataStore'a ulastigindan emin ol
 	if data.purchases[fisId] then
-		return if PlayerData.save(player)
+		return if PlayerData.fisKaydedildi(player, fisId)
 			then Enum.ProductPurchaseDecision.PurchaseGranted
 			else Enum.ProductPurchaseDecision.NotProcessedYet
 	end
@@ -179,7 +179,7 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 	pcall(ekraniTazele, player, urun)
 	Bildirim:FireClient(player, `Thank you! You got {urun.ad}!`, YESIL)
 
-	if not PlayerData.save(player) then
+	if not PlayerData.fisKaydedildi(player, fisId) then
 		-- Urun ve fis bellekte; kayit sonra (otomatik ya da cikista) gider
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end

@@ -19,9 +19,14 @@
 	  { uid, rarity, condition, mutation, name?, revealed }
 	  name yalnizca Detective temizledikten sonra dolar; o ana kadar
 	  oyuncu sadece rarity'yi gorur (simsiyah hal).
+
+	KAYIT  --  ProfileStore (Modules > ProfileStore)
+	  Her oyuncunun verisi bir OTURUM ile acilir: ayni anda yalnizca bir
+	  sunucu yazabilir. Oyuncu baska sunucuya gecerse yeni sunucu eskisinin
+	  son kaydini bekler. Veri yuklenemezse oyuncu atilir; bos veriyle
+	  devam edilmez (yoksa bos veri gercek kaydin ustune yazilirdi).
 ]]
 
-local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -138,7 +143,8 @@ export type Data = {
 	]]
 	playtimeGun: number,
 	playtimeSure: number,
-	playtimeAlinan: { [number]: boolean },
+	-- Anahtar METIN ("1", "2"): sayi anahtari karisirsa DataStore kaydi reddeder
+	playtimeAlinan: { [string]: boolean },
 	-- Detective'e birakilan toplu inceleme: { bitis = os.time, toplam, uids }
 	detectiveJob: any?,
 	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
@@ -244,11 +250,30 @@ PlayerData.VarsayilanMuzik = 10
 PlayerData.VarsayilanSfx = 30
 
 
--- Ekip testi icin sifirlandi (v1 kayitlari silinmedi, kullanilmiyor)
-local STORE_NAME = "BrainrotDig_v2"
-local store = if RunService:IsStudio() then nil else DataStoreService:GetDataStore(STORE_NAME)
+--[[
+	v3: ProfileStore'a gecisle sifirdan basladi. v1 ve v2 kayitlari
+	silinmedi, okunmuyor (oyun yayinlanmadan once yalnizca ekip verisiydi).
+]]
+local STORE_NAME = "BrainrotDig_v3"
+local ProfileStore = require(script.Parent:WaitForChild("ProfileStore"))
+
+-- Eski sistemdeki otomatik kayit araligi korunuyor (ProfileStore varsayilani 300)
+ProfileStore.SetConstant("AUTO_SAVE_PERIOD", 120)
+
+local store = ProfileStore.New(STORE_NAME, {})
+
+--[[
+	Studio'da kayit YOK (eski davranis): veriler bellekte, oyun kapaninca
+	gider. Canli veriyi Studio'dan denemek icin true yap; o zaman Game
+	Settings > Security > "Enable Studio Access to API Services" de acik olmali.
+]]
+local STUDIO_GERCEK_KAYIT = false
+local kaynak = if RunService:IsStudio() and not STUDIO_GERCEK_KAYIT then store.Mock else store
 
 local cache: { [Player]: Data } = {}
+local profiller: { [Player]: any } = {}
+-- Yuklemesi suren oyuncular: ayni oyuncu icin ikinci yukleme baslamaz
+local yukleniyor: { [Player]: boolean } = {}
 local uidCounter = 0
 
 local function defaultData(): Data
@@ -395,6 +420,8 @@ local function migrate(raw: any): Data
 		}
 	else
 		data.tutorial = { adim = 1, bitti = true }
+	end
+
 	--[[
 		SURELI GECISLER  --  suresi gecmis olanlar atilir
 
@@ -412,7 +439,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	end
 	--[[
 		SCROLL SAYACLARI  --  eski kayitlarda yok, bos baslar
 	]]
@@ -551,7 +577,8 @@ local function migrate(raw: any): Data
 		for anahtar, deger in raw.playtimeAlinan do
 			local sira = tonumber(anahtar)
 			if sira and deger == true then
-				data.playtimeAlinan[sira] = true
+				-- playtimeAl / playtimeAlindi metin anahtar kullaniyor
+				data.playtimeAlinan[tostring(sira)] = true
 			end
 		end
 	end
@@ -722,62 +749,20 @@ function PlayerData.newUid(): string
 	return string.format("%d_%d", os.time() % 1000000, uidCounter)
 end
 
-function PlayerData.load(player: Player): Data
-	if cache[player] then
-		return cache[player]
-	end
-
-	local raw: any = nil
-	if store then
-		local ok, result = pcall(function()
-			return store:GetAsync(tostring(player.UserId))
-		end)
-		if ok then
-			raw = result
-		else
-			warn(`[PlayerData] {player.Name} yuklenemedi: {tostring(result)}`)
-		end
-	end
-
-	local data = migrate(raw)
-	cache[player] = data
-	return data
-end
-
-function PlayerData.get(player: Player): Data?
-	return cache[player]
-end
-
--- Kayit basarili mi doner (Studio'da store yok: true). Robux satin alma buna bakar.
-function PlayerData.save(player: Player): boolean
-	local data = cache[player]
-	if not data then
-		return false
-	end
-	if not store then
-		return true
-	end
-
-	local ok, err = pcall(function()
-		store:SetAsync(tostring(player.UserId), data)
-	end)
-	if not ok then
-		warn(`[PlayerData] {player.Name} kaydedilemedi: {tostring(err)}`)
-	end
-	return ok
-end
-
 --[[
-	OYUNCU AYRILIRKEN, VERI KAYDEDILMEDEN ONCE calisan kancalar.
+	OYUNCU AYRILIRKEN, SON KAYITTAN ONCE calisan kancalar.
 
 	Baska sistemler oyuncunun esyalarini gecici olarak verisinden CIKARIP
 	kendilerinde tutabiliyor (ornegin Fuse makinesi, icine konan brainrotlari).
-	O esyalarin geri yazilmasi Players.PlayerRemoving'e baglansaydi kaybolma
-	riski olurdu: bu modul de ayni sinyale bagli ve Roblox baglanti sirasini
-	garanti etmiyor -- once burasi calisirsa cache silinir ve digerinin geri
-	yazacagi bir yer kalmaz.
+	Bu kancalar o esyalari veriye geri yazar.
 
-	Bu kancalar cache HALA DOLUYKEN calisir, yani geri yazma her zaman tutar.
+	ProfileStore'un OnLastSave sinyaline bagli: oyuncu ciktiginda, sunucu
+	kapanirken ve baska sunucu oturumu devraldiginda -- uc durumda da son
+	kayittan HEMEN ONCE calisir, cache hala doludur.
+
+	KANCA BEKLEMEMELI (task.wait, Async cagri yok): ProfileStore kancayi
+	baslatir ve ilk beklemede kayda gecer; bekleyen kancanin sonrasi
+	kayda girmez.
 ]]
 local beforeRelease: { (player: Player) -> () } = {}
 
@@ -785,7 +770,7 @@ function PlayerData.onBeforeRelease(callback: (player: Player) -> ())
 	table.insert(beforeRelease, callback)
 end
 
-function PlayerData.release(player: Player)
+local function kancalariCalistir(player: Player)
 	-- Biri patlarsa digerleri ve kayit yine de calissin
 	for _, callback in beforeRelease do
 		local ok, err = pcall(callback, player)
@@ -793,10 +778,137 @@ function PlayerData.release(player: Player)
 			warn(`[PlayerData] {player.Name}: ayrilma kancasi hata verdi -- {tostring(err)}`)
 		end
 	end
+end
 
-	PlayerData.save(player)
-	cache[player] = nil
-	sonDoluUyarisi[player] = nil
+local function oyunda(player: Player): boolean
+	return player.Parent == Players
+end
+
+--[[
+	Oyuncunun verisini acar. Ayni oyuncu icin ikinci cagri yeni yukleme
+	baslatmaz, ilkinin bitmesini bekler.
+
+	nil donerse veri ACILAMADI: oyuncu atilmistir (ya da zaten cikmistir).
+	Cagiran taraf bos veriyle devam etmemeli.
+]]
+function PlayerData.load(player: Player): Data?
+	if cache[player] then
+		return cache[player]
+	end
+
+	if yukleniyor[player] then
+		while yukleniyor[player] do
+			task.wait(0.1)
+		end
+		return cache[player]
+	end
+
+	yukleniyor[player] = true
+
+	local profile = kaynak:StartSessionAsync(tostring(player.UserId), {
+		-- Oyuncu yukleme sirasinda cikarsa istek birakilir
+		Cancel = function()
+			return not oyunda(player)
+		end,
+	})
+
+	if profile == nil then
+		yukleniyor[player] = nil
+		if oyunda(player) then
+			warn(`[PlayerData] {player.Name} verisi acilamadi, oyuncu atiliyor`)
+			player:Kick("Your data could not be loaded. Please rejoin in a moment.")
+		end
+		return nil
+	end
+
+	-- Oturum acilirken oyuncu cikti: veriyi hemen birak, cache'e koyma
+	if not oyunda(player) then
+		yukleniyor[player] = nil
+		profile:EndSession()
+		return nil
+	end
+
+	profile:AddUserId(player.UserId)
+
+	-- Yeni profil bos tablo gelir: ogreticiyle baslayan temiz veri alir
+	local data = if next(profile.Data) == nil then defaultData() else migrate(profile.Data)
+	profile.Data = data
+
+	profile.OnLastSave:Connect(function()
+		kancalariCalistir(player)
+	end)
+
+	profile.OnSessionEnd:Connect(function()
+		profiller[player] = nil
+		cache[player] = nil
+		-- Oturumu baska sunucu devraldi: bu sunucudaki kopya artik kaydedilmiyor
+		if oyunda(player) and not ProfileStore.IsClosing then
+			player:Kick("Your data was opened on another server. Please rejoin.")
+		end
+	end)
+
+	profiller[player] = profile
+	cache[player] = data
+	yukleniyor[player] = nil
+	return data
+end
+
+function PlayerData.get(player: Player): Data?
+	return cache[player]
+end
+
+--[[
+	Veri yuklenene kadar bekler. Oyuncu cikarsa (ya da veri acilamayip
+	atilirsa) nil doner.
+]]
+function PlayerData.bekle(player: Player): Data?
+	while oyunda(player) and cache[player] == nil do
+		task.wait(0.25)
+	end
+	return cache[player]
+end
+
+--[[
+	ROBUX FISI KAYDA ULASTI MI  --  bkz. RobuxMagaza > ProcessReceipt
+
+	Fis data.purchases'a yazildiktan sonra cagrilir. Kaydi hemen baslatir
+	ve fis DataStore'daki son kayitta (LastSavedData) gorunene kadar bekler.
+	true donerse PurchaseGranted donulebilir; false ise NotProcessedYet
+	donulmeli -- fis bellekte kalir, Roblox tekrar dener.
+]]
+local FIS_KAYIT_SURESI = 30
+
+function PlayerData.fisKaydedildi(player: Player, fisId: string): boolean
+	local profile = profiller[player]
+	if not profile then
+		return false
+	end
+
+	local function kayitli(): boolean
+		local son = profile.LastSavedData
+		return type(son) == "table" and type(son.purchases) == "table" and son.purchases[fisId] ~= nil
+	end
+
+	if kayitli() then
+		return true
+	end
+
+	-- Studio'da (mock) de gercek kayit gibi calisir; ek bir durum yok
+	profile:Save()
+
+	local sinir = os.clock() + FIS_KAYIT_SURESI
+	while not kayitli() and profile:IsActive() and os.clock() < sinir do
+		task.wait(0.25)
+	end
+	return kayitli()
+end
+
+-- Oyuncu ayrildi: kancalar (OnLastSave) ve son kayit ProfileStore'da
+function PlayerData.release(player: Player)
+	local profile = profiller[player]
+	if profile then
+		profile:EndSession()
+	end
 end
 
 ------------------------------------------------------------------
@@ -1245,29 +1357,13 @@ end
 -- OTURUM
 ------------------------------------------------------------------
 
--- Periyodik otomatik kayit
-task.spawn(function()
-	while true do
-		task.wait(120)
-		for player in cache do
-			if player.Parent then
-				PlayerData.save(player)
-			end
-		end
-	end
-end)
-
-game:BindToClose(function()
-	for player in cache do
-		PlayerData.save(player)
-	end
-	if not RunService:IsStudio() then
-		task.wait(2)
-	end
-end)
-
+--[[
+	Otomatik kayit (120 sn) ve sunucu kapanirken son kayit ProfileStore'da;
+	kapanista da OnLastSave, yani ayrilma kancalari calisir.
+]]
 Players.PlayerRemoving:Connect(function(player)
 	PlayerData.release(player)
+	sonDoluUyarisi[player] = nil
 end)
 
 return PlayerData

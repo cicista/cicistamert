@@ -83,6 +83,10 @@ end
 
 local function setupStats(player: Player)
 	local data = PlayerData.load(player)
+	-- Veri acilamadi: oyuncu atildi ya da cikti (bkz. PlayerData.load)
+	if not data then
+		return
+	end
 
 	--[[
 		Kayittaki SURELI GECISLER yeniden kuruluyor: oyuncu cikip girse de

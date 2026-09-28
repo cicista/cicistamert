@@ -43,7 +43,11 @@ local OLCEK_MIN = 50
 local OLCEK_MAX = 150
 
 local function ayarlariYolla(player: Player)
-	local data = PlayerData.get(player) or PlayerData.load(player)
+	-- Yuklemeyi Leaderstats baslatir; burasi yalnizca bekler (ikinci yukleme yok)
+	local data = PlayerData.bekle(player)
+	if not data then
+		return
+	end
 	player:SetAttribute("SarsintiKapali", data.shakeOff == true)
 	AyarDurum:FireClient(player, {
 		uiScale = data.uiScale or 100,
