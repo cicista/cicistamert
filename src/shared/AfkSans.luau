@@ -35,7 +35,37 @@
 	degerinden fazlasini kazanamaz.
 ]]
 
+local Shovels = require(script.Parent:WaitForChild("Shovels"))
+local Rods = require(script.Parent:WaitForChild("Rods"))
+
 local AfkSans = {}
+
+--[[
+	ALAN FIYATLARI kurek / olta fiyatlarina BAGLI: o esyanin fiyati
+	degisirse alanin fiyati da kendiliginden degisir.
+
+	    Rare       Lv6 kurek   (Lollipop Shovel)
+	    Epic       Lv11 kurek  (Frost Shovel)
+	    Legendary  Lv1 olta    (Bamboo Rod)
+	    Mythic     Lv5 olta    (Leviathan Rod)
+]]
+local function kurekFiyati(level: number): number
+	for _, info in Shovels.Info do
+		if info.level == level then
+			return info.price
+		end
+	end
+	error(`AfkSans: Lv{level} kurek bulunamadi`)
+end
+
+local function oltaFiyati(level: number): number
+	for _, info in Rods.Info do
+		if info.level == level then
+			return info.price
+		end
+	end
+	error(`AfkSans: Lv{level} olta bulunamadi`)
+end
 
 export type Alan = {
 	id: string,
@@ -49,10 +79,10 @@ export type Alan = {
 
 local alanlar: { Alan } = {
 	{ id = "Common", displayName = "Common Clover Field", puanSaniye = 6, fiyat = 0 },
-	{ id = "Rare", displayName = "Rare Clover Field", puanSaniye = 14, fiyat = 10_000_000 },
-	{ id = "Epic", displayName = "Epic Clover Field", puanSaniye = 30, fiyat = 250_000_000 },
-	{ id = "Legendary", displayName = "Legendary Clover Field", puanSaniye = 60, fiyat = 5_000_000_000 },
-	{ id = "Mythic", displayName = "Mythic Clover Field", puanSaniye = 111, fiyat = 100_000_000_000 },
+	{ id = "Rare", displayName = "Rare Clover Field", puanSaniye = 14, fiyat = kurekFiyati(6) },
+	{ id = "Epic", displayName = "Epic Clover Field", puanSaniye = 30, fiyat = kurekFiyati(11) },
+	{ id = "Legendary", displayName = "Legendary Clover Field", puanSaniye = 60, fiyat = oltaFiyati(1) },
+	{ id = "Mythic", displayName = "Mythic Clover Field", puanSaniye = 111, fiyat = oltaFiyati(5) },
 }
 AfkSans.Alanlar = alanlar
 
