@@ -77,6 +77,8 @@ local Patlama = require(Modules:WaitForChild("Patlama"))
 local MadenPatlamasi = require(Modules:WaitForChild("MadenPatlamasi"))
 local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
 local Seviye = require(Modules:WaitForChild("Seviye"))
+-- Yonca alanlarinda biriken sans puaninin carpani (bkz. Shared > AfkSans)
+local AfkSans = require(Modules:WaitForChild("AfkSans"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -159,7 +161,13 @@ local function luckFor(player: Player): number
 		Roblox arkadasi varsa x1.15 (bkz. Modules > Arkadaslar).
 	]]
 	-- Level bonusu da kalici carpan olarak eklenir (her level +%1, bkz. Shared > Seviye)
-	return ground * detector.luck * PlayerData.luckBonus(player) * Arkadaslar.carpan(player) * Seviye.carpan(player)
+	-- AFK sans puani da kalici carpan (x1 .. x20, bkz. Shared > AfkSans)
+	return ground
+		* detector.luck
+		* PlayerData.luckBonus(player)
+		* Arkadaslar.carpan(player)
+		* Seviye.carpan(player)
+		* AfkSans.carpan(player)
 end
 
 -- Oyuncunun dedektorune gore tarama ayarlari
@@ -891,6 +899,7 @@ task.spawn(function()
 						* PlayerData.luckBonus(player)
 						* Arkadaslar.carpan(player)
 						* Seviye.carpan(player)
+						* AfkSans.carpan(player)
 					if Beams.trySpawnSea(player, denizSansi, rng, rod.maxWhirls, rod.scanRadius) then
 						lastWhirl[player] = simdi
 						girdapBildirildi = true

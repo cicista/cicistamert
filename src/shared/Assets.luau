@@ -220,6 +220,8 @@ Assets.Categories = {
 	sounds = "Sounds",
 	-- Kimligi belirlenmemis esyanin kademe kademe yumurtalari
 	eggs = "Eggs",
+	-- AFK sans alanlarinin yoncalari, kademe basina bir model (bkz. Shared > AfkSans)
+	clovers = "Clovers",
 }
 
 -- Sunucu acilista cagirir; eksik klasorleri olusturur.
@@ -253,6 +255,34 @@ end
 
 function Assets.klasor(category: string): Instance?
 	return categoryFolder(category)
+end
+
+--[[
+	YONCA MODELI  (Assets > Clovers)
+
+	Kademe basina bir model. Ad once birebir aranir ("Epic"), yoksa adinda
+	kademe gecen ilk model alinir ("EpicClover", "Clover_Epic"). Bulunamazsa
+	nil doner; istemci yedek yonca cizer.
+]]
+function Assets.cloverModel(rarityId: string): Model?
+	local folder = categoryFolder(Assets.Categories.clovers)
+	if not folder then
+		return nil
+	end
+
+	local found: Instance? = folder:FindFirstChild(rarityId, true)
+	if not (found and found:IsA("Model")) then
+		found = nil
+		local aranan = string.lower(rarityId)
+		for _, node in folder:GetDescendants() do
+			if node:IsA("Model") and string.find(string.lower(node.Name), aranan, 1, true) then
+				found = node
+				break
+			end
+		end
+	end
+
+	return if found then (found :: Model):Clone() else nil
 end
 
 --[[

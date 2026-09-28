@@ -44,6 +44,8 @@ local Rewards = require(Shared:WaitForChild("Rewards"))
 local Ores = require(Shared:WaitForChild("Ores"))
 -- Canta kapasitesi ve yukseltme fiyatlari
 local Canta = require(Shared:WaitForChild("Canta"))
+-- AFK sans puani tavani ve alan sayisi
+local AfkSans = require(Shared:WaitForChild("AfkSans"))
 -- Canta dolunca oyuncuyu uyarmak icin
 local Net = require(Shared:WaitForChild("Net"))
 
@@ -183,6 +185,14 @@ export type Data = {
 	speedLevel: number,
 	-- Hiz rebirth sayisi (0..Hiz.MaxRebirth); arkadaki izin boyu ve rengi
 	speedRebirth: number,
+	--[[
+		AFK SANS  (bkz. Shared > AfkSans)
+
+		afkPuan  : yonca toplayarak biriken sans puani (0..MaxPuan)
+		afkSeviye: acilmis en yuksek yonca alani (1 = Common, 5 = Mythic)
+	]]
+	afkPuan: number,
+	afkSeviye: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
 	--[[
@@ -324,7 +334,9 @@ local function defaultData(): Data
 		shakeOff = false,
 		speedLevel = 0,
 		speedRebirth = 0,
-		quests = { cycle = 0, progress = {}, done = {} },
+		afkPuan = 0,
+		afkSeviye = 1,
+		quests ={ cycle = 0, progress = {}, done = {} },
 		-- Yeni oyuncu ogreticinin ilk adiminda baslar
 		tutorial = { adim = 1, bitti = false },
 		discovered = {},
@@ -502,6 +514,9 @@ local function migrate(raw: any): Data
 	-- Hiz yukseltmesi oncesi kayitlar 0'dan baslar
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
+	-- AFK sans oncesi kayitlar sifir puan ve yalnizca Common alaniyla acilir
+	data.afkPuan = math.clamp(tonumber(raw.afkPuan) or 0, 0, AfkSans.MaxPuan)
+	data.afkSeviye = math.clamp(math.floor(tonumber(raw.afkSeviye) or 1), 1, #AfkSans.Alanlar)
 
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)

@@ -63,6 +63,7 @@ File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript
 - Level / XP: `src/server/Modules/Seviye.luau`
 - Fuse machine: `src/server/Fuse.server.luau`
 - Lucky Block + block rain: `src/server/Modules/LuckyBlockOdul.luau`
+- AFK luck (clover fields in `Workspace.CloverAreas`, Luck Points, Leprechaun field upgrades): `src/server/Modules/AfkSans.luau`, `src/client/AfkSans.client.luau`, config `src/shared/AfkSans.luau`
 - Quests: `src/server/Gorev.server.luau`
 - Daily reward: `src/server/Modules/Odul.luau`
 - Playtime / social rewards: `src/server/SosyalOdul.server.luau`
