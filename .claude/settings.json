@@ -1,0 +1,21 @@
+{
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    },
+    "thedotmack": {
+      "source": {
+        "source": "github",
+        "repo": "thedotmack/claude-mem"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "caveman@caveman": true,
+    "claude-mem@thedotmack": true
+  }
+}
