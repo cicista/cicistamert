@@ -948,7 +948,7 @@ local RARITY_VFX: { [string]: string } = {
 	parcacik boyu ve hizi, isik menzili). Yazilmayan kademe 1.
 ]]
 Assets.RarityVFXScale = {
-	Secret = 0.2, -- DivineVFX asiri buyuktu
+	Secret = 0.5, -- DivineVFX asiri buyuktu
 } :: { [string]: number }
 
 Assets.RarityVFXAttribute = "KademeEfekti"
