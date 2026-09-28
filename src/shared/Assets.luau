@@ -940,6 +940,17 @@ local RARITY_VFX: { [string]: string } = {
 	Abyssal = "AbyssalVFX",
 }
 
+--[[
+	KADEMEYE OZEL EFEKT OLCEGI
+
+	Bazi sablonlar digerlerinden cok iri hazirlanmis. Buradaki sayi
+	brainrotun boyuna gore hesaplanan carpanla CARPILIR (parca boyu,
+	parcacik boyu ve hizi, isik menzili). Yazilmayan kademe 1.
+]]
+Assets.RarityVFXScale = {
+	Secret = 0.2, -- DivineVFX asiri buyuktu
+} :: { [string]: number }
+
 Assets.RarityVFXAttribute = "KademeEfekti"
 
 --[[
@@ -1060,7 +1071,7 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		end
 
 		tutamak.Parent = govde
-		Assets.scaleEffects(tutamak, Assets.rarityVFXScale(model))
+		Assets.scaleEffects(tutamak, Assets.rarityVFXScale(model) * (Assets.RarityVFXScale[rarityId :: string] or 1))
 		return tutamak
 	end
 
@@ -1106,7 +1117,7 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		sinir var: kucuk brainrotta efekt yok olmasin, devasa olanda da
 		ekrani kaplamasin.
 	]]
-	local carpan = Assets.rarityVFXScale(model)
+	local carpan = Assets.rarityVFXScale(model) * (Assets.RarityVFXScale[rarityId :: string] or 1)
 
 	local function olcekle(parca: BasePart)
 		parca.Size *= carpan
