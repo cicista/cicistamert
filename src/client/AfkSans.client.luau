@@ -1078,14 +1078,68 @@ end
 ]]
 local TOPLAMA_NITELIGI = "YoncaTopluyor"
 
+--[[
+	TOPLAMA ANIMASYONU  (Shared > AfkSans > ToplamaAnimasyonu)
+
+	Karakter basina bir kez yuklenir. Animasyonun boyu ToplamaSuresi'nden
+	farkliysa hizi ayarlanir: bar bittigi an animasyon da biter. Yerel
+	karakterde oynatilan animasyon diger oyunculara kendiliginden yansir.
+]]
+local animIzleri: { [Humanoid]: AnimationTrack } = {}
+
+local function toplamaIzi(h: Humanoid): AnimationTrack?
+	local iz = animIzleri[h]
+	if iz then
+		return iz
+	end
+
+	local animator = h:FindFirstChildOfClass("Animator")
+	if not animator then
+		return nil
+	end
+
+	local anim = Instance.new("Animation")
+	anim.AnimationId = Ayar.ToplamaAnimasyonu
+	local ok, sonuc = pcall(function()
+		return animator:LoadAnimation(anim)
+	end)
+	if not ok or not sonuc then
+		warn(`[AfkSans] toplama animasyonu yuklenemedi: {tostring(sonuc)}`)
+		return nil
+	end
+
+	sonuc.Priority = Enum.AnimationPriority.Action
+	sonuc.Looped = false
+	animIzleri[h] = sonuc
+	h.Destroying:Once(function()
+		animIzleri[h] = nil
+	end)
+	return sonuc
+end
+
 local function toplamaDurusu(acik: boolean)
 	local char = player.Character
 	local h = insan()
 	if char then
 		char:SetAttribute(TOPLAMA_NITELIGI, acik)
 	end
-	if h then
-		h.AutoRotate = not acik
+	if not h then
+		return
+	end
+	h.AutoRotate = not acik
+
+	local iz = toplamaIzi(h)
+	if not iz then
+		return
+	end
+	if acik then
+		iz:Play(0.15)
+		-- Boy henuz bilinmiyorsa (ilk yukleme) normal hizda oynar
+		if iz.Length > 0 then
+			iz:AdjustSpeed(iz.Length / Ayar.ToplamaSuresi)
+		end
+	else
+		iz:Stop(0.2)
 	end
 end
 

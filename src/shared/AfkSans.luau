@@ -108,6 +108,8 @@ AfkSans.ToplamaSuresi = 3
 AfkSans.Erisim = 3
 -- Bar titremesi son bu kadar saniyede baslar
 AfkSans.TitremeSuresi = 1
+-- Toplama animasyonu (ToplamaSuresi kadar surer; farkliysa hizi ayarlanir)
+AfkSans.ToplamaAnimasyonu = "rbxassetid://112929077414582"
 
 -- Isimler
 AfkSans.KlasorAdi = "CloverAreas"
