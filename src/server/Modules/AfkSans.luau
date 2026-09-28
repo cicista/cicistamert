@@ -160,14 +160,35 @@ local function tabanYaricap(id: string): number
 end
 
 --[[
-	Yoncanin cikamayacagi yerler: zeminin altindaki her parca (Fences,
-	barikat), Border haric. Border alanin cercevesi; buyuk bir kutuysa
-	butun alani kapsar ve hicbir yonca cikamaz.
+	Yoncanin cikamayacagi yerler: zeminin altindaki parcalar (Fences vb.).
+	Border ve Barricade HARIC: ikisi de butun alani iceren buyuk kutular;
+	engel sayilsalar hicbir yonca cikamazdi. Barikat acilan oyuncuda zaten
+	gorunmez ve gecilebilir.
 ]]
+local function engelDegil(node: Instance): boolean
+	local ad = string.lower(node.Name)
+	return string.find(ad, "border", 1, true) ~= nil or string.find(ad, "barricade", 1, true) ~= nil
+end
+
 local function engeller(z: BasePart): { Instance }
 	local liste = {}
 	for _, node in z:GetDescendants() do
-		if node:IsA("BasePart") and not string.find(string.lower(node.Name), "border", 1, true) then
+		if not node:IsA("BasePart") then
+			continue
+		end
+
+		-- Barikat Model olabilir: parcasinin adi degil, atasinin adi tutar
+		local atla = false
+		local ata: Instance? = node
+		while ata and ata ~= z do
+			if engelDegil(ata) then
+				atla = true
+				break
+			end
+			ata = ata.Parent
+		end
+
+		if not atla then
 			table.insert(liste, node)
 		end
 	end
