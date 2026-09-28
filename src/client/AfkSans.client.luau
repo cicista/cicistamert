@@ -205,6 +205,188 @@ local function kilitYazisi(alan: Ayar.Alan, parca: BasePart): BillboardGui
 	return bb
 end
 
+--[[
+	KILITLI ALAN UYARISI
+
+	Oyuncu kilitli alanin barikatina carpinca ekranin ust ortasinda ne
+	yapmasi gerektigi yazar: alani nereden ve kaca acacagi.
+]]
+local uyariEkrani = Instance.new("ScreenGui")
+uyariEkrani.Name = "AfkKilitUyarisi"
+uyariEkrani.ResetOnSpawn = false
+uyariEkrani.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+uyariEkrani.Parent = playerGui
+
+local UYARI_ARALIGI = 3
+local sonUyari = 0
+local aktifUyari: Frame? = nil
+
+local function kilitUyarisi(alan: Ayar.Alan)
+	local simdi = os.clock()
+	if simdi - sonUyari < UYARI_ARALIGI then
+		return
+	end
+	sonUyari = simdi
+	if aktifUyari then
+		aktifUyari:Destroy()
+	end
+
+	local kap = Instance.new("Frame")
+	kap.Name = "Uyari"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	kap.Position = UDim2.fromScale(0.5, 0.3)
+	kap.Size = UDim2.fromOffset(620, 80)
+	kap.BackgroundTransparency = 1
+	kap.Parent = uyariEkrani
+	aktifUyari = kap
+
+	local olcek = Instance.new("UIScale")
+	olcek.Scale = 0.4
+	olcek.Parent = kap
+
+	local baslik = UI.text({
+		text = `{string.upper(alan.displayName)} IS LOCKED!`,
+		size = UI.Sizes.huge,
+		font = UI.Fonts.bold,
+		color = Rarity.textColor(alan.id),
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, 0, 0, 46),
+		parent = kap,
+	})
+	local alt = UI.text({
+		text = `Talk to the {Ayar.NpcAdi} to unlock it for {Format.short(alan.fiyat)} Rot`,
+		size = UI.Sizes.heading,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.new(1, 0, 0, 30),
+		position = UDim2.fromOffset(0, 48),
+		parent = kap,
+	})
+
+	TweenService:Create(olcek, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(2.6, function()
+		if aktifUyari ~= kap then
+			return
+		end
+		local bitis = TweenInfo.new(0.35)
+		for _, yazi in { baslik, alt } do
+			TweenService:Create(yazi, bitis, { TextTransparency = 1 }):Play()
+			local kontur = yazi:FindFirstChildOfClass("UIStroke")
+			if kontur then
+				TweenService:Create(kontur, bitis, { Transparency = 1 }):Play()
+			end
+		end
+		task.wait(0.4)
+		kap:Destroy()
+		if aktifUyari == kap then
+			aktifUyari = nil
+		end
+	end)
+end
+
+-- Her barikat parcasina bir kez baglanir; carpan kendi karakterimizse ve alan hala kilitliyse uyarir
+local dokunmaBagli: { [BasePart]: boolean } = {}
+
+local function dokunmaBagla(parca: BasePart, sira: number, alan: Ayar.Alan)
+	if dokunmaBagli[parca] then
+		return
+	end
+	dokunmaBagli[parca] = true
+	parca.Touched:Connect(function(hit)
+		local char = player.Character
+		if char and hit:IsDescendantOf(char) and sira > seviye() then
+			kilitUyarisi(alan)
+		end
+	end)
+end
+
+--[[
+	ALAN SUZMELERI
+
+	Her alanin ustunde kendi kademe renginde hafif, yavasca yukselen isik
+	tozlari. Istemcide gorunmez bir parca zemini kaplar, ParticleEmitter
+	onun hacminden yayar. Yogunluk alanin buyuklugune gore.
+]]
+local suzmeler: { [string]: BasePart } = {}
+
+local function suzmeKur(alan: Ayar.Alan, z: BasePart)
+	local eski = suzmeler[alan.id]
+	if eski and eski.Parent then
+		return
+	end
+
+	local renk = Rarity.color(alan.id)
+	local kutu = Instance.new("Part")
+	kutu.Name = "AfkSuzme_" .. alan.id
+	kutu.Anchored = true
+	kutu.CanCollide = false
+	kutu.CanTouch = false
+	kutu.CanQuery = false
+	kutu.Transparency = 1
+	kutu.Size = Vector3.new(z.Size.X, 4, z.Size.Z)
+	kutu.CFrame = z.CFrame * CFrame.new(0, z.Size.Y / 2 + 2, 0)
+	kutu.Parent = Workspace
+
+	local alanBoyu = z.Size.X * z.Size.Z
+
+	local toz = Instance.new("ParticleEmitter")
+	toz.Name = "Toz"
+	toz.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	toz.Color = ColorSequence.new(renk:Lerp(BEYAZ, 0.35), renk)
+	toz.LightEmission = 1
+	toz.LightInfluence = 0
+	toz.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.3, 0.35),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	toz.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.3, 0.2),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	toz.Lifetime = NumberRange.new(3, 5)
+	toz.Speed = NumberRange.new(0.5, 1.5)
+	toz.SpreadAngle = Vector2.new(25, 25)
+	toz.Acceleration = Vector3.new(0, 0.4, 0)
+	toz.Rotation = NumberRange.new(0, 360)
+	toz.RotSpeed = NumberRange.new(-40, 40)
+	toz.Shape = Enum.ParticleEmitterShape.Box
+	toz.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	toz.EmissionDirection = Enum.NormalId.Top
+	toz.Rate = math.clamp(alanBoyu / 60, 6, 40)
+	toz.Parent = kutu
+
+	-- Seyrek ama iri, yumusak parlamalar
+	local isik = Instance.new("ParticleEmitter")
+	isik.Name = "Isik"
+	isik.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	isik.Color = ColorSequence.new(renk)
+	isik.LightEmission = 1
+	isik.LightInfluence = 0
+	isik.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 1.2),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	isik.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.55),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	isik.Lifetime = NumberRange.new(4, 6)
+	isik.Speed = NumberRange.new(0.2, 0.6)
+	isik.Acceleration = Vector3.new(0, 0.2, 0)
+	isik.Shape = Enum.ParticleEmitterShape.Box
+	isik.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	isik.EmissionDirection = Enum.NormalId.Top
+	isik.Rate = math.clamp(alanBoyu / 300, 1, 8)
+	isik.Parent = kutu
+
+	suzmeler[alan.id] = kutu
+end
+
 local function barikatlariGuncelle()
 	local acik = seviye()
 	for i, alan in Ayar.Alanlar do
@@ -212,10 +394,12 @@ local function barikatlariGuncelle()
 		if not z then
 			continue
 		end
+		suzmeKur(alan, z)
 
 		local parcalar = barikatParcalari(z)
 		local enBuyuk: BasePart? = nil
 		for _, parca in parcalar do
+			dokunmaBagla(parca, i, alan)
 			if not ilkHal[parca] then
 				ilkHal[parca] = { cc = parca.CanCollide, tr = parca.Transparency }
 			end
@@ -456,7 +640,7 @@ local function yazdirKazanc(pos: Vector3, miktar: number, renk: Color3)
 	bb.Parent = playerGui
 
 	local yazi = UI.text({
-		text = if miktar > 0 then `+{virgullu(miktar)} Luck Points` else "MAX Luck Points",
+		text = if miktar > 0 then `+{virgullu(miktar)} Clover Luck` else "MAX Clover Luck!",
 		size = UI.Sizes.heading,
 		font = UI.Fonts.bold,
 		color = renk,
@@ -729,7 +913,10 @@ local function luckIkonu()
 end
 
 ------------------------------------------------------------------
--- HUD  (yalnizca o anki Luck Points + AUTO dugmesi)
+-- HUD  (Clover Luck sayaci + AUTO dugmesi)
+--
+-- Puanin adi "Clover Luck". Sayi her yoncada sayarak buyur ve parlar; altinda
+-- donen kisa yazilar oyuncuya burada AFK kalmanin ne kazandirdigini anlatir.
 ------------------------------------------------------------------
 local screen = Instance.new("ScreenGui")
 screen.Name = "AfkSans"
@@ -741,7 +928,7 @@ local hud = Instance.new("Frame")
 hud.Name = "SansHUD"
 hud.AnchorPoint = Vector2.new(0.5, 1)
 hud.Position = UDim2.new(0.5, 0, 1, -140)
-hud.Size = UDim2.fromOffset(360, 64)
+hud.Size = UDim2.fromOffset(420, 84)
 hud.BackgroundColor3 = UI.Colors.panel
 hud.BackgroundTransparency = 0.1
 hud.BorderSizePixel = 0
@@ -751,31 +938,84 @@ UI.corner(hud, 12)
 UI.stroke(hud, SIYAH, 3)
 
 local hudBaslik = UI.text({
-	text = "LUCK POINTS",
-	size = UI.Sizes.tiny,
+	text = "CLOVER LUCK",
+	size = UI.Sizes.small,
 	font = UI.Fonts.bold,
 	color = YONCA_YESIL,
-	frameSize = UDim2.new(1, -150, 0, 18),
+	frameSize = UDim2.new(1, -150, 0, 20),
 	position = UDim2.fromOffset(14, 6),
 	parent = hud,
 })
 
 local hudPuan = UI.text({
 	text = "0",
-	size = UI.Sizes.heading,
+	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
-	frameSize = UDim2.new(1, -150, 0, 30),
-	position = UDim2.fromOffset(14, 24),
+	frameSize = UDim2.new(1, -150, 0, 32),
+	position = UDim2.fromOffset(14, 25),
+	parent = hud,
+})
+local hudPuanOlcek = Instance.new("UIScale")
+hudPuanOlcek.Parent = hudPuan
+
+-- Donen kisa yazilar: burada AFK kalmanin ne kazandirdigi
+local IPUCLARI = {
+	"Every clover makes your digs LUCKIER!",
+	"AFK here and come back with rarer Brainrots!",
+	"Clover Luck never runs out - it's permanent!",
+	"Better fields give WAY more Clover Luck!",
+	"Up to x20 Luck on every dig!",
+}
+local hudIpucu = UI.text({
+	text = IPUCLARI[1],
+	size = UI.Sizes.tiny,
+	font = UI.Fonts.bold,
+	color = UI.Colors.gold,
+	frameSize = UDim2.new(1, -150, 0, 18),
+	position = UDim2.fromOffset(14, 60),
 	parent = hud,
 })
 
-local otoDugme, _, otoYazi = UI.dugme3B(hud, "AUTO", UDim2.fromOffset(120, 46), UI.Colors.good)
+task.spawn(function()
+	local sira = 1
+	while true do
+		task.wait(5)
+		sira = sira % #IPUCLARI + 1
+		hudIpucu.Text = IPUCLARI[sira]
+	end
+end)
+
+local otoDugme, _, otoYazi = UI.dugme3B(hud, "AUTO", UDim2.fromOffset(120, 50), UI.Colors.good)
 otoDugme.AnchorPoint = Vector2.new(1, 0.5)
 otoDugme.Position = UDim2.new(1, -10, 0.5, 0)
 
+--[[
+	SAYARAK BUYUYEN SAYI
+
+	Puan artinca sayi bir anda degismiyor: kisa surede yeni degere sayarak
+	cikiyor ve bir an buyuyup parliyor. Kazanc gozle gorulsun.
+]]
+local gosterilen = 0
+local sayac = Instance.new("NumberValue")
+sayac.Changed:Connect(function(v)
+	gosterilen = v
+	hudPuan.Text = virgullu(v)
+end)
+
 local function hudGuncelle()
-	hudPuan.Text = virgullu(puan())
+	local p = puan()
+	-- Oyuna giriste (ya da azalirsa) sayma yok, dogrudan yazilir
+	if player:GetAttribute(Ayar.PuanNiteligi) == nil or p <= gosterilen or not hud.Visible then
+		sayac.Value = p
+		return
+	end
+
+	TweenService:Create(sayac, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = p }):Play()
+	hudPuanOlcek.Scale = 1.2
+	hudPuan.TextColor3 = UI.Colors.gold
+	TweenService:Create(hudPuanOlcek, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	TweenService:Create(hudPuan, TweenInfo.new(0.6), { TextColor3 = BEYAZ }):Play()
 end
 player:GetAttributeChangedSignal(Ayar.PuanNiteligi):Connect(hudGuncelle)
 hudGuncelle()
@@ -829,6 +1069,36 @@ local function yurumeyiKes()
 	end
 end
 
+--[[
+	TOPLAMA DURUSU
+
+	Toplama boyunca karakter yoncaya doner ve oyle kalir (AutoRotate kapali).
+	Karakterin "YoncaTopluyor" niteligi true olur: toplama animasyonu bu
+	nitelige baglanabilir (true iken oynat, false olunca durdur).
+]]
+local TOPLAMA_NITELIGI = "YoncaTopluyor"
+
+local function toplamaDurusu(acik: boolean)
+	local char = player.Character
+	local h = insan()
+	if char then
+		char:SetAttribute(TOPLAMA_NITELIGI, acik)
+	end
+	if h then
+		h.AutoRotate = not acik
+	end
+end
+
+-- Yalnizca yatayda doner (egilmez); dt ile yumusak
+local function yoncayaDon(root: BasePart, hedef: Vector3, dt: number)
+	local bak = Vector3.new(hedef.X, root.Position.Y, hedef.Z)
+	if (bak - root.Position).Magnitude < 0.05 then
+		return
+	end
+	local hedefCf = CFrame.lookAt(root.Position, bak)
+	root.CFrame = root.CFrame:Lerp(hedefCf, math.clamp(dt * 14, 0, 1))
+end
+
 local function toplamaBirak(sunucuyaSoyle: boolean)
 	local t = toplanan
 	if not t then
@@ -836,6 +1106,7 @@ local function toplamaBirak(sunucuyaSoyle: boolean)
 	end
 	toplanan = nil
 	t.bar.gui:Destroy()
+	toplamaDurusu(false)
 	if sunucuyaSoyle then
 		YoncaTopla:FireServer(nil)
 	end
@@ -887,7 +1158,7 @@ end
 
 local sonIkon = 0
 
-RunService.Heartbeat:Connect(function()
+RunService.Heartbeat:Connect(function(dt)
 	if not oto then
 		return
 	end
@@ -922,6 +1193,7 @@ RunService.Heartbeat:Connect(function()
 			hedefId = nil
 			toplamaBirak(true)
 		else
+			yoncayaDon(root, g.pos, dt)
 			barCiz(t.bar, simdi - t.basla)
 			if simdi - sonIkon >= LUCK_ARALIK then
 				sonIkon = simdi
@@ -944,6 +1216,8 @@ RunService.Heartbeat:Connect(function()
 
 	if yataydaUzaklik(hedef.pos, root.Position) <= hedef.yaricap + VARIS then
 		yurumeyiKes()
+		toplamaDurusu(true)
+		yoncayaDon(root, hedef.pos, dt)
 		toplanan = {
 			id = hedef.id,
 			basla = simdi,
@@ -1107,30 +1381,23 @@ UI.stroke(ozet, SIYAH, 2)
 
 local ozetPuan = UI.text({
 	text = "",
-	size = UI.Sizes.body,
+	size = UI.Sizes.heading,
 	font = UI.Fonts.bold,
-	color = BEYAZ,
-	frameSize = UDim2.new(1, -24, 0, 24),
-	position = UDim2.fromOffset(12, 8),
+	color = YONCA_YESIL,
+	frameSize = UDim2.new(1, -24, 0, 28),
+	position = UDim2.fromOffset(12, 6),
 	parent = ozet,
 })
 
-local ozetCubuk = Instance.new("Frame")
-ozetCubuk.Position = UDim2.fromOffset(12, 40)
-ozetCubuk.Size = UDim2.new(1, -24, 0, 16)
-ozetCubuk.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
-ozetCubuk.BorderSizePixel = 0
-ozetCubuk.Parent = ozet
-UI.corner(ozetCubuk, 8)
-UI.stroke(ozetCubuk, SIYAH, 2)
-
-local ozetDolgu = Instance.new("Frame")
-ozetDolgu.Size = UDim2.fromScale(0, 1)
-ozetDolgu.BackgroundColor3 = YONCA_YESIL
-ozetDolgu.BorderSizePixel = 0
-ozetDolgu.Parent = ozetCubuk
-UI.corner(ozetDolgu, 8)
-UI.cubukCilasi(ozetDolgu)
+UI.text({
+	text = "AFK in a clover field to boost your dig luck forever. Better fields = WAY more luck!",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = UI.Colors.gold,
+	frameSize = UDim2.new(1, -24, 0, 22),
+	position = UDim2.fromOffset(12, 40),
+	parent = ozet,
+})
 
 local panelListe = Instance.new("ScrollingFrame")
 panelListe.Name = "Liste"
@@ -1158,8 +1425,7 @@ local function panelCiz(veri: any)
 	end
 
 	local p = tonumber(veri.puan) or 0
-	ozetPuan.Text = `Luck Points: {virgullu(p)} / {virgullu(Ayar.MaxPuan)}`
-	ozetDolgu.Size = UDim2.fromScale(math.clamp(p / Ayar.MaxPuan, 0, 1), 1)
+	ozetPuan.Text = `Your Clover Luck: {virgullu(p)}`
 
 	for i, alan in veri.alanlar do
 		local renk = Rarity.color(alan.id)
@@ -1188,7 +1454,7 @@ local function panelCiz(veri: any)
 		})
 
 		UI.text({
-			text = `+{alan.puanYonca} Luck Points per clover`,
+			text = `+{alan.puanYonca} Clover Luck per clover`,
 			size = UI.Sizes.small,
 			color = UI.Colors.textDim,
 			frameSize = UDim2.new(1, -190, 0, 20),

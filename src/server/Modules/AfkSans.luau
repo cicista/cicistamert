@@ -597,7 +597,8 @@ function AfkSans.baslat()
 	end
 	basladi = true
 
-	if not Workspace:FindFirstChild(Ayar.KlasorAdi) then
+	local klasor = Workspace:FindFirstChild(Ayar.KlasorAdi)
+	if not klasor then
 		warn(`[AfkSans] Workspace > {Ayar.KlasorAdi} bulunamadi; yonca alanlari calismaz`)
 	else
 		for _, alan in Ayar.Alanlar do
@@ -605,6 +606,31 @@ function AfkSans.baslat()
 				warn(`[AfkSans] {Ayar.KlasorAdi} > {alan.id} bir Part degil ya da yok`)
 			end
 		end
+
+		--[[
+			CITLER GECILEBILIR: Fences icindeki her parca carpismaz yapilir
+			(sunucuda, herkes icin). Sonradan eklenen cit parcalari da.
+			Yoncalar yine citlerin ustunde cikmaz (bkz. engeller).
+		]]
+		local function citMi(node: Instance): boolean
+			local ata: Instance? = node
+			while ata and ata ~= klasor do
+				if string.find(string.lower(ata.Name), "fence", 1, true) then
+					return true
+				end
+				ata = ata.Parent
+			end
+			return false
+		end
+		local function citiAc(node: Instance)
+			if node:IsA("BasePart") and citMi(node) then
+				node.CanCollide = false
+			end
+		end
+		for _, node in klasor:GetDescendants() do
+			citiAc(node)
+		end
+		klasor.DescendantAdded:Connect(citiAc)
 	end
 
 	Net.event("YoncaTopla").OnServerEvent:Connect(toplaIstegi)
