@@ -139,9 +139,11 @@ Net.Events = {
 	"HizRebirth",        -- client -> server: Speed 101'de rebirth at
 
 	-- AFK sans alanlari (bkz. Shared > AfkSans); puan ve seviye oyuncu niteliginde
-	"YoncaListesi",      -- server -> client: girilen alanin yoncalari (alanId, liste) ya da nil
+	"YoncaListesi",      -- server -> client: bir alanin butun yoncalari (alanId, liste)
+	"YoncaIste",         -- client -> server: butun alanlarin yoncalarini yeniden yolla
+	"AfkAlan",           -- server -> client: ustunde durulan ACIK alan (alanId) ya da nil
 	"YoncaTopla",        -- client -> server: bu yoncayi toplamaya basla (id) ya da birak (nil)
-	"YoncaSonuc",        -- server -> client: toplama bitti/iptal (id, yeni yonca?, kazanilan puan)
+	"YoncaSonuc",        -- server -> client: toplama bitti/iptal (id, tuttu mu, kazanilan puan, yeni yonca?)
 	"LeprechaunAc",      -- server -> client: alan yukseltme paneli
 	"AfkAlanAl",         -- client -> server: siradaki alani satin al (alanId)
 

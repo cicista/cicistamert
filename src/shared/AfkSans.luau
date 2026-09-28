@@ -18,21 +18,24 @@
 	oyuncuya gosterilmiyor: yavas artan x1.0003 yerine buyuyen bir sayi
 	gorsun diye.
 
-	SANIYELIK PUAN
-	Mythic'te tavana 50 saatte ulasilir:
-	    20.000.000 / (50 * 3600) = 111.1 puan/sn
+	YONCA BASINA PUAN
+	Her toplanan yonca alanin sabit puanini verir (puanYonca). Bir yonca
+	ortalama ~4.5 sn surer (3 sn toplama + ~1.5 sn yuruyus). Mythic'te
+	tavana 50 saatte ulasilacak sekilde ayarli:
+
+	    50 saat = 180.000 sn / 4.5 = 40.000 yonca
+	    20.000.000 / 40.000 = 500 puan/yonca
+
 	Alt alanlar belirgin sekilde yavas:
 
-	    Common      6/sn   ~926 saat
-	    Rare       14/sn   ~397 saat
-	    Epic       30/sn   ~185 saat
-	    Legendary  60/sn   ~93 saat
-	    Mythic    111/sn   ~50 saat
+	    Common      25/yonca  ~1000 saat
+	    Rare        60/yonca  ~417 saat
+	    Epic       135/yonca  ~185 saat
+	    Legendary  270/yonca  ~93 saat
+	    Mythic     500/yonca  ~50 saat
 
-	Puan her toplanan yoncada verilir: saniyelik puan * bir onceki
-	yoncadan bu yana gecen sure (en fazla OdulSureTavani). Boylece yuruyus
-	suresi de sayilir ve oyuncu ne yaparsa yapsin saniyede alanin
-	degerinden fazlasini kazanamaz.
+	Toplama suresi sunucuda sayildigi icin bir oyuncu en fazla her
+	ToplamaSuresi saniyede bir yonca alabilir.
 ]]
 
 local Shovels = require(script.Parent:WaitForChild("Shovels"))
@@ -71,18 +74,18 @@ export type Alan = {
 	id: string,
 	-- Leprechaun panelinde gorunen ad
 	displayName: string,
-	-- Alanda saniyede kazanilan sans puani
-	puanSaniye: number,
+	-- Toplanan her yoncanin verdigi sans puani
+	puanYonca: number,
 	-- Rot bedeli (Common bedava)
 	fiyat: number,
 }
 
 local alanlar: { Alan } = {
-	{ id = "Common", displayName = "Common Clover Field", puanSaniye = 6, fiyat = 0 },
-	{ id = "Rare", displayName = "Rare Clover Field", puanSaniye = 14, fiyat = kurekFiyati(6) },
-	{ id = "Epic", displayName = "Epic Clover Field", puanSaniye = 30, fiyat = kurekFiyati(11) },
-	{ id = "Legendary", displayName = "Legendary Clover Field", puanSaniye = 60, fiyat = oltaFiyati(1) },
-	{ id = "Mythic", displayName = "Mythic Clover Field", puanSaniye = 111, fiyat = oltaFiyati(5) },
+	{ id = "Common", displayName = "Common Clover Field", puanYonca = 25, fiyat = 0 },
+	{ id = "Rare", displayName = "Rare Clover Field", puanYonca = 60, fiyat = kurekFiyati(6) },
+	{ id = "Epic", displayName = "Epic Clover Field", puanYonca = 135, fiyat = kurekFiyati(11) },
+	{ id = "Legendary", displayName = "Legendary Clover Field", puanYonca = 270, fiyat = oltaFiyati(1) },
+	{ id = "Mythic", displayName = "Mythic Clover Field", puanYonca = 500, fiyat = oltaFiyati(5) },
 }
 AfkSans.Alanlar = alanlar
 
@@ -103,8 +106,8 @@ AfkSans.OlcekMax = 1
 AfkSans.ToplamaSuresi = 3
 -- Toplamaya baslamak icin yoncaya en fazla bu kadar yaklasmak gerek (yonca yaricapina ek)
 AfkSans.Erisim = 3
--- Bir yoncada verilebilecek en uzun sure (saniye); bkz. ust aciklama
-AfkSans.OdulSureTavani = 12
+-- Bar titremesi son bu kadar saniyede baslar
+AfkSans.TitremeSuresi = 1
 
 -- Isimler
 AfkSans.KlasorAdi = "CloverAreas"

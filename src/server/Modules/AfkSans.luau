@@ -21,9 +21,18 @@
 	  3. ToplamaSuresi sonra yine yanindaysa puan verilir, yonca silinip
 	     yerine yenisi dogar ve YoncaSonuc ile istemciye bildirilir
 
-	Puan = alanin saniyelik puani * son odulden bu yana gecen sure
-	(en fazla OdulSureTavani). Istemci ne yollarsa yollasin saniyede
-	alanin degerinden fazla puan cikmaz.
+	Her yonca alanin sabit puanini verir (Shared > AfkSans > puanYonca).
+	Toplama suresi sunucuda sayildigi icin en fazla ToplamaSuresi'nde bir
+	yonca alinabilir.
+
+	Sunucudaki karakter konumu istemcininkinin biraz gerisinden gelir;
+	kosarak yaklasan oyuncu sunucuda henuz uzakta gorunur. Mesafe kontrolu
+	bu yuzden ERISIM_PAYI kadar genis tutuluyor, yoksa istek reddedilir ve
+	istemci baska yoncaya kosup durur.
+
+	LEPRECHAUN
+	Haritada bu adla birden fazla NPC olabilir; hepsine prompt takilir,
+	satin alma herhangi birinin yaninda yapilabilir.
 
 	BARIKATLAR
 	Sunucuda barikat hep kati. Alani acan oyuncunun istemcisi barikati
@@ -66,21 +75,19 @@ type Durum = {
 	yoncalar: { [string]: { [number]: Yonca } },
 	sayac: number,
 	toplama: Toplama?,
-	-- Son odulun verildigi an (os.clock); alana girince sifirlanir
-	sonOdul: number,
 }
 
 local durumlar: { [Player]: Durum } = {}
 local rng = Random.new()
 
--- Leprechaun'un tutunma parcasi; satin alma bunun yaninda yapilmali
-local npcParca: BasePart? = nil
+-- Leprechaun'larin tutunma parcalari; satin alma herhangi birinin yaninda yapilir
+local npcParcalari: { [BasePart]: boolean } = {}
 local PROMPT_MESAFE = 12
 local ISTEK_MESAFE = 24
 -- Alan kontrol araligi (saniye)
 local TARAMA = 0.4
--- Sunucu dogrulamasinda gecikme payi (stud)
-local ERISIM_PAYI = 2
+-- Sunucu dogrulamasinda gecikme payi (stud); bkz. ust aciklama
+local ERISIM_PAYI = 6
 
 local HATA = Color3.fromRGB(255, 90, 90)
 local UYARI = Color3.fromRGB(255, 200, 90)
@@ -267,9 +274,10 @@ local function doldur(durum: Durum, alanId: string)
 	end
 end
 
-local function paket(yonca: Yonca)
+local function paket(alanId: string, yonca: Yonca)
 	return {
 		id = yonca.id,
+		alan = alanId,
 		pos = yonca.pos,
 		olcek = yonca.olcek,
 		aci = yonca.aci,
@@ -277,19 +285,24 @@ local function paket(yonca: Yonca)
 	}
 end
 
-local function listeYolla(player: Player, durum: Durum)
-	local YoncaListesi = Net.event("YoncaListesi")
-	local alanId = durum.alan
-	if not alanId then
-		YoncaListesi:FireClient(player, nil)
-		return
-	end
+--[[
+	BUTUN ALANLARIN YONCALARI HEP GORUNUR
 
-	local liste = {}
-	for _, yonca in durum.yoncalar[alanId] or {} do
-		table.insert(liste, paket(yonca))
+	Oyuncu hazir olunca her alan doldurulur ve hepsinin listesi yollanir;
+	kilitli alanlarin yoncalari da gorunur (oyuncuyu acmaya ozendirir).
+	Toplama yalnizca ustunde durulan ACIK alanda yapilir.
+]]
+local function hepsiniYolla(player: Player, durum: Durum)
+	local YoncaListesi = Net.event("YoncaListesi")
+	for _, alan in Ayar.Alanlar do
+		doldur(durum, alan.id)
+		local liste = {}
+		for _, yonca in durum.yoncalar[alan.id] or {} do
+			table.insert(liste, paket(alan.id, yonca))
+		end
+		YoncaListesi:FireClient(player, alan.id, liste)
 	end
-	YoncaListesi:FireClient(player, alanId, liste)
+	Net.event("AfkAlan"):FireClient(player, durum.alan)
 end
 
 local function tara()
@@ -300,11 +313,7 @@ local function tara()
 		if yeni ~= durum.alan then
 			durum.alan = yeni
 			durum.toplama = nil
-			durum.sonOdul = os.clock()
-			if yeni then
-				doldur(durum, yeni)
-			end
-			listeYolla(player, durum)
+			Net.event("AfkAlan"):FireClient(player, yeni)
 		end
 	end
 end
@@ -338,12 +347,8 @@ local function bitir(player: Player, durum: Durum, is: Toplama)
 		return
 	end
 
-	local simdi = os.clock()
-	local sure = math.clamp(simdi - durum.sonOdul, 0, Ayar.OdulSureTavani)
-	durum.sonOdul = simdi
-
 	local once = data.afkPuan
-	data.afkPuan = math.min(Ayar.MaxPuan, data.afkPuan + alan.puanSaniye * sure)
+	data.afkPuan = math.min(Ayar.MaxPuan, data.afkPuan + alan.puanYonca)
 	local kazanc = data.afkPuan - once
 	nitelikleriYaz(player)
 
@@ -402,7 +407,7 @@ local function panelVerisi(player: Player)
 		table.insert(alanlar, {
 			id = alan.id,
 			displayName = alan.displayName,
-			puanSaniye = alan.puanSaniye,
+			puanYonca = alan.puanYonca,
 			fiyat = alan.fiyat,
 			owned = i <= data.afkSeviye,
 			buyable = i == data.afkSeviye + 1,
@@ -418,7 +423,15 @@ end
 
 local function npcYaninda(player: Player): boolean
 	local root = kok(player)
-	return npcParca ~= nil and root ~= nil and (root.Position - (npcParca :: BasePart).Position).Magnitude <= ISTEK_MESAFE
+	if not root then
+		return false
+	end
+	for parca in npcParcalari do
+		if parca.Parent and (root.Position - parca.Position).Magnitude <= ISTEK_MESAFE then
+			return true
+		end
+	end
+	return false
 end
 
 local function satinAl(player: Player, alanId: any)
@@ -475,8 +488,18 @@ local function tutunmaParcasi(node: Instance): BasePart?
 	return node:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function npcBagla(): boolean
+-- Bu adla butun NPC'lere prompt takar; zaten takiliysa atlar. Kac tane bagli oldugunu dondurur
+local function npcBagla(): number
 	local hedef = string.lower(Ayar.NpcAdi)
+	local sayi = 0
+
+	-- Silinmis NPC'ler listeden cikar
+	for parca in npcParcalari do
+		if not parca.Parent then
+			npcParcalari[parca] = nil
+		end
+	end
+
 	for _, node in Workspace:GetDescendants() do
 		if string.lower(node.Name) ~= hedef then
 			continue
@@ -486,11 +509,12 @@ local function npcBagla(): boolean
 		if not parca then
 			continue
 		end
-		if npcParca == parca and parca:FindFirstChild("LeprechaunPrompt") then
-			return true
+		sayi += 1
+		if npcParcalari[parca] and parca:FindFirstChild("LeprechaunPrompt") then
+			continue
 		end
 
-		npcParca = parca
+		npcParcalari[parca] = true
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "LeprechaunPrompt"
 		prompt.ActionText = "Open"
@@ -508,9 +532,8 @@ local function npcBagla(): boolean
 		end)
 
 		print(`[AfkSans] Leprechaun baglandi: {parca:GetFullName()}`)
-		return true
 	end
-	return false
+	return sayi
 end
 
 ------------------------------------------------------------------
@@ -522,13 +545,31 @@ local function oyuncuHazirla(player: Player)
 	end
 
 	nitelikleriYaz(player)
-	durumlar[player] = {
+	local durum: Durum = {
 		alan = nil,
 		yoncalar = {},
 		sayac = 0,
 		toplama = nil,
-		sonOdul = os.clock(),
 	}
+	durumlar[player] = durum
+	hepsiniYolla(player, durum)
+end
+
+-- Istemci script'i sonradan baslarsa (ya da yeniden yuklenirse) listeleri yeniden ister
+local sonIstek: { [Player]: number } = {}
+local ISTEK_ARALIGI = 2
+
+local function listeIstegi(player: Player)
+	local simdi = os.clock()
+	if simdi - (sonIstek[player] or 0) < ISTEK_ARALIGI then
+		return
+	end
+	sonIstek[player] = simdi
+
+	local durum = durumlar[player]
+	if durum then
+		hepsiniYolla(player, durum)
+	end
 end
 
 local basladi = false
@@ -551,6 +592,7 @@ function AfkSans.baslat()
 
 	Net.event("YoncaTopla").OnServerEvent:Connect(toplaIstegi)
 	Net.event("AfkAlanAl").OnServerEvent:Connect(satinAl)
+	Net.event("YoncaIste").OnServerEvent:Connect(listeIstegi)
 
 	Players.PlayerAdded:Connect(oyuncuHazirla)
 	for _, player in Players:GetPlayers() do
@@ -558,10 +600,11 @@ function AfkSans.baslat()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		durumlar[player] = nil
+		sonIstek[player] = nil
 	end)
 
 	-- NPC sonradan gelebilir (Rojo, akis, elle ekleme): eklenince yeniden baglanir
-	if not npcBagla() then
+	if npcBagla() == 0 then
 		warn(`[AfkSans] '{Ayar.NpcAdi}' haritada bulunamadi; eklenince baglanacak`)
 	end
 	Workspace.DescendantAdded:Connect(function(node)

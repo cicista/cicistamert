@@ -6,18 +6,27 @@
 	ServerScriptService > Modules > AfkSans):
 
 	  YONCALAR     sunucunun yolladigi konumlara Assets > Clovers modelleri
-	               dizilir (yalnizca bu oyuncu gorur). Model yoksa yedek
-	               yonca cizilir.
-	  TOPLAMA      karakter bir yoncanin yanina gelince ustunde 3'ten geri
-	               sayan, titreyen bir bar cikar (kademe renginde). Bar
-	               bitince sunucu puani verir ve yerine yeni yonca dogar.
+	               dizilir (yalnizca bu oyuncu gorur) ve ruzgarda sallanir.
+	               Model yoksa yedek yonca cizilir.
 	  OTOMATIK     alandayken sol tik (ya da ekrana dokunma / AUTO dugmesi)
-	               karakteri en yakin yoncaya yurutur, toplar, siradakine
-	               gecer. Oyuncu kendisi yururse, tekrar tiklarsa ya da
+	               karakteri yoncadan yoncaya yurutur. Tiklamadan HICBIR yonca
+	               toplanmaz. Oyuncu kendisi yururse, tekrar tiklarsa ya da
 	               alandan cikarsa durur.
+	  HIZ          otomatik modda yurume hizi TabanHiz'a (16) sabitlenir; hizli
+	               oyuncu yoncayi gecip geri donmesin. Mod kapaninca hiz
+	               yukseltmesinin degeri geri gelir.
+	  TOPLAMA      yoncanin yanina varinca ustunde 3'ten geri sayan bar cikar
+	               (kademe renginde, son saniyede titrer). Bu sirada ekranda
+	               Luck ikonlari (Simulator Icon Pack > Luck) yagar.
 	  BARIKATLAR   acilmis alanin barikati bu istemcide gecilebilir ve
 	               gorunmez olur; kilitli alanin ustunde "LOCKED" yazar.
 	  LEPRECHAUN   alan yukseltme paneli.
+
+	HEDEF KILIDI
+	Otomatik mod bir yoncayi hedef alinca ona varana kadar degistirmez.
+	Eskiden her karede "en yakin" yeniden seciliyordu: kosarken baska yonca
+	yakinlasinca hedef degisiyor, karakter yoncadan yoncaya kosup hic
+	toplamiyordu.
 ]]
 
 local Players = game:GetService("Players")
@@ -34,6 +43,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Ayar = require(Shared:WaitForChild("AfkSans"))
 local Assets = require(Shared:WaitForChild("Assets"))
 local Format = require(Shared:WaitForChild("Format"))
+local Hiz = require(Shared:WaitForChild("Hiz"))
+local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
@@ -42,6 +53,7 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local YoncaListesi = Net.event("YoncaListesi")
 local YoncaTopla = Net.event("YoncaTopla")
 local YoncaSonuc = Net.event("YoncaSonuc")
+local YoncaIste = Net.event("YoncaIste")
 local LeprechaunAc = Net.event("LeprechaunAc")
 local AfkAlanAl = Net.event("AfkAlanAl")
 
@@ -51,10 +63,16 @@ local YONCA_YESIL = Color3.fromRGB(70, 200, 90)
 
 -- Karakteri yoncaya yururken MoveTo'nun yenilenme araligi
 local YURUME_YENILE = 0.5
--- Sunucunun reddettigi yonca bu kadar saniye hedef alinmaz
-local RED_BEKLEME = 2
+-- Yoncaya bu kadar yaklasinca durup toplamaya baslar (yaricapa ek, Erisim'den kucuk)
+local VARIS = 1.5
+-- Sunucu reddederse ayni yonca bu kadar sonra yeniden denenir
+local RED_BEKLEME = 0.4
+-- Ayni yonca bu kadar kez reddedilirse baska yoncaya gecilir
+local RED_SINIRI = 3
 -- Bar bittikten sonra sunucu cevabi bu kadar gecikirse toplama birakilir
 local CEVAP_BEKLEME = 3
+-- Flyboard binerken taban hizi bu nitelikte tutuyor (bkz. Hiz.server)
+local FLYBOARD_TABAN = "FlyboardTabanHiz"
 
 ------------------------------------------------------------------
 -- YARDIMCILAR
@@ -92,6 +110,10 @@ end
 
 local function puan(): number
 	return tonumber(player:GetAttribute(Ayar.PuanNiteligi)) or 0
+end
+
+local function yataydaUzaklik(a: Vector3, b: Vector3): number
+	return ((a - b) * Vector3.new(1, 0, 1)).Magnitude
 end
 
 -- Oyuncunun kendi yurume girdisi (klavye, gamepad, mobil cubuk)
@@ -237,6 +259,8 @@ yoncaKlasoru.Parent = Workspace
 
 type YoncaGorsel = {
 	id: number,
+	-- Yoncanin bulundugu alan; butun alanlarin yoncalari ayni anda sahnede
+	alan: string,
 	pos: Vector3,
 	yaricap: number,
 	model: Model,
@@ -247,11 +271,18 @@ type YoncaGorsel = {
 	aci: number,
 	donus: CFrame,
 	olcek: number,
+	-- Anlik boy (tam boyun kaci) ve yukari kayma (toplanma animasyonu)
+	k: number,
+	yukari: number,
+	-- Ruzgar salinimi: her yoncanin kendi evresi ve hizi
+	faz: number,
+	tempo: number,
 }
 
 local yoncalar: { [number]: YoncaGorsel } = {}
+-- Toplanma animasyonu suren yoncalar (listeden cikmis ama hala sahnede)
+local gidenler: { [YoncaGorsel]: boolean } = {}
 local aktifAlan: string? = nil
-local reddedilen: { [number]: number } = {}
 
 -- Model bulunamazsa: dort yaprakli basit yonca (yaricap ~1 stud)
 local function yedekYonca(renk: Color3): Model
@@ -311,12 +342,31 @@ local function hazirla(model: Model)
 	end
 end
 
+--[[
+	RUZGAR SALINIMI
+
+	Yonca tabanindan (zemine degdigi noktadan) egilir: iki yavas dalga +
+	ustune kucuk bir titresim. Her yoncanin evresi ve temposu farkli; hepsi
+	ayni anda ayni yone yatmaz, alan canli gorunur.
+]]
+local SALINIM_ACI = math.rad(7)
+
+local function konumla(g: YoncaGorsel, t: number)
+	local s = t * g.tempo + g.faz
+	local ax = (math.sin(s * 1.6) * 0.75 + math.sin(s * 3.7) * 0.25) * SALINIM_ACI
+	local az = math.cos(s * 1.2 + 0.8) * 0.6 * SALINIM_ACI
+
+	local taban = CFrame.new(g.pos) * CFrame.Angles(0, g.aci, 0) * CFrame.Angles(ax, 0, az)
+	g.model:PivotTo(taban * CFrame.new(0, g.altFark * g.k + g.yukari, 0) * g.donus)
+end
+
 -- k: tam boyun kaci (0..1); taban zeminde kalacak sekilde yerlestirir
 local function boyutla(g: YoncaGorsel, k: number, yukari: number?)
+	g.k = k
+	g.yukari = yukari or 0
 	local hedef = g.model:GetAttribute("TabanOlcek") :: number
 	g.model:ScaleTo(math.max(hedef * g.olcek * k, 0.01))
-	local y = g.altFark * k + (yukari or 0)
-	g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, y, 0)) * CFrame.Angles(0, g.aci, 0) * g.donus)
+	konumla(g, os.clock())
 end
 
 local function yoncaKur(alanId: string, v: any)
@@ -352,6 +402,7 @@ local function yoncaKur(alanId: string, v: any)
 
 	local g: YoncaGorsel = {
 		id = v.id,
+		alan = alanId,
 		pos = v.pos,
 		yaricap = v.yaricap,
 		model = model,
@@ -360,6 +411,10 @@ local function yoncaKur(alanId: string, v: any)
 		aci = v.aci,
 		donus = pivot - pivot.Position,
 		olcek = v.olcek,
+		k = 1,
+		yukari = 0,
+		faz = math.random() * math.pi * 2,
+		tempo = 0.8 + math.random() * 0.5,
 	}
 	yoncalar[v.id] = g
 
@@ -437,6 +492,7 @@ local function yoncaSil(id: number, toplandi: boolean)
 	end
 
 	-- Toplanma: yukari suzulup kuculerek kaybolur
+	gidenler[g] = true
 	local deger = Instance.new("NumberValue")
 	deger.Value = 1
 	deger.Changed:Connect(function(k)
@@ -445,13 +501,34 @@ local function yoncaSil(id: number, toplandi: boolean)
 	local tw = TweenService:Create(deger, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Value = 0.05 })
 	tw.Completed:Once(function()
 		deger:Destroy()
+		gidenler[g] = nil
 		g.model:Destroy()
 	end)
 	tw:Play()
 end
 
+-- Ruzgar: yalnizca kameraya yakin yoncalar oynatilir
+local SALINIM_MESAFE = 160
+
+RunService.RenderStepped:Connect(function()
+	local kamera = Workspace.CurrentCamera
+	if not kamera then
+		return
+	end
+	local t = os.clock()
+	local goz = kamera.CFrame.Position
+	for _, g in yoncalar do
+		if (g.pos - goz).Magnitude <= SALINIM_MESAFE then
+			konumla(g, t)
+		end
+	end
+	for g in gidenler do
+		konumla(g, t)
+	end
+end)
+
 ------------------------------------------------------------------
--- TOPLAMA BARI (titreyen, kademe renginde, 3'ten geri sayar)
+-- TOPLAMA BARI (kademe renginde, 3'ten geri sayar, son saniyede titrer)
 ------------------------------------------------------------------
 type Bar = {
 	gui: BillboardGui,
@@ -531,14 +608,128 @@ local function barCiz(bar: Bar, gecen: number)
 		TweenService:Create(bar.olcek, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 
-	-- Titreme: sure azaldikca siddetlenir
-	local siddet = 1 + (1 - oran) * 3
-	bar.kutu.Position = UDim2.new(0.5, math.random(-100, 100) / 100 * siddet, 0.5, math.random(-100, 100) / 100 * siddet)
-	bar.kutu.Rotation = math.random(-100, 100) / 100 * siddet * 1.5
+	-- Titreme yalnizca son saniyede; bitise yaklastikca siddetlenir
+	if kalan <= Ayar.TitremeSuresi then
+		local siddet = 1.5 + (1 - kalan / Ayar.TitremeSuresi) * 3
+		bar.kutu.Position = UDim2.new(0.5, math.random(-100, 100) / 100 * siddet, 0.5, math.random(-100, 100) / 100 * siddet)
+		bar.kutu.Rotation = math.random(-100, 100) / 100 * siddet * 1.5
+	else
+		bar.kutu.Position = UDim2.fromScale(0.5, 0.5)
+		bar.kutu.Rotation = 0
+	end
 end
 
 ------------------------------------------------------------------
--- HUD
+-- LUCK IKON YAGMURU (toplama sirasinda)
+------------------------------------------------------------------
+local efektEkrani = Instance.new("ScreenGui")
+efektEkrani.Name = "AfkSansEfekt"
+efektEkrani.ResetOnSpawn = false
+efektEkrani.IgnoreGuiInset = true
+efektEkrani.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+efektEkrani.Parent = playerGui
+
+-- Normal cok, Super daha az, Ultra nadir; nadir olan daha iri ve parlak
+local LUCK_TURLERI = {
+	{ ikon = "luck1", agirlik = 60, boyMin = 44, boyMax = 80, renk = Color3.fromRGB(90, 230, 110) },
+	{ ikon = "luck2", agirlik = 30, boyMin = 60, boyMax = 100, renk = Color3.fromRGB(90, 170, 255) },
+	{ ikon = "luck3", agirlik = 10, boyMin = 80, boyMax = 130, renk = Color3.fromRGB(255, 210, 60) },
+}
+local LUCK_TOPLAM = 0
+for _, tur in LUCK_TURLERI do
+	LUCK_TOPLAM += tur.agirlik
+end
+-- Iki ikon arasi sure (saniye): yogun bir yagmur
+local LUCK_ARALIK = 0.07
+
+local ikonOnbellek: { [string]: string } = {}
+
+local function luckResmi(ad: string): string?
+	local resim = ikonOnbellek[ad]
+	if resim then
+		return resim
+	end
+	local ok, sonuc = pcall(Icons.of, ad)
+	if ok and type(sonuc) == "string" and sonuc ~= "" then
+		ikonOnbellek[ad] = sonuc
+		return sonuc
+	end
+	return nil
+end
+
+local function luckSec()
+	local zar = math.random() * LUCK_TOPLAM
+	for _, tur in LUCK_TURLERI do
+		zar -= tur.agirlik
+		if zar <= 0 then
+			return tur
+		end
+	end
+	return LUCK_TURLERI[1]
+end
+
+local function luckIkonu()
+	local tur = luckSec()
+	local resim = luckResmi(tur.ikon)
+	if not resim then
+		return
+	end
+
+	local boy = math.random(tur.boyMin, tur.boyMax)
+	local kap = Instance.new("Frame")
+	kap.Name = "LuckIkonu"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- Ekranin ortasi (karakter) bos kalsin: kenarlara dogru dagitilir
+	local x = math.random(8, 92) / 100
+	local y = math.random(12, 88) / 100
+	if math.abs(x - 0.5) < 0.15 and math.abs(y - 0.5) < 0.18 then
+		x += if x < 0.5 then -0.18 else 0.18
+	end
+	kap.Position = UDim2.fromScale(x, y)
+	kap.Size = UDim2.fromOffset(boy, boy)
+	kap.BackgroundTransparency = 1
+	kap.Rotation = math.random(-25, 25)
+	kap.Parent = efektEkrani
+
+	local olcek = Instance.new("UIScale")
+	olcek.Scale = 0
+	olcek.Parent = kap
+
+	local hale = UI.parlama(kap, tur.renk, boy * 1.5, 1)
+
+	local ikon = Instance.new("ImageLabel")
+	ikon.Name = "Ikon"
+	ikon.BackgroundTransparency = 1
+	ikon.Size = UDim2.fromScale(1, 1)
+	ikon.Image = resim
+	ikon.ScaleType = Enum.ScaleType.Fit
+	ikon.ZIndex = 2
+	ikon.Parent = kap
+
+	local omur = 0.7 + math.random() * 0.4
+	TweenService:Create(olcek, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	TweenService:Create(kap, TweenInfo.new(omur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = kap.Position - UDim2.fromOffset(0, math.random(30, 70)),
+		Rotation = kap.Rotation + math.random(-30, 30),
+	}):Play()
+
+	task.delay(omur * 0.6, function()
+		local bitis = TweenInfo.new(omur * 0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		TweenService:Create(ikon, bitis, { ImageTransparency = 1 }):Play()
+		TweenService:Create(olcek, bitis, { Scale = 1.35 }):Play()
+		for _, halka in hale:GetDescendants() do
+			if halka:IsA("Frame") then
+				TweenService:Create(halka, bitis, { BackgroundTransparency = 1 }):Play()
+			end
+		end
+	end)
+	task.delay(omur + 0.05, function()
+		kap:Destroy()
+	end)
+end
+
+------------------------------------------------------------------
+-- HUD  (yalnizca o anki Luck Points + AUTO dugmesi)
 ------------------------------------------------------------------
 local screen = Instance.new("ScreenGui")
 screen.Name = "AfkSans"
@@ -550,33 +741,22 @@ local hud = Instance.new("Frame")
 hud.Name = "SansHUD"
 hud.AnchorPoint = Vector2.new(0.5, 1)
 hud.Position = UDim2.new(0.5, 0, 1, -140)
-hud.Size = UDim2.fromOffset(340, 96)
+hud.Size = UDim2.fromOffset(360, 64)
 hud.BackgroundColor3 = UI.Colors.panel
 hud.BackgroundTransparency = 0.1
 hud.BorderSizePixel = 0
 hud.Visible = false
 hud.Parent = screen
 UI.corner(hud, 12)
-local hudKontur = UI.stroke(hud, SIYAH, 3)
+UI.stroke(hud, SIYAH, 3)
 
 local hudBaslik = UI.text({
 	text = "LUCK POINTS",
-	size = UI.Sizes.small,
+	size = UI.Sizes.tiny,
 	font = UI.Fonts.bold,
 	color = YONCA_YESIL,
-	frameSize = UDim2.new(1, -24, 0, 20),
-	position = UDim2.fromOffset(12, 6),
-	parent = hud,
-})
-
-local hudHiz = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.good,
-	align = Enum.TextXAlignment.Right,
-	frameSize = UDim2.new(1, -24, 0, 20),
-	position = UDim2.fromOffset(12, 6),
+	frameSize = UDim2.new(1, -150, 0, 18),
+	position = UDim2.fromOffset(14, 6),
 	parent = hud,
 })
 
@@ -585,88 +765,68 @@ local hudPuan = UI.text({
 	size = UI.Sizes.heading,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
-	frameSize = UDim2.new(1, -24, 0, 28),
-	position = UDim2.fromOffset(12, 26),
+	frameSize = UDim2.new(1, -150, 0, 30),
+	position = UDim2.fromOffset(14, 24),
 	parent = hud,
 })
 
-local hudCubuk = Instance.new("Frame")
-hudCubuk.Position = UDim2.fromOffset(12, 58)
-hudCubuk.Size = UDim2.new(1, -140, 0, 12)
-hudCubuk.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
-hudCubuk.BorderSizePixel = 0
-hudCubuk.Parent = hud
-UI.corner(hudCubuk, 6)
-UI.stroke(hudCubuk, SIYAH, 2)
-
-local hudDolgu = Instance.new("Frame")
-hudDolgu.Size = UDim2.fromScale(0, 1)
-hudDolgu.BackgroundColor3 = YONCA_YESIL
-hudDolgu.BorderSizePixel = 0
-hudDolgu.Parent = hudCubuk
-UI.corner(hudDolgu, 6)
-UI.cubukCilasi(hudDolgu)
-
-local hudIpucu = UI.text({
-	text = "",
-	size = UI.Sizes.tiny,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, -140, 0, 18),
-	position = UDim2.fromOffset(12, 74),
-	parent = hud,
-})
-
-local otoDugme, _, otoYazi = UI.dugme3B(hud, "AUTO", UDim2.fromOffset(112, 44), UI.Colors.good)
-otoDugme.AnchorPoint = Vector2.new(1, 1)
-otoDugme.Position = UDim2.new(1, -10, 1, -8)
+local otoDugme, _, otoYazi = UI.dugme3B(hud, "AUTO", UDim2.fromOffset(120, 46), UI.Colors.good)
+otoDugme.AnchorPoint = Vector2.new(1, 0.5)
+otoDugme.Position = UDim2.new(1, -10, 0.5, 0)
 
 local function hudGuncelle()
-	local p = puan()
-	hudPuan.Text = `{virgullu(p)} / {Format.short(Ayar.MaxPuan)}`
-	hudDolgu.Size = UDim2.fromScale(math.clamp(p / Ayar.MaxPuan, 0, 1), 1)
+	hudPuan.Text = virgullu(puan())
 end
 player:GetAttributeChangedSignal(Ayar.PuanNiteligi):Connect(hudGuncelle)
 hudGuncelle()
 
 ------------------------------------------------------------------
--- TOPLAMA + OTOMATIK YURUME
+-- OTOMATIK MOD + HIZ SABITLEME
 ------------------------------------------------------------------
 local oto = false
 local hedefId: number? = nil
 local sonYurume = 0
+local reddedilen: { [number]: number } = {}
+local redSayisi: { [number]: number } = {}
 
 type Toplanan = { id: number, basla: number, bar: Bar }
 local toplanan: Toplanan? = nil
+
+local function flyboardda(h: Humanoid): boolean
+	return h:GetAttribute(FLYBOARD_TABAN) ~= nil
+end
+
+-- Hiz yukseltmesinin verdigi yurume hizi (sunucunun uyguladigi deger)
+local function normalHiz(): number
+	return Hiz.hiz(tonumber(player:GetAttribute(Hiz.Nitelik)) or 0)
+end
+
+local function hiziSabitle(h: Humanoid)
+	if not flyboardda(h) and h.WalkSpeed ~= Hiz.TabanHiz then
+		h.WalkSpeed = Hiz.TabanHiz
+	end
+end
+
+local function hiziGeriVer()
+	local h = insan()
+	if h and not flyboardda(h) then
+		h.WalkSpeed = normalHiz()
+	end
+end
 
 local function otoCiz()
 	if otoYazi then
 		otoYazi.Text = if oto then "STOP" else "AUTO"
 	end
 	UI.dugme3BRenk(otoDugme, if oto then UI.Colors.bad else UI.Colors.good)
-	hudIpucu.Text = if oto then "Auto-collecting... move or click to stop" else "Click to auto-collect clovers"
 end
 
-local function dur()
+local function yurumeyiKes()
 	local h = insan()
 	local root = kok()
-	if h and root and hedefId then
+	if h and root then
 		h:MoveTo(root.Position)
 	end
-	hedefId = nil
-end
-
-local function otoAyarla(acik: boolean)
-	if acik and not aktifAlan then
-		return
-	end
-	if oto == acik then
-		return
-	end
-	oto = acik
-	if not acik then
-		dur()
-	end
-	otoCiz()
 end
 
 local function toplamaBirak(sunucuyaSoyle: boolean)
@@ -681,15 +841,40 @@ local function toplamaBirak(sunucuyaSoyle: boolean)
 	end
 end
 
-local function yataydaUzaklik(a: Vector3, b: Vector3): number
-	return ((a - b) * Vector3.new(1, 0, 1)).Magnitude
+local function otoAyarla(acik: boolean)
+	if acik then
+		local h = insan()
+		if not aktifAlan or not h or h.Health <= 0 or flyboardda(h) then
+			return
+		end
+	end
+	if oto == acik then
+		return
+	end
+
+	oto = acik
+	hedefId = nil
+	if acik then
+		table.clear(reddedilen)
+		table.clear(redSayisi)
+	else
+		toplamaBirak(true)
+		yurumeyiKes()
+		hiziGeriVer()
+	end
+	otoCiz()
 end
 
-local function enYakin(root: BasePart): YoncaGorsel?
-	local simdi = os.clock()
+-- Yalnizca ustunde durulan alanin yoncalari hedef alinir
+local function hedefUygun(id: number, simdi: number): boolean
+	local g = yoncalar[id]
+	return g ~= nil and g.alan == aktifAlan and (reddedilen[id] or 0) <= simdi
+end
+
+local function enYakin(root: BasePart, simdi: number): YoncaGorsel?
 	local secilen, enKisa = nil, math.huge
 	for id, g in yoncalar do
-		if (reddedilen[id] or 0) > simdi then
+		if not hedefUygun(id, simdi) then
 			continue
 		end
 		local d = yataydaUzaklik(g.pos, root.Position)
@@ -700,62 +885,77 @@ local function enYakin(root: BasePart): YoncaGorsel?
 	return secilen
 end
 
+local sonIkon = 0
+
 RunService.Heartbeat:Connect(function()
+	if not oto then
+		return
+	end
+
 	local root = kok()
 	local h = insan()
-	if not root or not h or h.Health <= 0 or not aktifAlan then
-		if toplanan then
-			toplamaBirak(true)
-		end
+	if not root or not h or h.Health <= 0 or not aktifAlan or flyboardda(h) then
+		otoAyarla(false)
 		return
 	end
 
 	-- Oyuncu kendisi yururse otomatik mod kapanir
-	if oto and oyuncuYuruyor() then
+	if oyuncuYuruyor() then
 		otoAyarla(false)
+		return
 	end
 
+	hiziSabitle(h)
 	local simdi = os.clock()
+
+	-- TOPLAMA SURUYOR
 	local t = toplanan
 	if t then
 		local g = yoncalar[t.id]
 		if not g then
 			toplamaBirak(false)
 		elseif yataydaUzaklik(g.pos, root.Position) > g.yaricap + Ayar.Erisim + 1 then
-			-- Yoncadan uzaklasti
 			toplamaBirak(true)
 		elseif simdi - t.basla > Ayar.ToplamaSuresi + CEVAP_BEKLEME then
 			-- Sunucu cevap vermedi; baska yoncaya gec
-			reddedilen[t.id] = simdi + RED_BEKLEME
+			reddedilen[t.id] = simdi + 2
+			hedefId = nil
 			toplamaBirak(true)
 		else
 			barCiz(t.bar, simdi - t.basla)
+			if simdi - sonIkon >= LUCK_ARALIK then
+				sonIkon = simdi
+				luckIkonu()
+			end
 			return
 		end
 	end
 
-	-- Yaninda duran yonca varsa toplamaya basla
-	local yakin = enYakin(root)
-	if yakin and yataydaUzaklik(yakin.pos, root.Position) <= yakin.yaricap + Ayar.Erisim then
-		if oto then
-			dur()
-		end
-		toplanan = {
-			id = yakin.id,
-			basla = simdi,
-			bar = barKur(yakin, Rarity.color(aktifAlan)),
-		}
-		YoncaTopla:FireServer(yakin.id)
+	-- HEDEF: varana kadar ayni yonca
+	local hedef = if hedefId and hedefUygun(hedefId, simdi) then yoncalar[hedefId] else nil
+	if not hedef then
+		hedef = enYakin(root, simdi)
+		hedefId = if hedef then hedef.id else nil
+		sonYurume = 0
+	end
+	if not hedef then
 		return
 	end
 
-	-- Otomatik: en yakin yoncaya yuru
-	if oto and yakin then
-		if hedefId ~= yakin.id or simdi - sonYurume >= YURUME_YENILE then
-			hedefId = yakin.id
-			sonYurume = simdi
-			h:MoveTo(yakin.pos)
-		end
+	if yataydaUzaklik(hedef.pos, root.Position) <= hedef.yaricap + VARIS then
+		yurumeyiKes()
+		toplanan = {
+			id = hedef.id,
+			basla = simdi,
+			bar = barKur(hedef, Rarity.color(aktifAlan)),
+		}
+		YoncaTopla:FireServer(hedef.id)
+		return
+	end
+
+	if simdi - sonYurume >= YURUME_YENILE then
+		sonYurume = simdi
+		h:MoveTo(hedef.pos)
 	end
 end)
 
@@ -782,41 +982,52 @@ end)
 ------------------------------------------------------------------
 -- SUNUCU OLAYLARI
 ------------------------------------------------------------------
-local function hepsiniSil()
-	toplamaBirak(false)
-	for id in yoncalar do
-		yoncaSil(id, false)
-	end
-	table.clear(reddedilen)
-end
-
+--[[
+	BIR ALANIN YONCALARI  --  butun alanlar ayri ayri gelir ve hep gorunur.
+	Ayni alanin listesi yeniden gelirse (YoncaIste) o alanin eskileri silinir.
+]]
 YoncaListesi.OnClientEvent:Connect(function(alanId, liste)
-	hepsiniSil()
-	aktifAlan = if type(alanId) == "string" then alanId else nil
+	if type(alanId) ~= "string" or not Ayar.get(alanId) then
+		return
+	end
+
+	for id, g in yoncalar do
+		if g.alan == alanId then
+			if toplanan and toplanan.id == id then
+				toplamaBirak(false)
+			end
+			yoncaSil(id, false)
+		end
+	end
+
+	if type(liste) == "table" then
+		for _, v in liste do
+			yoncaKur(alanId, v)
+		end
+	end
+end)
+
+--[[
+	USTUNDE DURULAN ACIK ALAN  --  HUD ve otomatik mod yalnizca burada.
+	Alan degisince ya da cikilinca otomatik mod ve hiz sifirlanir.
+]]
+Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
+	otoAyarla(false)
+	aktifAlan = if type(alanId) == "string" and Ayar.get(alanId) then alanId else nil
 
 	if not aktifAlan then
-		otoAyarla(false)
 		hud.Visible = false
 		return
 	end
 
-	local alan = Ayar.get(aktifAlan)
-	local renk = Rarity.textColor(aktifAlan)
-	hudBaslik.Text = "LUCK POINTS"
-	hudBaslik.TextColor3 = renk
-	hudKontur.Color = SIYAH
-	hudDolgu.BackgroundColor3 = Rarity.color(aktifAlan)
-	hudHiz.Text = if alan then `+{alan.puanSaniye}/s  {alan.displayName}` else ""
+	hudBaslik.TextColor3 = Rarity.textColor(aktifAlan)
 	hudGuncelle()
 	otoCiz()
 	hud.Visible = true
-
-	if type(liste) == "table" then
-		for _, v in liste do
-			yoncaKur(aktifAlan, v)
-		end
-	end
 end)
+
+-- Sunucu listeleri oyuncu hazir olunca zaten yolluyor; bu script gec baslarsa kacirmasin
+YoncaIste:FireServer()
 
 YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni)
 	if type(id) ~= "number" then
@@ -829,26 +1040,41 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni)
 	end
 
 	if not ok then
-		reddedilen[id] = os.clock() + RED_BEKLEME
+		-- Kisa bekleyip ayni yoncayi yeniden dene; ust uste reddedilirse vazgec
+		local sayi = (redSayisi[id] or 0) + 1
+		redSayisi[id] = sayi
+		if sayi >= RED_SINIRI then
+			reddedilen[id] = os.clock() + 3
+			if hedefId == id then
+				hedefId = nil
+			end
+		else
+			reddedilen[id] = os.clock() + RED_BEKLEME
+		end
 		return
 	end
 
+	redSayisi[id] = nil
 	local g = yoncalar[id]
-	if g and aktifAlan then
-		yazdirKazanc(g.pos, tonumber(kazanc) or 0, Rarity.textColor(aktifAlan))
+	if g then
+		yazdirKazanc(g.pos, tonumber(kazanc) or 0, Rarity.textColor(g.alan))
 	end
 	yoncaSil(id, true)
 
 	if hedefId == id then
 		hedefId = nil
 	end
-	if type(yeni) == "table" and aktifAlan then
-		yoncaKur(aktifAlan, yeni)
+	if type(yeni) == "table" and type(yeni.alan) == "string" then
+		yoncaKur(yeni.alan, yeni)
 	end
 end)
 
 player.CharacterAdded:Connect(function()
-	otoAyarla(false)
+	-- Yeni karakterin hizini sunucu kurar; burada yalnizca mod kapatilir
+	oto = false
+	hedefId = nil
+	toplamaBirak(true)
+	otoCiz()
 end)
 
 ------------------------------------------------------------------
@@ -953,7 +1179,7 @@ local function panelCiz(veri: any)
 		})
 
 		UI.text({
-			text = `+{alan.puanSaniye} Luck Points / second`,
+			text = `+{alan.puanYonca} Luck Points per clover`,
 			size = UI.Sizes.small,
 			color = UI.Colors.textDim,
 			frameSize = UDim2.new(1, -190, 0, 20),
