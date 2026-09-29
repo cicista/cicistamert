@@ -490,9 +490,34 @@ local function setHolding(value: boolean)
 	holding = value
 end
 
-local function tikla()
+local GIRDI_KILIDI = 0.4
+local sonGirdi: EnumItem? = nil
+local sonGirdiZamani = 0
+
+local function girdiKabulMu(girdi: EnumItem): boolean
+	local simdi = os.clock()
+	if sonGirdi ~= nil and girdi ~= sonGirdi and simdi - sonGirdiZamani < GIRDI_KILIDI then
+		return false
+	end
+	sonGirdi = girdi
+	sonGirdiZamani = simdi
+	return true
+end
+
+local function girdiOf(input: InputObject): EnumItem
+	if input.KeyCode ~= Enum.KeyCode.Unknown then
+		return input.KeyCode
+	end
+	return input.UserInputType
+end
+
+local function tikla(girdi: EnumItem?)
 	local oyun = kazi
 	if not oyun then
+		return
+	end
+
+	if girdi and not girdiKabulMu(girdi) then
 		return
 	end
 
@@ -509,14 +534,15 @@ end
 
 local function bindInput()
 	if mod == "sand" then
-		ContextActionService:BindAction(ACTION_NAME, function(_, state)
+		sonGirdi = nil
+		ContextActionService:BindAction(ACTION_NAME, function(_, state, input)
 			if state == Enum.UserInputState.Begin then
-				tikla()
+				tikla(girdiOf(input))
 			end
 			return Enum.ContextActionResult.Sink
 		end, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1)
 
-		ContextActionService:SetTitle(ACTION_NAME, "KAZ")
+		ContextActionService:SetTitle(ACTION_NAME, "DIG")
 		return
 	end
 
@@ -529,7 +555,7 @@ local function bindInput()
 		return Enum.ContextActionResult.Sink
 	end, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1)
 
-	ContextActionService:SetTitle(ACTION_NAME, "TUT")
+	ContextActionService:SetTitle(ACTION_NAME, "HOLD")
 end
 
 local function unbindInput()
