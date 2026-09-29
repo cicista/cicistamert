@@ -9,8 +9,7 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local Girdi = UI.Girdi
 
 local MENU_BOYU = 52
-local MENU_ARA = 14
-local SOL_SUTUN_DOKUNMATIK = 4
+local PARA_DOKUNMATIK_OLCEGI = 0.62
 
 type Kayit = {
 	nesne: GuiObject,
@@ -83,17 +82,6 @@ local function sagMenuyuDuzenle(sag: GuiObject, dokunmatik: boolean)
 	end
 end
 
-local function solMenuyuDuzenle(sol: GuiObject, dokunmatik: boolean)
-	kaydet(sol)
-	if not dokunmatik then
-		local kayit = kayitlar[sol]
-		sol.Size = kayit.boyut
-		return
-	end
-	local en = MENU_BOYU * SOL_SUTUN_DOKUNMATIK + MENU_ARA * (SOL_SUTUN_DOKUNMATIK - 1)
-	sol.Size = UDim2.fromOffset(en, 0)
-end
-
 local function madenSayaciniDuzenle(kutu: GuiObject, dokunmatik: boolean)
 	kaydet(kutu)
 	if not dokunmatik then
@@ -120,9 +108,9 @@ local function uygula()
 		sagMenuyuDuzenle(sag, dokunmatik)
 	end
 
-	local sol = bul({ "OyunMenuleri", "SolMenu" })
-	if sol then
-		solMenuyuDuzenle(sol, dokunmatik)
+	local para = bul({ "OyunMenuleri", "RotGostergesi" })
+	if para then
+		UI.dokunmatikOlcekVer(para, PARA_DOKUNMATIK_OLCEGI)
 	end
 
 	local maden = bul({ "MadenSayaci", "Kutu" })
@@ -135,7 +123,7 @@ task.spawn(function()
 	local menuler = playerGui:WaitForChild("OyunMenuleri", 30)
 	if menuler then
 		menuler:WaitForChild("SagMenu", 10)
-		menuler:WaitForChild("SolMenu", 10)
+		menuler:WaitForChild("RotGostergesi", 10)
 	end
 	local madenEkrani = playerGui:WaitForChild("MadenSayaci", 10)
 	if madenEkrani then

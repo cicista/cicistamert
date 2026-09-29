@@ -900,34 +900,68 @@ local function tikla(girdi: EnumItem?)
 	tikEfekti()
 end
 
+local aktifDokunuslar: { [InputObject]: boolean } = {}
+local tutanGirdi: any = nil
+
+local function bittiMi(state: Enum.UserInputState): boolean
+	return state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel
+end
+
 local function bindInput()
+	table.clear(aktifDokunuslar)
+	tutanGirdi = nil
+
 	if mod == "sand" then
 		sonGirdi = nil
 		ContextActionService:BindAction(ACTION_NAME, function(_, state, input)
+			if input.UserInputType == Enum.UserInputType.Touch then
+				if state == Enum.UserInputState.Begin then
+					for eski in aktifDokunuslar do
+						if bittiMi(eski.UserInputState) then
+							aktifDokunuslar[eski] = nil
+						end
+					end
+					local tekParmak = next(aktifDokunuslar) == nil
+					aktifDokunuslar[input] = true
+					if tekParmak then
+						tikla(Enum.UserInputType.Touch)
+					end
+				elseif bittiMi(state) then
+					aktifDokunuslar[input] = nil
+				end
+				return Enum.ContextActionResult.Sink
+			end
+
 			if state == Enum.UserInputState.Begin then
 				tikla(girdiOf(input))
 			end
 			return Enum.ContextActionResult.Sink
-		end, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1)
-
-		ContextActionService:SetTitle(ACTION_NAME, "DIG")
+		end, false, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch)
 		return
 	end
 
-	ContextActionService:BindAction(ACTION_NAME, function(_, state)
+	ContextActionService:BindAction(ACTION_NAME, function(_, state, input)
+		local kimlik: any = if input.UserInputType == Enum.UserInputType.Touch then input else girdiOf(input)
 		if state == Enum.UserInputState.Begin then
-			setHolding(true)
-		elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+			if typeof(tutanGirdi) == "Instance" and bittiMi(tutanGirdi.UserInputState) then
+				tutanGirdi = nil
+			end
+			if tutanGirdi == nil then
+				tutanGirdi = kimlik
+				setHolding(true)
+			end
+		elseif bittiMi(state) and tutanGirdi == kimlik then
+			tutanGirdi = nil
 			setHolding(false)
 		end
 		return Enum.ContextActionResult.Sink
-	end, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1)
-
-	ContextActionService:SetTitle(ACTION_NAME, "HOLD")
+	end, false, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch)
 end
 
 local function unbindInput()
 	ContextActionService:UnbindAction(ACTION_NAME)
+	table.clear(aktifDokunuslar)
+	tutanGirdi = nil
 	setHolding(false)
 end
 

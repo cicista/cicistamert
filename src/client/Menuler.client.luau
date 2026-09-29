@@ -1931,7 +1931,7 @@ local SUTUN_BOSLUK = 40
 
 local function solSutunuYerlestir()
 	local carpan = UI.carpan()
-	local paraYuksekligi = rotKutu.Size.Y.Offset * carpan
+	local paraYuksekligi = rotKutu.Size.Y.Offset * UI.nesneCarpani(rotKutu)
 	local altBosluk = -rotKutu.Position.Y.Offset
 
 	arkadasBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi))

@@ -53,7 +53,8 @@ UI.Fonts = {
 UI.Girdi = Girdi
 
 UI.EkranRef = Vector2.new(1500, 900)
-UI.DokunmatikEkranRef = Vector2.new(1100, 620)
+UI.DokunmatikEkranRef = Vector2.new(1100, 700)
+UI.DokunmatikOlcekNiteligi = "DokunmatikOlcek"
 UI.EkranEnAz = 0.42
 
 local function ekranBoyu(): Vector2
@@ -825,6 +826,17 @@ function UI.carpan(): number
 	return gercekOlcek(olcekYuzde)
 end
 
+function UI.nesneCarpani(nesne: Instance): number
+	local carpan = gercekOlcek(olcekYuzde)
+	if Girdi.dokunmatik() then
+		local ek = nesne:GetAttribute(UI.DokunmatikOlcekNiteligi)
+		if type(ek) == "number" and ek > 0 then
+			carpan *= ek
+		end
+	end
+	return carpan
+end
+
 local function nesneyeUygula(nesne: Instance)
 	if not nesne:IsA("GuiObject") then
 		return
@@ -837,7 +849,7 @@ local function nesneyeUygula(nesne: Instance)
 
 	local hedef = if nesne:IsA("Frame") and table.find(paneller, nesne)
 		then panelHedef(nesne)
-		else gercekOlcek(olcekYuzde)
+		else UI.nesneCarpani(nesne)
 
 	local mevcut = nesne:FindFirstChild(OLCEK_ADI)
 	if mevcut and mevcut:IsA("UIScale") then
@@ -905,6 +917,17 @@ function UI.setScale(yuzde: number): number
 	end
 
 	return yeni
+end
+
+function UI.dokunmatikOlcekVer(nesne: GuiObject, carpan: number)
+	if nesne:GetAttribute(UI.DokunmatikOlcekNiteligi) == carpan then
+		return
+	end
+	nesne:SetAttribute(UI.DokunmatikOlcekNiteligi, carpan)
+	nesneyeUygula(nesne)
+	for _, dinleyici in olcekDinleyicileri do
+		task.spawn(dinleyici, olcekYuzde)
+	end
 end
 
 function UI.onScaleChanged(dinleyici: (yuzde: number) -> ())
