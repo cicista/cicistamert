@@ -10,7 +10,7 @@
 	UC PARCA
 
 	  1. Yonerge seridi  ekranin ustunde, "Dig in the sand!" gibi
-	  2. Hedef isareti   hedefin etrafinda sari parlama + tepesinde nabiz
+	  2. Hedef isareti   hedefin etrafinda beyaz parlama + tepesinde nabiz
 	                     atan Locate ikonu (Simulator Icon Pack)
 	  3. Yol oklari      karakterden hedefe art arda dizilen, hedefe dogru
 	                     akan "Up" ok ikonlari (ikon yoksa sari isin)
@@ -291,11 +291,12 @@ local altYazi = UI.text({
 ------------------------------------------------------------------
 -- HEDEF ISARETI  --  parlama + tepesinde nabiz atan Locate ikonu
 ------------------------------------------------------------------
+-- Hedef BEYAZ parlar (serit ve yedek isaretler sari kaliyor)
 local parlama = Instance.new("Highlight")
 parlama.Name = "OgreticiParlamasi"
-parlama.FillColor = ISARET
+parlama.FillColor = BEYAZ
 parlama.FillTransparency = 0.72
-parlama.OutlineColor = ISARET
+parlama.OutlineColor = BEYAZ
 parlama.OutlineTransparency = 0
 -- Duvar arkasindan da gorunsun: oyuncu hedefi ararken kaybolmasin
 parlama.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -520,8 +521,30 @@ local OK_HIZ = 1.4
 -- Karakterin ve hedefin dibinde ok olmasin
 local OK_BOSLUK_BAS = 3
 local OK_BOSLUK_SON = 3
--- Karakterin govde ortasindan bu kadar asagida: oklar yere yakin aksin
+-- Zemin bulunamazsa (bosluk, deniz): govde ortasindan bu kadar asagida akar
 local OK_ALCALMA = 1.8
+--[[
+	OKLAR ZEMINE OTURUR
+
+	Karakterle hedef arasindaki duz cizgi tepeye, merdivene, egimli zemine
+	gomuluyordu. Artik her okun ustunden asagi isin atiliyor; ok carptigi
+	parcanin (ya da Terrain'in) USTUNE, alt ucu yuzeye degecek yukseklige
+	konuyor.
+
+	Isin cizginin OK_TARAMA_UST kadar ustunden basliyor: cizgiden bu kadar
+	yuksege cikan tepe yakalanir, tavani daha yukarida kalan (base cati gibi)
+	yerlerde de ok catiya cikmaz.
+]]
+local OK_TARAMA_UST = 6
+local OK_TARAMA_BOY = 40
+-- Okun merkezi yuzeyin bu kadar ustunde: alt ucu yuzeyden biraz yukarida
+local OK_YER = OK_BOY / 2 + 0.2
+
+local okIsini = RaycastParams.new()
+okIsini.FilterType = Enum.RaycastFilterType.Exclude
+-- Gorunmez tetik alanlari (yonca alani vs.) carpisma kapali: ok onlara takilmasin
+okIsini.RespectCanCollide = true
+okIsini.IgnoreWater = false
 
 type Ok = { tutamak: Attachment, tabela: BillboardGui, resim: ImageLabel }
 
@@ -576,12 +599,28 @@ end
 	Karakterden hedefe yolu acar. Ok ikonu bulunduysa oklar, bulunamadiysa
 	yedek sari cizgi gorunur. Tutamaklar ilk kareyi beklemeden yerine
 	konuyor; cizgi bir kare yanlis yerde gorunmesin.
+
+	haric: oklarin USTUNE cikmamasi gereken hedef (NPC, fuse makinesi).
+	Yoksa hedefin dibindeki oklar makinenin ya da NPC'nin kafasina oturur.
+	Base ve kum gibi uzerinde yurunen hedefler haric tutulmaz.
 ]]
-local function yoluAc(kok: BasePart, isaretKoku: BasePart)
+local function yoluAc(kok: BasePart, isaretKoku: BasePart, haric: Instance?)
 	yolKoku = kok
 	yolHedefi = isaretKoku
 	kokTutamak.WorldPosition = kok.Position
 	hedefTutamak.WorldPosition = isaretKoku.Position
+
+	-- Karakterler (bizimki dahil) zemin sayilmaz; liste saniyede bir tazeleniyor
+	local disarida: { Instance } = {}
+	for _, oyuncu in Players:GetPlayers() do
+		if oyuncu.Character then
+			table.insert(disarida, oyuncu.Character)
+		end
+	end
+	if haric then
+		table.insert(disarida, haric)
+	end
+	okIsini.FilterDescendantsInstances = disarida
 
 	local resim = Icons.of("ogreticiOk")
 	okluYol = resim ~= nil
@@ -636,6 +675,13 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 
 	local yon = fark / uzunluk
+	--[[
+		Oklar zemine oturdugu icin ekrandaki yon YATAY gidis yonunden
+		hesaplaniyor; cizginin egimi (hedef asagida/yukarida) oku yere
+		dogru egmesin. Hedef tam tepede ya da dipteyse cizginin kendi yonu.
+	]]
+	local yatay = Vector3.new(yon.X, 0, yon.Z)
+	local bakis = if yatay.Magnitude > 0.1 then yatay.Unit else yon
 	-- Son okun durabilecegi yer: hedefin dibi ya da ok sayisinin yettigi yer
 	local sinir = math.min(uzunluk - OK_BOSLUK_SON, OK_BOSLUK_BAS + (OK_SAYI - 1) * OK_ARALIK)
 
@@ -647,10 +693,19 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 
 		local konum = bas + yon * mesafe
+		-- Zemine oturt (bkz. OKLAR ZEMINE OTURUR); zemin yoksa cizgide kalir
+		local carpan = Workspace:Raycast(
+			konum + Vector3.new(0, OK_TARAMA_UST, 0),
+			Vector3.new(0, -OK_TARAMA_BOY, 0),
+			okIsini
+		)
+		if carpan then
+			konum = carpan.Position + Vector3.new(0, OK_YER, 0)
+		end
 		ok.tutamak.WorldPosition = konum
 
 		local a = kamera:WorldToViewportPoint(konum)
-		local b = kamera:WorldToViewportPoint(konum + yon)
+		local b = kamera:WorldToViewportPoint(konum + bakis)
 		local dx, dy = b.X - a.X, b.Y - a.Y
 		if dx * dx + dy * dy > 1e-4 then
 			ok.resim.Rotation = math.deg(math.atan2(dy, dx)) + 90
@@ -1156,7 +1211,8 @@ local function hedefiTazele()
 		hedefIkonunuKoy()
 		hedefTabela.Adornee = isaretKoku
 		hedefTabela.Enabled = true
-		yoluAc(kok, isaretKoku)
+		-- NPC'nin (kurek saticisi / Teleporter) ustune ok cikmasin
+		yoluAc(kok, isaretKoku, npc)
 		return
 	end
 
@@ -1236,7 +1292,7 @@ local function hedefiTazele()
 	kirmiziParlama.Enabled = kirmiziMi
 
 	--[[
-		KUM ADIMINDA PLAJIN TAMAMI SARI PARLAR
+		KUM ADIMINDA PLAJIN TAMAMI BEYAZ PARLAR
 
 		Isaret noktasi gorunmez oldugu icin parlama ONA degil, altindaki kum
 		parcasina takiliyor. Cizgi ve nokta yine hedefi (ilk kazida garanti
@@ -1251,8 +1307,10 @@ local function hedefiTazele()
 	hedefTabela.Adornee = isaretKoku
 	hedefTabela.Enabled = true
 
-	-- Yolun iki ucu: karakterin govdesi ve hedefin govdesi
-	yoluAc(kok, isaretKoku)
+	-- Yolun iki ucu: karakterin govdesi ve hedefin govdesi. Dedektif ve fuse
+	-- makinesinin ustune ok cikmasin; base ve kumun ustunde yurunuyor.
+	local haric = if adim.hedef == "dedektif" or adim.hedef == "fuse" then bulunan else nil
+	yoluAc(kok, isaretKoku, haric)
 end
 
 ------------------------------------------------------------------
