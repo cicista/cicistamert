@@ -361,7 +361,7 @@ end
 function Envanter.syncBrainrots(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
-		warn(`[Envanter] {player.Name}: veri yuklenmemis, brainrot esitlenemedi`)
+		warn(`[Envanter] {player.Name}: data not loaded, brainrots could not be synced`)
 		return
 	end
 
@@ -370,7 +370,7 @@ function Envanter.syncBrainrots(player: Player)
 		backpack = player:WaitForChild("Backpack", 5) :: Backpack?
 	end
 	if not backpack then
-		warn(`[Envanter] {player.Name}: Backpack bulunamadi, brainrot esitlenemedi`)
+		warn(`[Envanter] {player.Name}: Backpack not found, brainrots could not be synced`)
 		return
 	end
 
@@ -398,8 +398,8 @@ function Envanter.syncBrainrots(player: Player)
 		end)
 		if not ok then
 			warn(
-				`[Envanter] {player.Name}: "{entry.name or "???"}" ({entry.rarity}) brainrot tool'u `
-					.. `uretilemedi -- {tostring(err)}`
+				`[Envanter] {player.Name}: "{entry.name or "???"}" ({entry.rarity}) brainrot tool `
+					.. `could not be built -- {tostring(err)}`
 			)
 		end
 	end

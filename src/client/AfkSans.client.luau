@@ -1043,7 +1043,7 @@ local function toplamaIzi(h: Humanoid): AnimationTrack?
 		return animator:LoadAnimation(anim)
 	end)
 	if not ok or not sonuc then
-		warn(`[AfkSans] toplama animasyonu yuklenemedi: {tostring(sonuc)}`)
+		warn(`[AfkSans] collect animation failed to load: {tostring(sonuc)}`)
 		return nil
 	end
 

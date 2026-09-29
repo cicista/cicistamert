@@ -82,7 +82,7 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 	elseif urun.tur == "gacha" then
 		Gacha.ver(player)
 	else
-		error(`bilinmeyen urun turu: {urun.tur}`)
+		error(`unknown product type: {urun.tur}`)
 	end
 end
 
@@ -119,7 +119,7 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 
 	local urun = RobuxMagaza.idIle(fis.ProductId)
 	if not urun then
-		warn(`[RobuxMagaza] tanimsiz urun ID'si {fis.ProductId} ({player.Name}); Shared > RobuxMagaza'ya ekle`)
+		warn(`[RobuxMagaza] unknown product ID {fis.ProductId} ({player.Name}); add it to Shared > RobuxMagaza`)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
@@ -127,7 +127,7 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 	local ok, hata = pcall(urunVer, player, data, urun)
 	if not ok then
 		data.purchases[fisId] = nil
-		warn(`[RobuxMagaza] {urun.anahtar} verilemedi ({player.Name}): {hata}`)
+		warn(`[RobuxMagaza] {urun.anahtar} could not be granted ({player.Name}): {hata}`)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
@@ -149,7 +149,7 @@ MarketplaceService.ProcessReceipt = function(fis)
 	if ok then
 		return sonuc
 	end
-	warn(`[RobuxMagaza] fis islenemedi: {sonuc}`)
+	warn(`[RobuxMagaza] receipt could not be processed: {sonuc}`)
 	return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
@@ -196,7 +196,7 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 		MarketplaceService:PromptProductPurchase(player, urun.id)
 	end)
 	if not ok then
-		warn(`[RobuxMagaza] satin alma penceresi acilamadi ({anahtar}): {hata}`)
+		warn(`[RobuxMagaza] purchase prompt could not be opened ({anahtar}): {hata}`)
 	end
 end)
 

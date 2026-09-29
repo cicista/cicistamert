@@ -126,7 +126,7 @@ local function al(player: Player)
 
 	local ok, hata = pcall(ver, player, d.day)
 	if not ok then
-		warn(`[Odul] {player.Name} icin {d.day}. gun odulu verilemedi: {tostring(hata)}`)
+		warn(`[Odul] day {d.day} reward could not be given to {player.Name}: {tostring(hata)}`)
 	end
 
 	OdulSonuc:FireClient(player, { day = d.day })

@@ -29,7 +29,7 @@ do
 		if ok then
 			Ogretici = sonuc
 		else
-			warn(`[Ogretici] modul yuklenemedi: {tostring(sonuc)}`)
+			warn(`[Ogretici] module failed to load: {tostring(sonuc)}`)
 		end
 	end
 end
@@ -144,7 +144,7 @@ local machine: Model = bulunanMakine
 	or buildStand(F.machineName, F.machineSpawnPosition, "FUSE MACHINE", Color3.fromRGB(120, 200, 255))
 
 if not bulunanMakine then
-	warn(`[Fuse] "{F.machineName}" / "{F.machineAltName}" bulunamadi -- yedek tezgah kuruldu`)
+	warn(`[Fuse] "{F.machineName}" / "{F.machineAltName}" not found -- built a fallback stand`)
 end
 
 local function inMachineRange(player: Player): boolean
@@ -528,7 +528,7 @@ end
 local function attachMachinePrompt()
 	local anchor = anchorOf(machine)
 	if not anchor then
-		warn("[Fuse] Makinede tutunulacak bir Part bulunamadi")
+		warn("[Fuse] No Part found on the machine to attach to")
 		return
 	end
 
@@ -552,7 +552,7 @@ local function attachMachinePrompt()
 		FuseSecim:FireClient(player)
 	end)
 
-	print(`[Fuse] Makine promptu kuruldu: {anchor:GetFullName()}`)
+	print(`[Fuse] Machine prompt set up: {anchor:GetFullName()}`)
 end
 
 task.spawn(attachMachinePrompt)

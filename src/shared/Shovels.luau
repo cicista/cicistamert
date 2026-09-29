@@ -140,7 +140,7 @@ Shovels.Default = "Wooden" :: ShovelId
 
 function Shovels.get(id: ShovelId): ShovelInfo
 	local info = Shovels.Info[id]
-	assert(info, `bilinmeyen kurek: {tostring(id)}`)
+	assert(info, `unknown shovel: {tostring(id)}`)
 	return info
 end
 

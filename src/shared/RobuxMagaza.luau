@@ -158,10 +158,10 @@ local anahtarla: { [string]: Urun } = {}
 local idile: { [number]: Urun } = {}
 
 local function kaydet(urun: Urun)
-	assert(anahtarla[urun.anahtar] == nil, `[RobuxMagaza] ayni anahtar iki kez: {urun.anahtar}`)
+	assert(anahtarla[urun.anahtar] == nil, `[RobuxMagaza] duplicate key: {urun.anahtar}`)
 	anahtarla[urun.anahtar] = urun
 	if urun.id > 0 then
-		assert(idile[urun.id] == nil, `[RobuxMagaza] ayni ID iki urunde: {urun.id}`)
+		assert(idile[urun.id] == nil, `[RobuxMagaza] duplicate ID in two products: {urun.id}`)
 		idile[urun.id] = urun
 	end
 end

@@ -32,7 +32,7 @@ do
 		if ok then
 			Ogretici = sonuc
 		else
-			warn(`[Ogretici] modul yuklenemedi: {tostring(sonuc)}`)
+			warn(`[Ogretici] module failed to load: {tostring(sonuc)}`)
 		end
 	end
 end
@@ -71,9 +71,9 @@ local function basesFolder(): Instance
 	end
 
 	warn(
-		`[Base] Workspace'te "{Bases.FolderName}" klasoru bulunamadi. `
-			.. `Bos bir tane olusturuluyor -- base'lerini oraya koy ya da `
-			.. `mevcut klasoru bu adla adlandir.`
+		`[Base] No "{Bases.FolderName}" folder in Workspace. `
+			.. `Creating an empty one -- put your bases there or `
+			.. `rename the existing folder to this name.`
 	)
 
 	local created = Instance.new("Folder")
@@ -971,7 +971,7 @@ local function buildUpgradeSign(base: Model, bounds: CFrame, size: Vector3, base
 		created.Parent = base
 		board = created
 
-		warn(`[Base] {base.Name}: '{U.markerName}' adinda Part yok, tabela base'in onune kuruldu`)
+		warn(`[Base] {base.Name}: no Part named '{U.markerName}', sign placed in front of the base`)
 	end
 
 	local boardSize = board.Size
@@ -1132,7 +1132,7 @@ local function setupBases()
 
 		local base = getBase(index)
 		if not base then
-			warn(`[Base] {Bases.baseName(index)} bulunamadi -- Workspace > Bases altinda olmali`)
+			warn(`[Base] {Bases.baseName(index)} not found -- it must be under Workspace > Bases`)
 			continue
 		end
 
@@ -1177,7 +1177,7 @@ local function setupBases()
 			onYonleri[index] = on.Unit
 			slotSirasiKur(base, on.Unit)
 		else
-			warn(`[Base] {base.Name}: sinir kutusu hesaplanamadi, hologram konulamadi`)
+			warn(`[Base] {base.Name}: bounding box could not be computed, hologram not placed`)
 		end
 
 		local found = 0
@@ -1207,7 +1207,7 @@ local function setupBases()
 					.. `BULUNAMAYANLAR: {table.concat(eksik, ", ")}`
 			)
 		else
-			print(`[Base] {index} -> {base.Name} hazir ({found} slot)`)
+			print(`[Base] {index} -> {base.Name} ready ({found} slots)`)
 		end
 
 		applyFloors(index, 1)
@@ -1879,7 +1879,7 @@ task.spawn(function()
 
 		local ok, hata = pcall(gelirTuru)
 		if not ok then
-			warn(`[Base] Gelir dongusu hatasi (dongu devam ediyor): {tostring(hata)}`)
+			warn(`[Base] Income loop error (loop continues): {tostring(hata)}`)
 		end
 	end
 end)

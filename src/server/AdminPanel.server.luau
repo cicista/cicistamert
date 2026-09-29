@@ -69,7 +69,7 @@ function commands.giveAllTools(player, data)
 	Envanter.giveShovel(player)
 	Envanter.giveGPS(player)
 
-	return `{Shovels.get(topShovel).displayName} + {Detectors.get(topDetector).displayName} verildi`
+	return `{Shovels.get(topShovel).displayName} + {Detectors.get(topDetector).displayName} given`
 end
 
 function commands.giveRot(player, data)
@@ -85,7 +85,7 @@ function commands.giveRotCoins(player, data, arg)
 		return nil
 	end
 	PlayerData.addRotCoins(player, miktar)
-	return `+{miktar} Rot Coin  (toplam {data.rotCoins})`
+	return `+{miktar} Rot Coin  (total {data.rotCoins})`
 end
 
 local function ipuclariniAyarla(player: Player, data: any, gorulmus: boolean)
@@ -108,7 +108,7 @@ function commands.ogreticiSifirla(player, data)
 		end
 	end
 
-	return "Ogretici basa sarildi: 1. adim"
+	return "Tutorial restarted: step 1"
 end
 
 local function ogreticiModulu(): any?
@@ -125,7 +125,7 @@ end
 
 function commands.ogreticiAtla(player, data)
 	if data.tutorial.bitti then
-		return "Ogretici zaten bitmis"
+		return "Tutorial is already finished"
 	end
 
 	local toplam = OgreticiAdimlar.adimSayisi()
@@ -144,8 +144,8 @@ function commands.ogreticiAtla(player, data)
 	end
 
 	return if data.tutorial.bitti
-		then "Ogretici bitirildi"
-		else `Ogretici {data.tutorial.adim}. adima gecti`
+		then "Tutorial finished"
+		else `Tutorial moved to step {data.tutorial.adim}`
 end
 
 function commands.ogreticiBitir(player, data)
@@ -160,7 +160,7 @@ function commands.ogreticiBitir(player, data)
 		ogretici.gonder(player)
 	end
 
-	return "Ogretici bitirildi (ipuclari dahil)"
+	return "Tutorial finished (hints included)"
 end
 
 function commands.adaIpucuSifirla(player, data)
@@ -168,19 +168,19 @@ function commands.adaIpucuSifirla(player, data)
 	player:SetAttribute(OgreticiAdimlar.AdaIpucu.nitelik, nil)
 	data.tutorial.kurekIpucu = nil
 	player:SetAttribute(OgreticiAdimlar.KurekIpucu.nitelik, nil)
-	return "Ada ve kurek ipuclari sifirlandi (parasi yetince yeniden cikar)"
+	return "Island and shovel hints reset (they show again once affordable)"
 end
 
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()
-	return `Etkinlik baslatildi ({LuckyBlock.toplamBlok()} blok)`
+	return `Event started ({LuckyBlock.toplamBlok()} blocks)`
 end
 
 function commands.sahteOyuncu(player, data, arg)
 	local sayi = LuckyBlockOdul.sahteOyuncuAyarla(tonumber(arg) or 0)
 	return if sayi > 0
-		then `Sunucuda {sayi} kisi varmis gibi davraniliyor`
-		else "Gercek oyuncu sayisina donuldu"
+		then `Acting as if the server has {sayi} players`
+		else "Back to the real player count"
 end
 
 function commands.giveLuckyBlock(player, data, arg)
@@ -191,7 +191,7 @@ function commands.giveLuckyBlock(player, data, arg)
 	Envanter.syncLuckyBlocks(player)
 	Envanter.push(player)
 
-	return `+1 {tier.displayName}  (toplam {PlayerData.luckyBlockCount(player, tierId)})`
+	return `+1 {tier.displayName}  (total {PlayerData.luckyBlockCount(player, tierId)})`
 end
 
 function commands.giveBrainrot(player, data, arg)
@@ -248,11 +248,11 @@ function commands.revealAll(player, data)
 	end
 
 	if count == 0 then
-		return "Acilacak siyah brainrot yok"
+		return "No unidentified brainrots to reveal"
 	end
 
 	Envanter.syncBrainrots(player)
-	return `{count} brainrot'un kimligi acildi`
+	return `{count} brainrot(s) revealed`
 end
 
 function commands.setMutation(player, data, arg)
@@ -262,7 +262,7 @@ function commands.setMutation(player, data, arg)
 
 	local _, heldUid = Tools.equippedBrainrot(player)
 	if not heldUid then
-		return "Once bir brainrotu eline al"
+		return "Hold a brainrot first"
 	end
 
 	local item = PlayerData.findItem(player, heldUid)
@@ -271,11 +271,11 @@ function commands.setMutation(player, data, arg)
 	end
 
 	if not item.revealed or not item.name then
-		return "Bu brainrotun kimligi belli degil"
+		return "This brainrot is not identified"
 	end
 
 	if item.mutation == arg then
-		return `Zaten {Mutations.get(arg).displayName}`
+		return `Already {Mutations.get(arg).displayName}`
 	end
 
 	item.mutation = arg
@@ -295,14 +295,14 @@ function commands.testMutation(player, data)
 		counts[id] = (counts[id] or 0) + 1
 	end
 
-	print(`[ADMIN] {rolls} cekilis:`)
+	print(`[ADMIN] {rolls} rolls:`)
 	for _, id in Mutations.Order do
 		local n = counts[id] or 0
 		print(string.format("  %-10s %4d  (%%%.1f)", id, n, n / rolls * 100))
 	end
 
 	local special = rolls - (counts.Normal or 0)
-	return `{special}/{rolls} mutasyonlu -- ayrinti Output'ta`
+	return `{special}/{rolls} mutated -- details in Output`
 end
 
 function commands.spawnBeam(player, data, arg)
@@ -318,18 +318,18 @@ function commands.spawnBeam(player, data, arg)
 
 	local beam = Beams.spawnKind(player, arg)
 	if not beam then
-		return "Suzme dogurulamadi -- karakterin yok mu?"
+		return "Could not spawn the beam -- no character?"
 	end
 
 	if maden then
 		local cfg = Ores.island(maden.island)
 		local kazma = if cfg then Ores.Pickaxes[cfg.pickaxe] else nil
-		return `{maden.displayName} kayasi dogdu -- {if kazma then kazma.displayName else "kazma"} gerekir`
+		return `{maden.displayName} rock spawned -- needs {if kazma then kazma.displayName else "a pickaxe"}`
 	end
 
 	local label = if Rarity.Info[arg] then Rarity.displayName(arg) else Rarity.LuckyBlock.displayName
 
-	return `{label} suzmesi dogdu -- kuregi eline al ve kaz`
+	return `{label} beam spawned -- hold your shovel and dig`
 end
 
 function commands.spawnGirdap(player, data, arg)
@@ -339,13 +339,13 @@ function commands.spawnGirdap(player, data, arg)
 
 	local girdap, suda = Beams.spawnWhirlKind(player, arg)
 	if not girdap then
-		return "Girdap dogurulamadi -- karakterin yok mu?"
+		return "Could not spawn the whirlpool -- no character?"
 	end
 
 	local label = Rarity.displayName(arg)
 	return if suda
-		then `{label} girdabi denizde dogdu -- oltayi eline al`
-		else `{label} girdabi ONUNE kondu (yakinda su yok)`
+		then `{label} whirlpool spawned in the sea -- hold your rod`
+		else `{label} whirlpool placed IN FRONT of you (no water nearby)`
 end
 
 function commands.giveGizliBrainrot(player, data, arg)
@@ -362,7 +362,7 @@ function commands.giveGizliBrainrot(player, data, arg)
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
 
-	return `Kimliksiz {Rarity.displayName(rarityId)} brainrot verildi -- Detective'e goturup ac`
+	return `Unidentified {Rarity.displayName(rarityId)} brainrot given -- reveal it at the Detective`
 end
 
 local function vec(position: Vector3): string
@@ -386,9 +386,9 @@ end
 function commands.haritaRaporu(player, data)
 	local eksik = 0
 
-	print("========== HARITA RAPORU ==========")
+	print("========== MAP REPORT ==========")
 	print("")
-	print("ADALAR  (kod once spawn parcasina bakar, yoksa config konumuna duser)")
+	print("ISLANDS  (the spawn part is checked first, else the config position is used)")
 
 	for index, island in Config.Islands do
 		local part = if island.spawnPartName
@@ -399,7 +399,7 @@ function commands.haritaRaporu(player, data)
 		if position then
 			print(
 				string.format(
-					"  %d) %-14s %-16s BULUNDU   %s   (config: %s)",
+					"  %d) %-14s %-16s FOUND     %s   (config: %s)",
 					index,
 					island.name,
 					island.spawnPartName or "-",
@@ -411,7 +411,7 @@ function commands.haritaRaporu(player, data)
 			eksik += 1
 			print(
 				string.format(
-					"  %d) %-14s %-16s YOK!      config konumu kullanilacak: %s",
+					"  %d) %-14s %-16s MISSING!  using config position: %s",
 					index,
 					island.name,
 					island.spawnPartName or "-",
@@ -422,18 +422,18 @@ function commands.haritaRaporu(player, data)
 	end
 
 	print("")
-	print("BASE'LER  (isimle bulunur, konum kodda yazmaz)")
+	print("BASES  (found by name, positions are not in code)")
 
 	local bases = Bases.findFolder()
 
 	if not bases then
 		eksik += 1
-		print(`  Workspace'in hicbir yerinde "{Bases.FolderName}" klasoru YOK!`)
+		print(`  No "{Bases.FolderName}" folder anywhere in Workspace!`)
 	else
-		print(`  Klasor yeri: {bases:GetFullName()}`)
+		print(`  Folder: {bases:GetFullName()}`)
 
 		local children = bases:GetChildren()
-		print(string.format("  Klasor icerigi: %d nesne", #children))
+		print(string.format("  Folder contents: %d objects", #children))
 
 		for _, child in children do
 			local position = anchorPosition(child)
@@ -449,28 +449,28 @@ function commands.haritaRaporu(player, data)
 					"    %-16s %-12s %-24s %d slot",
 					child.Name,
 					child.ClassName,
-					if position then vec(position) else "(parca yok)",
+					if position then vec(position) else "(no part)",
 					slots
 				)
 			)
 		end
 
 		print("")
-		print("  Beklenen adlar:")
+		print("  Expected names:")
 
 		for index = 1, Bases.Count do
 			local base = bases:FindFirstChild(`Base{index}`)
 			if base then
-				print(string.format("    Base%d  var", index))
+				print(string.format("    Base%d  found", index))
 			else
 				eksik += 1
-				print(string.format("    Base%d  YOK", index))
+				print(string.format("    Base%d  MISSING", index))
 			end
 		end
 	end
 
 	print("")
-	print("NPC / NESNELER")
+	print("NPCS / OBJECTS")
 
 	local wanted = {
 		Config.NPC.name,
@@ -496,22 +496,22 @@ function commands.haritaRaporu(player, data)
 	print("===================================")
 
 	return if eksik == 0
-		then "Harita tamam -- ayrinti Output'ta"
-		else `{eksik} nesne EKSIK -- ayrinti Output'ta`
+		then "Map OK -- details in Output"
+		else `{eksik} objects MISSING -- details in Output`
 end
 
 function commands.kumRaporu(player, data)
 	local onSand, lines = Sand.report(player)
 
-	print("========== KUM RAPORU ==========")
+	print("========== SAND REPORT ==========")
 	for _, line in lines do
 		print(line)
 	end
 	print("================================")
 
 	return if onSand
-		then "Kumdasin -- GPS elinde olmali"
-		else "Kumda DEGILSIN -- sebep Output'ta"
+		then "You are on sand -- the GPS should be in your hand"
+		else "You are NOT on sand -- reason in Output"
 end
 
 local function hsvOf(color: Color3): string
@@ -527,12 +527,12 @@ end
 function commands.gizliRaporu(player, data)
 	local cfg = Assets.HiddenBrainrot
 
-	print("========== GIZLI BRAINROT RAPORU ==========")
-	print(`  Aranan ad : "{cfg.name}"`)
-	print(`  Korunan   : "{cfg.keepPart}"`)
+	print("========== HIDDEN BRAINROT REPORT ==========")
+	print(`  Searched name : "{cfg.name}"`)
+	print(`  Kept part     : "{cfg.keepPart}"`)
 	print("")
 
-	print("  Adinda \"hidden\" gecenler (tum servisler):")
+	print("  Names containing \"hidden\" (all services):")
 	local seen = 0
 	for _, root in Assets.searchRoots() do
 		for _, node in root:GetDescendants() do
@@ -543,12 +543,12 @@ function commands.gizliRaporu(player, data)
 		end
 	end
 	if seen == 0 then
-		print("    (hicbiri)")
+		print("    (none)")
 	end
 	print("")
 
 	local kids = Workspace:GetChildren()
-	print(`  Workspace'in dogrudan cocuklari ({#kids} adet):`)
+	print(`  Direct children of Workspace ({#kids}):`)
 	for index, node in kids do
 		print(string.format("    %2d. %-14s %s", index, node.ClassName, node.Name))
 	end
@@ -557,10 +557,10 @@ function commands.gizliRaporu(player, data)
 	local model = Assets.hiddenBrainrotModel()
 
 	if not model then
-		print("  URETIM BASARISIZ -- yukaridaki listede modeli gor, adini")
-		print("  Assets.HiddenBrainrot.name icine birebir yaz.")
+		print("  BUILD FAILED -- find the model in the list above and write its name")
+		print("  exactly into Assets.HiddenBrainrot.name.")
 		print("===========================================")
-		return "Model uretilemedi -- ayrinti Output icinde"
+		return "Model could not be built -- details in Output"
 	end
 
 	local parts, keep = 0, 0
@@ -573,13 +573,13 @@ function commands.gizliRaporu(player, data)
 		end
 	end
 
-	print("  URETIM BASARILI")
-	print(`    BasePart sayisi        : {parts}`)
-	print(`    Korunan ("{cfg.keepPart}") : {keep}`)
+	print("  BUILD OK")
+	print(`    BasePart count         : {parts}`)
+	print(`    Kept ("{cfg.keepPart}")    : {keep}`)
 
 	if keep == 0 then
-		print(`    UYARI: "{cfg.keepPart}" bulunamadi -- her sey kademe rengine boyanacak.`)
-		print("    Modelin icindeki parca adlari:")
+		print(`    WARNING: "{cfg.keepPart}" not found -- everything will be tinted with the tier color.`)
+		print("    Part names inside the model:")
 		for _, node in model:GetDescendants() do
 			if node:IsA("BasePart") then
 				print(`      {node.Name}`)
@@ -590,7 +590,7 @@ function commands.gizliRaporu(player, data)
 	model:Destroy()
 	print("===========================================")
 
-	return `Model hazir ({parts} parca, {keep} korunan) -- ayrinti Output icinde`
+	return `Model ready ({parts} parts, {keep} kept) -- details in Output`
 end
 
 function commands.vfxRaporu(player, data)
@@ -598,11 +598,11 @@ function commands.vfxRaporu(player, data)
 	local template = Assets.vfxTemplate(name)
 
 	if not template then
-		return `"{name}" bulunamadi -- Workspace ya da Assets > VFX icine koy`
+		return `"{name}" not found -- put it in Workspace or Assets > VFX`
 	end
 
-	print("========== VFX RAPORU ==========")
-	print(`  Kok : {template.ClassName} "{template.Name}"`)
+	print("========== VFX REPORT ==========")
+	print(`  Root : {template.ClassName} "{template.Name}"`)
 	print("")
 
 	local flagged = 0
@@ -617,7 +617,7 @@ function commands.vfxRaporu(player, data)
 		if node:IsA("BasePart") then
 			local size = node.Size
 			detail = string.format(
-				"renk=%d,%d,%d  %s  boyut=%.2f,%.2f,%.2f  %s",
+				"color=%d,%d,%d  %s  size=%.2f,%.2f,%.2f  %s",
 				math.floor(node.Color.R * 255),
 				math.floor(node.Color.G * 255),
 				math.floor(node.Color.B * 255),
@@ -629,45 +629,45 @@ function commands.vfxRaporu(player, data)
 			)
 
 			if isGreenish(node.Color) then
-				mark = "   <-- YESIL"
+				mark = "   <-- GREEN"
 				flagged += 1
 			elseif math.max(size.X, size.Y, size.Z) <= 0.6 then
-				mark = "   <-- cok kucuk"
+				mark = "   <-- very small"
 				flagged += 1
 			end
 		elseif node:IsA("ParticleEmitter") or node:IsA("Trail") or node:IsA("Beam") then
 			local first = node.Color.Keypoints[1].Value
-			detail = string.format("ilk renk %s", hsvOf(first))
+			detail = string.format("first color %s", hsvOf(first))
 
 			if node:IsA("ParticleEmitter") then
 				detail ..= string.format("  LightEmission=%.2f  Rate=%.1f", node.LightEmission, node.Rate)
 			end
 
 			if isGreenish(first) then
-				mark = "   <-- YESIL"
+				mark = "   <-- GREEN"
 				flagged += 1
 			end
 		elseif node:IsA("Light") then
 			detail = string.format("%s  Brightness=%.1f  Range=%.1f", hsvOf(node.Color), node.Brightness, node.Range)
 			if isGreenish(node.Color) then
-				mark = "   <-- YESIL"
+				mark = "   <-- GREEN"
 				flagged += 1
 			end
 		elseif node:IsA("Attachment") then
-			detail = "(parcacik tutamagi -- kendisi gorunmez)"
+			detail = "(particle holder -- invisible itself)"
 		end
 
 		print(string.format("  %-18s %-24s %s%s", node.ClassName, node.Name, detail, mark))
 	end
 
 	print("")
-	print(`  Toplam {total} nesne, {flagged} tanesi isaretli`)
-	print("  Kaldirmak icin adini Config.BeamVFX.hide listesine yaz.")
+	print(`  Total {total} objects, {flagged} flagged`)
+	print("  To remove one, add its name to Config.BeamVFX.hide.")
 	print("================================")
 
 	template:Destroy()
 
-	return `{total} nesne listelendi, {flagged} isaretli -- ayrinti Output icinde`
+	return `{total} objects listed, {flagged} flagged -- details in Output`
 end
 
 function commands.givePickaxe(player, data, arg)
@@ -675,7 +675,7 @@ function commands.givePickaxe(player, data, arg)
 		for id in Ores.Pickaxes do
 			data.pickaxes[id] = true
 		end
-		return "Butun kazmalar verildi"
+		return "All pickaxes given"
 	end
 
 	if type(arg) ~= "string" or not Ores.Pickaxes[arg] then
@@ -683,7 +683,7 @@ function commands.givePickaxe(player, data, arg)
 	end
 
 	data.pickaxes[arg] = true
-	return `{Ores.Pickaxes[arg].displayName} verildi`
+	return `{Ores.Pickaxes[arg].displayName} given`
 end
 
 local MADEN_ADEDI = 10
@@ -698,7 +698,7 @@ function commands.giveOres(player, data, arg)
 		for _, id in cfg.ores do
 			PlayerData.addOre(player, id, MADEN_ADEDI)
 		end
-		return `{cfg.name}: her madenden +{MADEN_ADEDI}`
+		return `{cfg.name}: +{MADEN_ADEDI} of each ore`
 	end
 
 	local maden = Ores.get(arg)
@@ -720,7 +720,7 @@ function commands.setShovel(player, data, arg)
 		data.shovelMax = arg
 	end
 	Envanter.giveShovel(player)
-	return `Kurek: {Shovels.get(arg).displayName}`
+	return `Shovel: {Shovels.get(arg).displayName}`
 end
 
 function commands.setRod(player, data, arg)
@@ -739,7 +739,7 @@ function commands.setRod(player, data, arg)
 	end
 
 	local info = Rods.get(arg)
-	return `Olta: {if info then info.displayName else arg}`
+	return `Rod: {if info then info.displayName else arg}`
 end
 
 function commands.setFlyboard(player, data, arg)
@@ -765,7 +765,7 @@ function commands.setDetector(player, data, arg)
 		data.detectorMax = arg
 	end
 	Envanter.giveGPS(player)
-	return `Dedektor: {Detectors.get(arg).displayName}`
+	return `Detector: {Detectors.get(arg).displayName}`
 end
 
 function commands.scriptRaporu(player, data)
@@ -806,11 +806,11 @@ function commands.scriptRaporu(player, data)
 		end
 	end
 
-	print(`[Admin] Bizim klasorlerimiz disindaki scriptler ({#bulunan}):`)
+	print(`[Admin] Scripts outside our folders ({#bulunan}):`)
 	for _, satir in bulunan do
 		print(satir)
 	end
-	return `{#bulunan} yabanci script -- liste Output'ta`
+	return `{#bulunan} foreign scripts -- list in Output`
 end
 
 function commands.togglePass(player, data, arg)
@@ -820,7 +820,7 @@ function commands.togglePass(player, data, arg)
 	end
 	local yeni = not Passler.sahip(player, arg)
 	player:SetAttribute(info.nitelik, yeni)
-	return `{info.ad}: {if yeni then "VERILDI" else "ALINDI"} (bu oturum)`
+	return `{info.ad}: {if yeni then "GIVEN" else "REMOVED"} (this session)`
 end
 
 local function hiziYenile(player: Player)
@@ -849,7 +849,7 @@ function commands.setRebirth(player, data, arg)
 	end
 	data.speedRebirth = math.clamp(math.floor(adet), 0, Hiz.MaxRebirth)
 	hiziYenile(player)
-	return `Hiz rebirth: {data.speedRebirth}`
+	return `Speed rebirth: {data.speedRebirth}`
 end
 
 function commands.setSpeed(player, data, arg)
@@ -859,7 +859,7 @@ function commands.setSpeed(player, data, arg)
 	end
 	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
 	hiziYenile(player)
-	return `Hiz: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
+	return `Speed set: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
 end
 
 function commands.clearInventory(player, data)
@@ -869,7 +869,7 @@ function commands.clearInventory(player, data)
 	Envanter.syncBrainrots(player)
 	baseYenile:Fire(player)
 
-	return `{count} brainrot silindi`
+	return `{count} brainrot(s) deleted`
 end
 
 AdminKomut.OnServerEvent:Connect(function(player, command, arg)
@@ -894,8 +894,8 @@ AdminKomut.OnServerEvent:Connect(function(player, command, arg)
 	local ok, message = pcall(handler, player, data, arg)
 
 	if not ok then
-		warn(`[ADMIN] "{command}" hata verdi -- {tostring(message)}`)
-		Bildirim:FireClient(player, `[ADMIN] {command} HATA: {tostring(message)}`, Color3.fromRGB(255, 90, 90))
+		warn(`[ADMIN] "{command}" failed -- {tostring(message)}`)
+		Bildirim:FireClient(player, `[ADMIN] {command} ERROR: {tostring(message)}`, Color3.fromRGB(255, 90, 90))
 		return
 	end
 

@@ -36,7 +36,7 @@ screen.Parent = playerGui
 local panel = UI.panel(screen, UDim2.fromOffset(560, 520), "Panel")
 
 UI.text({
-	text = "Admin Paneli",
+	text = "Admin Panel",
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	color = UI.Colors.gold,
@@ -179,33 +179,33 @@ local function buildPanel(info: any)
 	end
 	built = true
 
-	subtitle.Text = `{Config.Admin.keyCode.Name} ile ac/kapat  --  butun komutlar sunucuda dogrulanir`
+	subtitle.Text = `{Config.Admin.keyCode.Name} to open/close  --  all commands are validated on the server`
 
-	section("HIZLI")
-	actionButton("Butun toollari ver (en ust seviye)", "giveAllTools", nil, UI.Colors.good)
-	actionButton(`Rot ver  (+{Format.short(info.rotGrant or 0)})`, "giveRot", nil, UI.Colors.gold)
+	section("QUICK")
+	actionButton("Give all tools (max level)", "giveAllTools", nil, UI.Colors.good)
+	actionButton(`Give Rot  (+{Format.short(info.rotGrant or 0)})`, "giveRot", nil, UI.Colors.gold)
 	for _, miktar in { 10, 100, 1000 } do
-		actionButton(`Rot Coin ver  (+{miktar})`, "giveRotCoins", miktar, Color3.fromRGB(120, 226, 150))
+		actionButton(`Give Rot Coin  (+{miktar})`, "giveRotCoins", miktar, Color3.fromRGB(120, 226, 150))
 	end
 	actionButton(
-		`Blok yagmuru baslat  ({LuckyBlock.toplamBlok()} blok)`,
+		`Start block rain  ({LuckyBlock.toplamBlok()} blocks)`,
 		"luckyEvent",
 		nil,
 		UI.Colors.warn
 	)
 
-	section("SAHTE OYUNCU SAYISI  --  yagmur bildirimini sina")
+	section("FAKE PLAYER COUNT  --  test the rain notice")
 	local oyuncuChips: { any } = {}
 	for _, sayi in { 4, 5, 6 } do
 		table.insert(oyuncuChips, {
-			label = `{sayi} kisi`,
+			label = `{sayi} players`,
 			command = "sahteOyuncu",
 			arg = sayi,
 			color = Rarity.LuckyBlock.colorA,
 		})
 	end
 	table.insert(oyuncuChips, {
-		label = "Kapat",
+		label = "Off",
 		command = "sahteOyuncu",
 		arg = 0,
 		color = UI.Colors.bad,
@@ -213,21 +213,21 @@ local function buildPanel(info: any)
 	chipRow(oyuncuChips)
 
 	for _, tier in LuckyBlock.Tiers do
-		actionButton(`{tier.displayName} ver  (+1)`, "giveLuckyBlock", tier.id, tier.color)
+		actionButton(`Give {tier.displayName}  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end
-	actionButton("Envanterdeki brainrotlarin kimligini ac", "revealAll", nil, UI.Colors.accent)
-	actionButton("Ogreticiyi basa sar (1. adim)", "ogreticiSifirla", nil, Color3.fromRGB(255, 215, 60))
-	actionButton("Ogretici: siradaki adima gec", "ogreticiAtla", nil, Color3.fromRGB(255, 190, 90))
-	actionButton("Ogreticiyi bitir", "ogreticiBitir", nil, Color3.fromRGB(200, 170, 110))
-	actionButton("Ada ipucunu sifirla (650M > Candy)", "adaIpucuSifirla", nil, Color3.fromRGB(255, 120, 120))
-	actionButton("Mutasyon cekilisini test et (1000 kez, Output'a yazar)", "testMutation", nil, UI.Colors.textDim)
-	actionButton("Harita raporu (ada/base/NPC konumlari, Output'a yazar)", "haritaRaporu", nil, UI.Colors.textDim)
-	actionButton("Kum raporu (bastigin zemin, Output'a yazar)", "kumRaporu", nil, UI.Colors.textDim)
-	actionButton("VFX raporu (suzme efektinin icerigi)", "vfxRaporu", nil, UI.Colors.textDim)
-	actionButton("Gizli brainrot raporu (HiddenPart modeli)", "gizliRaporu", nil, UI.Colors.textDim)
-	actionButton("Yabanci script raporu (haritadaki scriptler, Output'a yazar)", "scriptRaporu", nil, UI.Colors.warn)
+	actionButton("Reveal all brainrots in inventory", "revealAll", nil, UI.Colors.accent)
+	actionButton("Restart tutorial (step 1)", "ogreticiSifirla", nil, Color3.fromRGB(255, 215, 60))
+	actionButton("Tutorial: skip to next step", "ogreticiAtla", nil, Color3.fromRGB(255, 190, 90))
+	actionButton("Finish tutorial", "ogreticiBitir", nil, Color3.fromRGB(200, 170, 110))
+	actionButton("Reset island hint (650M > Candy)", "adaIpucuSifirla", nil, Color3.fromRGB(255, 120, 120))
+	actionButton("Test mutation rolls (1000x, prints to Output)", "testMutation", nil, UI.Colors.textDim)
+	actionButton("Map report (island/base/NPC positions, prints to Output)", "haritaRaporu", nil, UI.Colors.textDim)
+	actionButton("Sand report (ground under you, prints to Output)", "kumRaporu", nil, UI.Colors.textDim)
+	actionButton("VFX report (beam effect contents)", "vfxRaporu", nil, UI.Colors.textDim)
+	actionButton("Hidden brainrot report (HiddenPart model)", "gizliRaporu", nil, UI.Colors.textDim)
+	actionButton("Foreign script report (scripts in the map, prints to Output)", "scriptRaporu", nil, UI.Colors.warn)
 
-	section("KUREK SEVIYESI  --  Main / Candy / Snow / Volcano")
+	section("SHOVEL LEVEL  --  Main / Candy / Snow / Volcano")
 	for _, ada in { "main", "sekerkum", "snowkum", "alevkum" } do
 		local shovelChips = {}
 		for _, shovel in Shovels.forIsland(if ada == "main" then nil else ada) do
@@ -243,7 +243,7 @@ local function buildPanel(info: any)
 		end
 	end
 
-	section("HIZ  --  alinan yukseltme sayisi (Speed = sayi + 1)")
+	section("SPEED  --  upgrades bought (Speed = count + 1)")
 	local hizChips = {}
 	for _, adet in { 0, 10, 25, 50, 75, 99, 100 } do
 		table.insert(hizChips, {
@@ -255,7 +255,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(hizChips)
 
-	section("HIZ REBIRTH  --  iz rengi ve boyu")
+	section("SPEED REBIRTH  --  trail color and size")
 	local rebirthChips = {}
 	for adet = 0, Hiz.MaxRebirth do
 		table.insert(rebirthChips, {
@@ -267,7 +267,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(rebirthChips)
 
-	section("ROBUX GECISLERI  --  bu oturum icin ver / al")
+	section("ROBUX PASSES  --  give / take for this session")
 	local passChips = {}
 	for ad, pass in Passler.Info do
 		table.insert(passChips, {
@@ -279,7 +279,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(passChips)
 
-	section("DEDEKTOR SEVIYESI")
+	section("DETECTOR LEVEL")
 	local detectorChips = {}
 	for _, id in Detectors.Order do
 		local detector = Detectors.get(id)
@@ -292,7 +292,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(detectorChips)
 
-	section("FLYBOARD KADEMESI")
+	section("FLYBOARD TIER")
 	local flyboardChips = {}
 	for _, id in Flyboard.Order do
 		local board = Flyboard.Info[id]
@@ -305,7 +305,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(flyboardChips)
 
-	section("OLTA KADEMESI")
+	section("ROD TIER")
 	local rodChips = {}
 	for _, id in Rods.Order do
 		local rod = Rods.Info[id]
@@ -318,7 +318,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(rodChips)
 
-	section("KAZMA VER")
+	section("GIVE PICKAXE")
 	local pickaxeChips: { any } = {}
 	for _, ada in Ores.IslandOrder do
 		local kazma = Ores.Pickaxes[Ores.Islands[ada].pickaxe]
@@ -330,14 +330,14 @@ local function buildPanel(info: any)
 		})
 	end
 	table.insert(pickaxeChips, {
-		label = "Hepsi",
+		label = "All",
 		command = "givePickaxe",
 		arg = "all",
 		color = UI.Colors.good,
 	})
 	chipRow(pickaxeChips)
 
-	section("MADEN VER  (+10)")
+	section("GIVE ORES  (+10)")
 	for _, ada in Ores.IslandOrder do
 		local cfg = Ores.Islands[ada]
 		local oreChips: { any } = {
@@ -359,7 +359,7 @@ local function buildPanel(info: any)
 		chipRow(oreChips)
 	end
 
-	section("MADEN SPAWNLA  --  kazma ile kaz")
+	section("SPAWN ORE  --  mine it with a pickaxe")
 	for _, ada in Ores.IslandOrder do
 		local cfg = Ores.Islands[ada]
 		local spawnChips: { any } = {}
@@ -374,7 +374,7 @@ local function buildPanel(info: any)
 		chipRow(spawnChips)
 	end
 
-	section("MUTASYON  --  ELINDEKI brainrotu cevirir")
+	section("MUTATION  --  converts the HELD brainrot")
 
 	local mutationChips: { TextButton }
 	local mutationEntries: { any } = {}
@@ -403,7 +403,7 @@ local function buildPanel(info: any)
 
 	mutationChips = chipRow(mutationEntries)
 
-	section("SUZME SPAWNLA  --  kaziyi ve zorlugu test et")
+	section("SPAWN BEAM  --  test digging and difficulty")
 
 	local beamChips: { any } = {}
 	for _, id in Rarity.Order do
@@ -425,7 +425,7 @@ local function buildPanel(info: any)
 		},
 	})
 
-	section("GIRDAP SPAWNLA  --  denizdeki karsiligi")
+	section("SPAWN WHIRLPOOL  --  the sea version")
 
 	local girdapChips: { any } = {}
 	for _, id in Rarity.Order do
@@ -438,7 +438,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(girdapChips)
 
-	section("BRAINROT VER  --  mutasyon rastgele")
+	section("GIVE BRAINROT  --  random mutation")
 	local rarityChips: { any } = {}
 	for _, id in Rarity.Order do
 		table.insert(rarityChips, {
@@ -450,7 +450,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(rarityChips)
 
-	section("KIMLIKSIZ BRAINROT VER  --  Detective'te acilir")
+	section("GIVE UNIDENTIFIED BRAINROT  --  reveal it at the Detective")
 	local gizliChips: { any } = {}
 	for _, id in Rarity.Order do
 		table.insert(gizliChips, {
@@ -462,8 +462,8 @@ local function buildPanel(info: any)
 	end
 	chipRow(gizliChips)
 
-	section("TEHLIKELI")
-	actionButton("Envanteri temizle", "clearInventory", nil, UI.Colors.bad)
+	section("DANGEROUS")
+	actionButton("Clear inventory", "clearInventory", nil, UI.Colors.bad)
 end
 
 AdminPanelAc.OnClientEvent:Connect(function(info)

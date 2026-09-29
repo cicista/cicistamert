@@ -126,42 +126,42 @@ function Sand.report(player: Player): (boolean, { string })
 		table.insert(accepted, item.Name)
 	end
 
-	table.insert(lines, `  Bastigin zemin (FloorMaterial) : {if material then material.Name else "YOK -- havadasin"}`)
-	table.insert(lines, `  Kabul edilen malzemeler        : {table.concat(accepted, ", ")}`)
-	table.insert(lines, `  Malzemeden kum sayildi mi      : {Sand.isSandMaterial(material)}`)
+	table.insert(lines, `  Floor under you (FloorMaterial) : {if material then material.Name else "NONE -- you are in the air"}`)
+	table.insert(lines, `  Accepted materials             : {table.concat(accepted, ", ")}`)
+	table.insert(lines, `  Sand by material?              : {Sand.isSandMaterial(material)}`)
 	table.insert(lines, "")
 
 	if ground then
 		table.insert(
 			lines,
-			`  Isinin buldugu parca           : {if ground.part then ground.part:GetFullName() else "Terrain"}`
+			`  Part hit by the ray            : {if ground.part then ground.part:GetFullName() else "Terrain"}`
 		)
-		table.insert(lines, `  O parcanin malzemesi           : {ground.material.Name}`)
+		table.insert(lines, `  That part's material           : {ground.material.Name}`)
 
 		local p = ground.part
 		if p then
 			table.insert(
 				lines,
 				string.format(
-					"  Boyu / konumu                  : (%.0f, %.1f, %.0f)  @ (%.0f, %.1f, %.0f)",
+					"  Size / position                : (%.0f, %.1f, %.0f)  @ (%.0f, %.1f, %.0f)",
 					p.Size.X, p.Size.Y, p.Size.Z, p.Position.X, p.Position.Y, p.Position.Z
 				)
 			)
 			table.insert(
 				lines,
 				string.format(
-					"  Saydamlik / CanCollide / sinif : %.2f / %s / %s",
+					"  Transparency / CanCollide / class : %.2f / %s / %s",
 					p.Transparency, tostring(p.CanCollide), p.ClassName
 				)
 			)
 		end
 		table.insert(
 			lines,
-			`  Addan kum sayildi mi           : {ground.part ~= nil and Sand.isSandName(ground.part.Name)}`
+			`  Sand by name?                  : {ground.part ~= nil and Sand.isSandName(ground.part.Name)}`
 		)
-		table.insert(lines, `  Zemin sans carpani             : x{ground.luck}`)
+		table.insert(lines, `  Ground luck multiplier         : x{ground.luck}`)
 	else
-		table.insert(lines, `  Isin hicbir zemine carpmadi ({S.rayDepth} stud asagi bakildi)`)
+		table.insert(lines, `  The ray hit no ground (checked {S.rayDepth} studs down)`)
 	end
 
 	local char = player.Character
@@ -173,17 +173,17 @@ function Sand.report(player: Player): (boolean, { string })
 
 		local bulunan = 0
 		table.insert(lines, "")
-		table.insert(lines, "  Yakindaki kum parcalari (80 stud):")
+		table.insert(lines, "  Nearby sand parts (80 studs):")
 
 		for _, part in Workspace:GetPartBoundsInRadius(root.Position, 80, params) do
 			if Sand.isSandMaterial(part.Material) or Sand.isSandName(part.Name) then
 				bulunan += 1
 				if bulunan <= 12 then
-					local isaret = if part.Transparency >= 0.9 then "   <-- GORUNMEZ" else ""
+					local isaret = if part.Transparency >= 0.9 then "   <-- INVISIBLE" else ""
 					table.insert(
 						lines,
 						string.format(
-							"    %s  boy=(%.0f, %.1f, %.0f)  saydam=%.2f%s",
+							"    %s  size=(%.0f, %.1f, %.0f)  transparency=%.2f%s",
 							part:GetFullName(), part.Size.X, part.Size.Y, part.Size.Z, part.Transparency, isaret
 						)
 					)
@@ -192,14 +192,14 @@ function Sand.report(player: Player): (boolean, { string })
 		end
 
 		if bulunan == 0 then
-			table.insert(lines, "    (yok)")
+			table.insert(lines, "    (none)")
 		elseif bulunan > 12 then
-			table.insert(lines, `    ... ve {bulunan - 12} parca daha`)
+			table.insert(lines, `    ... and {bulunan - 12} more parts`)
 		end
 	end
 
 	table.insert(lines, "")
-	table.insert(lines, `  SONUC -- kumda mi              : {onSand}`)
+	table.insert(lines, `  RESULT -- on sand?             : {onSand}`)
 
 	return onSand, lines
 end

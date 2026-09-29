@@ -50,7 +50,7 @@ function ArayuzSesi.tikla()
 		if not mevcut then
 			if not uyarildi then
 				uyarildi = true
-				warn('[ArayuzSesi] Adinda "Cartoon Bubble" gecen bir Sound bulunamadi (SoundService / Workspace / ReplicatedStorage)')
+				warn('[ArayuzSesi] No Sound with "Cartoon Bubble" in its name was found (SoundService / Workspace / ReplicatedStorage)')
 			end
 			return
 		end

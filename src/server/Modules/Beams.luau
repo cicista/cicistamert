@@ -140,8 +140,8 @@ local function step(label: string, fn: () -> ())
 	local ok, err = pcall(fn)
 	if not ok then
 		Assets.warnOnce(
-			`suzme adimi: {label}`,
-			`[Suzme] "{label}" adimi hata verdi, atlandi -- {tostring(err)}`
+			`beam step: {label}`,
+			`[Suzme] step "{label}" failed, skipped -- {tostring(err)}`
 		)
 	end
 end
@@ -233,7 +233,7 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	if cfg.groundParts and #cfg.groundParts > 0 and kademeOlcegi ~= 1
 		and (template:IsA("Model") or template:IsA("BasePart"))
 	then
-		step("zemin parcalari", function()
+		step("ground parts", function()
 			local gecici = Instance.new("Model")
 			local eskiEbeveyn = template.Parent
 			template.Parent = gecici
@@ -307,7 +307,7 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 
 		Assets.warnOnce(
 			`{cfg.label} vfx sinifi: {cfg.name}`,
-			`[{cfg.label}] "{cfg.name}" bir {template.ClassName}; icindekiler tasindi.`
+			`[{cfg.label}] "{cfg.name}" is a {template.ClassName}; its contents were moved.`
 		)
 	end
 
@@ -340,7 +340,7 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	end)
 
 	if #zeminParcalari > 0 then
-		step("zemin parcalari geri", function()
+		step("ground parts restore", function()
 			local taslar: { [Instance]: boolean } = {}
 			for _, kayit in zeminParcalari do
 				taslar[kayit.part] = true
@@ -495,7 +495,7 @@ local function buildWithVFX(
 	if not ok then
 		Assets.warnOnce(
 			`{cfg.label} vfx hatasi`,
-			`[{cfg.label}] VFX kurulamadi, yedek gorunume dusuldu -- {tostring(result)}`
+			`[{cfg.label}] VFX setup failed, using the fallback look -- {tostring(result)}`
 		)
 	end
 
@@ -811,7 +811,7 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 	active[id] = beam
 
 	if Beams.Debug then
-		print(`[Suzme] DOGDU {id} ({kind}) sahip={player.Name} toplam={Beams.countFor(player)}`)
+		print(`[Suzme] SPAWNED {id} ({kind}) owner={player.Name} total={Beams.countFor(player)}`)
 	end
 
 	return beam
@@ -951,7 +951,7 @@ function Beams.remove(id: string, reason: string?)
 	end
 
 	if Beams.Debug then
-		print(`[Suzme] SILINDI {id} ({beam.kind}) sahip={beam.owner.Name} sebep={reason or "belirtilmemis"}`)
+		print(`[Suzme] REMOVED {id} ({beam.kind}) owner={beam.owner.Name} reason={reason or "unspecified"}`)
 	end
 
 	if beam.model.Parent then
@@ -1018,7 +1018,7 @@ function Beams.cleanup()
 end
 
 Players.PlayerRemoving:Connect(function(player)
-	Beams.clearFor(player, "oyuncu ayrildi")
+	Beams.clearFor(player, "player left")
 end)
 
 return Beams

@@ -26,7 +26,7 @@ local MutasyonGosterisi = (function()
 	if ok and sonuc then
 		return sonuc
 	end
-	warn("[Fuse] MutasyonGosterisi yuklenemedi; mutasyon yazisi gosterilmeyecek")
+	warn("[Fuse] MutasyonGosterisi failed to load; mutation text will not be shown")
 	return { goster = function() end }
 end)()
 

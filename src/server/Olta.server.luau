@@ -168,7 +168,7 @@ local function attachPrompt()
 	end
 
 	if not anchor then
-		warn(`[Olta] Satici bulunamadi: {table.concat(SATICI_ADLARI, ", ")}`)
+		warn(`[Olta] Seller not found: {table.concat(SATICI_ADLARI, ", ")}`)
 		return
 	end
 
@@ -191,7 +191,7 @@ local function attachPrompt()
 		RodAc:FireClient(player, payload(player))
 	end)
 
-	print(`[Olta] Satici promptu kuruldu: {anchor:GetFullName()}`)
+	print(`[Olta] Seller prompt set up: {anchor:GetFullName()}`)
 end
 
 task.spawn(attachPrompt)

@@ -299,7 +299,7 @@ local function bitir(player: Player, durum: Durum, is: Toplama)
 		if ok then
 			yeni = sonuc
 		else
-			warn(`[AfkSans] yeni yonca kurulamadi: {sonuc}`)
+			warn(`[AfkSans] new clover could not be spawned: {sonuc}`)
 		end
 	end
 
@@ -432,10 +432,10 @@ function AfkSans.robuxlaAc(player: Player, alanId: string)
 	local alan = Ayar.get(alanId)
 	local data = PlayerData.get(player)
 	if not alan or not alan.robux then
-		error(`robux alani degil: {alanId}`)
+		error(`not a robux field: {alanId}`)
 	end
 	if not data then
-		error("oyuncu verisi yok")
+		error("no player data")
 	end
 
 	data.afkOzel[alanId] = true
@@ -550,7 +550,7 @@ local function teleportEt(player: Player, ayniSunucu: boolean): boolean
 		TeleportService:TeleportAsync(game.PlaceId, { player }, secenek)
 	end)
 	if not ok then
-		warn(`[AfkSans] {player.Name} yeniden baglanamadi (ayni sunucu: {ayniSunucu}): {hata}`)
+		warn(`[AfkSans] {player.Name} could not reconnect (same server: {ayniSunucu}): {hata}`)
 	end
 	return ok
 end
@@ -572,7 +572,7 @@ local function teleportPatladi(player: Player, _sonuc: Enum.TeleportResult, mesa
 	if not baglananlar[player] or not player.Parent then
 		return
 	end
-	warn(`[AfkSans] {player.Name} teleportu basarisiz: {mesaj}`)
+	warn(`[AfkSans] {player.Name} teleport failed: {mesaj}`)
 	if secenek and secenek.ServerInstanceId ~= "" and teleportEt(player, false) then
 		return
 	end
@@ -670,11 +670,11 @@ function AfkSans.baslat()
 
 	local klasor = Workspace:FindFirstChild(Ayar.KlasorAdi)
 	if not klasor then
-		warn(`[AfkSans] Workspace > {Ayar.KlasorAdi} bulunamadi; yonca alanlari calismaz`)
+		warn(`[AfkSans] Workspace > {Ayar.KlasorAdi} not found; clover fields will not work`)
 	else
 		for _, alan in Ayar.Alanlar do
 			if not zemin(alan.id) then
-				warn(`[AfkSans] {Ayar.KlasorAdi} > {alan.id} bir Part degil ya da yok`)
+				warn(`[AfkSans] {Ayar.KlasorAdi} > {alan.id} is not a Part or is missing`)
 			end
 		end
 
@@ -729,7 +729,7 @@ function AfkSans.baslat()
 	end)
 
 	if npcBagla() == 0 then
-		warn(`[AfkSans] '{Ayar.NpcAdi}' haritada bulunamadi; eklenince baglanacak`)
+		warn(`[AfkSans] '{Ayar.NpcAdi}' not found in the map; will connect once added`)
 	end
 	Workspace.DescendantAdded:Connect(function(node)
 		if string.lower(node.Name) == string.lower(Ayar.NpcAdi) then

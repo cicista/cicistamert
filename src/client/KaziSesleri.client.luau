@@ -55,7 +55,7 @@ local function cal(kayit: SesKaydi)
 	if not ses then
 		if not kayit.uyarildi then
 			kayit.uyarildi = true
-			warn(`[KaziSesleri] Adinda "{kayit.anahtar}" gecen bir Sound bulunamadi (SoundService / Workspace / ReplicatedStorage)`)
+			warn(`[KaziSesleri] No Sound with "{kayit.anahtar}" in its name was found (SoundService / Workspace / ReplicatedStorage)`)
 		end
 		return
 	end
@@ -115,7 +115,7 @@ local function donguyuBaslat()
 	if not kaynak then
 		if not kaziDongusu.uyarildi then
 			kaziDongusu.uyarildi = true
-			warn('[KaziSesleri] Adinda "Dirt Digging" gecen bir Sound bulunamadi (SoundService / Workspace / ReplicatedStorage)')
+			warn('[KaziSesleri] No Sound with "Dirt Digging" in its name was found (SoundService / Workspace / ReplicatedStorage)')
 		end
 		return
 	end

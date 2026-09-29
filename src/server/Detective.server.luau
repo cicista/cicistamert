@@ -26,7 +26,7 @@ do
 		if ok then
 			Ogretici = sonuc
 		else
-			warn(`[Ogretici] modul yuklenemedi: {tostring(sonuc)}`)
+			warn(`[Ogretici] module failed to load: {tostring(sonuc)}`)
 		end
 	end
 end
@@ -113,7 +113,7 @@ local function attachPrompt(model: Model)
 		or model:FindFirstChildWhichIsA("BasePart")
 
 	if not anchor then
-		warn("[Detective] NPC'de tutunulacak bir Part bulunamadi")
+		warn("[Detective] No Part found on the NPC to attach to")
 		return
 	end
 
@@ -390,7 +390,7 @@ task.spawn(function()
 			if is and not is.bitti and simdi >= is.bitis then
 				local ok, hata = pcall(isiBitir, player, data)
 				if not ok then
-					warn(`[Detective] {player.Name} isi bitirilemedi: {tostring(hata)}`)
+					warn(`[Detective] {player.Name} job could not be finished: {tostring(hata)}`)
 				end
 			end
 		end

@@ -64,7 +64,7 @@ end
 function Gacha.ver(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
-		error("oyuncu verisi yok")
+		error("no player data")
 	end
 
 	local onceki = data.gachaIska
@@ -74,7 +74,7 @@ function Gacha.ver(player: Player)
 
 	local item = PlayerData.addBrainrot(player, rarityId, condition, mutation, nil, true)
 	if not item then
-		error("yumurta cantaya eklenemedi")
+		error("egg could not be added to the backpack")
 	end
 
 	data.gachaIska = if Ayar.ArtanKademeler[rarityId] then 0 else math.min(onceki + 1, Ayar.maxIska())
@@ -167,7 +167,7 @@ function Gacha.baslat()
 		end
 		local ok, hata = pcall(Gacha.ver, player)
 		if not ok then
-			warn(`[Gacha] admin denemesi basarisiz ({player.Name}): {hata}`)
+			warn(`[Gacha] admin test failed ({player.Name}): {hata}`)
 		end
 	end)
 
@@ -176,7 +176,7 @@ function Gacha.baslat()
 	end)
 
 	if npcBagla() == 0 then
-		warn(`[Gacha] '{Ayar.NpcAdi}' NPC'si haritada bulunamadi; eklenince baglanacak`)
+		warn(`[Gacha] NPC '{Ayar.NpcAdi}' not found in the map; will connect once added`)
 	end
 	Workspace.DescendantAdded:Connect(function(node)
 		if string.lower(node.Name) == string.lower(Ayar.NpcAdi) then

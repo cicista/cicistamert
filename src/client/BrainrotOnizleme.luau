@@ -167,12 +167,12 @@ local function gizliSahne(model: Model, kamera: Camera): boolean
 			end
 			if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("SurfaceGui") then
 				local ek = if d:IsA("BasePart")
-					then ` boy={d.Size} konum={d.Position} saydam={d.Transparency} kup={d:GetAttribute(Assets.HiddenBrainrot.keepAttribute) == true}`
-					else ` yuz={(d :: any).Face}`
+					then ` size={d.Size} position={d.Position} transparency={d.Transparency} cube={d:GetAttribute(Assets.HiddenBrainrot.keepAttribute) == true}`
+					else ` face={(d :: any).Face}`
 				table.insert(satirlar, `  {d.ClassName} {d.Name}{ek}`)
 			end
 		end
-		print(`[BrainrotOnizleme] Gizli model ({model.Name}) bakis {normal}, kutu {enCok - enAz}:\n{table.concat(satirlar, "\n")}`)
+		print(`[BrainrotOnizleme] Hidden model ({model.Name}) view {normal}, box {enCok - enAz}:\n{table.concat(satirlar, "\n")}`)
 	end
 	return true
 end

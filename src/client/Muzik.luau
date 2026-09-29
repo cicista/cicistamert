@@ -141,7 +141,7 @@ local function cal(kaynak: Sound)
 			bag:Disconnect()
 		end
 	else
-		warn(`[Muzik] "{kaynak.Name}" yuklenemedi, siradaki sarkiya geciliyor`)
+		warn(`[Muzik] "{kaynak.Name}" failed to load, skipping to the next song`)
 		task.wait(1)
 	end
 
@@ -163,8 +163,8 @@ task.spawn(function()
 
 	if #sarkilar == 0 then
 		warn(
-			`[Muzik] Sarki bulunamadi. Workspace > {Muzik.KlasorAdi} klasorune `
-				.. `Sound nesneleri koy (ya da "{Muzik.SesAdi}" adli tek bir Sound).`
+			`[Muzik] No songs found. Put Sound objects in the Workspace > {Muzik.KlasorAdi} folder `
+				.. `(or a single Sound named "{Muzik.SesAdi}").`
 		)
 		return
 	end
@@ -174,7 +174,7 @@ task.spawn(function()
 		ses.Playing = false
 	end
 
-	print(`[Muzik] {#sarkilar} sarki bulundu, calma listesi karistirildi`)
+	print(`[Muzik] {#sarkilar} songs found, playlist shuffled`)
 
 	local sonAd: string? = nil
 

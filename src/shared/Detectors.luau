@@ -90,7 +90,7 @@ Detectors.Default = "Basic" :: DetectorId
 
 function Detectors.get(id: DetectorId): DetectorInfo
 	local info = Detectors.Info[id]
-	assert(info, `bilinmeyen dedektor: {tostring(id)}`)
+	assert(info, `unknown detector: {tostring(id)}`)
 	return info
 end
 

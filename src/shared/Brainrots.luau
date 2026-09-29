@@ -255,7 +255,7 @@ end
 
 function Brainrots.roll(rarityId: Rarity.RarityId, rng: Random): BrainrotInfo
 	local pool = Brainrots.pool(rarityId)
-	assert(#pool > 0, `{rarityId} icin brainrot havuzu bos`)
+	assert(#pool > 0, `brainrot pool for {rarityId} is empty`)
 	return pool[rng:NextInteger(1, #pool)]
 end
 
@@ -264,7 +264,7 @@ function Brainrots.rollIsland(rarityId: Rarity.RarityId, island: string?, rng: R
 	if #pool == 0 then
 		pool = Brainrots.islandPool(rarityId, Brainrots.firstIslandOf(rarityId))
 	end
-	assert(#pool > 0, `{rarityId} icin brainrot havuzu bos`)
+	assert(#pool > 0, `brainrot pool for {rarityId} is empty`)
 	return pool[rng:NextInteger(1, #pool)]
 end
 

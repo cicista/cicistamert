@@ -500,11 +500,11 @@ local function kur()
 		local cfg = Ores.island(s.ada) :: Ores.IslandOres
 		local tezgah = standKur(`{s.npcAdi}_Yedek`, s.baslik, cfg, s.kayma)
 		if tezgah then
-			warn(`[AdaSatici] '{s.npcAdi}' haritada bulunamadi -- {cfg.name} spawn yanina yedek tezgah kuruldu`)
+			warn(`[AdaSatici] '{s.npcAdi}' not found in the map -- built a fallback stand next to the {cfg.name} spawn`)
 			yedekler[s.npcAdi] = tezgah.Parent :: Instance
 			bagla(s, tezgah)
 		else
-			warn(`[AdaSatici] '{s.npcAdi}' bulunamadi ve yedek kurulamadi ({cfg.spawnPart} yok)`)
+			warn(`[AdaSatici] '{s.npcAdi}' not found and no fallback could be built ({cfg.spawnPart} missing)`)
 		end
 	end
 end

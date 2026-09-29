@@ -255,8 +255,8 @@ local function attachPrompt()
 
 	if not anchor then
 		warn(
-			`[Magaza] Su adlarla model bulunamadi: {table.concat(MAGAZA_ADLARI, ", ")}`
-				.. " -- yedek tezgah kuruldu"
+			`[Magaza] No model found with these names: {table.concat(MAGAZA_ADLARI, ", ")}`
+				.. " -- built a fallback stand"
 		)
 
 		local stand = Instance.new("Part")
@@ -289,7 +289,7 @@ local function attachPrompt()
 		MagazaAc:FireClient(player, shopPayload(player))
 	end)
 
-	print(`[Magaza] Prompt kuruldu: {anchor:GetFullName()}`)
+	print(`[Magaza] Prompt set up: {anchor:GetFullName()}`)
 end
 
 task.spawn(attachPrompt)

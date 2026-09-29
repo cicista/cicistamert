@@ -27,7 +27,7 @@ do
 		if ok then
 			Ogretici = sonuc
 		else
-			warn(`[Ogretici] modul yuklenemedi: {tostring(sonuc)}`)
+			warn(`[Ogretici] module failed to load: {tostring(sonuc)}`)
 		end
 	end
 end
@@ -197,7 +197,7 @@ local function finishDig(player: Player, won: boolean)
 		return
 	end
 
-	Beams.remove(session.beamId, if won then "kazi kazanildi" else "kazi kaybedildi")
+	Beams.remove(session.beamId, if won then "dig won" else "dig lost")
 
 	local maden = Ores.get(beam.kind)
 
@@ -483,8 +483,8 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 
 		if enHizli == math.huge then
 			warn(
-				`[Kazi] {player.Name} erisilemez bir kademeyi kazandi dedi `
-					.. `({session.gearId} ile {session.rarityId}), reddedildi`
+				`[Kazi] {player.Name} claimed to win an unreachable tier `
+					.. `({session.gearId} with {session.rarityId}), rejected`
 			)
 			finishDig(player, false)
 			return
@@ -493,8 +493,8 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 		local altSinir = enHizli * 0.85
 		if elapsed < altSinir then
 			warn(
-				`[Kazi] {player.Name} minioyunu imkansiz surede bitirdi `
-					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", altSinir)}s), reddedildi`
+				`[Kazi] {player.Name} finished the minigame impossibly fast `
+					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", altSinir)}s), rejected`
 			)
 			finishDig(player, false)
 			return
@@ -505,8 +505,8 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 		local enHizli = DigMinigame.minDuration(session.gearId) * 0.9
 		if elapsed < enHizli then
 			warn(
-				`[Kazi] {player.Name} olta oyununu imkansiz surede bitirdi `
-					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", enHizli)}s), reddedildi`
+				`[Kazi] {player.Name} finished the fishing game impossibly fast `
+					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", enHizli)}s), rejected`
 			)
 			finishDig(player, false)
 			return
@@ -523,7 +523,7 @@ task.spawn(function()
 		for _, player in Players:GetPlayers() do
 			local ok, err = pcall(otoEkipman, player)
 			if not ok then
-				warn(`[Kazi] {player.Name}: otomatik ekipman hata verdi -- {tostring(err)}`)
+				warn(`[Kazi] {player.Name}: auto equip failed -- {tostring(err)}`)
 			end
 		end
 	end
@@ -584,8 +584,8 @@ task.spawn(function()
 					elseif not girdapBildirildi then
 						girdapBildirildi = true
 						warn(
-							"[Girdap] Su bulunamadi: deniz parcalarinin adinda "
-								.. "deniz/sea/ocean/water/su geciyor mu, isin onlara carpiyor mu?"
+							"[Girdap] Water not found: do the sea part names contain "
+								.. "deniz/sea/ocean/water/su, and does the ray hit them?"
 						)
 					end
 				end

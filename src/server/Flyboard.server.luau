@@ -71,8 +71,8 @@ local function flyboardTemplate(): Instance?
 
 	if not found then
 		warn(
-			`[Flyboard] "{Flyboard.ModelName}" bulunamadi. `
-				.. "ReplicatedStorage > Assets ya da Workspace icine koy."
+			`[Flyboard] "{Flyboard.ModelName}" not found. `
+				.. "Put it in ReplicatedStorage > Assets or Workspace."
 		)
 		return nil
 	end
@@ -122,7 +122,7 @@ local function buildBoard(info: Flyboard.FlyboardInfo): (Instance?, BasePart?)
 		end)
 
 		if not ok then
-			warn(`[Flyboard] Olcekleme yapilamadi: {tostring(err)}`)
+			warn(`[Flyboard] Scaling failed: {tostring(err)}`)
 		end
 	end
 
@@ -187,7 +187,7 @@ local function buildBoard(info: Flyboard.FlyboardInfo): (Instance?, BasePart?)
 	end)
 
 	if not vfxOk then
-		warn(`[Flyboard] Efekt ayarlanamadi: {tostring(vfxErr)}`)
+		warn(`[Flyboard] Effect setup failed: {tostring(vfxErr)}`)
 	end
 
 	return board, anchor
@@ -294,7 +294,7 @@ end
 local function ucmaSesiTak(anchor: BasePart)
 	local sablon = ucmaSesiBul()
 	if not sablon then
-		warn(`[Flyboard] Workspace'te "{UCMA_SESI}" adli Sound yok; tahta sessiz`)
+		warn(`[Flyboard] No Sound named "{UCMA_SESI}" in Workspace; the board is silent`)
 		return
 	end
 	local ses = sablon:Clone()
@@ -775,7 +775,7 @@ local function attachPrompt()
 	end
 
 	if not anchor then
-		warn(`[Flyboard] Satici bulunamadi: {table.concat(SATICI_ADLARI, ", ")}`)
+		warn(`[Flyboard] Seller not found: {table.concat(SATICI_ADLARI, ", ")}`)
 		return
 	end
 
@@ -798,7 +798,7 @@ local function attachPrompt()
 		FlyboardAc:FireClient(player, payload(player))
 	end)
 
-	print(`[Flyboard] Satici promptu kuruldu: {anchor:GetFullName()}`)
+	print(`[Flyboard] Seller prompt set up: {anchor:GetFullName()}`)
 end
 
 task.spawn(attachPrompt)

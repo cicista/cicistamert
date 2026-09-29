@@ -13,7 +13,7 @@ local function idleUygula(character: Model)
 	local animate = character:WaitForChild("Animate", 10)
 	local idle = animate and animate:WaitForChild("idle", 10)
 	if not idle then
-		warn(`[KarakterAnimasyonlari] {character.Name}: Animate > idle bulunamadi, idle animasyonu takilamadi`)
+		warn(`[KarakterAnimasyonlari] {character.Name}: Animate > idle not found, idle animation not attached`)
 		return
 	end
 

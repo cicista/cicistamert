@@ -150,8 +150,8 @@ local function anlaticiBul(anahtar: string): string?
 	if not anlaticiUyarildi[anahtar] then
 		anlaticiUyarildi[anahtar] = true
 		warn(
-			`[Ogretici] Anlatici resmi yok: ReplicatedStorage > Assets > Icons icine `
-				.. `"{table.concat(adaylar, "\" / \"")}" adlarindan biriyle koy.`
+			`[Ogretici] Narrator image missing: add it to ReplicatedStorage > Assets > Icons `
+				.. `with one of these names: "{table.concat(adaylar, "\" / \"")}".`
 		)
 	end
 	return nil
@@ -848,7 +848,7 @@ local function hedefiTazele()
 	local imza = `{siraNo}|{adim.hedef}|{bulunan:GetFullName()}`
 	if imza ~= sonTeshis then
 		sonTeshis = imza
-		print(`[Ogretici] adim {siraNo} ({adim.hedef}) -> {bulunan:GetFullName()}`)
+		print(`[Ogretici] step {siraNo} ({adim.hedef}) -> {bulunan:GetFullName()}`)
 	end
 
 	if adim.hedef == "kum" and not sunucuKonumu then

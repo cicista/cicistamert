@@ -16,7 +16,7 @@ local MutasyonGosterisi = (function()
 			return sonuc
 		end
 	end
-	warn("[ScrollEfekti] MutasyonGosterisi yuklenemedi; gosteri oynatilmayacak")
+	warn("[ScrollEfekti] MutasyonGosterisi failed to load; the effect will not play")
 	return nil
 end)()
 

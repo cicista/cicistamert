@@ -623,8 +623,8 @@ local function modKur(yeniMod: string, rarityId: string)
 		if maden and not kazmaResmi and not kazmaUyarisiVerildi then
 			kazmaUyarisiVerildi = true
 			warn(
-				`[Minigame] Kazma ikonu bulunamadi: ReplicatedStorage > Assets > Icons `
-					.. `icine "{KAZMA_IKON_ADI}" adli bir Decal ya da ImageLabel koy. Simdilik kurek gorunuyor.`
+				`[Minigame] Pickaxe icon not found: ReplicatedStorage > Assets > Icons `
+					.. `- add a Decal or ImageLabel named "{KAZMA_IKON_ADI}". Showing the shovel for now.`
 			)
 		end
 		kaziIkon.Image = kazmaResmi or KUREK_IKONU

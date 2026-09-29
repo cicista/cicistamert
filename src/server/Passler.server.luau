@@ -58,7 +58,7 @@ local function kontrol(player: Player, ad: string)
 			return
 		end
 
-		warn(`[Passler] {player.Name} / {ad} sorgusu basarisiz ({deneme}/{DENEME_SAYISI}): {sonuc}`)
+		warn(`[Passler] {player.Name} / {ad} query failed ({deneme}/{DENEME_SAYISI}): {sonuc}`)
 		if not player.Parent then
 			return
 		end
@@ -100,7 +100,7 @@ PassSatinAl.OnServerEvent:Connect(function(player, ad)
 		MarketplaceService:PromptGamePassPurchase(player, info.id)
 	end)
 	if not ok then
-		warn(`[Passler] satin alma penceresi acilamadi ({ad}): {hata}`)
+		warn(`[Passler] purchase prompt could not be opened ({ad}): {hata}`)
 	end
 end)
 

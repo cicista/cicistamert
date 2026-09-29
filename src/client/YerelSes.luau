@@ -37,7 +37,7 @@ function YerelSes.bul(ad: string): Sound?
 
 	if not uyarilan[ad] then
 		uyarilan[ad] = true
-		warn(`[YerelSes] "{ad}" adli Sound bulunamadi (Workspace / SoundService / ReplicatedStorage)`)
+		warn(`[YerelSes] Sound named "{ad}" not found (Workspace / SoundService / ReplicatedStorage)`)
 	end
 	return nil
 end

@@ -868,7 +868,7 @@ bolumBasligi("Items")
 for _, kart in RobuxMagaza.Kartlar do
 	local ok, hata = pcall(urunKarti, kart)
 	if not ok then
-		warn(`[RobuxMagaza] "{kart.id}" karti cizilemedi: {hata}`)
+		warn(`[RobuxMagaza] card "{kart.id}" could not be drawn: {hata}`)
 	end
 end
 

@@ -429,7 +429,7 @@ end
 
 function Tools.buildPickaxe(pickaxeId: string): Tool
 	local info = Ores.Pickaxes[pickaxeId]
-	assert(info, `bilinmeyen kazma: {tostring(pickaxeId)}`)
+	assert(info, `unknown pickaxe: {tostring(pickaxeId)}`)
 
 	local tool = Instance.new("Tool")
 	tool.RequiresHandle = true
@@ -748,7 +748,7 @@ function Tools.buildBrainrot(item: any): Tool
 		if not ok then
 			Assets.warnOnce(
 				`tool modeli: {item.name}`,
-				`[Tools] "{item.name}" tool modeli hazirlanamadi, duz gorunume dusuldu -- {tostring(err)}`
+				`[Tools] "{item.name}" tool model could not be prepared, using the plain look -- {tostring(err)}`
 			)
 
 			for _, child in tool:GetChildren() do
@@ -881,7 +881,7 @@ function Tools.buildScroll(scrollId: string, count: number): Tool?
 	local klasor = Assets.klasor(Assets.Categories.scrolls)
 	local sablon = klasor and klasor:FindFirstChild(info.modelAdi, true)
 	if not sablon or not sablon:IsA("Tool") then
-		warn(`[Tools] Scroll bulunamadi: Assets > {Assets.Categories.scrolls} > {info.modelAdi}`)
+		warn(`[Tools] Scroll not found: Assets > {Assets.Categories.scrolls} > {info.modelAdi}`)
 		return nil
 	end
 

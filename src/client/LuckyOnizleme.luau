@@ -71,7 +71,7 @@ function LuckyOnizleme.ekle(kutu: GuiObject, tier: any, zIndex: number?): boolea
 
 	local model = Assets.luckyBlockModel(tur.modelName or tur.displayName, tur.order)
 	if not model then
-		warn(`[LuckyOnizleme] Model bulunamadi: ReplicatedStorage > Assets > LuckyBlocks ({tur.id})`)
+		warn(`[LuckyOnizleme] Model not found: ReplicatedStorage > Assets > LuckyBlocks ({tur.id})`)
 		return false
 	end
 

@@ -387,8 +387,8 @@ function Icons.assetRaporu()
 	local klasor = assetKlasoru()
 	if not klasor then
 		warn(
-			"[Icons] ReplicatedStorage > Assets > Icons bulunamadi; "
-				.. "maden ikonlari cikmaz."
+			"[Icons] ReplicatedStorage > Assets > Icons not found; "
+				.. "ore icons will not show."
 		)
 		return
 	end
@@ -401,7 +401,7 @@ function Icons.assetRaporu()
 	end
 
 	if #eksik == 0 then
-		print("[Icons] Assets > Icons: butun maden ikonlari bulundu.")
+		print("[Icons] Assets > Icons: all ore icons found.")
 		return
 	end
 
@@ -411,8 +411,8 @@ function Icons.assetRaporu()
 	end
 	table.sort(eksik)
 	warn(
-		`[Icons] Assets > Icons icinde karsiligi bulunamayan: {table.concat(eksik, ", ")}. `
-			.. `Klasorde olanlar: {table.concat(adlar, ", ")}`
+		`[Icons] Missing in Assets > Icons: {table.concat(eksik, ", ")}. `
+			.. `Folder contents: {table.concat(adlar, ", ")}`
 	)
 end
 
@@ -420,8 +420,8 @@ function Icons.report()
 	local pack = findPack()
 	if not pack then
 		warn(
-			`[Icons] '{Icons.PackName}' bulunamadi. Paketi ReplicatedStorage `
-				.. "ya da Workspace icine koy."
+			`[Icons] '{Icons.PackName}' not found. Put the pack in ReplicatedStorage `
+				.. "or Workspace."
 		)
 		return
 	end
@@ -437,16 +437,16 @@ function Icons.report()
 
 	table.sort(lost)
 	if #lost == 0 then
-		print(`[Icons] {pack:GetFullName()} -- {found} ikon hazir`)
+		print(`[Icons] {pack:GetFullName()} -- {found} icons ready`)
 	else
-		warn(`[Icons] {found} ikon hazir, BULUNAMAYAN: {table.concat(lost, ", ")}`)
+		warn(`[Icons] {found} icons ready, MISSING: {table.concat(lost, ", ")}`)
 	end
 end
 
 function Icons.katalog(category: string?)
 	local pack = findPack()
 	if not pack then
-		warn(`[Icons] '{Icons.PackName}' bulunamadi.`)
+		warn(`[Icons] '{Icons.PackName}' not found.`)
 		return
 	end
 

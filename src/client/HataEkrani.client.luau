@@ -17,7 +17,7 @@ local KENDILIGINDEN_KAPANMA = 20
 
 local YOKSAY = {
 	"StudioAccessToApisNotAllowed",
-	"ikon hazir, BULUNAMAYAN",
+	"icons ready, MISSING",
 	"HataEkrani",
 }
 
@@ -77,7 +77,7 @@ local function ekle(kaynak: string, mesaj: string, tur: Enum.MessageType)
 	if yoksay(mesaj) then
 		return
 	end
-	local etiket = if tur == Enum.MessageType.MessageError then "HATA" else "uyari"
+	local etiket = if tur == Enum.MessageType.MessageError then "ERROR" else "warning"
 	local satir = `[{kaynak} {etiket}] {mesaj}`
 	if table.find(satirlar, satir) then
 		return
@@ -86,7 +86,7 @@ local function ekle(kaynak: string, mesaj: string, tur: Enum.MessageType)
 	while #satirlar > EN_FAZLA do
 		table.remove(satirlar, 1)
 	end
-	kutu.Text = "HATA EKRANI (yalnizca Studio)\n\n" .. table.concat(satirlar, "\n")
+	kutu.Text = "ERROR SCREEN (Studio only)\n\n" .. table.concat(satirlar, "\n")
 	ekran.Enabled = true
 
 	sonHata = os.clock()
@@ -99,11 +99,11 @@ local function ekle(kaynak: string, mesaj: string, tur: Enum.MessageType)
 end
 
 for _, kayit in LogService:GetLogHistory() do
-	ekle("istemci", kayit.message, kayit.messageType)
+	ekle("client", kayit.message, kayit.messageType)
 end
 
 LogService.MessageOut:Connect(function(mesaj, tur)
-	ekle("istemci", mesaj, tur)
+	ekle("client", mesaj, tur)
 end)
 
 task.spawn(function()
@@ -111,7 +111,7 @@ task.spawn(function()
 	if olay and olay:IsA("RemoteEvent") then
 		olay.OnClientEvent:Connect(function(mesaj, turAdi)
 			local tur = if turAdi == "MessageError" then Enum.MessageType.MessageError else Enum.MessageType.MessageWarning
-			ekle("SUNUCU", tostring(mesaj), tur)
+			ekle("SERVER", tostring(mesaj), tur)
 		end)
 	end
 end)

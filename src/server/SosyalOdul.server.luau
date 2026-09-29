@@ -163,7 +163,7 @@ EkOdulAl.OnServerEvent:Connect(function(player, tur, index)
 	mesgul[player] = true
 	local ok, hata = pcall(al, player, tur, index)
 	if not ok then
-		warn(`[SosyalOdul] {player.Name} {tur} odulu verilemedi: {tostring(hata)}`)
+		warn(`[SosyalOdul] {tur} reward could not be given to {player.Name}: {tostring(hata)}`)
 	end
 	mesgul[player] = nil
 	durumGonder(player)

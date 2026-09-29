@@ -112,7 +112,7 @@ local function luckySesi(): Sound?
 
 	if not sesUyarildi then
 		sesUyarildi = true
-		warn('[LuckyBlock] Adinda "Lucky Block" gecen bir Sound bulunamadi (Workspace / SoundService / ReplicatedStorage). Ses olmadan devam ediliyor.')
+		warn('[LuckyBlock] No Sound with "Lucky Block" in its name was found (Workspace / SoundService / ReplicatedStorage). Continuing without sound.')
 	end
 	return nil
 end
@@ -525,9 +525,9 @@ local function runEvent()
 
 	if #zeminler == 0 then
 		warn(
-			`[LuckyBlock] Etkinlik: adinda "{E.zeminAdi}" gecen parca bulunamadi -- `
-				.. "bloklar eski duzenle adalarin kumuna dusuyor. Ada parcalarinin icine "
-				.. "luckyzemin adinda parcalar koy."
+			`[LuckyBlock] Event: no part with "{E.zeminAdi}" in its name -- `
+				.. "blocks fall on the island sand the old way. Put parts named "
+				.. "luckyzemin inside the island parts."
 		)
 
 		local dusen = 0
@@ -569,7 +569,7 @@ local function runEvent()
 	end
 
 	if spawned == 0 then
-		warn("[LuckyBlock] Etkinlik: zeminler bulundu ama hicbir blok dusurulemedi")
+		warn("[LuckyBlock] Event: floors found but no block could be dropped")
 		return
 	end
 

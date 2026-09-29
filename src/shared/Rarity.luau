@@ -173,7 +173,7 @@ Rarity.LuckyBlock = {
 
 function Rarity.get(id: RarityId): RarityInfo
 	local info = Rarity.Info[id]
-	assert(info, `bilinmeyen rarity: {tostring(id)}`)
+	assert(info, `unknown rarity: {tostring(id)}`)
 	return info
 end
 

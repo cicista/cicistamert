@@ -11,7 +11,7 @@ local function kurekFiyati(level: number): number
 			return info.price
 		end
 	end
-	error(`AfkSans: Lv{level} kurek bulunamadi`)
+	error(`AfkSans: Lv{level} shovel not found`)
 end
 
 local function oltaFiyati(level: number): number
@@ -20,7 +20,7 @@ local function oltaFiyati(level: number): number
 			return info.price
 		end
 	end
-	error(`AfkSans: Lv{level} olta bulunamadi`)
+	error(`AfkSans: Lv{level} rod not found`)
 end
 
 export type Alan = {

@@ -709,7 +709,7 @@ task.delay(EN_COK_BEKLEME, hazirOl)
 task.spawn(function()
 	local ok, hata = pcall(varliklariYukle)
 	if not ok then
-		warn(`[YuklemeEkrani] Varliklar yuklenemedi: {tostring(hata)}`)
+		warn(`[YuklemeEkrani] Assets failed to preload: {tostring(hata)}`)
 	end
 
 	ilerle(0.8, "Waiting for the world...")

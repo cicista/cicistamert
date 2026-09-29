@@ -258,7 +258,7 @@ function Assets.listLuckyBlocks()
 	for index, model in list do
 		table.insert(names, `{index}) {model.Name}`)
 	end
-	print(`[Assets] Lucky Block modelleri: {table.concat(names, "  ")}`)
+	print(`[Assets] Lucky Block models: {table.concat(names, "  ")}`)
 end
 
 function Assets.luckyBlockModel(modelName: string?, order: number?): Model?
@@ -298,9 +298,9 @@ function Assets.luckyBlockModel(modelName: string?, order: number?): Model?
 		if not luckyWarned then
 			luckyWarned = true
 			warn(
-				"[Assets] Lucky Block modeli bulunamadi. Modelleri "
-					.. "ReplicatedStorage > Assets > LuckyBlocks icine koy "
-					.. "(ya da adlarinda 'Lucky' gecsin). Simdilik yedek kup kullaniliyor."
+				"[Assets] Lucky Block model not found. Put the models in "
+					.. "ReplicatedStorage > Assets > LuckyBlocks "
+					.. "(or include 'Lucky' in their names). Using a fallback cube for now."
 			)
 		end
 		return nil
@@ -501,7 +501,7 @@ local function grabTemplate(name: string, category: string, hint: string, quiet:
 
 	if not found then
 		if not quiet then
-			Assets.warnOnce(`sablon yok: {key}`, `[Assets] "{name}" bulunamadi. {hint}`)
+			Assets.warnOnce(`no template: {key}`, `[Assets] "{name}" not found. {hint}`)
 		end
 		return nil
 	end
@@ -621,8 +621,8 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 		if #tutamak:GetChildren() == 0 then
 			tutamak:Destroy()
 			Assets.warnOnce(
-				`vfx bos: {ad}`,
-				`[Assets] "{ad}" icinde efekt yok (parca, parcacik ya da isik bulunamadi).`
+				`vfx empty: {ad}`,
+				`[Assets] "{ad}" has no effects (no parts, particles or lights found).`
 			)
 			return nil
 		end
@@ -743,7 +743,7 @@ function Assets.vfxTemplate(name: string): Instance?
 	local template = grabTemplate(
 		name,
 		Assets.Categories.vfx,
-		"ReplicatedStorage > Assets icine (ya da Workspace'e) koy. Efekt olmadan devam ediliyor.",
+		"Put it in ReplicatedStorage > Assets (or Workspace). Continuing without the effect.",
 		true
 	)
 
@@ -765,9 +765,9 @@ function Assets.vfxTemplate(name: string): Instance?
 
 	if not template then
 		Assets.warnOnce(
-			`vfx yok: {name}`,
-			`[Assets] "{name}" bulunamadi. ReplicatedStorage > Assets icine koy `
-				.. "(alt klasor sart degil). Efekt olmadan devam ediliyor."
+			`vfx missing: {name}`,
+			`[Assets] "{name}" not found. Put it in ReplicatedStorage > Assets `
+				.. "(subfolder not required). Continuing without the effect."
 		)
 		return nil
 	end
@@ -1082,12 +1082,12 @@ local function yumurtaEslesmesi(): { [string]: Instance }
 				table.insert(eksik, gorunen)
 			end
 		end
-		print(`[Assets] Yumurta eslesmesi ({#liste} model): {table.concat(satirlar, "  ")}`)
+		print(`[Assets] Egg mapping ({#liste} models): {table.concat(satirlar, "  ")}`)
 		if #eksik > 0 then
 			warn(
-				`[Assets] Su kademelerin yumurtasi bulunamadi: {table.concat(eksik, ", ")}. `
-					.. "Yumurtanin adinda kademenin ekranda gorunen adi gecmeli "
-					.. '(orn. "Divine Egg").'
+				`[Assets] No egg found for these tiers: {table.concat(eksik, ", ")}. `
+					.. "The egg name must contain the tier's display name "
+					.. '(e.g. "Divine Egg").'
 			)
 		end
 	end
@@ -1139,10 +1139,10 @@ function Assets.hiddenBrainrotModel(rarityId: string?): Model?
 
 	if not found then
 		Assets.warnOnce(
-			`gizli brainrot yok: {cfg.name}`,
-			`[Assets] "{cfg.name}" bulunamadi. {#Assets.searchRoots()} servis tarandi, `
-				.. `Workspace'te {#Workspace:GetChildren()} nesne var. `
-				.. `Explorer'da gordugun sayi farkliysa test ettigin place baska bir dosyadir. `
+			`hidden brainrot missing: {cfg.name}`,
+			`[Assets] "{cfg.name}" not found. Searched {#Assets.searchRoots()} services, `
+				.. `Workspace has {#Workspace:GetChildren()} objects. `
+				.. `If Explorer shows a different count, you are testing a different place file. `
 				.. `Duz kutuya dusuldu.`
 		)
 		return nil
@@ -1151,8 +1151,8 @@ function Assets.hiddenBrainrotModel(rarityId: string?): Model?
 	local model = asModel(found:Clone())
 	if not model then
 		Assets.warnOnce(
-			`gizli brainrot bos: {cfg.name}`,
-			`[Assets] "{cfg.name}" icinde hic BasePart yok. Duz kutuya dusuldu.`
+			`hidden brainrot empty: {cfg.name}`,
+			`[Assets] "{cfg.name}" has no BasePart. Falling back to a plain box.`
 		)
 		return nil
 	end
@@ -1167,8 +1167,8 @@ function Assets.hiddenBrainrotModel(rarityId: string?): Model?
 
 	if kept == 0 and not cfg.keepAll then
 		Assets.warnOnce(
-			`gizli brainrot keepPart: {cfg.keepPart}`,
-			`[Assets] "{cfg.name}" icinde "{cfg.keepPart}" adli parca yok -- her sey kademe rengine boyanacak.`
+			`hidden brainrot keepPart: {cfg.keepPart}`,
+			`[Assets] "{cfg.name}" has no part named "{cfg.keepPart}" -- everything will be tinted with the tier color.`
 		)
 	end
 
@@ -1178,7 +1178,7 @@ function Assets.hiddenBrainrotModel(rarityId: string?): Model?
 		silence(found)
 	end
 
-	print(`[Assets] Gizli brainrot modeli hazir: {found:GetFullName()} ({found.ClassName}), korunan parca: {kept}`)
+	print(`[Assets] Hidden brainrot model ready: {found:GetFullName()} ({found.ClassName}), kept parts: {kept}`)
 
 	return golgeyiKapat(model:Clone())
 end
@@ -1187,7 +1187,7 @@ local function soundTemplate(name: string, quiet: boolean?): Sound?
 	local template = grabTemplate(
 		name,
 		Assets.Categories.sounds,
-		"Workspace'e ya da ReplicatedStorage > Assets > Sounds icine koy. Ses olmadan devam ediliyor.",
+		"Put it in Workspace or ReplicatedStorage > Assets > Sounds. Continuing without sound.",
 		quiet
 	)
 
@@ -1609,7 +1609,7 @@ function Assets.fitModel(model: Model, targetSize: number, conditionScale: numbe
 	end)
 
 	if not ok then
-		Assets.warnOnce(`olceklenemedi: {model.Name}`, `[Assets] "{model.Name}" olceklenemedi -- {tostring(err)}`)
+		Assets.warnOnce(`could not scale: {model.Name}`, `[Assets] "{model.Name}" could not be scaled -- {tostring(err)}`)
 	end
 end
 

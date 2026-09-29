@@ -29,12 +29,12 @@ local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
 local function istegeBagli(ad: string, yedek: any): any
 	local modul = script.Parent:WaitForChild(ad, 5)
 	if not modul then
-		warn(`[Menuler] "{ad}" modulu bulunamadi; bu ozellik kapali, arayuz devam ediyor`)
+		warn(`[Menuler] module "{ad}" not found; this feature is off, the UI continues`)
 		return yedek
 	end
 	local ok, sonuc = pcall(require, modul)
 	if not ok then
-		warn(`[Menuler] "{ad}" yuklenemedi: {tostring(sonuc)}`)
+		warn(`[Menuler] "{ad}" failed to load: {tostring(sonuc)}`)
 		return yedek
 	end
 	return sonuc
@@ -71,7 +71,7 @@ local DetectiveTeslim = Net.event("DetectiveTeslim")
 local DetectiveSonuc = Net.event("DetectiveSonuc")
 local DetectiveDurum = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DetectiveDurum", 5) :: RemoteEvent?
 if not DetectiveDurum then
-	warn("[Menuler] DetectiveDurum remote'u yok; Detective ilerlemesi gosterilmeyecek")
+	warn("[Menuler] DetectiveDurum remote missing; Detective progress will not be shown")
 end
 local BaseGuncelle = Net.event("BaseGuncelle")
 local SlottanAl = Net.event("SlottanAl")
@@ -3639,7 +3639,7 @@ do
 						UDim2.fromOffset(ikon.Position.X.Offset + 32, 42)
 				else
 					warn(
-						`[RotCoinMagaza] Lucky Block modeli bulunamadi: ReplicatedStorage > `
+						`[RotCoinMagaza] Lucky Block model not found: ReplicatedStorage > `
 							.. `Assets > LuckyBlocks ({urun.tier})`
 					)
 				end
@@ -3661,7 +3661,7 @@ do
 				else
 					local info = Scrolls.get(urun.scroll)
 					warn(
-						`[RotCoinMagaza] Scroll modeli bulunamadi: ReplicatedStorage > Assets > `
+						`[RotCoinMagaza] Scroll model not found: ReplicatedStorage > Assets > `
 							.. `Scrolls > {if info then info.modelAdi else urun.scroll}`
 					)
 				end
@@ -4349,7 +4349,7 @@ do
 		end
 	end)
 
-	print("[Menuler] arayuz kuruldu")
+	print("[Menuler] UI built")
 end
 
 do

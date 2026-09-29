@@ -272,7 +272,7 @@ local function attachPrompt()
 		or npc:FindFirstChildWhichIsA("BasePart")
 
 	if not anchor or not anchor:IsA("BasePart") then
-		warn("[Satici] NPC'de tutunulacak bir Part bulunamadi")
+		warn("[Satici] No Part found on the NPC to attach to")
 		return
 	end
 

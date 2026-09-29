@@ -161,7 +161,7 @@ local function setupNPC(npc: Model)
 		or npc.PrimaryPart
 		or npc:FindFirstChildWhichIsA("BasePart")
 	if not root or not root:IsA("BasePart") then
-		warn(`[AdaTeleport] {npc:GetFullName()}: Part yok, atlandi`)
+		warn(`[AdaTeleport] {npc:GetFullName()}: no Part, skipped`)
 		return
 	end
 	root.Anchored = true
@@ -186,7 +186,7 @@ local function setupNPC(npc: Model)
 		AdaMenusuAc:FireClient(player, buildIslandList(player, homeIndex))
 	end)
 
-	print(`[AdaTeleport] Teleporter hazir: {npc:GetFullName()} (ada {homeIndex})`)
+	print(`[AdaTeleport] Teleporter ready: {npc:GetFullName()} (island {homeIndex})`)
 end
 
 local kurulan: { [Model]: boolean } = {}
@@ -207,8 +207,8 @@ local function setupAllNPCs()
 
 	if #npcs == 0 then
 		warn(
-			`[AdaTeleport] '{Config.NPC.name}' adli NPC bulunamadi. `
-				.. `NPC modelinin adini '{Config.NPC.name}' yap.`
+			`[AdaTeleport] NPC named '{Config.NPC.name}' not found. `
+				.. `Rename the NPC model to '{Config.NPC.name}'.`
 		)
 	end
 

@@ -162,7 +162,7 @@ local function kur(esya: Esya, character: Model, id: string?, parcaAdlari: { str
 
 	if not model then
 		esya.hataliId = id
-		warn(`[SirtEsyalari] {ad} kurulamadi ({id}): {if ok then "Handle yok" else tostring(sonuc)}`)
+		warn(`[SirtEsyalari] {ad} could not be set up ({id}): {if ok then "no Handle" else tostring(sonuc)}`)
 		return
 	end
 
@@ -237,7 +237,7 @@ local function durumAl(player: Player, character: Model): Durum
 			if not character.Parent then
 				return
 			end
-			print(`[SirtEsyalari] {player.Name} govde boylari -- Assets.BodyItems.reference icin:`)
+			print(`[SirtEsyalari] {player.Name} body sizes -- for Assets.BodyItems.reference:`)
 			print("	reference = {")
 			for _, ad in { "UpperTorso", "LowerTorso", "Torso" } do
 				local p = character:FindFirstChild(ad)

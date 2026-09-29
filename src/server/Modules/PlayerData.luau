@@ -512,7 +512,7 @@ local function kancalariCalistir(player: Player)
 	for _, callback in beforeRelease do
 		local ok, err = pcall(callback, player)
 		if not ok then
-			warn(`[PlayerData] {player.Name}: ayrilma kancasi hata verdi -- {tostring(err)}`)
+			warn(`[PlayerData] {player.Name}: leave hook failed -- {tostring(err)}`)
 		end
 	end
 end
@@ -538,7 +538,7 @@ function PlayerData.load(player: Player): Data?
 	local function vazgec(sebep: string): nil
 		yukleniyor[player] = nil
 		if oyunda(player) and not ProfileStore.IsClosing then
-			warn(`[PlayerData] {player.Name} verisi acilamadi ({sebep}), oyuncu atiliyor`)
+			warn(`[PlayerData] {player.Name} data could not be opened ({sebep}), kicking the player`)
 			player:Kick("Your data could not be loaded. Please rejoin in a moment.")
 		end
 		return nil
@@ -557,7 +557,7 @@ function PlayerData.load(player: Player): Data?
 		return vazgec(tostring(profile))
 	end
 	if profile == nil then
-		return vazgec("oturum acilamadi")
+		return vazgec("session could not be started")
 	end
 
 	if not oyunda(player) then
@@ -573,7 +573,7 @@ function PlayerData.load(player: Player): Data?
 	end)
 	if not okundu then
 		profile:EndSession()
-		return vazgec(`kayit okunamadi: {tostring(data)}`)
+		return vazgec(`record could not be read: {tostring(data)}`)
 	end
 	profile.Data = data
 

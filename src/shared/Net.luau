@@ -141,7 +141,7 @@ local function folder(): Folder
 end
 
 function Net.init()
-	assert(RunService:IsServer(), "Net.init sadece server tarafinda cagrilir")
+	assert(RunService:IsServer(), "Net.init must only be called on the server")
 
 	local remotes = folder()
 	for _, name in Net.Events do
