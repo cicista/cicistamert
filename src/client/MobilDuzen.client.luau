@@ -14,7 +14,7 @@ local MASA_ARA = 14
 local DOKUNMATIK_ARA = 8
 local KENAR = 8
 local UST = 6
-local SOL_SUTUN_DOKUNMATIK = 3
+local SOL_SUTUN_DOKUNMATIK = 2
 
 local PARA_DOKUNMATIK_OLCEGI = 0.62
 

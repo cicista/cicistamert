@@ -22,6 +22,10 @@ local menuler = playerGui:WaitForChild("OyunMenuleri")
 local sol = menuler:WaitForChild("SolMenu") :: GuiObject
 local sag = menuler:WaitForChild("SagMenu") :: GuiObject
 
+if sol:FindFirstChild("MenuDugmesi") then
+	return
+end
+
 local acik = true
 local sonEtkilesim = os.clock()
 local izlenenler: { [GuiButton]: boolean } = {}
@@ -121,11 +125,11 @@ local function gorunumuCiz()
 	end
 end
 
-local function menuDugmeleri(): { GuiButton }
-	local liste: { GuiButton } = {}
+local function menuOgeleri(): { GuiObject }
+	local liste: { GuiObject } = {}
 	for _, kap in { sol, sag } do
 		for _, cocuk in kap:GetChildren() do
-			if cocuk:IsA("GuiButton") and cocuk ~= dugme then
+			if cocuk:IsA("GuiObject") and cocuk ~= dugme then
 				table.insert(liste, cocuk)
 			end
 		end
@@ -133,19 +137,27 @@ local function menuDugmeleri(): { GuiButton }
 	return liste
 end
 
+local function etkilesimiIzle(oge: GuiObject)
+	local butonlar: { Instance } = oge:GetDescendants()
+	table.insert(butonlar, oge)
+	for _, nesne in butonlar do
+		if nesne:IsA("GuiButton") and not izlenenler[nesne] then
+			izlenenler[nesne] = true
+			nesne.Activated:Connect(function()
+				sonEtkilesim = os.clock()
+			end)
+		end
+	end
+end
+
 local function uygula()
 	local dokunmatik = Girdi.dokunmatik()
 	dugme.Visible = dokunmatik
 	local goster = not dokunmatik or acik
 
-	for _, buton in menuDugmeleri() do
-		buton.Visible = goster
-		if not izlenenler[buton] then
-			izlenenler[buton] = true
-			buton.Activated:Connect(function()
-				sonEtkilesim = os.clock()
-			end)
-		end
+	for _, oge in menuOgeleri() do
+		oge.Visible = goster
+		etkilesimiIzle(oge)
 	end
 
 	gorunumuCiz()
