@@ -21,6 +21,7 @@ local function ayarlariYolla(player: Player)
 	player:SetAttribute("SarsintiKapali", data.shakeOff == true)
 	AyarDurum:FireClient(player, {
 		uiScale = data.uiScale or 100,
+		uiScaleMobile = data.uiScaleMobile or OLCEK_MIN,
 		musicVolume = data.musicVolume or 100,
 		musicMuted = data.musicMuted == true,
 		sfxVolume = data.sfxVolume or 100,
@@ -39,6 +40,10 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 		local yuzde = tonumber(payload.uiScale)
 		if yuzde then
 			data.uiScale = math.clamp(math.round(yuzde), OLCEK_MIN, OLCEK_MAX)
+		end
+		local mobil = tonumber(payload.uiScaleMobile)
+		if mobil then
+			data.uiScaleMobile = math.clamp(math.round(mobil), OLCEK_MIN, OLCEK_MAX)
 		end
 
 		local ses = tonumber(payload.musicVolume)

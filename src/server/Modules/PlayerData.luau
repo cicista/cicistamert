@@ -72,6 +72,7 @@ export type Data = {
 	ores: { [string]: number },
 	pickaxes: { [string]: boolean },
 	uiScale: number,
+	uiScaleMobile: number,
 	musicVolume: number,
 	musicMuted: boolean,
 	sfxVolume: number,
@@ -154,6 +155,7 @@ local function defaultData(): Data
 		ores = {},
 		pickaxes = {},
 		uiScale = 100,
+		uiScaleMobile = 50,
 		musicVolume = PlayerData.VarsayilanMuzik,
 		musicMuted = false,
 		sfxVolume = PlayerData.VarsayilanSfx,
@@ -286,6 +288,7 @@ local function migrate(raw: any): Data
 	end
 
 	data.uiScale = math.clamp(tonumber(raw.uiScale) or 100, 50, 150)
+	data.uiScaleMobile = math.clamp(tonumber(raw.uiScaleMobile) or 50, 50, 150)
 	data.musicVolume = math.clamp(tonumber(raw.musicVolume) or PlayerData.VarsayilanMuzik, 0, 100)
 	data.musicMuted = raw.musicMuted == true
 	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or PlayerData.VarsayilanSfx, 0, 100)

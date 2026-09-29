@@ -14,15 +14,12 @@ local MASA_ARA = 14
 local DOKUNMATIK_ARA = 8
 local KENAR = 8
 local UST = 6
-local SOL_SATIR = 4
 
 local PARA_DOKUNMATIK_OLCEGI = 0.62
-local DUGME_EN_AZ = 0.72
-local DUGME_EN_COK = 1.15
 
-local ZIPLAMA_BOYU_KUCUK = 88
-local ZIPLAMA_BOYU_BUYUK = 120
-local ZIPLAMA_KENAR = 16
+local ZIPLAMA_BOYU_KUCUK = 76
+local ZIPLAMA_BOYU_BUYUK = 110
+local ZIPLAMA_KENAR = 14
 
 type Kayit = {
 	anchor: Vector2,
@@ -73,74 +70,21 @@ local function bul(yol: { string }): GuiObject?
 	return if node and node:IsA("GuiObject") then node else nil
 end
 
-local istenenSolKonum: UDim2? = nil
-local solIzleniyor = false
-
-local function dugmeOlcegi(menuler: ScreenGui, para: GuiObject?): (number, number)
-	local paraBoyu = if para then para.Size.Y.Offset * UI.nesneCarpani(para) else 0
-	local ust = UST + paraBoyu + KENAR
-	local yer = menuler.AbsoluteSize.Y - ust - KENAR
-	local gereken = SOL_SATIR * MENU_YUKSEKLIK + (SOL_SATIR - 1) * DOKUNMATIK_ARA
-	local olcek = if yer > 0 then math.clamp(yer / gereken, DUGME_EN_AZ, DUGME_EN_COK) else 1
-	return olcek, ust
-end
-
-local function paraDuzenle(para: GuiObject, dokunmatik: boolean)
-	kaydet(para)
-	UI.dokunmatikOlcekVer(para, PARA_DOKUNMATIK_OLCEGI)
-	if not dokunmatik then
-		geriAl(para)
-		return
-	end
-	para.AnchorPoint = Vector2.new(0, 0)
-	para.Position = UDim2.fromOffset(KENAR, UST)
-end
-
-local function solDuzenle(sol: GuiObject, dokunmatik: boolean, carpan: number, ust: number)
+local function solDuzenle(sol: GuiObject, dokunmatik: boolean)
 	kaydet(sol)
 	local izgara = sol:FindFirstChildOfClass("UIGridLayout")
-
-	if not dokunmatik then
-		istenenSolKonum = nil
-		UI.dokunmatikOlcekVer(sol, 1)
-		local kayit = kayitlar[sol]
-		sol.Size = kayit.boyut
-		sol.AnchorPoint = kayit.anchor
-		if izgara then
-			izgara.CellPadding = UDim2.fromOffset(MASA_ARA, MASA_ARA)
-			izgara.VerticalAlignment = Enum.VerticalAlignment.Bottom
-		end
-		return
-	end
-
-	UI.dokunmatikOlcekVer(sol, carpan)
-	sol.Size = UDim2.fromOffset(MENU_BOYU * 2 + DOKUNMATIK_ARA, 0)
+	local ara = if dokunmatik then DOKUNMATIK_ARA else MASA_ARA
+	sol.Size = UDim2.fromOffset(MENU_BOYU * 2 + ara, 0)
 	if izgara then
-		izgara.CellPadding = UDim2.fromOffset(DOKUNMATIK_ARA, DOKUNMATIK_ARA)
-		izgara.VerticalAlignment = Enum.VerticalAlignment.Top
-	end
-	sol.AnchorPoint = Vector2.new(0, 0)
-	istenenSolKonum = UDim2.fromOffset(KENAR, ust)
-	sol.Position = istenenSolKonum :: UDim2
-
-	if not solIzleniyor then
-		solIzleniyor = true
-		sol:GetPropertyChangedSignal("Position"):Connect(function()
-			local hedef = istenenSolKonum
-			if hedef and Girdi.dokunmatik() and sol.Position ~= hedef then
-				sol.AnchorPoint = Vector2.new(0, 0)
-				sol.Position = hedef
-			end
-		end)
+		izgara.CellPadding = UDim2.fromOffset(ara, ara)
 	end
 end
 
-local function sagDuzenle(sag: GuiObject, dokunmatik: boolean, carpan: number)
+local function sagDuzenle(sag: GuiObject, dokunmatik: boolean)
 	kaydet(sag)
 	local dizilim = sag:FindFirstChildOfClass("UIListLayout")
 
 	if not dokunmatik then
-		UI.dokunmatikOlcekVer(sag, 1)
 		geriAl(sag)
 		if dizilim then
 			dizilim.Padding = UDim.new(0, MASA_ARA)
@@ -151,7 +95,6 @@ local function sagDuzenle(sag: GuiObject, dokunmatik: boolean, carpan: number)
 		return
 	end
 
-	UI.dokunmatikOlcekVer(sag, carpan)
 	sag.AnchorPoint = Vector2.new(1, 0)
 	sag.Position = UDim2.new(1, -KENAR, 0, UST)
 	sag.Size = UDim2.fromOffset(0, MENU_YUKSEKLIK)
@@ -214,32 +157,20 @@ end
 
 local function uygula()
 	local dokunmatik = Girdi.dokunmatik()
-	local menuler = playerGui:FindFirstChild("OyunMenuleri")
-	if not menuler or not menuler:IsA("ScreenGui") then
-		return
-	end
 
 	local para = bul({ "OyunMenuleri", "RotGostergesi" })
 	if para then
-		paraDuzenle(para, dokunmatik)
+		UI.dokunmatikOlcekVer(para, PARA_DOKUNMATIK_OLCEGI)
 	end
-
-	local olcek, ust = dugmeOlcegi(menuler, if dokunmatik then para else nil)
-	local carpan = olcek / math.max(UI.carpan(), 0.01)
 
 	local sol = bul({ "OyunMenuleri", "SolMenu" })
 	if sol then
-		solDuzenle(sol, dokunmatik, carpan, ust)
+		solDuzenle(sol, dokunmatik)
 	end
 
 	local sag = bul({ "OyunMenuleri", "SagMenu" })
 	if sag then
-		sagDuzenle(sag, dokunmatik, carpan)
-	end
-
-	local store = bul({ "RobuxMagazasi", "StoreButonu" })
-	if store then
-		UI.dokunmatikOlcekVer(store, carpan)
+		sagDuzenle(sag, dokunmatik)
 	end
 
 	local maden = bul({ "MadenSayaci", "Kutu" })
@@ -257,10 +188,6 @@ task.spawn(function()
 		menuler:WaitForChild("SolMenu", 10)
 		menuler:WaitForChild("RotGostergesi", 10)
 	end
-	local robux = playerGui:WaitForChild("RobuxMagazasi", 10)
-	if robux then
-		robux:WaitForChild("StoreButonu", 10)
-	end
 	local madenEkrani = playerGui:WaitForChild("MadenSayaci", 10)
 	if madenEkrani then
 		madenEkrani:WaitForChild("Kutu", 10)
@@ -269,9 +196,6 @@ task.spawn(function()
 	uygula()
 	Girdi.degisince(uygula)
 	UI.onScaleChanged(uygula)
-	if menuler and menuler:IsA("ScreenGui") then
-		menuler:GetPropertyChangedSignal("AbsoluteSize"):Connect(uygula)
-	end
 end)
 
 task.spawn(function()

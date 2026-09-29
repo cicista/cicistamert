@@ -1942,7 +1942,7 @@ local function solSutunuYerlestir()
 		buffYuksekligi += iksirBuff.Size.Y.Offset * carpan
 	end
 
-	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + SUTUN_BOSLUK))
+	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + (if UI.Girdi.dokunmatik() then 10 else SUTUN_BOSLUK)))
 end
 
 solSutunuYerlestir()
@@ -4027,7 +4027,7 @@ do
 		task.delay(0.4, function()
 			ayarKaydiBekliyor = false
 			AyarKaydet:FireServer({
-				uiScale = UI.getScale(),
+				[UI.olcekAyarAdi()] = UI.getScale(),
 				musicVolume = Muzik.yuzde(),
 				musicMuted = Muzik.kapali(),
 				sfxVolume = SesEfekti.yuzde(),
@@ -4055,7 +4055,7 @@ do
 	end)
 
 	sifirlaButon.MouseButton1Click:Connect(function()
-		olcekYazisiTazele(UI.setScale(UI.ScaleDefault))
+		olcekYazisiTazele(UI.setScale(UI.varsayilanOlcek()))
 		ayarKaydiniPlanla()
 	end)
 
@@ -4126,7 +4126,7 @@ do
 			return
 		end
 
-		local yuzde = tonumber(data.uiScale)
+		local yuzde = UI.kayitliOlcek(tonumber(data.uiScale), tonumber(data.uiScaleMobile))
 		if yuzde then
 			olcekYazisiTazele(UI.setScale(yuzde))
 		end

@@ -53,9 +53,12 @@ UI.Fonts = {
 UI.Girdi = Girdi
 
 UI.EkranRef = Vector2.new(1500, 900)
-UI.DokunmatikEkranRef = Vector2.new(1100, 700)
 UI.DokunmatikOlcekNiteligi = "DokunmatikOlcek"
 UI.EkranEnAz = 0.42
+
+UI.DokunmatikTabanBoy = 520
+UI.DokunmatikTabanEnAz = 0.6
+UI.DokunmatikTabanEnCok = 0.95
 
 local function ekranBoyu(): Vector2
 	local kamera = workspace.CurrentCamera
@@ -67,9 +70,18 @@ local function ekranBoyu(): Vector2
 end
 
 local function ekranCarpani(): number
-	local ref = if Girdi.dokunmatik() then UI.DokunmatikEkranRef else UI.EkranRef
+	local ref = UI.EkranRef
 	local boyut = ekranBoyu()
 	return math.clamp(math.min(boyut.X / ref.X, boyut.Y / ref.Y), UI.EkranEnAz, 1)
+end
+
+local function dokunmatikTaban(): number
+	local boyut = ekranBoyu()
+	return math.clamp(
+		math.min(boyut.X, boyut.Y) / UI.DokunmatikTabanBoy,
+		UI.DokunmatikTabanEnAz,
+		UI.DokunmatikTabanEnCok
+	)
 end
 
 export type TextOptions = {
@@ -814,14 +826,27 @@ UI.ScaleMin = 50
 UI.ScaleMax = 150
 UI.ScaleStep = 5
 UI.ScaleDefault = 100
+UI.DokunmatikScaleDefault = UI.ScaleMin
 
 UI.ScaleBase = 1.25
 
 local function gercekOlcek(yuzde: number): number
+	if Girdi.dokunmatik() then
+		return dokunmatikTaban() * yuzde / UI.DokunmatikScaleDefault
+	end
 	return yuzde / 100 * UI.ScaleBase * ekranCarpani()
 end
 
-local olcekYuzde = UI.ScaleDefault
+function UI.varsayilanOlcek(): number
+	return if Girdi.dokunmatik() then UI.DokunmatikScaleDefault else UI.ScaleDefault
+end
+
+local kayitliOlcekler = {
+	masa = UI.ScaleDefault,
+	mobil = UI.DokunmatikScaleDefault,
+}
+
+local olcekYuzde = UI.varsayilanOlcek()
 local izlenenGui: { [Instance]: boolean } = {}
 local olcekDinleyicileri: { (yuzde: number) -> () } = {}
 
@@ -912,6 +937,11 @@ end
 function UI.setScale(yuzde: number): number
 	local yeni = math.clamp(math.round(yuzde), UI.ScaleMin, UI.ScaleMax)
 	olcekYuzde = yeni
+	if Girdi.dokunmatik() then
+		kayitliOlcekler.mobil = yeni
+	else
+		kayitliOlcekler.masa = yeni
+	end
 
 	hepsineUygula()
 
@@ -936,6 +966,27 @@ end
 function UI.onScaleChanged(dinleyici: (yuzde: number) -> ())
 	table.insert(olcekDinleyicileri, dinleyici)
 end
+
+function UI.kayitliOlcek(masa: number?, mobil: number?): number
+	if masa then
+		kayitliOlcekler.masa = math.clamp(math.round(masa), UI.ScaleMin, UI.ScaleMax)
+	end
+	if mobil then
+		kayitliOlcekler.mobil = math.clamp(math.round(mobil), UI.ScaleMin, UI.ScaleMax)
+	end
+	return if Girdi.dokunmatik() then kayitliOlcekler.mobil else kayitliOlcekler.masa
+end
+
+function UI.olcekAyarAdi(): string
+	return if Girdi.dokunmatik() then "uiScaleMobile" else "uiScale"
+end
+
+Girdi.degisince(function()
+	local hedef = UI.kayitliOlcek()
+	if hedef ~= olcekYuzde then
+		UI.setScale(hedef)
+	end
+end)
 
 task.spawn(function()
 	local player = Players.LocalPlayer
