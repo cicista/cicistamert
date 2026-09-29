@@ -164,7 +164,7 @@ toastLayout.Parent = toastHolder
 local SAYAC_ALANI = 60
 
 local function toastYerlestir()
-	local carpan = UI.getScale() / 100 * UI.ScaleBase
+	local carpan = UI.carpan()
 	toastHolder.Position = UDim2.new(0.5, 0, 0, 12 + SAYAC_ALANI * carpan)
 end
 

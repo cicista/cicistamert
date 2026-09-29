@@ -1,7 +1,6 @@
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -210,9 +209,8 @@ task.spawn(function()
 			hintLabel.Position = UDim2.fromOffset(if madenMi then 16 else 0, 0)
 
 			local eylem = if best.sea then "fish" else "dig"
-			hintLabel.Text = if UserInputService.TouchEnabled
-				then `{kindName(best.kind)} - tap to {eylem}`
-				else `{kindName(best.kind)} - click to {eylem}`
+			hintLabel.Text = `{kindName(best.kind)} - `
+				.. UI.Girdi.sec(`click to {eylem}`, `tap to {eylem}`, `press X to {eylem}`)
 			hint.Visible = true
 		else
 			nearest = nil

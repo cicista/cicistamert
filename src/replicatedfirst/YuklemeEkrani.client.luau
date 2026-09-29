@@ -626,6 +626,7 @@ local function kapat()
 	end
 	kapandi = true
 
+	game:GetService("ContextActionService"):UnbindAction("YuklemeBasla")
 	coreGuiGeriAc()
 
 	local solma = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -689,7 +690,24 @@ local function hazirOl()
 		return
 	end
 
-	durumYazi.Text = "Click PLAY to start"
+	do
+		local UserInputService = game:GetService("UserInputService")
+		local son = UserInputService:GetLastInputType()
+		local gamepadMi = string.sub(son.Name, 1, 7) == "Gamepad"
+			or game:GetService("GuiService"):IsTenFootInterface()
+		local dokunmatikMi = son == Enum.UserInputType.Touch
+			or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled and not gamepadMi)
+		durumYazi.Text = if gamepadMi
+			then "Press A to start"
+			elseif dokunmatikMi then "Tap PLAY to start"
+			else "Click PLAY to start"
+	end
+	game:GetService("ContextActionService"):BindAction("YuklemeBasla", function(_, durum)
+		if durum == Enum.UserInputState.Begin then
+			kapat()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.ButtonA, Enum.KeyCode.ButtonStart, Enum.KeyCode.Return)
 	baslaDugme.Visible = true
 
 	baslaOlcek.Scale = 0.6

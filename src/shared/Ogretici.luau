@@ -20,7 +20,7 @@ Ogretici.Adimlar = {
 		hedef = "kum",
 		resim = "hosgeldin",
 		yazi = "Dig the glowing beam!",
-		alt = "It is right next to you -- click it, then click fast!",
+		alt = "It is right next to you -- dig it, then hit it fast!",
 	},
 	{
 		id = "ilkCollect",

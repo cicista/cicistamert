@@ -929,7 +929,7 @@ function Tools.buildLuckyBlock(tierId: string, count: number): Tool
 	tool:SetAttribute(Assets.CountAttribute, count)
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
-	tool.ToolTip = `{tier.displayName} -- click to spin the wheel`
+	tool.ToolTip = `{tier.displayName} -- use it to spin the wheel`
 	tool:SetAttribute("LuckyBlock", true)
 	tool:SetAttribute("LuckyTier", tier.id)
 

@@ -416,7 +416,80 @@ for sira = 1, SLOT_SAYISI do
 	end)
 end
 
+local function dongudeSec(adim: number)
+	local govde = karakter
+	local humanoid = govde and govde:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+
+	local dolu: { number } = {}
+	for sira = 1, SLOT_SAYISI do
+		if yuvaninEsyasi[sira] then
+			table.insert(dolu, sira)
+		end
+	end
+	if #dolu == 0 then
+		return
+	end
+
+	local simdiki = 0
+	for i, sira in dolu do
+		local tool = yuvaninEsyasi[sira]
+		if tool and kusanilmisMi(tool) then
+			simdiki = i
+			break
+		end
+	end
+
+	local hedef = if simdiki == 0
+		then (if adim > 0 then 1 else #dolu)
+		else ((simdiki - 1 + adim) % #dolu) + 1
+	local tool = yuvaninEsyasi[dolu[hedef]]
+	if tool then
+		humanoid:EquipTool(tool)
+	end
+end
+
+local function gamepadCipi(yazi: string, sira: number): TextLabel
+	local cip = Instance.new("TextLabel")
+	cip.Name = `Gamepad{yazi}`
+	cip.LayoutOrder = sira
+	cip.Size = UDim2.fromOffset(40, 30)
+	cip.BackgroundColor3 = Color3.fromRGB(40, 44, 54)
+	cip.BackgroundTransparency = 0.1
+	cip.BorderSizePixel = 0
+	cip.Text = yazi
+	cip.TextColor3 = Color3.fromRGB(240, 242, 248)
+	cip.TextSize = 16
+	cip.FontFace = UI.Fonts.bold
+	cip.Visible = false
+	cip.Parent = kok
+	UI.corner(cip, 8)
+	UI.stroke(cip, Color3.fromRGB(0, 0, 0), 2)
+	return cip
+end
+
+local lbCip = gamepadCipi("LB", 0)
+local rbCip = gamepadCipi("RB", 3)
+
+UI.Girdi.izle(function(tur)
+	local gamepadMi = tur == "gamepad"
+	lbCip.Visible = gamepadMi
+	rbCip.Visible = gamepadMi
+	for _, yuva in yuvalar do
+		yuva.numara.Visible = tur == "klavye"
+	end
+end)
+
 UserInputService.InputBegan:Connect(function(girdi, islendi)
+	if girdi.KeyCode == Enum.KeyCode.ButtonL1 then
+		dongudeSec(-1)
+		return
+	elseif girdi.KeyCode == Enum.KeyCode.ButtonR1 then
+		dongudeSec(1)
+		return
+	end
 	if islendi then
 		return
 	end

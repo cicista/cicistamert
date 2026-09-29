@@ -321,7 +321,7 @@ KazmaAl.OnServerEvent:Connect(function(player, pickaxeId)
 
 	Envanter.push(player)
 	KazmaAc:FireClient(player, kazmaPayload(player, kazma.island))
-	Bildirim:FireClient(player, `{kazma.displayName} purchased! Click on ores to mine them.`, kazma.color)
+	Bildirim:FireClient(player, `{kazma.displayName} purchased! Dig up ores to mine them.`, kazma.color)
 end)
 
 MadenTakas.OnServerEvent:Connect(function(player, oreId)

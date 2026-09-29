@@ -450,7 +450,7 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 
 		Bildirim:FireClient(
 			player,
-			`You got a {tier.displayName}! Take it from your backpack and click. ({kalanYazi})`,
+			`You got a {tier.displayName}! Take it from your backpack and use it. ({kalanYazi})`,
 			tier.color
 		)
 

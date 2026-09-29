@@ -414,7 +414,7 @@ local function bosSlotSatiri(parent: Instance, slotNo: number, order: number)
 	})
 
 	UI.text({
-		text = `Empty slot  -  hold a brainrot and press E on slot {slotNo}`,
+		text = UI.Girdi.sec(`Empty slot  -  hold a brainrot and press E on slot {slotNo}`, `Empty slot  -  hold a brainrot and tap slot {slotNo}`, `Empty slot  -  hold a brainrot and press X on slot {slotNo}`),
 		size = UI.Sizes.small,
 		color = UI.Colors.textDim,
 		frameSize = UDim2.new(1, -60, 1, 0),
@@ -631,7 +631,7 @@ ContextActionService:BindAction("EnvanterAc", function(_, state)
 		toggleEnvanter()
 	end
 	return Enum.ContextActionResult.Pass
-end, false, Enum.KeyCode.B)
+end, false, Enum.KeyCode.B, Enum.KeyCode.ButtonY)
 
 local rotKutu = Instance.new("Frame")
 rotKutu.Name = "RotGostergesi"
@@ -817,7 +817,7 @@ UI.text({
 })
 
 UI.text({
-	text = "Tap cards to pick some, or leave them ALL with me. Come back to collect them!",
+	text = "Pick some cards, or leave them ALL with me. Come back to collect them!",
 	size = UI.Sizes.small,
 	color = UI.Colors.textDim,
 	frameSize = UDim2.new(1, -80, 0, 20),
@@ -1930,7 +1930,7 @@ local sagSutun = menuSutunu("SagMenu", true)
 local SUTUN_BOSLUK = 40
 
 local function solSutunuYerlestir()
-	local carpan = UI.getScale() / 100 * UI.ScaleBase
+	local carpan = UI.carpan()
 	local paraYuksekligi = rotKutu.Size.Y.Offset * carpan
 	local altBosluk = -rotKutu.Position.Y.Offset
 

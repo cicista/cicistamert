@@ -179,16 +179,53 @@ local YUKSEL = "FlyboardYukari"
 local ALCAL = "FlyboardAsagi"
 
 local yon = 0
+local kontrolBagli = false
 
-ContextActionService:BindAction(YUKSEL, function(_, state)
+local function yukselt(_, state)
 	yon = if state == Enum.UserInputState.Begin then 1 elseif yon == 1 then 0 else yon
 	return Enum.ContextActionResult.Pass
-end, false, Enum.KeyCode.Space)
+end
 
-ContextActionService:BindAction(ALCAL, function(_, state)
+local function alcalt(_, state)
 	yon = if state == Enum.UserInputState.Begin then -1 elseif yon == -1 then 0 else yon
 	return Enum.ContextActionResult.Pass
-end, false, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
+end
+
+local function dugmeyiSusle(eylem: string, yazi: string)
+	ContextActionService:SetTitle(eylem, yazi)
+end
+
+local function kontrolleriBagla(ucuyor: boolean)
+	if ucuyor == kontrolBagli then
+		return
+	end
+	kontrolBagli = ucuyor
+	yon = 0
+
+	if not ucuyor then
+		ContextActionService:UnbindAction(YUKSEL)
+		ContextActionService:UnbindAction(ALCAL)
+		return
+	end
+
+	ContextActionService:BindAction(YUKSEL, yukselt, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+	ContextActionService:BindAction(
+		ALCAL,
+		alcalt,
+		true,
+		Enum.KeyCode.LeftShift,
+		Enum.KeyCode.RightShift,
+		Enum.KeyCode.ButtonL2,
+		Enum.KeyCode.ButtonB
+	)
+	dugmeyiSusle(YUKSEL, "UP")
+	dugmeyiSusle(ALCAL, "DOWN")
+end
+
+kontrolleriBagla(player:GetAttribute("Flyboarding") == true)
+player:GetAttributeChangedSignal("Flyboarding"):Connect(function()
+	kontrolleriBagla(player:GetAttribute("Flyboarding") == true)
+end)
 
 task.spawn(function()
 	while true do

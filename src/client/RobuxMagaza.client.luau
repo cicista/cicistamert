@@ -943,7 +943,7 @@ task.spawn(function()
 	local sol = menuler:WaitForChild("SolMenu") :: GuiObject
 
 	local function yerlestir()
-		local carpan = UI.getScale() / 100 * UI.ScaleBase
+		local carpan = UI.carpan()
 		tutucu.Position = UDim2.fromOffset(
 			sol.AbsolutePosition.X,
 			sol.AbsolutePosition.Y - MENU_BOSLUK * carpan

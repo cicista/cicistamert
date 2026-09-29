@@ -1,8 +1,12 @@
 --!strict
 
+local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Girdi = require(script.Parent:WaitForChild("Girdi"))
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Fonts = require(Shared:WaitForChild("Fonts"))
@@ -45,6 +49,27 @@ UI.Fonts = {
 	medium = MEDIUM,
 	regular = REGULAR,
 }
+
+UI.Girdi = Girdi
+
+UI.EkranRef = Vector2.new(1500, 900)
+UI.DokunmatikEkranRef = Vector2.new(1100, 620)
+UI.EkranEnAz = 0.42
+
+local function ekranBoyu(): Vector2
+	local kamera = workspace.CurrentCamera
+	local boyut = if kamera then kamera.ViewportSize else Vector2.zero
+	if boyut.X < 2 or boyut.Y < 2 then
+		return Vector2.new(1920, 1080)
+	end
+	return boyut
+end
+
+local function ekranCarpani(): number
+	local ref = if Girdi.dokunmatik() then UI.DokunmatikEkranRef else UI.EkranRef
+	local boyut = ekranBoyu()
+	return math.clamp(math.min(boyut.X / ref.X, boyut.Y / ref.Y), UI.EkranEnAz, 1)
+end
 
 export type TextOptions = {
 	text: string?,
@@ -218,8 +243,24 @@ local KAPANIS_SURE = 0.13
 local ACILIS_ORANI = 0.85
 local KAPANIS_ORANI = 0.9
 
-local function suankiOlcek(): number
-	return UI.getScale() / 100 * UI.ScaleBase
+local PANEL_EN_PAYI = 0.96
+local PANEL_BOY_PAYI = 0.92
+
+local function panelHedef(frame: Frame): number
+	local olcek = UI.carpan()
+	local kap = frame.Parent
+	local alan = if kap and kap:IsA("GuiBase2d") then kap.AbsoluteSize else Vector2.zero
+	if alan.X < 2 or alan.Y < 2 then
+		alan = ekranBoyu()
+	end
+	local en, boy = frame.Size.X.Offset, frame.Size.Y.Offset
+	if en > 0 then
+		olcek = math.min(olcek, alan.X * PANEL_EN_PAYI / en)
+	end
+	if boy > 0 then
+		olcek = math.min(olcek, alan.Y * PANEL_BOY_PAYI / boy)
+	end
+	return olcek
 end
 
 local function panelOlcegi(frame: Frame): UIScale
@@ -230,14 +271,70 @@ local function panelOlcegi(frame: Frame): UIScale
 
 	local olcek = Instance.new("UIScale")
 	olcek.Name = OLCEK_ADI
-	olcek.Scale = suankiOlcek()
+	olcek.Scale = panelHedef(frame)
 	olcek.Parent = frame
 	return olcek
 end
 
+local function ekrandaMi(nesne: GuiObject): boolean
+	local node: Instance? = nesne
+	while node do
+		if node:IsA("GuiObject") then
+			if not node.Visible then
+				return false
+			end
+		elseif node:IsA("LayerCollector") then
+			return node.Enabled
+		end
+		node = node.Parent
+	end
+	return false
+end
+
+local function ilkDugme(panel: Frame): GuiObject?
+	local secilen: GuiObject? = nil
+	local enY, enX = math.huge, math.huge
+	for _, d in panel:GetDescendants() do
+		if d:IsA("GuiButton") and d.Selectable and d.Name ~= "Kapat" and ekrandaMi(d) then
+			local konum = d.AbsolutePosition
+			if konum.Y < enY - 4 or (math.abs(konum.Y - enY) <= 4 and konum.X < enX) then
+				secilen = d
+				enY, enX = konum.Y, konum.X
+			end
+		end
+	end
+	return secilen
+end
+
+local function gamepadSecimiKur(frame: Frame)
+	if not Girdi.gamepad() then
+		return
+	end
+	task.delay(0.2, function()
+		if not frame.Visible then
+			return
+		end
+		local secili = GuiService.SelectedObject
+		if secili and secili:IsDescendantOf(frame) then
+			return
+		end
+		local dugme = ilkDugme(frame)
+		if dugme then
+			GuiService.SelectedObject = dugme
+		end
+	end)
+end
+
+local function gamepadSecimiBirak(frame: Frame)
+	local secili = GuiService.SelectedObject
+	if secili and secili:IsDescendantOf(frame) then
+		GuiService.SelectedObject = nil
+	end
+end
+
 local function acilisOynat(frame: Frame)
 	local olcek = panelOlcegi(frame)
-	local hedef = suankiOlcek()
+	local hedef = panelHedef(frame)
 
 	olcek.Scale = hedef * ACILIS_ORANI
 	TweenService:Create(
@@ -253,7 +350,7 @@ local function kapanisOynat(frame: Frame)
 		return
 	end
 
-	local olcek = suankiOlcek()
+	local olcek = panelHedef(frame)
 
 	local kutu = Instance.new("CanvasGroup")
 	kutu.Name = `{frame.Name}Kapanis`
@@ -489,7 +586,9 @@ function UI.panel(parent: Instance, size: UDim2, name: string?): Frame
 		if frame.Visible then
 			digerPanelleriKapat(frame)
 			acilisOynat(frame)
+			gamepadSecimiKur(frame)
 		else
+			gamepadSecimiBirak(frame)
 			kapanisOynat(frame)
 		end
 	end)
@@ -611,6 +710,14 @@ function UI.hover(button: GuiButton, face: GuiObject?, pop: GuiObject?)
 	button.MouseButton1Up:Connect(function()
 		oynat(true, UI.HoverPop)
 	end)
+
+	button.SelectionGained:Connect(function()
+		oynat(true, UI.HoverPop)
+	end)
+
+	button.SelectionLost:Connect(function()
+		oynat(false, 1)
+	end)
 end
 
 function UI.shade(color: Color3, amount: number): Color3
@@ -707,12 +814,16 @@ UI.ScaleDefault = 100
 UI.ScaleBase = 1.25
 
 local function gercekOlcek(yuzde: number): number
-	return yuzde / 100 * UI.ScaleBase
+	return yuzde / 100 * UI.ScaleBase * ekranCarpani()
 end
 
 local olcekYuzde = UI.ScaleDefault
 local izlenenGui: { [Instance]: boolean } = {}
 local olcekDinleyicileri: { (yuzde: number) -> () } = {}
+
+function UI.carpan(): number
+	return gercekOlcek(olcekYuzde)
+end
 
 local function nesneyeUygula(nesne: Instance)
 	if not nesne:IsA("GuiObject") then
@@ -724,15 +835,19 @@ local function nesneyeUygula(nesne: Instance)
 		return
 	end
 
+	local hedef = if nesne:IsA("Frame") and table.find(paneller, nesne)
+		then panelHedef(nesne)
+		else gercekOlcek(olcekYuzde)
+
 	local mevcut = nesne:FindFirstChild(OLCEK_ADI)
 	if mevcut and mevcut:IsA("UIScale") then
-		mevcut.Scale = gercekOlcek(olcekYuzde)
+		mevcut.Scale = hedef
 		return
 	end
 
 	local olcek = Instance.new("UIScale")
 	olcek.Name = OLCEK_ADI
-	olcek.Scale = gercekOlcek(olcekYuzde)
+	olcek.Scale = hedef
 	olcek.Parent = nesne
 end
 
@@ -809,6 +924,89 @@ task.spawn(function()
 
 	hepsineUygula()
 	playerGui.ChildAdded:Connect(guiIzle)
+end)
+
+do
+	local bekliyor = false
+	local function ekranDegisti()
+		if bekliyor then
+			return
+		end
+		bekliyor = true
+		task.defer(function()
+			bekliyor = false
+			hepsineUygula()
+			for _, dinleyici in olcekDinleyicileri do
+				task.spawn(dinleyici, olcekYuzde)
+			end
+		end)
+	end
+
+	local kameraBagi: RBXScriptConnection? = nil
+	local function kamerayiIzle()
+		if kameraBagi then
+			kameraBagi:Disconnect()
+			kameraBagi = nil
+		end
+		local kamera = workspace.CurrentCamera
+		if kamera then
+			kameraBagi = kamera:GetPropertyChangedSignal("ViewportSize"):Connect(ekranDegisti)
+		end
+		ekranDegisti()
+	end
+
+	kamerayiIzle()
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(kamerayiIzle)
+	Girdi.degisince(ekranDegisti)
+end
+
+ContextActionService:BindActionAtPriority("PanelKapatGamepad", function(_, durum)
+	if durum ~= Enum.UserInputState.Begin then
+		return Enum.ContextActionResult.Pass
+	end
+	for i = #paneller, 1, -1 do
+		local panel = paneller[i]
+		if panel.Parent and panel.Visible then
+			panel.Visible = false
+			return Enum.ContextActionResult.Sink
+		end
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.ButtonB)
+
+function UI.acikPanelVarMi(): boolean
+	for _, panel in paneller do
+		if panel.Parent and panel.Visible then
+			return true
+		end
+	end
+	return false
+end
+
+task.spawn(function()
+	local player = Players.LocalPlayer
+	local playerGui = player and player:WaitForChild("PlayerGui", 10)
+	if not playerGui then
+		return
+	end
+
+	local secim = Instance.new("Frame")
+	secim.Name = "GamepadSecimi"
+	secim.BackgroundTransparency = 1
+	secim.Position = UDim2.fromOffset(-5, -5)
+	secim.Size = UDim2.new(1, 10, 1, 10)
+	UI.corner(secim, 12)
+	local cizgi = UI.stroke(secim, Color3.fromRGB(255, 225, 60), 4)
+	cizgi.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	TweenService:Create(
+		cizgi,
+		TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Transparency = 0.45, Thickness = 6 }
+	):Play()
+
+	pcall(function()
+		(playerGui :: any).SelectionImageObject = secim
+	end)
 end)
 
 local SIYAH = Color3.fromRGB(0, 0, 0)
@@ -1023,6 +1221,14 @@ function UI.dugme3B(parent: Instance, yazi: string?, boyut: UDim2, renk: Color3,
 		ciz(false)
 	end)
 	dugme.MouseLeave:Connect(function()
+		ustunde = false
+		ciz(false)
+	end)
+	dugme.SelectionGained:Connect(function()
+		ustunde = true
+		ciz(false)
+	end)
+	dugme.SelectionLost:Connect(function()
 		ustunde = false
 		ciz(false)
 	end)

@@ -75,6 +75,7 @@ kaziEkran.ResetOnSpawn = false
 kaziEkran.IgnoreGuiInset = true
 kaziEkran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 kaziEkran.Enabled = false
+kaziEkran:SetAttribute(UI.OlcekDisiNitelik, true)
 kaziEkran.Parent = playerGui
 
 local kaziCerceve = Instance.new("Frame")
@@ -705,6 +706,37 @@ end
 
 local tiklaZaman = 0
 
+local function kaziOlcegiTazele()
+	local alan = kaziEkran.AbsoluteSize
+	local genel = UI.carpan()
+	local bar = genel
+	if alan.Y > 0 then
+		local yer = alan.Y * OTO_Y - (OTO_BOY / 2 + KAZI_ARA) - 16
+		bar = math.min(bar, yer / (KAZI_BOY + 70))
+	end
+	for _, cocuk in kaziEkran:GetChildren() do
+		if cocuk:IsA("GuiObject") then
+			local olcek = cocuk:FindFirstChild("KaziOlcek")
+			if not olcek then
+				olcek = Instance.new("UIScale")
+				olcek.Name = "KaziOlcek"
+				olcek.Parent = cocuk
+			end
+			local hedef = if cocuk == kaziCerceve or cocuk == kaziKatman then bar else genel;
+			(olcek :: UIScale).Scale = hedef
+		end
+	end
+	for i, yazi in tiklaYazilari do
+		yazi.Text = UI.Girdi.sec("CLICK!", "TAP!", "PRESS A!")
+		yazi.Position = UDim2.fromScale(if i == 1 then 0.5 - 0.26 else 0.5 + 0.26, 0.5)
+	end
+end
+
+kaziOlcegiTazele()
+kaziEkran:GetPropertyChangedSignal("AbsoluteSize"):Connect(kaziOlcegiTazele)
+UI.onScaleChanged(kaziOlcegiTazele)
+UI.Girdi.degisince(kaziOlcegiTazele)
+
 local function tiklaYazisiCiz(dt: number, acik: boolean)
 	if not acik then
 		for _, yazi in tiklaYazilari do
@@ -986,6 +1018,7 @@ local function modKur(yeniMod: string, rarityId: string)
 	kaziEkran.Enabled = kumdu
 
 	if kumdu then
+		kaziOlcegiTazele()
 		local maden = Ores.get(rarityId)
 		kaziRenk = if maden then maden.islandColor else Rarity.beamColor(rarityId)
 

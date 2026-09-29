@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -143,6 +142,7 @@ screen.ResetOnSpawn = false
 screen.IgnoreGuiInset = true
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Enabled = false
+screen:SetAttribute(UI.OlcekDisiNitelik, true)
 screen.Parent = playerGui
 
 local root = kutu("Root", screen, 1)
@@ -150,6 +150,29 @@ root.AnchorPoint = Vector2.new(1, 0.5)
 root.Position = UDim2.new(1, -48, 0.5, 0)
 root.Size = UDim2.fromOffset(PANEL_EN, PANEL_BOY)
 root.BackgroundTransparency = 1
+
+do
+	local rootOlcek = Instance.new("UIScale")
+	rootOlcek.Name = "EkranaSigdir"
+	rootOlcek.Parent = root
+
+	local function tazele()
+		local alan = screen.AbsoluteSize
+		local olcek = UI.carpan()
+		if alan.Y > 0 then
+			olcek = math.min(olcek, alan.Y * 0.86 / PANEL_BOY)
+		end
+		if alan.X > 0 then
+			olcek = math.min(olcek, alan.X * 0.45 / PANEL_EN)
+		end
+		rootOlcek.Scale = olcek
+		root.Position = UDim2.new(1, if UI.Girdi.dokunmatik() then -150 else -48, 0.5, 0)
+	end
+
+	tazele()
+	screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(tazele)
+	UI.onScaleChanged(tazele)
+end
 
 local govde = kutu("Govde", root, 1)
 govde.Size = UDim2.fromScale(1, 1)
@@ -1080,7 +1103,7 @@ function BalikPaneli.basla(gear: DigMinigame.GearInfo, rarityId: string)
 	end
 
 	subHeader.Text = `{gear.displayName}  |  Lv.{gear.level}`
-	hint.Text = if UserInputService.TouchEnabled then "Touch and hold the screen" else "Hold SPACE or left click"
+	hint.Text = UI.Girdi.sec("Hold SPACE or left click", "Touch and hold the screen", "Hold A")
 
 	screen.Enabled = true
 
