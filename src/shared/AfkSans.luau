@@ -2,8 +2,9 @@
 --[[
 	AFK SANS SISTEMI  --  ayarlar (sunucu + istemci)
 
-	Workspace > CloverAreas icinde bes alan var:
-	    Common > Rare > Epic > Legendary > Mythic
+	Workspace > CloverAreas icinde alti alan var:
+	    Common > Rare > Epic > Legendary > Mythic   (Rot ile, sirayla)
+	    Secret                                      (yalnizca Robux, 300 R$)
 
 	Her alanin adi kademe adi; kendisi yoncalarin cikacagi ZEMIN parcasi.
 	Icinde "<Kademe>Barricade" (alan kilitliyken girisi kapatir),
@@ -76,8 +77,22 @@ export type Alan = {
 	displayName: string,
 	-- Toplanan her yoncanin verdigi sans puani
 	puanYonca: number,
-	-- Rot bedeli (Common bedava)
+	-- Rot bedeli (Common bedava; Robux alaninda kullanilmaz)
 	fiyat: number,
+	--[[
+		Renk ve yazi rengi hangi KADEMEDEN gelsin (Shared > Rarity kimligi).
+		Bos ise id ile ayni. Secret alani icin gerekli: haritadaki parcanin
+		adi "Secret" ama o kimlik Divine'a ait; ekranda "Secret" gorunen
+		kademenin kimligi "Gizli".
+	]]
+	kademe: string?,
+	--[[
+		Verilirse alan YALNIZCA Robux ile acilir: Shared > RobuxMagaza'daki
+		urunun anahtari. Rot sirasina girmez (Mythic'i beklemez), sahipligi
+		PlayerData > afkOzel'de tutulur. Robux alanlari listenin SONUNDA
+		durmali: sirali alanlarin sahipligi sira numarasiyla bakiliyor.
+	]]
+	robux: string?,
 }
 
 local alanlar: { Alan } = {
@@ -86,6 +101,18 @@ local alanlar: { Alan } = {
 	{ id = "Epic", displayName = "Epic Clover Field", puanYonca = 135, fiyat = kurekFiyati(11) },
 	{ id = "Legendary", displayName = "Legendary Clover Field", puanYonca = 270, fiyat = oltaFiyati(1) },
 	{ id = "Mythic", displayName = "Mythic Clover Field", puanYonca = 500, fiyat = oltaFiyati(5) },
+	--[[
+		SECRET: yalnizca Robux (300 R$, bkz. Shared > RobuxMagaza "AfkSecretAlan").
+		Mythic'in iki kati puan: tavana ~25 saatte ulasilir.
+	]]
+	{
+		id = "Secret",
+		kademe = "Gizli",
+		displayName = "Secret Clover Field",
+		puanYonca = 1000,
+		fiyat = 0,
+		robux = "AfkSecretAlan",
+	},
 }
 AfkSans.Alanlar = alanlar
 
@@ -141,6 +168,52 @@ AfkSans.NpcAdi = "Leprechaun"
 -- Oyuncu nitelikleri (sunucu yazar, istemci okur)
 AfkSans.PuanNiteligi = "AfkPuan"
 AfkSans.SeviyeNiteligi = "AfkSeviye"
+-- Robux ile acilmis alanlarin kimlikleri, virgulle: "Secret"
+AfkSans.OzelNiteligi = "AfkOzelAlanlar"
+
+-- Alanin renk kademesi (Rarity kimligi); bkz. Alan.kademe
+function AfkSans.kademe(id: string): string
+	local alan = AfkSans.get(id)
+	return if alan and alan.kademe then alan.kademe else id
+end
+
+-- Rot ile sirayla acilan alanlarin sayisi (afkSeviye'nin tavani)
+function AfkSans.siraliSayi(): number
+	local sayi = 0
+	for _, alan in AfkSans.Alanlar do
+		if not alan.robux then
+			sayi += 1
+		end
+	end
+	return sayi
+end
+
+--[[
+	Oyuncu bu alana sahip mi.
+	  seviye : afkSeviye (sirali alanlarin kacincisina kadar acik)
+	  ozel   : Robux ile acilmis alanlar (id -> true)
+]]
+function AfkSans.sahip(sira: number, seviye: number, ozel: { [string]: boolean }): boolean
+	local alan = AfkSans.Alanlar[sira]
+	if not alan then
+		return false
+	end
+	if alan.robux then
+		return ozel[alan.id] == true
+	end
+	return sira <= seviye
+end
+
+-- OzelNiteligi'nin yazisini tabloya cevirir (istemci okur)
+function AfkSans.ozelCoz(yazi: any): { [string]: boolean }
+	local ozel: { [string]: boolean } = {}
+	if type(yazi) == "string" then
+		for id in string.gmatch(yazi, "[^,]+") do
+			ozel[id] = true
+		end
+	end
+	return ozel
+end
 
 function AfkSans.sira(id: string): number?
 	for i, alan in AfkSans.Alanlar do

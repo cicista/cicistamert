@@ -50,6 +50,8 @@ local Format = require(Shared:WaitForChild("Format"))
 local Hiz = require(Shared:WaitForChild("Hiz"))
 local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
+-- Robux ile acilan alanlarin fiyati (bkz. Shared > AfkSans > Alan.robux)
+local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -60,6 +62,7 @@ local YoncaSonuc = Net.event("YoncaSonuc")
 local YoncaIste = Net.event("YoncaIste")
 local LeprechaunAc = Net.event("LeprechaunAc")
 local AfkAlanAl = Net.event("AfkAlanAl")
+local RobuxUrunAl = Net.event("RobuxUrunAl")
 
 local SIYAH = Color3.new(0, 0, 0)
 local BEYAZ = Color3.new(1, 1, 1)
@@ -110,6 +113,17 @@ end
 
 local function seviye(): number
 	return tonumber(player:GetAttribute(Ayar.SeviyeNiteligi)) or 1
+end
+
+-- Robux alaninin fiyati (urun yoksa 0)
+local function robuxFiyati(alan: Ayar.Alan): number
+	local urun = if alan.robux then RobuxMagaza.get(alan.robux) else nil
+	return if urun then urun.fiyat else 0
+end
+
+-- Bu siradaki alan acik mi (Rot sirasi ya da Robux ile)
+local function acikMi(sira: number): boolean
+	return Ayar.sahip(sira, seviye(), Ayar.ozelCoz(player:GetAttribute(Ayar.OzelNiteligi)))
 end
 
 local function puan(): number
@@ -175,7 +189,7 @@ local function kilitYazisi(alan: Ayar.Alan, parca: BasePart): BillboardGui
 		eski:Destroy()
 	end
 
-	local renk = Rarity.textColor(alan.id)
+	local renk = Rarity.textColor(Ayar.kademe(alan.id))
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "AfkKilit_" .. alan.id
 	bb.Size = UDim2.fromOffset(260, 70)
@@ -252,13 +266,15 @@ local function kilitUyarisi(alan: Ayar.Alan)
 		text = `{string.upper(alan.displayName)} IS LOCKED!`,
 		size = UI.Sizes.huge,
 		font = UI.Fonts.bold,
-		color = Rarity.textColor(alan.id),
+		color = Rarity.textColor(Ayar.kademe(alan.id)),
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, 0, 0, 46),
 		parent = kap,
 	})
 	local alt = UI.text({
-		text = `Talk to the {Ayar.NpcAdi} to unlock it for {Format.short(alan.fiyat)} Rot`,
+		text = if alan.robux
+			then `Talk to the {Ayar.NpcAdi} to unlock it for {robuxFiyati(alan)} Robux`
+			else `Talk to the {Ayar.NpcAdi} to unlock it for {Format.short(alan.fiyat)} Rot`,
 		size = UI.Sizes.heading,
 		font = UI.Fonts.bold,
 		color = BEYAZ,
@@ -299,7 +315,7 @@ local function dokunmaBagla(parca: BasePart, sira: number, alan: Ayar.Alan)
 	dokunmaBagli[parca] = true
 	parca.Touched:Connect(function(hit)
 		local char = player.Character
-		if char and hit:IsDescendantOf(char) and sira > seviye() then
+		if char and hit:IsDescendantOf(char) and not acikMi(sira) then
 			kilitUyarisi(alan)
 		end
 	end)
@@ -320,7 +336,7 @@ local function suzmeKur(alan: Ayar.Alan, z: BasePart)
 		return
 	end
 
-	local renk = Rarity.color(alan.id)
+	local renk = Rarity.color(Ayar.kademe(alan.id))
 	local kutu = Instance.new("Part")
 	kutu.Name = "AfkSuzme_" .. alan.id
 	kutu.Anchored = true
@@ -392,7 +408,6 @@ local function suzmeKur(alan: Ayar.Alan, z: BasePart)
 end
 
 local function barikatlariGuncelle()
-	local acik = seviye()
 	for i, alan in Ayar.Alanlar do
 		local z = zemin(alan.id)
 		if not z then
@@ -408,7 +423,7 @@ local function barikatlariGuncelle()
 				ilkHal[parca] = { cc = parca.CanCollide, tr = parca.Transparency }
 			end
 			local ilk = ilkHal[parca]
-			if i <= acik then
+			if acikMi(i) then
 				parca.CanCollide = false
 				parca.Transparency = 1
 			else
@@ -420,7 +435,7 @@ local function barikatlariGuncelle()
 			end
 		end
 
-		if enBuyuk and i > acik then
+		if enBuyuk and not acikMi(i) then
 			kilitYazisi(alan, enBuyuk)
 		elseif kilitYazilari[alan.id] then
 			kilitYazilari[alan.id]:Destroy()
@@ -437,6 +452,7 @@ task.spawn(function()
 	end
 end)
 player:GetAttributeChangedSignal(Ayar.SeviyeNiteligi):Connect(barikatlariGuncelle)
+player:GetAttributeChangedSignal(Ayar.OzelNiteligi):Connect(barikatlariGuncelle)
 
 ------------------------------------------------------------------
 -- YONCA MODELLERI
@@ -562,7 +578,7 @@ local function yoncaKur(alanId: string, v: any)
 		return
 	end
 
-	local renk = Rarity.color(alanId)
+	local renk = Rarity.color(Ayar.kademe(alanId))
 	local model = Assets.cloverModel(alanId) or yedekYonca(renk)
 	model.Name = `Yonca_{v.id}`
 	hazirla(model)
@@ -1344,7 +1360,7 @@ RunService.Heartbeat:Connect(function(dt)
 		toplanan = {
 			id = hedef.id,
 			basla = simdi,
-			bar = barKur(hedef, Rarity.color(aktifAlan)),
+			bar = barKur(hedef, Rarity.color(Ayar.kademe(aktifAlan))),
 		}
 		YoncaTopla:FireServer(hedef.id)
 		return
@@ -1471,7 +1487,7 @@ Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 		return
 	end
 
-	hudBaslik.TextColor3 = Rarity.textColor(aktifAlan)
+	hudBaslik.TextColor3 = Rarity.textColor(Ayar.kademe(aktifAlan))
 	hudXpBaslik.TextColor3 = hudBaslik.TextColor3
 	hudGuncelle()
 	otoCiz()
@@ -1518,7 +1534,7 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
 	redSayisi[id] = nil
 	local g = yoncalar[id]
 	if g then
-		yazdirKazanc(g.pos, tonumber(kazanc) or 0, Rarity.textColor(g.alan))
+		yazdirKazanc(g.pos, tonumber(kazanc) or 0, Rarity.textColor(Ayar.kademe(g.alan)))
 	end
 	xpGainGoster(Ayar.YoncaXp)
 	yoncaSil(id, true)
@@ -1607,8 +1623,8 @@ local function panelCiz(veri: any)
 	ozetPuan.Text = `Your Clover Luck: {virgullu(p)}`
 
 	for i, alan in veri.alanlar do
-		local renk = Rarity.color(alan.id)
-		local yaziRengi = Rarity.textColor(alan.id)
+		local renk = Rarity.color(Ayar.kademe(alan.id))
+		local yaziRengi = Rarity.textColor(Ayar.kademe(alan.id))
 
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1, -6, 0, 76)
@@ -1650,6 +1666,33 @@ local function panelCiz(veri: any)
 				align = Enum.TextXAlignment.Right,
 				frameSize = UDim2.fromOffset(160, 24),
 				position = UDim2.new(1, -174, 0.5, -12),
+				parent = row,
+			})
+		elseif alan.buyable and type(alan.robux) == "string" then
+			--[[
+				YALNIZCA ROBUX: mor dugme, Robux ikonu + fiyat. Satin alma
+				penceresini sunucu acar (RobuxMagaza), odeme gelince alan acilir.
+			]]
+			local urun = RobuxMagaza.get(alan.robux)
+			local dugme, yuz = UI.dugme3B(row, "", UDim2.fromOffset(160, 50), Color3.fromRGB(150, 60, 255))
+			dugme.Position = UDim2.new(1, -172, 0.5, -25)
+			local fiyat = UI.robuxFiyati(yuz, if urun then urun.fiyat else 0, UI.Sizes.label, (yuz.ZIndex or 1) + 1)
+			fiyat.AnchorPoint = Vector2.new(0.5, 0.5)
+			fiyat.Position = UDim2.fromScale(0.5, 0.5)
+			local robuxAnahtari = alan.robux
+			dugme.MouseButton1Click:Connect(function()
+				RobuxUrunAl:FireServer(robuxAnahtari)
+			end)
+
+			-- "ROBUX ONLY" rozeti: adin yaninda altin renkte
+			UI.text({
+				text = "ROBUX ONLY",
+				size = UI.Sizes.tiny,
+				font = UI.Fonts.bold,
+				color = UI.Colors.gold,
+				align = Enum.TextXAlignment.Right,
+				frameSize = UDim2.fromOffset(120, 18),
+				position = UDim2.new(1, -300, 0, 12),
 				parent = row,
 			})
 		elseif alan.buyable then

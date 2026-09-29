@@ -113,6 +113,11 @@ function AfkSans.carpan(player: Player): number
 	return if data then Ayar.carpan(data.afkPuan) else 1
 end
 
+-- Oyuncu bu siradaki alana sahip mi (Rot sirasi ya da Robux)
+local function sahipMi(data: any, sira: number): boolean
+	return Ayar.sahip(sira, data.afkSeviye, data.afkOzel)
+end
+
 local function nitelikleriYaz(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
@@ -120,6 +125,13 @@ local function nitelikleriYaz(player: Player)
 	end
 	player:SetAttribute(Ayar.PuanNiteligi, math.floor(data.afkPuan))
 	player:SetAttribute(Ayar.SeviyeNiteligi, data.afkSeviye)
+	-- Robux alanlari: istemci barikati buna gore acar
+	local ozel = {}
+	for id in data.afkOzel do
+		table.insert(ozel, id)
+	end
+	table.sort(ozel)
+	player:SetAttribute(Ayar.OzelNiteligi, table.concat(ozel, ","))
 end
 
 ------------------------------------------------------------------
@@ -148,7 +160,7 @@ local function alanBul(player: Player): (string?, boolean)
 	for i, alan in Ayar.Alanlar do
 		local z = zemin(alan.id)
 		if z and Ayar.icinde(z, root.Position) then
-			return alan.id, i <= data.afkSeviye
+			return alan.id, sahipMi(data, i)
 		end
 	end
 	return nil, false
@@ -441,8 +453,12 @@ local function panelVerisi(player: Player)
 			displayName = alan.displayName,
 			puanYonca = alan.puanYonca,
 			fiyat = alan.fiyat,
-			owned = i <= data.afkSeviye,
-			buyable = i == data.afkSeviye + 1,
+			owned = sahipMi(data, i),
+			-- Robux alani sirayi beklemez; Rot alani yalnizca siradaki
+			buyable = if alan.robux then not sahipMi(data, i) else i == data.afkSeviye + 1,
+			-- Doluysa dugme Robux ile satin alir (Shared > RobuxMagaza anahtari)
+			robux = alan.robux,
+			kademe = Ayar.kademe(alan.id),
 		})
 	end
 
@@ -480,6 +496,11 @@ local function satinAl(player: Player, alanId: any)
 	local alan = Ayar.Alanlar[sira]
 	local Bildirim = Net.event("Bildirim")
 
+	-- Robux alani Rot ile alinamaz: istemci RobuxUrunAl yollar (bkz. AfkSans.robuxlaAc)
+	if alan.robux then
+		return
+	end
+
 	if sira <= data.afkSeviye then
 		Bildirim:FireClient(player, `{alan.displayName} is already unlocked.`, Color3.fromRGB(180, 200, 220))
 		return
@@ -501,7 +522,44 @@ local function satinAl(player: Player, alanId: any)
 
 	Envanter.push(player)
 	Net.event("LeprechaunAc"):FireClient(player, panelVerisi(player))
-	Bildirim:FireClient(player, `{alan.displayName} unlocked! The barricade is gone.`, Rarity.color(alan.id))
+	Bildirim:FireClient(player, `{alan.displayName} unlocked! The barricade is gone.`, Rarity.color(Ayar.kademe(alan.id)))
+end
+
+--[[
+	ROBUX ALANI  --  RobuxMagaza'nin ProcessReceipt'i cagirir (bkz.
+	RobuxMagaza.server > urunVer). BEKLEMEZ, yalnizca kaydi degistirir.
+	Zaten acik alana ikinci fis gelirse bir sey yapmaz (pencere acilmadan
+	once RobuxMagaza bunu ayrica denetliyor).
+]]
+function AfkSans.robuxlaAc(player: Player, alanId: string)
+	local alan = Ayar.get(alanId)
+	local data = PlayerData.get(player)
+	if not alan or not alan.robux then
+		error(`robux alani degil: {alanId}`)
+	end
+	if not data then
+		error("oyuncu verisi yok")
+	end
+
+	data.afkOzel[alanId] = true
+	nitelikleriYaz(player)
+
+	-- Leprechaun paneli aciksa tazelensin
+	local veri = panelVerisi(player)
+	if veri then
+		Net.event("LeprechaunAc"):FireClient(player, veri)
+	end
+	Net.event("Bildirim"):FireClient(
+		player,
+		`{alan.displayName} unlocked! The barricade is gone.`,
+		Rarity.color(Ayar.kademe(alan.id))
+	)
+end
+
+-- Bu Robux alani zaten acik mi (satin alma penceresi acilmadan once)
+function AfkSans.robuxAlaniAcik(player: Player, alanId: string): boolean
+	local data = PlayerData.get(player)
+	return data ~= nil and data.afkOzel[alanId] == true
 end
 
 local function tutunmaParcasi(node: Instance): BasePart?
@@ -668,7 +726,7 @@ local function afkSpotunaDon(player: Player)
 	local data = PlayerData.get(player)
 	local z = zemin(alanId)
 	-- Kilitli (ya da artik olmayan) alana isinlanilmaz
-	if not sira or not data or sira > data.afkSeviye or not z then
+	if not sira or not data or not sahipMi(data, sira) or not z then
 		return
 	end
 

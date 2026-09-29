@@ -48,7 +48,7 @@ export type Urun = {
 	etiket: string,
 	-- Bildirimde yazan tam ad
 	ad: string,
-	tur: string, -- "luckyblock" | "luck" | "rotcoin" | "detectiveSkip" | "gacha"
+	tur: string, -- "luckyblock" | "luck" | "rotcoin" | "detectiveSkip" | "gacha" | "afkAlan"
 	-- luckyblock
 	tier: string?,
 	adet: number?,
@@ -57,6 +57,8 @@ export type Urun = {
 	saniye: number?,
 	-- rotcoin
 	rotCoin: number?,
+	-- afkAlan: acilan yonca alaninin kimligi (Shared > AfkSans)
+	alan: string?,
 }
 
 export type Kart = {
@@ -210,6 +212,20 @@ RobuxMagaza.GizliUrunler = {
 		etiket = "OPEN",
 		ad = "Premium Spin",
 		tur = "gacha",
+	},
+
+	--[[
+		Secret yonca alani: yalnizca Robux ile, Leprechaun panelinden.
+		Anahtar Shared > AfkSans > Alanlar'daki robux alaniyla ayni olmali.
+	]]
+	{
+		anahtar = "AfkSecretAlan",
+		id = 0,
+		fiyat = 300,
+		etiket = "UNLOCK",
+		ad = "Secret Clover Field",
+		tur = "afkAlan",
+		alan = "Secret",
 	},
 } :: { Urun }
 

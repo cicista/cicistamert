@@ -35,6 +35,8 @@ local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 -- Yumurta gachasi (bkz. Modules > Gacha)
 local Gacha = require(Modules:WaitForChild("Gacha"))
+-- Robux ile acilan yonca alani (bkz. Modules > AfkSans)
+local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local Canta = require(Shared:WaitForChild("Canta"))
 
 local Bildirim = Net.event("Bildirim")
@@ -126,6 +128,8 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 				Color3.fromRGB(255, 200, 90)
 			)
 		end
+	elseif urun.tur == "afkAlan" and urun.alan then
+		AfkSans.robuxlaAc(player, urun.alan)
 	elseif urun.tur == "gacha" then
 		-- Yumurta kayda hemen yazilir, carki ve patlamayi Gacha modulu oynatir
 		Gacha.ver(player)
@@ -257,6 +261,12 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 			Bildirim:FireClient(player, "Your backpack is full! Make room before using the Premium Spin.", SARI)
 			return
 		end
+	end
+
+	-- Zaten acik yonca alani ikinci kez satilmaz
+	if urun.tur == "afkAlan" and urun.alan and AfkSans.robuxAlaniAcik(player, urun.alan) then
+		Bildirim:FireClient(player, `{urun.ad} is already unlocked.`, Color3.fromRGB(180, 200, 220))
+		return
 	end
 
 	if not RobuxMagaza.satista(urun) then

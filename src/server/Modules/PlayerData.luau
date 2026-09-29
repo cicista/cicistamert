@@ -194,6 +194,8 @@ export type Data = {
 	]]
 	afkPuan: number,
 	afkSeviye: number,
+	-- Robux ile acilmis yonca alanlari (id -> true), bkz. Shared > AfkSans > Alan.robux
+	afkOzel: { [string]: boolean },
 	-- Yumurta gachasinda ust uste Infernal/Abyssal CIKMAYAN cevirme sayisi (bkz. Shared > Gacha)
 	gachaIska: number,
 	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
@@ -339,6 +341,7 @@ local function defaultData(): Data
 		speedRebirth = 0,
 		afkPuan = 0,
 		afkSeviye = 1,
+		afkOzel = {},
 		gachaIska = 0,
 		quests ={ cycle = 0, progress = {}, done = {} },
 		-- Yeni oyuncu ogreticinin ilk adiminda baslar
@@ -520,7 +523,17 @@ local function migrate(raw: any): Data
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
 	-- AFK sans oncesi kayitlar sifir puan ve yalnizca Common alaniyla acilir
 	data.afkPuan = math.clamp(tonumber(raw.afkPuan) or 0, 0, AfkSans.MaxPuan)
-	data.afkSeviye = math.clamp(math.floor(tonumber(raw.afkSeviye) or 1), 1, #AfkSans.Alanlar)
+	-- Tavan yalnizca Rot ile SIRAYLA acilan alanlar (Robux alanlari ayri)
+	data.afkSeviye = math.clamp(math.floor(tonumber(raw.afkSeviye) or 1), 1, AfkSans.siraliSayi())
+	data.afkOzel = {}
+	if type(raw.afkOzel) == "table" then
+		for id, var in raw.afkOzel do
+			local alan = if type(id) == "string" then AfkSans.get(id) else nil
+			if alan and alan.robux and var == true then
+				data.afkOzel[id] = true
+			end
+		end
+	end
 	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
 
 	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
