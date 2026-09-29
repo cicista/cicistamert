@@ -1942,11 +1942,12 @@ local function solSutunuYerlestir()
 		buffYuksekligi += iksirBuff.Size.Y.Offset * carpan
 	end
 
-	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + (if UI.Girdi.dokunmatik() then 10 else SUTUN_BOSLUK)))
+	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + (if UI.Girdi.dokunmatik() then (tonumber(solSutun:GetAttribute("MobilAltPay")) or 10) else SUTUN_BOSLUK)))
 end
 
 solSutunuYerlestir()
 UI.onScaleChanged(solSutunuYerlestir)
+solSutun:GetAttributeChangedSignal("MobilAltPay"):Connect(solSutunuYerlestir)
 
 local menuSirasi = 0
 

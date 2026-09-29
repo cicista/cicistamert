@@ -11,136 +11,165 @@ local Girdi = UI.Girdi
 
 local OTOMATIK_GIZLEME = 10
 local MENU_BOYU = 52
-local LIP = 5
+local HUCRE_ARA = 8
+local DUGME_EN = MENU_BOYU * 2 + HUCRE_ARA
+local DUGME_BOY = 44
+local LIP = 4
+local DUGME_BOSLUK = 8
+local ALT_PAY_NITELIGI = "MobilAltPay"
+local BASE_DUGMESI = "Base"
 
 local KAPALI_RENK = Color3.fromRGB(255, 176, 40)
 local ACIK_RENK = Color3.fromRGB(226, 70, 70)
 local SIYAH = Color3.fromRGB(0, 0, 0)
 local BEYAZ = Color3.fromRGB(255, 255, 255)
 
-local menuler = playerGui:WaitForChild("OyunMenuleri")
+local ACILIS_SURESI = 0.24
+local KAPANIS_SURESI = 0.14
+local SIRA_ARASI = 0.025
+
+local menuler = playerGui:WaitForChild("OyunMenuleri") :: ScreenGui
 local sol = menuler:WaitForChild("SolMenu") :: GuiObject
 local sag = menuler:WaitForChild("SagMenu") :: GuiObject
 
-if sol:FindFirstChild("MenuDugmesi") then
+if menuler:FindFirstChild("MenuDugmesi") or sol:FindFirstChild("MenuDugmesi") then
 	return
 end
 
 local acik = true
+local panelAcik = false
 local sonEtkilesim = os.clock()
 local izlenenler: { [GuiButton]: boolean } = {}
 
-local dugme = Instance.new("ImageButton")
+local dugme = Instance.new("TextButton")
 dugme.Name = "MenuDugmesi"
-dugme.LayoutOrder = -1000
-dugme.Size = UDim2.fromOffset(MENU_BOYU, MENU_BOYU + LIP)
-dugme.BackgroundColor3 = UI.shade(KAPALI_RENK, -0.32)
-dugme.BorderSizePixel = 0
+dugme.Text = ""
 dugme.AutoButtonColor = false
-dugme.Image = ""
+dugme.BackgroundTransparency = 1
+dugme.AnchorPoint = Vector2.zero
+dugme.Size = UDim2.fromOffset(DUGME_EN, DUGME_BOY + LIP)
 dugme.Visible = false
-dugme.Parent = sol
-UI.corner(dugme, 14)
-local kontur = UI.stroke(dugme, SIYAH, 2)
+dugme.Parent = menuler
+
+local govde = Instance.new("Frame")
+govde.Name = "Govde"
+govde.AnchorPoint = Vector2.new(0.5, 0.5)
+govde.Position = UDim2.fromScale(0.5, 0.5)
+govde.Size = UDim2.fromScale(1, 1)
+govde.BackgroundColor3 = UI.shade(KAPALI_RENK, -0.32)
+govde.BorderSizePixel = 0
+govde.Parent = dugme
+UI.corner(govde, 12)
+UI.stroke(govde, SIYAH, 2)
+
+do
+	local olcek = Instance.new("UIScale")
+	olcek.Name = "GosterOlcek"
+	olcek.Parent = govde
+end
 
 local yuz = Instance.new("Frame")
 yuz.Name = "Yuz"
-yuz.AnchorPoint = Vector2.new(0.5, 0.5)
-yuz.Position = UDim2.new(0.5, 0, 0.5, -LIP / 2)
-yuz.Size = UDim2.new(1, -8, 1, -8 - LIP)
+yuz.AnchorPoint = Vector2.new(0.5, 0)
+yuz.Position = UDim2.new(0.5, 0, 0, 3)
+yuz.Size = UDim2.new(1, -6, 1, -6 - LIP)
 yuz.BackgroundColor3 = KAPALI_RENK
 yuz.BorderSizePixel = 0
 yuz.ClipsDescendants = true
-yuz.Parent = dugme
-UI.corner(yuz, 10)
-UI.gloss(yuz, 0.7)
+yuz.Parent = govde
+UI.corner(yuz, 9)
+UI.corner(UI.gloss(yuz, 0.7), 9)
+
+local ikonKap = Instance.new("Frame")
+ikonKap.Name = "Ikon"
+ikonKap.AnchorPoint = Vector2.new(0, 0.5)
+ikonKap.Position = UDim2.new(0, 10, 0.5, 0)
+ikonKap.Size = UDim2.fromOffset(22, 18)
+ikonKap.BackgroundTransparency = 1
+ikonKap.ZIndex = 3
+ikonKap.Parent = yuz
 
 local cubuklar = Instance.new("Frame")
 cubuklar.Name = "Cubuklar"
-cubuklar.AnchorPoint = Vector2.new(0.5, 0)
-cubuklar.Position = UDim2.fromScale(0.5, 0.14)
-cubuklar.Size = UDim2.fromScale(0.62, 0.42)
+cubuklar.Size = UDim2.fromScale(1, 1)
 cubuklar.BackgroundTransparency = 1
 cubuklar.ZIndex = 3
-cubuklar.Parent = yuz
+cubuklar.Parent = ikonKap
 
 for i = 0, 2 do
 	local cubuk = Instance.new("Frame")
-	cubuk.AnchorPoint = Vector2.new(0.5, 0.5)
-	cubuk.Position = UDim2.fromScale(0.5, 0.15 + i * 0.35)
-	cubuk.Size = UDim2.new(1, 0, 0, 5)
+	cubuk.AnchorPoint = Vector2.new(0, 0.5)
+	cubuk.Position = UDim2.fromScale(0, 0.12 + i * 0.38)
+	cubuk.Size = UDim2.new(1, 0, 0, 4)
 	cubuk.BackgroundColor3 = BEYAZ
 	cubuk.BorderSizePixel = 0
 	cubuk.ZIndex = 3
 	cubuk.Parent = cubuklar
-	UI.corner(cubuk, 3)
+	UI.corner(cubuk, 2)
 	UI.stroke(cubuk, SIYAH, 1.5)
 end
 
 local carpi = UI.text({
 	text = "X",
-	size = UI.Sizes.title,
+	size = UI.Sizes.label,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.fromScale(1, 0.62),
-	position = UDim2.fromScale(0, 0.02),
-	parent = yuz,
+	frameSize = UDim2.fromScale(1, 1.4),
+	anchor = Vector2.new(0, 0.5),
+	position = UDim2.fromScale(0, 0.5),
+	parent = ikonKap,
 	zIndex = 3,
 })
 carpi.Visible = false
 
 local etiket = UI.text({
 	text = "MENU",
-	size = UI.Sizes.tiny,
+	size = UI.Sizes.label,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
 	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, 0, 0.36, 0),
-	position = UDim2.fromScale(0, 0.62),
+	frameSize = UDim2.new(1, -38, 1, 0),
+	position = UDim2.fromOffset(34, 0),
 	parent = yuz,
 	zIndex = 3,
 })
 
-local isilti = TweenService:Create(
-	kontur,
-	TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-	{ Thickness = 4.5, Color = Color3.fromRGB(255, 240, 150) }
-)
-
 local function gorunumuCiz()
 	local renk = if acik then ACIK_RENK else KAPALI_RENK
 	yuz.BackgroundColor3 = renk
-	dugme.BackgroundColor3 = UI.shade(renk, -0.32)
+	govde.BackgroundColor3 = UI.shade(renk, -0.32)
 	cubuklar.Visible = not acik
 	carpi.Visible = acik
 	etiket.Text = if acik then "HIDE" else "MENU"
-
-	if acik then
-		isilti:Cancel()
-		kontur.Thickness = 2
-		kontur.Color = SIYAH
-	elseif dugme.Visible then
-		isilti:Play()
-	end
 end
 
-local ACILIS_SURESI = 0.24
-local KAPANIS_SURESI = 0.14
-local SIRA_ARASI = 0.025
+local function dugmeyiYerlestir()
+	if not Girdi.dokunmatik() then
+		return
+	end
+	local carpan = UI.carpan()
+	dugme.Position = UDim2.fromOffset(
+		sol.AbsolutePosition.X,
+		sol.AbsolutePosition.Y + sol.AbsoluteSize.Y + DUGME_BOSLUK * carpan
+	)
+	local pay = math.floor((DUGME_BOY + LIP + DUGME_BOSLUK * 2) * carpan + 0.5)
+	if sol:GetAttribute(ALT_PAY_NITELIGI) ~= pay then
+		sol:SetAttribute(ALT_PAY_NITELIGI, pay)
+	end
+end
 
 type Durum = { hedef: boolean, surum: number }
 local durumlar: { [GuiObject]: Durum } = {}
 local ilkCizim = true
-local panelAcik = false
 
 local function gosterOlcegi(oge: GuiObject): UIScale?
 	local dogrudan = oge:FindFirstChild("GosterOlcek")
 	if dogrudan and dogrudan:IsA("UIScale") then
 		return dogrudan
 	end
-	local govde = oge:FindFirstChild("Govde")
-	local icte = govde and govde:FindFirstChild("GosterOlcek")
+	local ic = oge:FindFirstChild("Govde")
+	local icte = ic and ic:FindFirstChild("GosterOlcek")
 	if icte and icte:IsA("UIScale") then
 		return icte
 	end
@@ -153,13 +182,13 @@ local function gosterOlcegi(oge: GuiObject): UIScale?
 	return yeni
 end
 
-local function ogeyiAyarla(oge: GuiObject, goster: boolean, gecikme: number)
+local function ogeyiAyarla(oge: GuiObject, goster: boolean, gecikme: number, zorla: boolean?)
 	local durum = durumlar[oge]
 	if not durum then
 		durum = { hedef = oge.Visible, surum = 0 }
 		durumlar[oge] = durum
 	end
-	if durum.hedef == goster and oge.Visible == goster then
+	if not zorla and durum.hedef == goster and oge.Visible == goster then
 		return
 	end
 	durum.hedef = goster
@@ -176,7 +205,7 @@ local function ogeyiAyarla(oge: GuiObject, goster: boolean, gecikme: number)
 	end
 
 	if goster then
-		if not oge.Visible then
+		if zorla or not oge.Visible then
 			olcek.Scale = 0
 			oge.Visible = true
 		end
@@ -212,11 +241,21 @@ local function ogeyiAyarla(oge: GuiObject, goster: boolean, gecikme: number)
 	end)
 end
 
-local function menuOgeleri(): { GuiObject }
+local function baseDugmesi(): GuiObject?
+	for _, kap in { sag, sol } do
+		local bulunan = kap:FindFirstChild(BASE_DUGMESI)
+		if bulunan and bulunan:IsA("GuiObject") then
+			return bulunan
+		end
+	end
+	return nil
+end
+
+local function menuOgeleri(haric: GuiObject?): { GuiObject }
 	local liste: { GuiObject } = {}
 	local solOgeler: { GuiObject } = {}
 	for _, cocuk in sol:GetChildren() do
-		if cocuk:IsA("GuiObject") and cocuk ~= dugme then
+		if cocuk:IsA("GuiObject") and cocuk ~= haric then
 			table.insert(solOgeler, cocuk)
 		end
 	end
@@ -227,7 +266,7 @@ local function menuOgeleri(): { GuiObject }
 		table.insert(liste, oge)
 	end
 	for _, cocuk in sag:GetChildren() do
-		if cocuk:IsA("GuiObject") then
+		if cocuk:IsA("GuiObject") and cocuk ~= haric then
 			table.insert(liste, cocuk)
 		end
 	end
@@ -243,7 +282,7 @@ local function etkilesimiIzle(oge: GuiObject)
 	local butonlar: { Instance } = oge:GetDescendants()
 	table.insert(butonlar, oge)
 	for _, nesne in butonlar do
-		if nesne:IsA("GuiButton") and not izlenenler[nesne] then
+		if nesne:IsA("GuiButton") and nesne ~= dugme and not izlenenler[nesne] then
 			izlenenler[nesne] = true
 			nesne.Activated:Connect(function()
 				sonEtkilesim = os.clock()
@@ -252,18 +291,43 @@ local function etkilesimiIzle(oge: GuiObject)
 	end
 end
 
+local function baseyiAyarla(base: GuiObject, dokunmatik: boolean)
+	local solda = dokunmatik and not acik
+	local hedefKap = if solda then sol else sag
+	local goster = not panelAcik
+
+	if base.Parent ~= hedefKap then
+		base.Parent = hedefKap
+		ogeyiAyarla(base, goster, 0, true)
+		return
+	end
+	ogeyiAyarla(base, goster, 0)
+end
+
 local function uygula()
 	local dokunmatik = Girdi.dokunmatik()
 	local goster = not panelAcik and (not dokunmatik or acik)
 
 	ogeyiAyarla(dugme, dokunmatik and not panelAcik, 0)
 
-	local ogeler = menuOgeleri()
+	local base = baseDugmesi()
+	if base then
+		baseyiAyarla(base, dokunmatik)
+		etkilesimiIzle(base)
+	end
+
+	local ogeler = menuOgeleri(base)
 	local adet = #ogeler
 	for i, oge in ogeler do
 		local sira = if goster then i - 1 else adet - i
 		ogeyiAyarla(oge, goster, sira * SIRA_ARASI)
 		etkilesimiIzle(oge)
+	end
+
+	if not dokunmatik and sol:GetAttribute(ALT_PAY_NITELIGI) ~= nil then
+		sol:SetAttribute(ALT_PAY_NITELIGI, nil)
+	elseif dokunmatik then
+		dugmeyiYerlestir()
 	end
 
 	gorunumuCiz()
@@ -281,14 +345,18 @@ dugme.Activated:Connect(function()
 end)
 
 dugme.MouseButton1Down:Connect(function()
-	yuz.Position = UDim2.new(0.5, 0, 0.5, LIP / 2)
+	yuz.Position = UDim2.new(0.5, 0, 0, 3 + LIP / 2)
 end)
 dugme.MouseButton1Up:Connect(function()
-	yuz.Position = UDim2.new(0.5, 0, 0.5, -LIP / 2)
+	yuz.Position = UDim2.new(0.5, 0, 0, 3)
 end)
 dugme.MouseLeave:Connect(function()
-	yuz.Position = UDim2.new(0.5, 0, 0.5, -LIP / 2)
+	yuz.Position = UDim2.new(0.5, 0, 0, 3)
 end)
+
+sol:GetPropertyChangedSignal("AbsolutePosition"):Connect(dugmeyiYerlestir)
+sol:GetPropertyChangedSignal("AbsoluteSize"):Connect(dugmeyiYerlestir)
+UI.onScaleChanged(dugmeyiYerlestir)
 
 sol.ChildAdded:Connect(function()
 	task.defer(uygula)
