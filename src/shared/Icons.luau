@@ -183,6 +183,20 @@ local Map: { [string]: IconEntry } = {
 	gps = { "Misc", "Locate" },
 	shovel = { "Stats", "Power" },
 
+	--[[
+		Ogretici isaretleri (StarterPlayerScripts > Ogretici): hedefin
+		tepesindeki ikon ve karakterden hedefe art arda dizilen oklar.
+		Once bilinen kategori, yoksa paketin tamaminda adla aranir.
+	]]
+	ogreticiHedef = {
+		{ "Misc", "Locate" },
+		{ "*", "Locate" },
+	},
+	ogreticiOk = {
+		{ "Arrows", "Up" },
+		{ "*", "Up" },
+	},
+
 	-- Dedektor sans kademeleri
 	luck1 = { "Luck", "NormalLuck" },
 	luck2 = { "Luck", "SuperLuck" },

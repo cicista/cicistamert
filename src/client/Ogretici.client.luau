@@ -11,13 +11,14 @@
 
 	  1. Yonerge seridi  ekranin ustunde, "Dig in the sand!" gibi
 	  2. Hedef isareti   hedefin etrafinda sari parlama + tepesinde nabiz
-	                     atan bir nokta
-	  3. Yol cizgisi     karakterle hedef arasinda uzanan sari isin
+	                     atan Locate ikonu (Simulator Icon Pack)
+	  3. Yol oklari      karakterden hedefe art arda dizilen, hedefe dogru
+	                     akan "Up" ok ikonlari (ikon yoksa sari isin)
 
 	HEPSI YEREL. Highlight ve BillboardGui PlayerGui'nin altinda duruyor ve
-	dunyaya Adornee ile baglaniyor; Beam'in tutamaklari da istemcide
-	olusturuluyor. Hedefin kendisine parent edilselerdi sunucudaki herkes
-	gorurdu, ogreticiyi coktan bitirmis oyuncular dahil.
+	dunyaya Adornee ile baglaniyor; oklarin ve Beam'in tutamaklari da
+	istemcide olusturuluyor. Hedefin kendisine parent edilselerdi sunucudaki
+	herkes gorurdu, ogreticiyi coktan bitirmis oyuncular dahil.
 
 	HEDEFI BULMAK
 	Isimle: dedektif ve fuse makinesi Config'teki adlariyla, base sunucunun
@@ -288,7 +289,7 @@ local altYazi = UI.text({
 })
 
 ------------------------------------------------------------------
--- HEDEF ISARETI  --  parlama + tepesinde nabiz atan nokta
+-- HEDEF ISARETI  --  parlama + tepesinde nabiz atan Locate ikonu
 ------------------------------------------------------------------
 local parlama = Instance.new("Highlight")
 parlama.Name = "OgreticiParlamasi"
@@ -303,38 +304,70 @@ parlama.Parent = playerGui
 
 local hedefTabela = Instance.new("BillboardGui")
 hedefTabela.Name = "OgreticiHedefi"
-hedefTabela.Size = UDim2.fromOffset(46, 46)
+hedefTabela.Size = UDim2.fromOffset(58, 58)
 hedefTabela.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
 hedefTabela.AlwaysOnTop = true
+-- PlayerGui'de duruyor: yeniden doguste silinmesin (betik bir kez calisiyor)
+hedefTabela.ResetOnSpawn = false
 hedefTabela.Enabled = false
 hedefTabela.Parent = playerGui
 
 --[[
-	Hedefin tepesinde YALNIZCA BIR NOKTA duruyor.
+	Hedefin tepesinde paketteki LOCATE ikonu duruyor (Icons > ogreticiHedef).
+	Yonu yol oklari gosteriyor, tepedeki isaretin tek isi "burasi" demek.
 
-	Once iki cubuktan bir ok cizilmisti; asagi cevrilince ok gibi degil
-	CARPI gibi gorunuyordu. Yonu zaten yerdeki cizgi gosteriyor, tepedeki
-	isaretin tek isi "burasi" demek -- sade bir nokta yetiyor.
+	Ikon ve yedek nokta ayni kabin icinde: nabiz kaba bagli, hangisi
+	gorunurse o atiyor. UIScale bir GuiObject'in altinda olmali
+	(BillboardGui degil).
 ]]
+local hedefKabi = Instance.new("Frame")
+hedefKabi.Name = "Kap"
+hedefKabi.AnchorPoint = Vector2.new(0.5, 0.5)
+hedefKabi.Position = UDim2.fromScale(0.5, 0.5)
+hedefKabi.Size = UDim2.fromScale(1, 1)
+hedefKabi.BackgroundTransparency = 1
+hedefKabi.Parent = hedefTabela
+
+local hedefIkonu = Instance.new("ImageLabel")
+hedefIkonu.Name = "Locate"
+hedefIkonu.Size = UDim2.fromScale(1, 1)
+hedefIkonu.BackgroundTransparency = 1
+hedefIkonu.ScaleType = Enum.ScaleType.Fit
+hedefIkonu.Visible = false
+hedefIkonu.Parent = hedefKabi
+
+-- YEDEK: paket istemciye gelmezse eski sari nokta gorunur
 local hedefNoktasi = Instance.new("Frame")
 hedefNoktasi.Name = "Nokta"
 hedefNoktasi.AnchorPoint = Vector2.new(0.5, 0.5)
 hedefNoktasi.Position = UDim2.fromScale(0.5, 0.5)
-hedefNoktasi.Size = UDim2.fromScale(0.62, 0.62)
+hedefNoktasi.Size = UDim2.fromScale(0.52, 0.52)
 hedefNoktasi.BackgroundColor3 = ISARET
 hedefNoktasi.BorderSizePixel = 0
-hedefNoktasi.Parent = hedefTabela
+hedefNoktasi.Parent = hedefKabi
 UI.corner(hedefNoktasi, 1000)
 UI.stroke(hedefNoktasi, SIYAH, 3)
 
--- Nokta nabiz atar; UIScale bir GuiObject'in altinda olmali (BillboardGui degil)
 local noktaOlcek = Instance.new("UIScale")
-noktaOlcek.Parent = hedefNoktasi
+noktaOlcek.Parent = hedefKabi
 TweenService:Create(
 	noktaOlcek,
 	TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-	{ Scale = 1.25 }
+	{ Scale = 1.2 }
 ):Play()
+
+--[[
+	Ikon bulunana kadar her tazelemede yeniden denenir: paket istemciye gec
+	replike olabiliyor. Bulununca onbellekten geliyor, maliyeti yok.
+]]
+local function hedefIkonunuKoy()
+	if hedefIkonu.Image == "" then
+		Icons.apply(hedefIkonu, "ogreticiHedef")
+	end
+	local var = hedefIkonu.Image ~= ""
+	hedefIkonu.Visible = var
+	hedefNoktasi.Visible = not var
+end
 
 --[[
 	KIRMIZI PARLAMA  --  "buraya birak / buraya bas" adimlari
@@ -404,22 +437,26 @@ local function halkaHedefi(adimId: string): GuiObject?
 end
 
 ------------------------------------------------------------------
--- YOL CIZGISI  --  karakterden hedefe uzanan sari isin
+-- YOL CIZGISI  --  YEDEK: ok ikonu bulunamazsa sari isin
 ------------------------------------------------------------------
 --[[
-	Basin ustunde donen bir ok yerine karakterle hedef ARASINDA bir Beam
-	var: oyuncu gidecegi yonu cizginin uzandigi taraftan goruyor, kamerayi
-	cevirip bir oku yorumlamasi gerekmiyor.
+	Yolu artik asagidaki YOL OKLARI gosteriyor. Bu Beam yalnizca paketteki
+	ok ikonu istemciye gelmediginde aciliyor; ogretici ikonsuz da yol
+	gostermeye devam etsin diye.
 
-	Beam iki Attachment arasinda cizilir. Baslangic tutamagi karakterin
-	govdesine, bitis tutamagi hedefe takiliyor; ikisi de burada, yani
-	ISTEMCIDE olusturuldugu icin cizgiyi yalnizca bu oyuncu goruyor.
+	TUTAMAKLAR TERRAIN'DE DURUYOR, karaktere ya da hedefe takilmiyor.
+	Karaktere takili tutamak yeniden doguste govdeyle birlikte Destroy
+	ediliyor ve bir daha hicbir yere takilamiyordu (Parent kilitlenir).
+	Simdi her karede karakterin ve hedefin konumuna tasiniyorlar (bkz.
+	YOL OKLARI > RenderStepped); oklar da bu iki noktanin arasina diziliyor.
 ]]
 local kokTutamak = Instance.new("Attachment")
 kokTutamak.Name = "OgreticiBaslangic"
+kokTutamak.Parent = Workspace.Terrain
 
 local hedefTutamak = Instance.new("Attachment")
 hedefTutamak.Name = "OgreticiBitis"
+hedefTutamak.Parent = Workspace.Terrain
 
 local cizgi = Instance.new("Beam")
 cizgi.Name = "OgreticiYolu"
@@ -454,6 +491,184 @@ cizgi.CurveSize0 = 0
 cizgi.CurveSize1 = 0
 cizgi.Enabled = false
 cizgi.Parent = kokTutamak
+
+------------------------------------------------------------------
+-- YOL OKLARI  --  karakterden hedefe art arda dizilen ok ikonlari
+------------------------------------------------------------------
+--[[
+	Sari cizginin yerine paketteki "Up" ok ikonu (Icons > ogreticiOk)
+	karakterle hedef arasina belli araliklarla diziliyor ve hedefe dogru
+	akiyor.
+
+	NEDEN BEAM DOKUSU DEGIL: Beam dokuyu uzunlugu boyunca yatay seriyor;
+	yukari bakan ok cizgiye DIK durur ve dondurulemez. Bunun yerine her ok
+	ayri bir BillboardGui: her karede okun ve bir adim ilerisinin ekrandaki
+	yeri hesaplanip resim o yone cevriliyor. Kamera nereden bakarsa baksin
+	ok hedefi gosteriyor.
+
+	Oklar Terrain'e takili tutamaklarda duruyor (Terrain dunya merkezinde,
+	WorldPosition dogrudan dunya konumu). Hepsi istemcide: yalnizca bu
+	oyuncu goruyor.
+]]
+-- Iki ok arasi ve okun dunyadaki boyu (stud)
+local OK_ARALIK = 4
+local OK_BOY = 2.4
+-- En fazla ok: 30 * 4 = 120 stud; hedef daha uzaksa oklar oyuncunun onunde biter
+local OK_SAYI = 30
+-- Akis hizi: saniyede kac ok araligi ilerler
+local OK_HIZ = 1.4
+-- Karakterin ve hedefin dibinde ok olmasin
+local OK_BOSLUK_BAS = 3
+local OK_BOSLUK_SON = 3
+-- Karakterin govde ortasindan bu kadar asagida: oklar yere yakin aksin
+local OK_ALCALMA = 1.8
+
+type Ok = { tutamak: Attachment, tabela: BillboardGui, resim: ImageLabel }
+
+local oklar: { Ok } = {}
+for i = 1, OK_SAYI do
+	local tutamak = Instance.new("Attachment")
+	tutamak.Name = `OgreticiOk{i}`
+	tutamak.Parent = Workspace.Terrain
+
+	local tabela = Instance.new("BillboardGui")
+	tabela.Name = `OgreticiOk{i}`
+	-- Olcek = stud: oklar uzaklastikca kuculur, yol derinlik kazanir
+	tabela.Size = UDim2.fromScale(OK_BOY, OK_BOY)
+	tabela.LightInfluence = 0
+	tabela.ResetOnSpawn = false
+	tabela.Adornee = tutamak
+	tabela.Enabled = false
+	tabela.Parent = playerGui
+
+	local resim = Instance.new("ImageLabel")
+	resim.Name = "Ok"
+	resim.Size = UDim2.fromScale(1, 1)
+	resim.BackgroundTransparency = 1
+	resim.ScaleType = Enum.ScaleType.Fit
+	resim.Parent = tabela
+
+	table.insert(oklar, { tutamak = tutamak, tabela = tabela, resim = resim })
+end
+
+-- Yolun iki ucu (hedefiTazele yaziyor, isaretleriKapat siliyor)
+local yolKoku: BasePart? = nil
+local yolHedefi: BasePart? = nil
+-- Oklar mi aciyor (true) yoksa yedek cizgi mi (false)
+local okluYol = false
+-- 0..1 arasi akis: her ok bir sonrakinin yerine kayar, sonra basa sarar
+local okFaz = 0
+
+local function oklariGizle()
+	for _, ok in oklar do
+		ok.tabela.Enabled = false
+	end
+end
+
+local function yoluKapat()
+	yolKoku = nil
+	yolHedefi = nil
+	cizgi.Enabled = false
+	oklariGizle()
+end
+
+--[[
+	Karakterden hedefe yolu acar. Ok ikonu bulunduysa oklar, bulunamadiysa
+	yedek sari cizgi gorunur. Tutamaklar ilk kareyi beklemeden yerine
+	konuyor; cizgi bir kare yanlis yerde gorunmesin.
+]]
+local function yoluAc(kok: BasePart, isaretKoku: BasePart)
+	yolKoku = kok
+	yolHedefi = isaretKoku
+	kokTutamak.WorldPosition = kok.Position
+	hedefTutamak.WorldPosition = isaretKoku.Position
+
+	local resim = Icons.of("ogreticiOk")
+	okluYol = resim ~= nil
+	if resim then
+		for _, ok in oklar do
+			ok.resim.Image = resim
+		end
+	else
+		oklariGizle()
+	end
+	cizgi.Enabled = not okluYol
+end
+
+--[[
+	HER KARE: oklari karakterle hedef arasina diz ve hedefe dogru cevir.
+
+	Ekrandaki yon her okta ayri hesaplaniyor: perspektif yuzunden ayni
+	dogru uzerindeki oklarin ekrandaki acisi birbirinden farkli olabiliyor.
+	Resim yukari bakiyor, ekranda Y asagi artiyor: aciya 90 eklenince ok
+	gidis yonune donuyor.
+]]
+RunService.RenderStepped:Connect(function(dt)
+	local kok, uc = yolKoku, yolHedefi
+	if not kok or not uc then
+		return
+	end
+	-- Karakter ya da hedef silindi: bir sonraki tazeleme yeniden kurar
+	if not kok.Parent or not uc.Parent then
+		yoluKapat()
+		return
+	end
+
+	-- Tutamaklar yedek cizgi icin de tasiniyor
+	kokTutamak.WorldPosition = kok.Position
+	hedefTutamak.WorldPosition = uc.Position
+
+	local kamera = Workspace.CurrentCamera
+	if not okluYol or not kamera then
+		return
+	end
+
+	local bas = kokTutamak.WorldPosition - Vector3.new(0, OK_ALCALMA, 0)
+	local fark = hedefTutamak.WorldPosition - bas
+	local uzunluk = fark.Magnitude
+
+	okFaz = (okFaz + dt * OK_HIZ) % 1
+
+	-- Hedefin dibindeyiz: gosterecek yol yok
+	if uzunluk < OK_BOSLUK_BAS + OK_BOSLUK_SON + 1 then
+		oklariGizle()
+		return
+	end
+
+	local yon = fark / uzunluk
+	-- Son okun durabilecegi yer: hedefin dibi ya da ok sayisinin yettigi yer
+	local sinir = math.min(uzunluk - OK_BOSLUK_SON, OK_BOSLUK_BAS + (OK_SAYI - 1) * OK_ARALIK)
+
+	for i, ok in oklar do
+		local mesafe = OK_BOSLUK_BAS + (i - 1 + okFaz) * OK_ARALIK
+		if mesafe > sinir then
+			ok.tabela.Enabled = false
+			continue
+		end
+
+		local konum = bas + yon * mesafe
+		ok.tutamak.WorldPosition = konum
+
+		local a = kamera:WorldToViewportPoint(konum)
+		local b = kamera:WorldToViewportPoint(konum + yon)
+		local dx, dy = b.X - a.X, b.Y - a.Y
+		if dx * dx + dy * dy > 1e-4 then
+			ok.resim.Rotation = math.deg(math.atan2(dy, dx)) + 90
+		end
+
+		--[[
+			Uclarda yumusak gecis: bastaki ok belirerek dogar, sondaki
+			sonerek kaybolur. Basa sarma aninda ok zipliyormus gibi durmaz.
+		]]
+		local gorunurluk = math.clamp(
+			math.min((mesafe - OK_BOSLUK_BAS) / OK_ARALIK, (sinir - mesafe) / OK_ARALIK),
+			0,
+			1
+		)
+		ok.resim.ImageTransparency = 1 - gorunurluk
+		ok.tabela.Enabled = true
+	end
+end)
 
 ------------------------------------------------------------------
 -- HEDEF ARAMA
@@ -804,7 +1019,7 @@ local function isaretleriKapat()
 	kirmiziParlama.Adornee = nil
 	halka.Visible = false
 	hedefTabela.Enabled = false
-	cizgi.Enabled = false
+	yoluKapat()
 	hedef = nil
 end
 
@@ -938,11 +1153,10 @@ local function hedefiTazele()
 		hedef = npc
 		parlama.Adornee = adornee
 		parlama.Enabled = true
+		hedefIkonunuKoy()
 		hedefTabela.Adornee = isaretKoku
 		hedefTabela.Enabled = true
-		kokTutamak.Parent = kok
-		hedefTutamak.Parent = isaretKoku
-		cizgi.Enabled = true
+		yoluAc(kok, isaretKoku)
 		return
 	end
 
@@ -1033,13 +1247,12 @@ local function hedefiTazele()
 	parlama.Adornee = if not kirmiziMi then sariAdornee else nil
 	parlama.Enabled = not kirmiziMi and sariAdornee ~= nil
 
+	hedefIkonunuKoy()
 	hedefTabela.Adornee = isaretKoku
 	hedefTabela.Enabled = true
 
-	-- Cizginin iki ucu: karakterin govdesinde ve hedefin govdesinde
-	kokTutamak.Parent = kok
-	hedefTutamak.Parent = isaretKoku
-	cizgi.Enabled = true
+	-- Yolun iki ucu: karakterin govdesi ve hedefin govdesi
+	yoluAc(kok, isaretKoku)
 end
 
 ------------------------------------------------------------------
@@ -1079,9 +1292,9 @@ BaseGuncelle.OnClientEvent:Connect(function(veri)
 end)
 
 --[[
-	Karakter yeniden dogunca cizginin baslangic tutamagi eski govdeyle
-	birlikte siliniyor. Isaretler kapatiliyor; asagidaki dongu bir saniye
-	icinde hepsini yeni govdeye baglayacak.
+	Karakter yeniden dogunca yol eski govdeyi gosteriyor olur. Isaretler
+	kapatiliyor; asagidaki dongu bir saniye icinde hepsini yeni govdeye
+	baglayacak.
 ]]
 player.CharacterAdded:Connect(isaretleriKapat)
 
