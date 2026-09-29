@@ -20,7 +20,6 @@ local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -66,126 +65,17 @@ local PassSatinAl = Net.event("PassSatinAl")
 local ACTION_NAME = "KaziMinigameTut"
 
 ------------------------------------------------------------------
--- ARAYUZ
+-- DENIZ PENCERESI
+--
+-- Olta oyununun paneli ve butun efektleri kendi modulunde (BalikPaneli).
 ------------------------------------------------------------------
-local screen = Instance.new("ScreenGui")
-screen.Name = "KaziMinigame"
-screen.ResetOnSpawn = false
-screen.IgnoreGuiInset = true
-screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screen.Enabled = false
-screen.Parent = playerGui
-
---[[
-	PENCERE SAGDA DURUR
-
-	Ortada durdugunda karakteri ve savurma animasyonunu kapatiyordu.
-	Sagda: sol yari serbest kalir, oyuncu hem kendini hem girdabi gorur.
-
-	AnchorPoint sag kenara sabitlendigi icin panel her ekran genisliginde
-	kenardan ayni uzaklikta durur.
-]]
-local root = Instance.new("Frame")
-root.Name = "Root"
-root.AnchorPoint = Vector2.new(1, 0.5)
-root.Position = UDim2.new(1, -48, 0.5, 0)
-root.Size = UDim2.fromOffset(300, 580)
-root.BackgroundColor3 = UI.Colors.panel
-root.BackgroundTransparency = 0.08
-root.BorderSizePixel = 0
-root.Parent = screen
-UI.corner(root, 16)
-
-local rootStroke = UI.stroke(root, UI.Colors.accent, 2)
-
-local header = UI.text({
-	text = "",
-	size = UI.Sizes.heading,
-	font = UI.Fonts.bold,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -24, 0, 32),
-	position = UDim2.fromOffset(12, 14),
-	parent = root,
-	name = "Baslik",
-})
-
-local subHeader = UI.text({
-	text = "Hold the key and keep the brainrot inside the bar",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -24, 0, 20),
-	position = UDim2.fromOffset(12, 48),
-	parent = root,
-	name = "AltBaslik",
-})
-
--- Dusey kacis cubugu
-local track = Instance.new("Frame")
-track.Name = "Track"
-track.AnchorPoint = Vector2.new(0.5, 0)
-track.Position = UDim2.new(0.42, 0, 0, 84)
-track.Size = UDim2.fromOffset(84, 460)
-track.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
-track.BorderSizePixel = 0
-track.ClipsDescendants = true
-track.Parent = root
-UI.corner(track, 12)
-
--- Oyuncunun kontrol ettigi yesil bar
-local bar = Instance.new("Frame")
-bar.Name = "Bar"
-bar.AnchorPoint = Vector2.new(0.5, 0.5)
-bar.Size = UDim2.new(1, -12, 0, 60)
-bar.Position = UDim2.fromScale(0.5, 0.5)
-bar.BackgroundColor3 = Color3.fromRGB(86, 206, 122)
-bar.BackgroundTransparency = 0.25
-bar.BorderSizePixel = 0
-bar.Parent = track
-UI.corner(bar, 8)
-
--- Kacan brainrot ikonu: yazisiz, sabit kirmizi-turuncu blok
-local TARGET_COLOR = Color3.fromRGB(255, 108, 40)
-
-local target = Instance.new("Frame")
-target.Name = "Target"
-target.AnchorPoint = Vector2.new(0.5, 0.5)
-target.Size = UDim2.fromOffset(44, 44)
-target.Position = UDim2.fromScale(0.5, 0.5)
-target.BackgroundColor3 = TARGET_COLOR
-target.BorderSizePixel = 0
-target.Parent = track
-UI.corner(target, 10)
-
-UI.stroke(target, Color3.fromRGB(255, 168, 90), 2)
-
--- Ilerleme cubugu (sagda)
-local progressTrack = Instance.new("Frame")
-progressTrack.Name = "ProgressTrack"
-progressTrack.AnchorPoint = Vector2.new(0.5, 0)
-progressTrack.Position = UDim2.new(0.82, 0, 0, 84)
-progressTrack.Size = UDim2.fromOffset(26, 460)
-progressTrack.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
-progressTrack.BorderSizePixel = 0
-progressTrack.ClipsDescendants = true
-progressTrack.Parent = root
-UI.corner(progressTrack, 10)
-
-local progressFill = Instance.new("Frame")
-progressFill.Name = "Fill"
-progressFill.AnchorPoint = Vector2.new(0.5, 1)
-progressFill.Position = UDim2.fromScale(0.5, 1)
-progressFill.Size = UDim2.new(1, 0, 0.35, 0)
-progressFill.BackgroundColor3 = UI.Colors.good
-progressFill.BorderSizePixel = 0
-progressFill.Parent = progressTrack
-UI.corner(progressFill, 10)
+local BalikPaneli = require(script.Parent:WaitForChild("BalikPaneli"))
 
 ------------------------------------------------------------------
 -- KUM MODU: DIKEY BAR
 --
 -- Kum kazisinda PANEL YOK. Bar ekranin SAGINDA dikey durur; uzerinde
--- kurek ikonu ilerleme cizgisinde gezer. Deniz penceresi (root) o sirada
+-- kurek ikonu ilerleme cizgisinde gezer. Deniz penceresi (BalikPaneli) o sirada
 -- tamamen gizlenir.
 ------------------------------------------------------------------
 local KUREK_IKONU = "rbxassetid://82895822894928"
@@ -556,17 +446,6 @@ do
 	end
 end
 
-local hint = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	color = UI.Colors.textDim,
-	align = Enum.TextXAlignment.Center,
-	frameSize = UDim2.new(1, -24, 0, 20),
-	position = UDim2.new(0, 12, 1, -30),
-	parent = root,
-	name = "Ipucu",
-})
-
 
 ------------------------------------------------------------------
 -- SARSINTI VE IKON VURUSU  (kum modu)
@@ -872,7 +751,6 @@ end
 
 local function setHolding(value: boolean)
 	holding = value
-	bar.BackgroundTransparency = if value then 0.1 else 0.3
 end
 
 --[[
@@ -943,59 +821,9 @@ local function stop()
 	kazi = nil
 	unbindInput()
 	stopDigAnimation()
-	screen.Enabled = false
+	BalikPaneli.gizle()
 	kaziEkran.Enabled = false
 	sarsintiyiCoz()
-end
-
---[[
-	PERFECT rozeti.
-	Hedef bastan sona hic yesil barin disina cikmadiysa gosterilir:
-	0.5 saniye ekranda kalir ve panel hafifce titrer.
-]]
-local perfectLabel = UI.text({
-	text = "PERFECT!",
-	size = UI.Sizes.huge,
-	font = UI.Fonts.bold,
-	color = Color3.fromRGB(255, 226, 90),
-	align = Enum.TextXAlignment.Center,
-	-- Panel sagda oldugu icin rozet de onun uzerinde durur, ekran ortasinda degil
-	frameSize = UDim2.fromOffset(300, 48),
-	anchor = Vector2.new(1, 0.5),
-	position = UDim2.new(1, -48, 0.5, 0),
-	parent = screen,
-	name = "Perfect",
-	outline = true,
-	zIndex = 20,
-})
-perfectLabel.Visible = false
-
--- Hedef bu turda barin disina hic cikti mi
-local everLeft = false
-
-local function shakeScreen()
-	if sarsintiKapali() then
-		return
-	end
-	local origin = root.Position
-
-	task.spawn(function()
-		local rng = Random.new()
-		for _ = 1, 10 do
-			root.Position = origin + UDim2.fromOffset(rng:NextInteger(-5, 5), rng:NextInteger(-5, 5))
-			task.wait(0.03)
-		end
-		root.Position = origin
-	end)
-end
-
-local function showPerfect()
-	perfectLabel.Visible = true
-	shakeScreen()
-
-	task.delay(0.5, function()
-		perfectLabel.Visible = false
-	end)
 end
 
 local function finish(won: boolean)
@@ -1036,44 +864,17 @@ local function finish(won: boolean)
 		return
 	end
 
-	-- Sonuc gorseli kisa sure ekranda kalir
-	rootStroke.Color = if won then UI.Colors.good else UI.Colors.bad
-	header.Text = if won then "CAUGHT IT!" else "IT GOT AWAY!"
-	-- Kademe gorunumu (parilti / parildama) kalkmali, yoksa rengi ezer
-	UI.plainStyle(header, if won then UI.Colors.good else UI.Colors.bad)
-
-	-- PERFECT yalnizca deniz oyununda anlamli: kumda "disari cikma" yok
-	if won and not everLeft then
-		showPerfect()
-	end
+	-- Sonuc gosterisi (CAUGHT! / IT GOT AWAY!, PERFECT) kisa sure ekranda kalir
+	BalikPaneli.bitir(won)
 
 	MinigameSonuc:FireServer(won)
 
-	task.delay(0.7, function()
+	task.delay(1.2, function()
 		-- Bu arada yeni bir kazi baslamadiysa kapat
 		if not calisiyor() then
-			screen.Enabled = false
+			BalikPaneli.gizle()
 		end
 	end)
-end
-
--- DENIZ: bar/hedef oyununun cizimi
-local function render(state: DigMinigame.State)
-	-- Cubuk 0..1 -> ekranda ust 0, alt 1 olacak sekilde ters cevrilir
-	local barHeight = state.barSize
-	bar.Size = UDim2.new(1, -12, barHeight, 0)
-	bar.Position = UDim2.fromScale(0.5, 1 - state.barPosition)
-
-	target.Position = UDim2.fromScale(0.5, 1 - state.targetPosition)
-
-	progressFill.Size = UDim2.new(1, 0, state.progress, 0)
-
-	local inside = math.abs(state.targetPosition - state.barPosition) <= state.barSize * 0.5
-	if not inside then
-		everLeft = true
-	end
-
-	progressFill.BackgroundColor3 = if inside then UI.Colors.good else UI.Colors.warn
 end
 
 --[[
@@ -1123,7 +924,10 @@ local function modKur(yeniMod: string, rarityId: string)
 	mod = yeniMod
 	local kumdu = yeniMod == "sand"
 
-	root.Visible = not kumdu
+	-- Kumda deniz penceresi (onceki olta oyununun sonuc gosterisi dahil) kapanir
+	if kumdu then
+		BalikPaneli.gizle()
+	end
 	kaziEkran.Enabled = kumdu
 
 	if kumdu then
@@ -1157,12 +961,6 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		return
 	end
 
-	--[[
-		Maden kazisinda gelen kimlik bir kademe DEGIL (Amethyst, Ruby...);
-		Rarity.get onda hata atardi. Kum modunda imlec rengi zaten
-		Rarity.beamColor'dan geliyor ve madenin ada rengini veriyor.
-	]]
-	local rarityInfo = Rarity.Info[rarityId]
 	-- Kumda kurek, denizde olta: hangisi geldiyse ayni yuzden okunur
 	local gearInfo = DigMinigame.gear(gearId)
 
@@ -1172,20 +970,6 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	]]
 	modKur(if gelenMod == "sand" then "sand" else "sea", rarityId)
 
-	if rarityInfo then
-		header.Text = `{rarityInfo.displayName} BRAINROT`
-		-- Epic+ parlak, Divine parildar; cerceve kademe renginde kalir
-		UI.rarityStyle(header, rarityId)
-		rootStroke.Color = rarityInfo.color
-	else
-		header.Text = string.upper(Rarity.beamName(rarityId))
-		UI.plainStyle(header, Rarity.beamColor(rarityId))
-		rootStroke.Color = Rarity.beamColor(rarityId)
-	end
-
-	subHeader.Text = `{gearInfo.displayName}  |  Lv.{gearInfo.level}`
-	everLeft = false
-	perfectLabel.Visible = false
 	throttleUntil = 0
 	task.spawn(startDigAnimation)
 
@@ -1272,18 +1056,12 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	------------------------------------------------------------------
 	-- DENIZ: BAR / HEDEF OYUNU
 	------------------------------------------------------------------
-	screen.Enabled = true
-	hint.Text = if UserInputService.TouchEnabled
-		then "Touch and hold the screen"
-		else "Hold SPACE or left click"
-
-	-- Hedef her rarityde ayni kirmizi-turuncu; rarity rengi baslikta ve cercevede
-	target.BackgroundColor3 = TARGET_COLOR
+	BalikPaneli.basla(gearInfo, rarityId)
 
 	local oyun = DigMinigame.new(gearId, rarityId, seed)
 	active = oyun
 	bindInput()
-	render(oyun.state)
+	BalikPaneli.ciz(oyun.state, holding)
 
 	connection = RunService.RenderStepped:Connect(function(dt)
 		local g = active
@@ -1294,7 +1072,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		-- Cok buyuk dt sicramalarini kirp (kare dususu oyunu bozmasin)
 		local step = math.min(dt, 1 / 20)
 		local state = g:step(step, holding)
-		render(state)
+		BalikPaneli.ciz(state, holding)
 
 		if state.finished then
 			finish(state.won)
