@@ -23,6 +23,14 @@
 	  - Ilerleme dusuk ve balik disaridaysa panel kizarir ve titrer
 	  - Giriste "FISH ON!", sonucta isik huzmeli "CAUGHT!" + konfeti ya da
 	    misina kopar, balik dibe kacar ve panel sarsilir
+	  - Suda egik isik huzmeleri, yuzeyde kopuk dalgasi, dipte yosunlar;
+	    cercevede donen parlama, panelden arada gecen cam yansimasi
+	  - Balik hizlandikca kabarcik izi birakir; basili tutunca bolgenin
+	    altindan itis kabarciklari cikar; balik bolgedeyken altin pirilti,
+	    bolgeye girip cikarken dalga halkasi
+	  - Makara sararken altin kivilcim, bosalirken kirmizi damla sacar
+	  - %25 / %50 / %75'te NICE! / GREAT! / AMAZING! yazisi ve yildizlar
+	  - Legendary ve ustu kademede panel zemininde pariltilar
 
 	Sarsinti Settings > Screen Shake kapaliysa oynamaz (SarsintiKapali).
 ]]
@@ -237,6 +245,17 @@ govdeOlcek.Parent = govde
 -- Cerceve kademe renginde, ince bir nefes alir
 local cerceve = UI.stroke(govde, UI.Colors.accent, 2)
 
+-- Cercevenin uzerinde donen parlama: renk kademeden, beyaz serit etrafinda gezer
+local cerceveGecis = Instance.new("UIGradient")
+cerceveGecis.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 150, 150)),
+	ColorSequenceKeypoint.new(0.4, Color3.fromRGB(150, 150, 150)),
+	ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(150, 150, 150)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 150)),
+})
+cerceveGecis.Parent = cerceve
+
 -- Arka plan: isik bantlari ve buyuk soluk kabarciklar
 local arkaIsik = isikKati(govde, 0.94, 1)
 local arkaKabarcik = kabarciklar(govde, 12, 6, 16, 0.82, 1)
@@ -298,6 +317,69 @@ do
 	yuzey.Size = UDim2.new(1, 0, 0, 6)
 	yuzey.BackgroundColor3 = Color3.fromRGB(200, 245, 255)
 	yuzey.BackgroundTransparency = 0.35
+end
+
+--[[
+	SUYUN SUSU
+
+	  huzmeIsiklari  -- yuzeyden asagi uzanan egik, soluk isik huzmeleri;
+	                    yavasca salinir
+	  kopukler       -- yuzeyde inip kalkan kucuk kopuk toplari (dalga)
+	  dip + yosunlar -- sutunun dibinde kum ve salinan yosunlar
+]]
+local huzmeIsiklari: { Frame } = {}
+for i = 1, 3 do
+	local h = kutu("IsikHuzmesi", track, 1)
+	h.AnchorPoint = Vector2.new(0.5, 0)
+	h.Position = UDim2.new(i / 4, 0, 0, -20)
+	h.Size = UDim2.new(0, 8 + i * 3, 1.3, 0)
+	h.Rotation = 14
+	h.BackgroundColor3 = Color3.fromRGB(210, 245, 255)
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.7),
+		NumberSequenceKeypoint.new(0.6, 0.93),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	gecis.Parent = h
+	table.insert(huzmeIsiklari, h)
+end
+
+local kopukler: { Frame } = {}
+for i = 1, 6 do
+	local k = kutu("Kopuk", track, 2)
+	k.AnchorPoint = Vector2.new(0.5, 0.5)
+	k.Size = UDim2.fromOffset(12, 12)
+	k.BackgroundColor3 = Color3.fromRGB(225, 250, 255)
+	k.BackgroundTransparency = 0.45
+	daire(k)
+	k.Position = UDim2.fromScale((i - 0.5) / 6, 0)
+	table.insert(kopukler, k)
+end
+
+do
+	local dip = kutu("Dip", track, 2)
+	dip.AnchorPoint = Vector2.new(0, 1)
+	dip.Position = UDim2.fromScale(0, 1)
+	dip.Size = UDim2.new(1, 0, 0, 12)
+	dip.BackgroundColor3 = Color3.new(1, 1, 1)
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Color = ColorSequence.new(Color3.fromRGB(150, 120, 70), Color3.fromRGB(80, 60, 34))
+	gecis.Parent = dip
+end
+
+type Yosun = { nesne: Frame, faz: number }
+local yosunlar: { Yosun } = {}
+for i, x in { 0.18, 0.4, 0.7, 0.86 } do
+	local y = kutu("Yosun", track, 2)
+	y.AnchorPoint = Vector2.new(0.5, 1)
+	y.Position = UDim2.new(x, 0, 1, -6)
+	y.Size = UDim2.fromOffset(3, 16 + (i % 2) * 12)
+	y.BackgroundColor3 = if i % 2 == 0 then Color3.fromRGB(60, 170, 90) else Color3.fromRGB(40, 130, 80)
+	UI.corner(y, 2)
+	table.insert(yosunlar, { nesne = y, faz = i * 1.7 })
 end
 
 -- Yakalama bolgesinin arkasindaki hale
@@ -531,6 +613,32 @@ flas.Size = UDim2.fromScale(1, 1)
 flas.BackgroundColor3 = Color3.new(1, 1, 1)
 flas.BackgroundTransparency = 1
 
+-- Panelin ustunden arada bir gecen egik parilti (cam yansimasi)
+local yansima = kutu("Yansima", govde, 9)
+yansima.AnchorPoint = Vector2.new(0.5, 0.5)
+yansima.Size = UDim2.new(0, 46, 1.6, 0)
+yansima.Rotation = 20
+yansima.BackgroundColor3 = Color3.new(1, 1, 1)
+do
+	local gecis = Instance.new("UIGradient")
+	gecis.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.84),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	gecis.Parent = yansima
+end
+
+-- Yuzde yazisi esiklerde zipar
+local yuzdeOlcek = Instance.new("UIScale")
+yuzdeOlcek.Parent = yuzdeYazi
+
+-- Ilerleme cubugu esiklerde bir an beyaz parlar
+local cubukFlas = kutu("Flas", progressTrack, 5)
+cubukFlas.Size = UDim2.fromScale(1, 1)
+cubukFlas.BackgroundColor3 = Color3.new(1, 1, 1)
+cubukFlas.BackgroundTransparency = 1
+
 -- Buyuk yazi (FISH ON! / CAUGHT! / IT GOT AWAY!) ve arkasindaki huzmeler
 local sahne = kutu("Sahne", govde, 12)
 sahne.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -695,6 +803,158 @@ local function konfeti(renk: Color3)
 end
 
 ------------------------------------------------------------------
+-- PARCACIKLAR
+--
+-- Hepsi "Efekt" adli, kendi tween'iyle soner ve kendini siler. basla /
+-- gizle yarim kalanlari addan bulup temizler (bkz. efektleriTemizle).
+------------------------------------------------------------------
+local EFEKT = "Efekt"
+
+-- Kucuk bir parca: konumdan hedefe gider, buyur/kuculur ve soner
+local function parcacik(
+	parent: Instance,
+	konum: UDim2,
+	hedef: UDim2,
+	boy: number,
+	renk: Color3,
+	sekil: string,
+	sure: number,
+	z: number,
+	buyume: number?
+)
+	local p = kutu(EFEKT, parent, z)
+	p.AnchorPoint = Vector2.new(0.5, 0.5)
+	p.Position = konum
+	p.Size = UDim2.fromOffset(boy, boy)
+	p.BackgroundColor3 = renk
+	p.BackgroundTransparency = 0.1
+	if sekil == "daire" then
+		daire(p)
+	elseif sekil == "elmas" then
+		p.Rotation = 45
+	end
+
+	local son = math.max(1, boy * (buyume or 1))
+	tween(p, sure, {
+		Position = hedef,
+		Size = UDim2.fromOffset(son, son),
+		BackgroundTransparency = 1,
+	})
+	task.delay(sure, function()
+		p:Destroy()
+	end)
+end
+
+-- Genisleyen ve sonen halka (dalga)
+local function halka(parent: Instance, konum: UDim2, bas: number, son: number, renk: Color3, sure: number, z: number)
+	local h = kutu(EFEKT, parent, z)
+	h.AnchorPoint = Vector2.new(0.5, 0.5)
+	h.Position = konum
+	h.Size = UDim2.fromOffset(bas, bas)
+	h.BackgroundTransparency = 1
+	daire(h)
+	local kontur = UI.stroke(h, renk, 2)
+
+	tween(h, sure, { Size = UDim2.fromOffset(son, son) })
+	tween(kontur, sure, { Transparency = 1 })
+	task.delay(sure, function()
+		h:Destroy()
+	end)
+end
+
+-- Merkezden disa sacilan yildizlar (elmas)
+local function yildizPatlamasi(parent: Instance, konum: UDim2, sayi: number, renk: Color3, mesafe: number, z: number)
+	for i = 1, sayi do
+		local aci = (i / sayi) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+		local m = mesafe * rng:NextNumber(0.7, 1.1)
+		parcacik(
+			parent,
+			konum,
+			konum + UDim2.fromOffset(math.cos(aci) * m, math.sin(aci) * m),
+			rng:NextInteger(5, 8),
+			renk,
+			"elmas",
+			rng:NextNumber(0.4, 0.6),
+			z,
+			0.2
+		)
+	end
+end
+
+local function efektleriTemizle()
+	for _, d in govde:GetDescendants() do
+		if d.Name == EFEKT then
+			d:Destroy()
+		end
+	end
+end
+
+--[[
+	ILERLEME ESIKLERI
+
+	%25 / %50 / %75 ilk kez gecilince cubugun yaninda bir ovgu yazisi
+	ucar, yuzde zipar, cubuk parlar, makaradan yildiz sacilir. Ilerleme
+	geri dusup yeniden gecse de ayni esik bir daha kutlanmaz.
+]]
+local ESIKLER = { 0.25, 0.5, 0.75 }
+local ESIK_YAZILARI = { "NICE!", "GREAT!", "AMAZING!" }
+local ESIK_RENKLERI = { Color3.fromRGB(120, 220, 255), ICERI_RENK, ALTIN }
+local gecilenEsik = 0
+
+local function esikKutla(i: number)
+	local esik = ESIKLER[i]
+	local renk = ESIK_RENKLERI[i]
+	local y = SUTUN_UST + SUTUN_BOY * (1 - esik)
+
+	local yazi = UI.text({
+		text = ESIK_YAZILARI[i],
+		size = UI.Sizes.body,
+		font = UI.Fonts.bold,
+		color = renk,
+		align = Enum.TextXAlignment.Right,
+		anchor = Vector2.new(1, 0.5),
+		frameSize = UDim2.fromOffset(110, 24),
+		position = UDim2.new(0.83, -16, 0, y),
+		parent = govde,
+		name = EFEKT,
+		zIndex = 8,
+	})
+	yazi.Rotation = -8
+	local olcek = Instance.new("UIScale")
+	olcek.Scale = 0.3
+	olcek.Parent = yazi
+	tween(olcek, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+	tween(yazi, 0.9, { Position = UDim2.new(0.83, -16, 0, y - 34) }, Enum.EasingStyle.Sine)
+	task.delay(0.55, function()
+		if yazi.Parent then
+			yaziSaydam(yazi, 1, 0.35)
+		end
+	end)
+	task.delay(0.95, function()
+		yazi:Destroy()
+	end)
+
+	yuzdeOlcek.Scale = 1.5
+	tween(yuzdeOlcek, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+	cubukFlas.BackgroundTransparency = 0.2
+	tween(cubukFlas, 0.4, { BackgroundTransparency = 1 })
+
+	local makaraYeri = UDim2.fromScale(0.5, 1 - esik)
+	halka(makaraKatman, makaraYeri, 20, 64, renk, 0.45, 2)
+	yildizPatlamasi(makaraKatman, makaraYeri, 8, renk, 34, 2)
+end
+
+-- Kademe Legendary ve ustuyse panelin zemininde sonup yanan parilti
+local kademeParilti: Frame? = nil
+
+-- Surekli uretilen parcaciklarin birikimleri (saniyedeki adet * dt)
+local izBirikim = 0
+local itisBirikim = 0
+local pirilBirikim = 0
+local kivilcimBirikim = 0
+local oncekiIceride = true
+
+------------------------------------------------------------------
 -- KARE DONGUSU  (pencere acikken)
 ------------------------------------------------------------------
 local function kare(dt: number)
@@ -709,6 +969,23 @@ local function kare(dt: number)
 
 	-- Cerceve nefes alir
 	cerceve.Thickness = 2 + math.sin(t * 3) * 0.5
+	cerceveGecis.Rotation = (t * 120) % 360
+
+	-- Yansima 4 saniyede bir soldan saga gecer
+	local gecisAni = (t % 4) / 0.9
+	yansima.Visible = gecisAni < 1
+	yansima.Position = UDim2.fromScale(-0.3 + math.min(gecisAni, 1) * 1.6, 0.5)
+
+	-- Su: huzmeler salinir, kopukler dalgalanir, yosunlar sallanir
+	for i, h in huzmeIsiklari do
+		h.Rotation = 14 + math.sin(t * 0.8 + i * 1.3) * 6
+	end
+	for i, k in kopukler do
+		k.Position = UDim2.new((i - 0.5) / 6, 0, 0, math.sin(t * 3 + i * 1.1) * 2.5)
+	end
+	for _, y in yosunlar do
+		y.nesne.Rotation = math.sin(t * 1.8 + y.faz) * 10
+	end
 
 	local durum = sonDurum
 	local hiz = if durum then durum.targetVelocity else 0
@@ -740,12 +1017,125 @@ local function kare(dt: number)
 		tehlike.BackgroundTransparency = 1
 	else
 		local p = durum.progress
+		local balikY = 1 - durum.targetPosition
 
 		-- Makara ilerledikce sarar, gerilerken ters doner
-		if sonIlerleme then
-			makara.Rotation += (p - sonIlerleme) * MAKARA_DONUS
-		end
+		local fark = if sonIlerleme then p - sonIlerleme else 0
+		makara.Rotation += fark * MAKARA_DONUS
 		sonIlerleme = p
+
+		-- Balik izi: hizlandikca kuyrugundan kabarcik birakir
+		izBirikim += dt * math.min(3 + math.abs(hiz) * 20, 22)
+		while izBirikim >= 1 do
+			izBirikim -= 1
+			local k = UDim2.new(0.5, -14 + rng:NextNumber(-2, 2), balikY, rng:NextNumber(-4, 4))
+			parcacik(
+				track,
+				k,
+				k + UDim2.fromOffset(rng:NextNumber(-6, 6), rng:NextNumber(-34, -18)),
+				rng:NextInteger(3, 6),
+				Color3.fromRGB(220, 248, 255),
+				"daire",
+				0.7,
+				5,
+				1.3
+			)
+		end
+
+		-- Basili tutarken bolgenin altindan itis kabarciklari cikar
+		if tutuyor then
+			itisBirikim += dt * 16
+			local alt = 1 - durum.barPosition + durum.barSize * 0.5
+			while itisBirikim >= 1 do
+				itisBirikim -= 1
+				local k = UDim2.fromScale(rng:NextNumber(0.2, 0.8), alt)
+				parcacik(
+					track,
+					k,
+					k + UDim2.fromOffset(rng:NextNumber(-5, 5), rng:NextNumber(14, 26)),
+					rng:NextInteger(3, 5),
+					ICERI_RENK:Lerp(Color3.new(1, 1, 1), 0.5),
+					"daire",
+					0.45,
+					3,
+					0.4
+				)
+			end
+		else
+			itisBirikim = 0
+		end
+
+		-- Balik bolgedeyken etrafinda altin pirilti
+		if iceride then
+			pirilBirikim += dt * 7
+			while pirilBirikim >= 1 do
+				pirilBirikim -= 1
+				local k = UDim2.new(0.5, rng:NextNumber(-24, 24), balikY, rng:NextNumber(-16, 16))
+				parcacik(
+					konfetiKatman,
+					k,
+					k + UDim2.fromOffset(0, -14),
+					rng:NextInteger(4, 7),
+					if rng:NextNumber() < 0.5 then ALTIN else Color3.new(1, 1, 1),
+					"elmas",
+					0.5,
+					1,
+					0.2
+				)
+			end
+		end
+
+		-- Bolgeye giris / cikis dalgasi
+		if iceride ~= oncekiIceride then
+			local k = UDim2.fromScale(0.5, balikY)
+			if iceride then
+				halka(konfetiKatman, k, 16, 70, ICERI_RENK, 0.4, 1)
+				yildizPatlamasi(konfetiKatman, k, 6, ICERI_RENK, 26, 1)
+			else
+				halka(konfetiKatman, k, 16, 50, DISARI_RENK, 0.35, 1)
+			end
+			oncekiIceride = iceride
+		end
+
+		-- Makara: sararken altin kivilcim, bosalirken kirmizi damla
+		if fark ~= 0 then
+			kivilcimBirikim += dt * (if fark > 0 then 16 else 8)
+			local makaraYeri = UDim2.fromScale(0.5, 1 - p)
+			while kivilcimBirikim >= 1 do
+				kivilcimBirikim -= 1
+				if fark > 0 then
+					parcacik(
+						makaraKatman,
+						makaraYeri,
+						makaraYeri + UDim2.fromOffset(rng:NextNumber(-34, -10), rng:NextNumber(-22, 8)),
+						rng:NextInteger(4, 6),
+						ALTIN,
+						"elmas",
+						0.4,
+						0,
+						0.3
+					)
+				else
+					parcacik(
+						makaraKatman,
+						makaraYeri,
+						makaraYeri + UDim2.fromOffset(rng:NextNumber(-4, 4), rng:NextNumber(14, 26)),
+						rng:NextInteger(3, 4),
+						DISARI_RENK,
+						"daire",
+						0.4,
+						0,
+						0.5
+					)
+				end
+			end
+		end
+
+		-- Esikler: %25 / %50 / %75
+		while gecilenEsik < #ESIKLER and p >= ESIKLER[gecilenEsik + 1] do
+			gecilenEsik += 1
+			esikKutla(gecilenEsik)
+		end
 
 		local tehlikede = not iceride and p < TEHLIKE_ORANI
 		local nabiz = (math.sin(t * 12) + 1) * 0.5
@@ -807,6 +1197,15 @@ function BalikPaneli.basla(gear: DigMinigame.GearInfo, rarityId: string)
 	for _, p in konfetiKatman:GetChildren() do
 		p:Destroy()
 	end
+	efektleriTemizle()
+	gecilenEsik = 0
+	izBirikim = 0
+	itisBirikim = 0
+	pirilBirikim = 0
+	kivilcimBirikim = 0
+	oncekiIceride = true
+	yuzdeOlcek.Scale = 1
+	cubukFlas.BackgroundTransparency = 1
 
 	-- Onceki kacistan kalan balik ve misina geri gelir
 	balik.Visible = true
@@ -839,6 +1238,16 @@ function BalikPaneli.basla(gear: DigMinigame.GearInfo, rarityId: string)
 		if halka:IsA("Frame") then
 			halka.BackgroundColor3 = haleRenk
 		end
+	end
+
+	-- Legendary ve ustu: panelin zemininde kademe renginde pariltilar
+	local eskiParilti = kademeParilti
+	if eskiParilti then
+		eskiParilti:Destroy()
+		kademeParilti = nil
+	end
+	if info and info.order >= 4 then
+		kademeParilti = UI.pariltilar(govde, haleRenk, 10, 1)
 	end
 
 	subHeader.Text = `{gear.displayName}  |  Lv.{gear.level}`
@@ -905,6 +1314,36 @@ function BalikPaneli.bitir(won: boolean)
 		yuzdeYazi.Text = "100%"
 
 		-- Balik sudan firlar, konfeti sacilir, panel zipar
+		local k = UDim2.fromScale(0.5, balik.Position.Y.Scale)
+		halka(konfetiKatman, k, 20, 150, ALTIN, 0.6, 2)
+		yildizPatlamasi(konfetiKatman, k, 12, ALTIN, 70, 2)
+		task.delay(0.12, function()
+			if bitti then
+				halka(konfetiKatman, k, 20, 110, Color3.new(1, 1, 1), 0.5, 2)
+			end
+		end)
+		-- Balik yuzeyi yarinca su sicrar
+		task.delay(0.3, function()
+			if not bitti then
+				return
+			end
+			for _ = 1, 14 do
+				local bas = UDim2.fromScale(rng:NextNumber(0.2, 0.8), 0)
+				parcacik(
+					konfetiKatman,
+					bas,
+					bas + UDim2.fromOffset(rng:NextNumber(-40, 40), rng:NextNumber(-60, -25)),
+					rng:NextInteger(4, 7),
+					Color3.fromRGB(170, 230, 255),
+					"daire",
+					0.55,
+					2,
+					0.5
+				)
+			end
+		end)
+		-- Makara son bir kez hizla sarar
+		tween(makara, 0.6, { Rotation = makara.Rotation + 720 })
 		konfeti(cerceve.Color)
 		tween(balik, 0.45, { Position = UDim2.fromScale(0.5, -0.15) }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
 		egim = -60
@@ -930,6 +1369,27 @@ function BalikPaneli.bitir(won: boolean)
 		durumYazi.Text = "LINE SNAPPED!"
 		durumYazi.TextColor3 = DISARI_RENK
 		misina.Visible = false
+
+		local k = UDim2.fromScale(0.5, balik.Position.Y.Scale)
+		halka(konfetiKatman, k, 16, 90, DISARI_RENK, 0.5, 2)
+		-- Misinanin koptugu yerde (yuzey) kivilcim
+		yildizPatlamasi(konfetiKatman, UDim2.fromScale(0.5, 0), 6, Color3.new(1, 1, 1), 22, 2)
+		-- Balik kacarken arkasinda kabarcik bulutu
+		for _ = 1, 14 do
+			local b = k + UDim2.fromOffset(rng:NextNumber(-18, 18), rng:NextNumber(-10, 10))
+			parcacik(
+				track,
+				b,
+				b + UDim2.fromOffset(rng:NextNumber(-10, 10), rng:NextNumber(-60, -30)),
+				rng:NextInteger(3, 7),
+				Color3.fromRGB(220, 248, 255),
+				"daire",
+				rng:NextNumber(0.5, 0.8),
+				5,
+				1.4
+			)
+		end
+
 		egim = 70
 		tween(balik, 0.5, { Position = UDim2.fromScale(0.5, 1.2) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		flasla(DISARI_RENK, 0.3)
@@ -957,6 +1417,7 @@ function BalikPaneli.gizle()
 	for _, p in konfetiKatman:GetChildren() do
 		p:Destroy()
 	end
+	efektleriTemizle()
 end
 
 -- Pencere acik mi (sonuc gosterisi dahil)
