@@ -13,12 +13,14 @@
 	  maxWhirls   -> ayni anda kac girdap durabilir              (GPS isi)
 
 	  digSpeed / barSize / barAcceleration / progressRate / drainRate
-	              -> yakalama minigame'inin kolayligi            (KUREK isi)
+	              -> yakalama minigame'inin kolayligi
 
-	Minigame degerleri kuregin kademe egrisiyle BIRE BIR ayni: Lv1 olta Lv1
-	kurek kadar zorlanir, Lv5 olta Lv5 kurek kadar rahat yakalar. Boylece
-	denizde kuregin seviyesi hic isin icine girmez -- Bamboo ile Mythic
-	girdap, tahta kurekle Mythic brainrot kadar zordur.
+	Minigame Stardew Valley'nin balik oyunu (bkz. Shared > DigMinigame).
+	Olta orada Stardew'in "balikcilik seviyesi" yerine gecer: bar boyu
+	0.17 (Stardew'in acemisi, 96 px) ile 0.31 (ustasi, 176 px) arasi,
+	ilerleme / gerileme Stardew'in +0.12 / -0.18'inden baslayip iyi oltada
+	geri kacis yavaslar. Degerleri degistirince tools/zorluk.luau ile
+	olcup oraya da yaz.
 
 	Kurek ve dedektorde oldugu gibi tek olta tasinir, sirayla yukseltilir;
 	alinan kademeler kalici, saticidan istenilen zaman geri kusanilir.
@@ -77,11 +79,10 @@ Rods.Info = {
 		spawnChance = 35,
 		maxWhirls = 4,
 		digSpeed = 1,
-		barSize = 0.22,
-		barAcceleration = 1.15,
-		-- 5 kat uzun (eski 0.42 / 0.16): oran ayni, zorluk degismez
-		progressRate = 0.084,
-		drainRate = 0.032,
+		barSize = 0.17,
+		barAcceleration = 1,
+		progressRate = 0.12,
+		drainRate = 0.18,
 		color = Color3.fromRGB(190, 160, 95),
 	},
 
@@ -96,11 +97,10 @@ Rods.Info = {
 		spawnChance = 42,
 		maxWhirls = 5,
 		digSpeed = 0.85,
-		barSize = 0.26,
-		barAcceleration = 1.25,
-		-- 5 kat uzun (eski 0.48 / 0.14): oran ayni, zorluk degismez
-		progressRate = 0.096,
-		drainRate = 0.028,
+		barSize = 0.2,
+		barAcceleration = 1,
+		progressRate = 0.125,
+		drainRate = 0.17,
 		color = Color3.fromRGB(150, 170, 195),
 	},
 
@@ -115,11 +115,10 @@ Rods.Info = {
 		spawnChance = 50,
 		maxWhirls = 6,
 		digSpeed = 0.7,
-		barSize = 0.30,
-		barAcceleration = 1.40,
-		-- 5 kat uzun (eski 0.55 / 0.12): oran ayni, zorluk degismez
-		progressRate = 0.11,
-		drainRate = 0.024,
+		barSize = 0.23,
+		barAcceleration = 1.05,
+		progressRate = 0.13,
+		drainRate = 0.16,
 		color = Color3.fromRGB(120, 90, 220),
 	},
 
@@ -134,11 +133,10 @@ Rods.Info = {
 		spawnChance = 58,
 		maxWhirls = 7,
 		digSpeed = 0.55,
-		barSize = 0.34,
-		barAcceleration = 1.55,
-		-- 5 kat uzun (eski 0.62 / 0.1): oran ayni, zorluk degismez
-		progressRate = 0.124,
-		drainRate = 0.02,
+		barSize = 0.27,
+		barAcceleration = 1.05,
+		progressRate = 0.135,
+		drainRate = 0.15,
 		color = Color3.fromRGB(255, 225, 130),
 	},
 
@@ -153,11 +151,10 @@ Rods.Info = {
 		spawnChance = 66,
 		maxWhirls = 8,
 		digSpeed = 0.4,
-		barSize = 0.40,
-		barAcceleration = 1.75,
-		-- 5 kat uzun (eski 0.72 / 0.08): oran ayni, zorluk degismez
-		progressRate = 0.144,
-		drainRate = 0.016,
+		barSize = 0.31,
+		barAcceleration = 1.1,
+		progressRate = 0.14,
+		drainRate = 0.14,
 		color = Color3.fromRGB(255, 70, 90),
 	},
 } :: { [RodId]: RodInfo }

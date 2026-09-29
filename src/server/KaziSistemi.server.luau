@@ -761,7 +761,7 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 		     kovadaki hazir jetonlari harcadigi icin gercek sure teorik alt
 		     sinirin biraz altina inebiliyor.
 
-		Denizde bu kontrol yok -- orasi basili tutma oyunu.
+		Denizin kendi kontrolu asagida (sure).
 	]]
 	if not session.sea and won == true then
 		local enHizli = KaziMinigame.minDuration(session.gearId, session.rarityId)
@@ -780,6 +780,27 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 			warn(
 				`[Kazi] {player.Name} minioyunu imkansiz surede bitirdi `
 					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", altSinir)}s), reddedildi`
+			)
+			finishDig(player, false)
+			return
+		end
+	end
+
+	--[[
+		DENIZ: SURE KONTROLU
+
+		Olta oyununda ilerleme yalnizca balik bardayken ve sabit hizla
+		artar (bkz. Shared > DigMinigame.minDuration): kusursuz oynansa bile
+		bundan once bitmez. Daha erken gelen zafer istemcinin uydurmasidir.
+		Gecen sureye savurma suresi de dahil, yani kontrol zaten comert;
+		%10 pay kare/paket gecikmeleri icin.
+	]]
+	if session.sea and won == true then
+		local enHizli = DigMinigame.minDuration(session.gearId) * 0.9
+		if elapsed < enHizli then
+			warn(
+				`[Kazi] {player.Name} olta oyununu imkansiz surede bitirdi `
+					.. `({string.format("%.2f", elapsed)}s < {string.format("%.2f", enHizli)}s), reddedildi`
 			)
 			finishDig(player, false)
 			return

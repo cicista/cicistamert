@@ -1,22 +1,43 @@
 --!strict
 --[[
-	Stardew Valley balik minioyunu mantiginin saf (RenderStepped'siz) modeli.
+	OLTA MINIOYUNU  --  Stardew Valley'nin balik oyununun (BobberBar) birebir
+	modeli. RenderStepped'siz, UI'dan bagimsiz.
 
-	Dusey bir cubuk boyunca:
-	  - "target" brainrot ikonu; rarity'ye gore artan agresiflikte zipzip hareket eder
-	  - "bar" oyuncunun kontrol ettigi yesil alan; tus basiliyken yukari, birakinca asagi
-	  - target barin icindeyken progress artar, disindayken azalir
-	  - progress 1'e ulasirsa kazi basarili, 0'a duserse basarisiz
+	Dusey bir su sutununda:
+	  - BALIK kendi kafasina gore yuzer: ara ara yeni bir hedef secer ve
+	    oraya ivmelenir. Zor balik daha sik, daha uzaga ve daha sert gider
+	  - BAR oyuncunun: basili tutunca yukari ivmelenir, birakinca duser,
+	    kenarlara carpinca geri seker
+	  - balik barin icindeyken ilerleme artar, disindayken AZALIR -- hem de
+	    artistan HIZLI (Stardew: +0.002 / -0.003 tik basina). Baligi yarim
+	    yamalak takip eden kazanamaz
+	  - ilerleme 1'e ulasirsa yakalandi, 0'a duserse kacti
 
-	EKIPMAN kim ise oyunu o kolaylastirir: KUMDA kurek, DENIZDE olta.
-	Ikisi de ayni alanlari tasidigi icin (level / barSize / barAcceleration /
-	progressRate / drainRate) burasi hangisi oldugunu bilmek zorunda degil --
-	gelen kimlik once kurek tablosunda, bulunamazsa olta tablosunda aranir.
+	NEDEN BIREBIR STARDEW
+	Eski model hizi dt'siz topluyordu (kare hizina bagli, "isik hizi") ve
+	ilerleme gerilemenin 2.6 kati oldugu icin bar sabit tutulsa bile balik
+	arada bir ustunden gecince oyun kazaniliyordu. Stardew'in dengesi
+	yillardir oturmus: kolay balik rahat, efsanevi balik gercekten zor.
 
-	Brainrot rarity'si escapeDifficulty uzerinden oyunu zorlastirir.
+	SABIT TIK
+	Stardew her seyi saniyede 60 tikle hesaplar. step() gelen dt'yi biriktirip
+	1/60'lik tiklerle ilerler; boylece balik 30 FPS'te de 240 FPS'te de ayni
+	hizda yuzer ve ayni tohum ayni oyunu uretir.
 
-	Bu modul deterministik ve UI'dan bagimsizdir -- ayni step() cagrilari
-	client'ta gorsel, server'da dogrulama icin kullanilabilir.
+	Birimler de Stardew'in: sutun 568 piksel, balik 0..532 arasinda
+	gezer. Disariya verilen State ise 0..1 (0 = dip, 1 = yuzey).
+
+	ZORLUK NEREDEN GELIR
+	  kademe (rarity)  -> baligin zorlugu ve hareket tipi (BALIKLAR tablosu)
+	  olta   (Rods)    -> barin boyu, ilerleme / gerileme hizi, bar ivmesi
+
+	Kademe tablosu Stardew'in baliklarina gore: Common bir sazan kadar
+	uysal, Infernal ve Abyssal Legend / Glacierfish / Mutant Carp kadar zor.
+	Iyi olta bari buyutur, geri kacisi yavaslatir; yani ust kademeler ancak
+	ust oltalarla gercekten tutulabilir.
+
+	Dengeyi degistirince tools/zorluk.luau ile bot simulasyonuna bak
+	(sabitleri oraya da yaz).
 ]]
 
 local Rarity = require(script.Parent.Rarity)
@@ -26,54 +47,125 @@ local Shovels = require(script.Parent.Shovels)
 local DigMinigame = {}
 DigMinigame.__index = DigMinigame
 
--- Cubuk 0..1 normalize koordinatta calisir.
-local GRAVITY = 1.6
-local LIFT = 3.2
-local MAX_BAR_SPEED = 1.4
+------------------------------------------------------------------
+-- STARDEW SABITLERI  (piksel, tik)
+------------------------------------------------------------------
+local TIK = 1 / 60
+
+-- Sutunun boyu ve baligin (~36 px) gezebildigi en alt nokta
+local SUTUN = 568
+local BALIK_ALT = 532
+
+-- Bar yercekimi / kaldirma (tik basina hiz degisimi)
+local BAR_IVME = 0.25
+-- Balik bardayken bar agirlasir (daha yavas ivmelenir): tutmak kolaylasir
+local BAR_ICERIDE_CARPAN = 0.6
+-- Kenara carpan bar hizinin bu kadariyla geri seker
+local SEKME = 2 / 3
+
+-- Oyun bu ilerlemeyle baslar
+local BASLANGIC = 0.3
 
 --[[
-	Kurek ve oltanin ORTAK yuzu. Minigame yalnizca bu alanlara bakar;
-	esyanin kumda mi denizde mi kullanildigi onu ilgilendirmez.
+	HAREKET TIPLERI  (Stardew'in motionType'i)
+
+	  mixed   -- klasik: ara ara yeni hedef, bazen kisa ziplamalar
+	  smooth  -- yalnizca hedefine varinca yenisini secer, ziplamaz; akici
+	  floater -- surekli yukari suzulur (yuzeye kacar)
+	  sinker  -- surekli dibe cekilir
+	  dart    -- sik sik ani, uzun firlamalar; en sinir bozucusu
+]]
+export type Hareket = "mixed" | "smooth" | "floater" | "sinker" | "dart"
+
+export type BalikAyari = {
+	-- Stardew zorlugu: 15 kolay ... 110 efsanevi
+	zorluk: number,
+	hareket: Hareket,
+}
+
+--[[
+	KADEME -> BALIK  (Rarity.order ile)
+
+	Stardew karsiliklari:
+	  15 mixed   Carp            30 smooth  Bream
+	  45 mixed   Largemouth Bass 55 floater Blobfish'in uysali
+	  65 mixed   Catfish         75 sinker  Squid
+	  82 dart    Mutant Carp     90 mixed   Lava Eel
+	  100 mixed  Glacierfish     110 mixed  Legend
+]]
+DigMinigame.Baliklar = {
+	[1] = { zorluk = 15, hareket = "mixed" }, -- Common
+	[2] = { zorluk = 30, hareket = "smooth" }, -- Rare
+	[3] = { zorluk = 45, hareket = "mixed" }, -- Epic
+	[4] = { zorluk = 55, hareket = "floater" }, -- Legendary
+	[5] = { zorluk = 65, hareket = "mixed" }, -- Mythic
+	[6] = { zorluk = 75, hareket = "sinker" }, -- Divine
+	[7] = { zorluk = 82, hareket = "dart" }, -- Cosmic
+	[8] = { zorluk = 90, hareket = "mixed" }, -- Secret
+	[9] = { zorluk = 100, hareket = "mixed" }, -- Infernal
+	[10] = { zorluk = 110, hareket = "mixed" }, -- Abyssal
+} :: { [number]: BalikAyari }
+
+--[[
+	Kurek ve oltanin ORTAK yuzu. Minigame yalnizca bu alanlara bakar.
 ]]
 export type GearInfo = {
 	displayName: string,
 	level: number,
 	-- Minigame oncesi hazirlik suresi carpani (dusuk = hizli)
 	digSpeed: number,
+	-- Barin boyu, sutunun orani (Stardew: 96..200 px = 0.17..0.35)
 	barSize: number,
+	-- Kaldirma carpani (1 = Stardew)
 	barAcceleration: number,
+	-- Balik icerideyken saniyedeki ilerleme (Stardew: 0.12)
 	progressRate: number,
+	-- Balik disaridayken saniyedeki gerileme (Stardew: 0.18)
 	drainRate: number,
 	color: Color3,
 }
 
 export type State = {
+	-- Barin ORTASI, 0 = dip, 1 = yuzey
 	barPosition: number,
 	barVelocity: number,
 	barSize: number,
+	-- Baligin ORTASI, 0 = dip, 1 = yuzey
 	targetPosition: number,
+	-- Baligin hizi (sutun / saniye, yukari arti); gorsel icin
 	targetVelocity: number,
 	progress: number,
+	-- Son tikte balik barin icinde miydi (oyunun kurali; gorsel bunu kullanir)
+	inside: boolean,
 	finished: boolean,
 	won: boolean,
 }
 
 export type Minigame = typeof(setmetatable({} :: {
 	gear: GearInfo,
+	balik: BalikAyari,
 	difficulty: number,
 	rng: Random,
 	state: State,
-	_targetGoal: number,
-	_targetTimer: number,
-	_edgeTimer: number,
+	-- Stardew'in kendi degiskenleri (piksel, y ASAGI dogru artar)
+	_barUst: number,
+	_barHiz: number,
+	_barBoy: number,
+	_balik: number,
+	_balikHiz: number,
+	_hedef: number,
+	_suzulme: number,
+	_iceride: boolean,
+	_birikim: number,
 }, DigMinigame))
 
 --[[
 	ELDEKI EKIPMANI BULUR
 
-	Kimlikler cakismiyor (Wooden..Celestial / Bamboo..Leviathan), bu yuzden
-	tek bir ada bakmak yetiyor. Hicbiri tutmazsa tahta kurege duser: boylece
-	bozuk bir kayit minigame'i cokertmek yerine en zor kademeden oynatir.
+	Kimlikler cakismiyor (kurekler / oltalar), bu yuzden tek bir ada bakmak
+	yetiyor. Kum kazisi (KaziMinigame) da kuregin seviyesini buradan okur.
+	Hicbiri tutmazsa tahta kurege duser: bozuk bir kayit minigame'i
+	cokertmez.
 ]]
 function DigMinigame.gear(gearId: string): GearInfo
 	local shovel = Shovels.Info[gearId :: Shovels.ShovelId]
@@ -89,166 +181,196 @@ function DigMinigame.gear(gearId: string): GearInfo
 	return Shovels.Info[Shovels.Default] :: any
 end
 
---[[
-	EKIPMAN SEVIYESI TAVANI
+-- Kademenin baligi; bilinmeyen kademe (Lucky Block vb.) en uysal baliga duser
+function DigMinigame.balik(rarityId: string): BalikAyari
+	local info = Rarity.Info[rarityId :: Rarity.RarityId]
+	local ayar = info and DigMinigame.Baliklar[info.order]
+	return ayar or DigMinigame.Baliklar[1]
+end
 
-	Zorluk yalnizca brainrot'un rarity'sinden gelmez; EKIPMANIN o rarity'ye
-	yetip yetmedigi belirleyicidir. Aradaki fark:
-
-	    gap = rarity.order - gear.level
-
-	    gap <= 0   ekipman rarity'ye yetiyor      -> kolay
-	    gap == 1   bir kademe yukarisi            -> zorlanir ama alinabilir
-	    gap == 2   iki kademe yukarisi            -> cok zor
-	    gap >= 3   ekipmanin cok otesi            -> pratikte alinamaz
-
-	Boylece yeni baslayan oyuncu Common ve Rare'i rahat alir, Epic'te
-	zorlanir, Legendary'yi tahta kurekle pratikte hic alamaz. Kademe
-	yukseldikce ust rarityler sirayla acilir:
-
-	    Lv1  Common/Rare kolay   Epic cok zor      Legendary+ alinamaz
-	    Lv2  Rare cok kolay      Epic zorlanir     Legendary cok zor
-	    Lv3  Epic kolay          Legendary zorlanir Mythic cok zor
-	    Lv4  Legendary kolay     Mythic zorlanir   Secret cok zor
-	    Lv5  Mythic kolay        Secret zorlanir
-
-	DENIZDE ayni tablo OLTA icin isler: Bamboo Lv1'dir, Leviathan Lv5.
-	Oyuncunun kuregi denizde hicbir sey ifade etmez.
-]]
-local GAP_MULTIPLIER = {
-	[0] = 0.6,
-	[1] = 1.7,
-	[2] = 3,
-}
-
-local function gapMultiplier(gap: number): number
-	if gap < 0 then
-		-- Ekipman rarity'nin uzerinde: her fazla kademe biraz daha kolaylastirir
-		return math.max(0.4, 0.6 + gap * 0.08)
-	end
-	return GAP_MULTIPLIER[gap] or 4
+-- Stardew zorlugu (15..110). Arayuz ipuclari icin.
+function DigMinigame.difficultyFor(_gearId: string, rarityId: Rarity.RarityId): number
+	return DigMinigame.balik(rarityId).zorluk
 end
 
 --[[
-	Etkin zorluk = rarity'nin kendi kacis zorlugu * ekipman farki carpani.
-	Cagiran taraf (magaza ekrani, ipuclari) da bunu kullanabilir.
-]]
-function DigMinigame.difficultyFor(gearId: string, rarityId: Rarity.RarityId): number
-	local gear = DigMinigame.gear(gearId)
-	local rarity = Rarity.get(rarityId)
-
-	return rarity.escapeDifficulty * gapMultiplier(rarity.order - gear.level)
-end
-
---[[
-	Bir rarity bu ekipmanla pratikte alinabilir mi?
-	Arayuz "bununla alamazsin" uyarisi icin kullanir.
+	Bir kademe bu oltayla makul olcude tutulabilir mi?
+	Olta kademesinin iki kati kadar kademe (Lv5 olta: hepsi) "denenebilir".
 ]]
 function DigMinigame.isReachable(gearId: string, rarityId: Rarity.RarityId): boolean
 	local gear = DigMinigame.gear(gearId)
-	local rarity = Rarity.get(rarityId)
-
-	return rarity.order - gear.level <= 2
+	local info = Rarity.Info[rarityId]
+	return info == nil or info.order <= gear.level * 2
 end
 
 --[[
-	gearId:   oyuncunun elindeki kurek (kumda) ya da olta (denizde)
-	rarityId: kazilan suzmenin / girdabin rarity'si
+	En hizli kazanma suresi: balik bastan sona bardayken ilerleme
+	BASLANGIC'tan 1'e cikar. Sunucu bundan once gelen zaferi reddeder.
+]]
+function DigMinigame.minDuration(gearId: string): number
+	local gear = DigMinigame.gear(gearId)
+	-- Tik yuvarlamasi icin kucuk pay
+	return (1 - BASLANGIC) / gear.progressRate - TIK * 2
+end
+
+--[[
+	gearId:   oyuncunun oltasi
+	rarityId: girdabin kademesi
+	seed:     sunucudan gelen tohum (ayni tohum = ayni balik hareketi)
 ]]
 function DigMinigame.new(gearId: string, rarityId: Rarity.RarityId, seed: number?): Minigame
 	local gear = DigMinigame.gear(gearId)
+	local balik = DigMinigame.balik(rarityId)
+	local barBoy = math.floor(gear.barSize * SUTUN + 0.5)
 
 	local self = setmetatable({
 		gear = gear,
-		difficulty = DigMinigame.difficultyFor(gearId, rarityId),
+		balik = balik,
+		difficulty = balik.zorluk,
 		rng = Random.new(seed or os.clock() * 1e6),
 		state = {
-			barPosition = 0.5,
+			barPosition = 0,
 			barVelocity = 0,
-			barSize = gear.barSize,
-			targetPosition = 0.5,
+			barSize = barBoy / SUTUN,
+			targetPosition = 0,
 			targetVelocity = 0,
-			progress = 0.42,
+			progress = BASLANGIC,
+			inside = true,
 			finished = false,
 			won = false,
 		},
-		_targetGoal = 0.5,
-		_targetTimer = 0,
-		_edgeTimer = 0,
+		-- Stardew'deki gibi bar ve balik dipten baslar, balik barin icinde
+		_barUst = SUTUN - barBoy,
+		_barHiz = 0,
+		_barBoy = barBoy,
+		_balik = 508,
+		_balikHiz = 0,
+		_hedef = -1,
+		_suzulme = 0,
+		_iceride = true,
+		_birikim = 0,
 	}, DigMinigame)
 
+	self:_yansit()
 	return self
 end
 
--- Hedefin ne siklikta yon degistirdigi ve ne kadar hizli hareket ettigi
--- tamamen rarity'ye baglidir. Mythic bir brainrot cok daha sik ve sert kacar.
+-- Stardew'in Random.Next(a, b)'si: a dahil, b HARIC tam sayi
+local function sonraki(rng: Random, a: number, b: number): number
+	a = math.floor(a)
+	b = math.floor(b)
+	if b - 1 <= a then
+		return a
+	end
+	return rng:NextInteger(a, b - 1)
+end
+
 --[[
-	Hedef kenarda EN FAZLA EDGE_MAX_TIME saniye kalabilir.
-
-	Onceden hedef 0.03 / 0.97 sinirina clamp ediliyordu ve arka arkaya gelen
-	rastgele hedefler de disari duserse orada saniyelerce takili kaliyordu.
-	Kenarda duran hedefi bar ile kapatmak cok kolay oldugu icin yuksek rarity
-	brainrotlar bile rahatca yakalaniyordu.
-
-	Artik kenarda gecen sure olculur; sinir asilinca hedef ZORUNLU olarak ic
-	tarafa gonderilir.
+	BALIK  (Stardew BobberBar.update, balik kismi)
 ]]
-local EDGE_LOW = 0.12
-local EDGE_HIGH = 0.88
-local EDGE_MAX_TIME = 1.5
+function DigMinigame._balikTik(self: Minigame)
+	local rng = self.rng
+	local d = self.balik.zorluk
+	local tip = self.balik.hareket
+	local smooth = tip == "smooth"
 
-function DigMinigame._retarget(self: Minigame, dt: number)
-	local d = self.difficulty
-	local position = self.state.targetPosition
+	-- Yeni hedef: zor balik daha sik secer ve daha uzaga gider
+	if rng:NextNumber() < d * (if smooth then 20 else 1) / 4000 and (not smooth or self._hedef == -1) then
+		local asagiBosluk = 548 - self._balik
+		local yukariBosluk = self._balik
+		local oran = math.min(99, d + sonraki(rng, 10, 45)) / 100
+		self._hedef = self._balik + sonraki(rng, math.min(-yukariBosluk, asagiBosluk), asagiBosluk) * oran
+	end
 
-	-- Kenar bolgesinde gecen sureyi olc
-	if position <= EDGE_LOW or position >= EDGE_HIGH then
-		self._edgeTimer += dt
+	-- Yuzen / batan: surekli bir yone suzulme (y asagi arti)
+	if tip == "floater" then
+		self._suzulme = math.max(self._suzulme - 0.01, -1.5)
+	elseif tip == "sinker" then
+		self._suzulme = math.min(self._suzulme + 0.01, 1.5)
+	end
+
+	if math.abs(self._balik - self._hedef) > 3 and self._hedef ~= -1 then
+		-- Hedefe ivmelen: zor balik daha sert (bolen kuculur)
+		local ivme = (self._hedef - self._balik) / (sonraki(rng, 10, 30) + (100 - math.min(100, d)))
+		self._balikHiz += (ivme - self._balikHiz) / 5
+	elseif not smooth and rng:NextNumber() < d / 2000 then
+		-- Kisa zipla
+		self._hedef = self._balik + (if rng:NextNumber() < 0.5 then sonraki(rng, -100, -51) else sonraki(rng, 50, 101))
 	else
-		self._edgeTimer = 0
+		self._hedef = -1
 	end
 
-	-- Cok uzun kaldiysa beklemeden ic tarafa firlat
-	if self._edgeTimer >= EDGE_MAX_TIME then
-		self._edgeTimer = 0
-		self._targetTimer = self.rng:NextNumber(0.25, 0.5)
-
-		local inward = if position <= EDGE_LOW then 1 else -1
-		self._targetGoal = math.clamp(
-			position + inward * self.rng:NextNumber(0.3, 0.5),
-			0.08,
-			0.92
-		)
-		return
+	-- Dart: ani, uzun firlama
+	if tip == "dart" and rng:NextNumber() < d / 1000 then
+		self._hedef = self._balik
+			+ (if rng:NextNumber() < 0.5 then sonraki(rng, -100 - d * 2, -51) else sonraki(rng, 50, 101 + d * 2))
 	end
 
-	self._targetTimer -= dt
-	if self._targetTimer > 0 then
-		return
+	self._hedef = math.clamp(self._hedef, -1, 548)
+	self._balik += self._balikHiz + self._suzulme
+	self._balik = math.clamp(self._balik, 0, BALIK_ALT)
+end
+
+--[[
+	BAR  (Stardew BobberBar.update, bar kismi)
+]]
+function DigMinigame._barTik(self: Minigame, holding: boolean)
+	local boy = self._barBoy
+	local ivme = if holding then -BAR_IVME * self.gear.barAcceleration else BAR_IVME
+
+	-- Kenara dayanmis bar basilinca yapisik kalmasin, temiz kalksin
+	if holding and (self._barUst == 0 or self._barUst == SUTUN - boy) then
+		self._barHiz = 0
 	end
 
-	-- Yuksek rarity -> daha kisa aralik -> daha sinirli hareket
-	local minInterval = math.max(0.12, 0.9 - d * 0.12)
-	local maxInterval = math.max(minInterval + 0.1, 1.7 - d * 0.2)
-	self._targetTimer = self.rng:NextNumber(minInterval, maxInterval)
-
-	-- Yuksek rarity -> daha uzaga sicrar
-	local jump = 0.12 + d * 0.06
-	local goal = position + self.rng:NextNumber(-jump, jump)
-
-	-- Kenardaysa yeni hedef ic tarafa dogru egilir; kose kapaninda kalmaz
-	if position <= EDGE_LOW then
-		goal = math.max(goal, position + jump * 0.35)
-	elseif position >= EDGE_HIGH then
-		goal = math.min(goal, position - jump * 0.35)
+	if self._iceride then
+		ivme *= BAR_ICERIDE_CARPAN
 	end
 
-	self._targetGoal = math.clamp(goal, 0.06, 0.94)
+	self._barHiz += ivme
+	self._barUst += self._barHiz
+
+	if self._barUst + boy > SUTUN then
+		self._barUst = SUTUN - boy
+		self._barHiz = -self._barHiz * SEKME
+	elseif self._barUst < 0 then
+		self._barUst = 0
+		self._barHiz = -self._barHiz * SEKME
+	end
+
+	-- Balik barda mi (Stardew'in kenar paylariyla)
+	local b = self._balik
+	self._iceride = b + 12 <= self._barUst - 32 + boy and b - 16 >= self._barUst - 32
+	-- Balik dipte, bar da dipteyse icerde sayilir
+	if b >= 548 - boy and self._barUst >= SUTUN - boy - 4 then
+		self._iceride = true
+	end
+end
+
+-- Piksel degiskenlerini disariya verilen 0..1 State'e cevirir
+function DigMinigame._yansit(self: Minigame)
+	local s = self.state
+	local boy = self._barBoy
+
+	s.barPosition = 1 - (self._barUst + boy / 2) / SUTUN
+	s.barVelocity = -self._barHiz / TIK / SUTUN
+	s.barSize = boy / SUTUN
+
+	--[[
+		Gorselde "balik barin icinde" ile oyunun kurali birebir tutsun
+		diye baligin ekrandaki yeri Stardew'in icerde olcusune gore
+		kaydirilir: kural balik ustu [barUst - 16, barUst + boy - 44]
+		araligini istiyor, yani ekrandaki ortasi (balik + 30) barin
+		kenarlarindan 14'er piksel icerde kaldigi surece icerde.
+	]]
+	s.targetPosition = 1 - (self._balik + 30) / SUTUN
+	s.targetVelocity = -(self._balikHiz + self._suzulme) / TIK / SUTUN
+	s.inside = self._iceride
 end
 
 --[[
 	Bir simulasyon adimi.
-	dt: gecen sure (saniye)
+	dt: gecen sure (saniye); icerde 1/60'lik tiklere bolunur
 	holding: oyuncu tusa basili tutuyor mu
 	Donen: guncel State
 ]]
@@ -258,45 +380,33 @@ function DigMinigame.step(self: Minigame, dt: number, holding: boolean): State
 		return s
 	end
 
-	-- Oyuncunun kontrol ettigi bar
-	local accel = if holding then LIFT * self.gear.barAcceleration else -GRAVITY
-	s.barVelocity = math.clamp(s.barVelocity + accel * dt, -MAX_BAR_SPEED, MAX_BAR_SPEED)
-	s.barPosition += s.barVelocity * dt
+	self._birikim += dt
+	while self._birikim >= TIK do
+		self._birikim -= TIK
 
-	local half = s.barSize * 0.5
-	if s.barPosition - half < 0 then
-		s.barPosition = half
-		s.barVelocity = 0
-	elseif s.barPosition + half > 1 then
-		s.barPosition = 1 - half
-		s.barVelocity = 0
+		self:_balikTik()
+		self:_barTik(holding)
+
+		if self._iceride then
+			s.progress += self.gear.progressRate * TIK
+		else
+			s.progress -= self.gear.drainRate * TIK
+		end
+
+		if s.progress >= 1 then
+			s.progress = 1
+			s.finished = true
+			s.won = true
+			break
+		elseif s.progress <= 0 then
+			s.progress = 0
+			s.finished = true
+			s.won = false
+			break
+		end
 	end
 
-	-- Brainrot ikonu
-	self:_retarget(dt)
-	local chase = 2.2 + self.difficulty * 0.5
-	s.targetVelocity += (self._targetGoal - s.targetPosition) * chase * dt
-	s.targetVelocity *= 0.90
-	s.targetPosition = math.clamp(s.targetPosition + s.targetVelocity, 0.02, 0.98)
-
-	-- Ilerleme
-	local inside = math.abs(s.targetPosition - s.barPosition) <= half
-	if inside then
-		s.progress += self.gear.progressRate * dt
-	else
-		s.progress -= self.gear.drainRate * dt
-	end
-
-	if s.progress >= 1 then
-		s.progress = 1
-		s.finished = true
-		s.won = true
-	elseif s.progress <= 0 then
-		s.progress = 0
-		s.finished = true
-		s.won = false
-	end
-
+	self:_yansit()
 	return s
 end
 

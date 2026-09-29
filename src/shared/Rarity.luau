@@ -33,8 +33,6 @@ export type RarityInfo = {
 	-- Base'e yerlestirildiginde saniyelik gelir araligi (condition carpani haric)
 	incomeMin: number,
 	incomeMax: number,
-	-- Minigame zorlugu: brainrot ikonunun kacis agresifligi (bkz. DigMinigame)
-	escapeDifficulty: number,
 	--[[
 		Detective'in bu kademeyi acma suresi (saniye). Toplu acmada
 		sureler TOPLANIR.
@@ -102,7 +100,6 @@ Rarity.Info = {
 		luckExp = -0.6,
 		incomeMin = 5,
 		incomeMax = 25,
-		escapeDifficulty = 0.4,
 		revealTime = 1.5,
 	},
 
@@ -115,7 +112,6 @@ Rarity.Info = {
 		luckExp = -0.3,
 		incomeMin = 50,
 		incomeMax = 250,
-		escapeDifficulty = 1,
 		revealTime = 2.5,
 	},
 
@@ -128,7 +124,6 @@ Rarity.Info = {
 		luckExp = 0.4,
 		incomeMin = 500,
 		incomeMax = 2_500,
-		escapeDifficulty = 2,
 		revealTime = 4,
 	},
 
@@ -141,7 +136,6 @@ Rarity.Info = {
 		luckExp = 0.7,
 		incomeMin = 5_000,
 		incomeMax = 25_000,
-		escapeDifficulty = 3.2,
 		revealTime = 6,
 	},
 
@@ -154,7 +148,6 @@ Rarity.Info = {
 		luckExp = 1.0,
 		incomeMin = 50_000,
 		incomeMax = 250_000,
-		escapeDifficulty = 4.5,
 		revealTime = 9,
 	},
 
@@ -179,7 +172,6 @@ Rarity.Info = {
 		luckExp = 1.2,
 		incomeMin = 500_000,
 		incomeMax = 2_500_000,
-		escapeDifficulty = 6,
 		revealTime = 120,
 	},
 
@@ -205,7 +197,6 @@ Rarity.Info = {
 		luckExp = 1.4,
 		incomeMin = 5_000_000,
 		incomeMax = 25_000_000,
-		escapeDifficulty = 7.5,
 		revealTime = 480,
 	},
 
@@ -226,7 +217,6 @@ Rarity.Info = {
 		luckExp = 1.6,
 		incomeMin = 50_000_000,
 		incomeMax = 250_000_000,
-		escapeDifficulty = 9,
 		revealTime = 900,
 	},
 
@@ -241,7 +231,6 @@ Rarity.Info = {
 		luckExp = 1.8,
 		incomeMin = 500_000_000,
 		incomeMax = 2_500_000_000,
-		escapeDifficulty = 11,
 		revealTime = 1800,
 	},
 
@@ -256,7 +245,6 @@ Rarity.Info = {
 		luckExp = 2.0,
 		incomeMin = 5_000_000_000,
 		incomeMax = 25_000_000_000,
-		escapeDifficulty = 13,
 		revealTime = 3600,
 	},
 } :: { [RarityId]: RarityInfo }

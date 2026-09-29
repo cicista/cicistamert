@@ -1287,7 +1287,8 @@ function BalikPaneli.ciz(state: DigMinigame.State, holding: boolean)
 	makara.Position = UDim2.fromScale(0.5, 1 - state.progress)
 	yuzdeYazi.Text = `{math.floor(state.progress * 100 + 0.5)}%`
 
-	iceride = math.abs(state.targetPosition - state.barPosition) <= state.barSize * 0.5
+	-- Oyunun kendi kurali (Stardew kenar paylariyla); gorsel onunla birebir
+	iceride = state.inside
 	if not iceride then
 		everLeft = true
 	end

@@ -2,18 +2,16 @@
 	Minigame  (LocalScript)
 	Yeri: StarterPlayer > StarterPlayerScripts > Minigame
 
-	Stardew Valley balik minioyununun kazi hali.
+	Iki minioyun:
 
-	Dusey bir cubukta:
-	  - Yesil bar oyuncunun kontrolunde: tusa/ekrana BASILI TUTUNCA yukari cikar,
-	    birakinca yercekimiyle duser
-	  - Brainrot ikonu kacar; rarity yukseldikce daha sik ve daha sert sicrar
-	  - Ikon barin icindeyken sagdaki ilerleme dolar, disindayken geriler
-	  - Ilerleme dolarsa brainrot yakalanir, sifirlanirsa kacar
+	  KUM (kurek / kazma)  -- tiklama oyunu, Shared > KaziMinigame
+	  DENIZ (olta)         -- Stardew Valley'nin balik oyunu, Shared > DigMinigame;
+	                          gorunumu StarterPlayerScripts > BalikPaneli
 
-	Kurek leveli barin boyunu ve tepkiselligini artirir, gerilemeyi yavaslatir;
-	yani yuksek level kurek yuksek rarity brainrotlari tutulabilir kilar.
-	Butun bu dengeler Shared > Shovels, Shared > Rods ve Shared > Rarity icinde ayarlanir.
+	Denizde bar oyuncunun: BASILI TUTUNCA yukari ivmelenir, birakinca duser.
+	Balik barin icindeyken ilerleme dolar, disindayken daha hizli geriler.
+	Kademe baligin zorlugunu ve hareketini, olta barin boyunu ve
+	ilerleme / gerileme hizini belirler (Shared > DigMinigame, Shared > Rods).
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")

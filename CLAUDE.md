@@ -24,7 +24,7 @@ Rojo and Lune live in `%LOCALAPPDATA%\Rojo\bin` (may not be on PATH — use the 
 - `lune run tools/check.luau` — compiles every `.luau` under `src/` to find syntax errors (does not execute). Run after edits.
 - `lune run tools/api.luau` — finds `Module.func()` calls whose target field no longer exists in that module (catches renamed/deleted functions that would only fail at runtime).
 - `lune run tools/fmt_test.luau` — the only unit-style test (for `src/shared/Format.luau`).
-- Balance/tuning printers: `gelir.luau` (rarity income), `zorluk.luau` (shovel × rarity difficulty), `mutasyon.luau`, `kenar.luau`. These **duplicate constants** from `Rarity`/`DigMinigame`/`Mutations`/`Condition` because those modules use Roblox APIs (Color3 etc.) that Lune can't require — update them when the source values change.
+- Balance/tuning printers: `gelir.luau` (rarity income), `zorluk.luau` (rod × rarity bot simulation of the Stardew fishing minigame), `mutasyon.luau`, `kenar.luau`. These **duplicate constants** from `Rarity`/`Rods`/`DigMinigame`/`Mutations`/`Condition` because those modules use Roblox APIs (Color3 etc.) that Lune can't require — update them when the source values change.
 - Place-file tools (take an `.rbxl` exported from Studio): `scan.luau` (backdoor scan), `senkron.luau` (diff Studio code vs disk), `fiyat.luau`, `konum.luau`, `inspect.luau`, `extract.luau` (place → src), `entegre.luau` (src → place), `cikar.luau` (extract objects to `.rbxm`).
 
 The `.bat` files are the teammates' workflow (Windows): `KURULUM` (install), `BASLA` (pull + `rojo serve`), `YENILE` (pull while serving), `BITIR` (commit all + push, rebase on conflict), `KURTAR` (abort a stuck merge/rebase). `.bat` files must stay CRLF; `.luau/.json/.md` are LF (see `.gitattributes`).
