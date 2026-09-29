@@ -122,12 +122,20 @@ end
 
 local ziplamaIzlenen: Instance? = nil
 local ziplamaAyarlaniyor = false
+local ziplamaBildirildi = false
+
+local function ziplamaDugmesi(): GuiObject?
+	local dugme = bul({ "TouchGui", "TouchControlFrame", "JumpButton" })
+	if dugme then
+		return dugme
+	end
+	local touchGui = playerGui:FindFirstChild("TouchGui")
+	local bulunan = touchGui and touchGui:FindFirstChild("JumpButton", true)
+	return if bulunan and bulunan:IsA("GuiObject") then bulunan else nil
+end
 
 local function ziplamaDuzenle()
-	if not Girdi.dokunmatik() then
-		return
-	end
-	local dugme = bul({ "TouchGui", "TouchControlFrame", "JumpButton" })
+	local dugme = ziplamaDugmesi()
 	if not dugme then
 		return
 	end
@@ -141,6 +149,10 @@ local function ziplamaDuzenle()
 		dugme.Size = hedefBoyut
 		dugme.Position = hedefKonum
 		ziplamaAyarlaniyor = false
+		if not ziplamaBildirildi then
+			ziplamaBildirildi = true
+			print(`[MobilDuzen] Jump button moved to the bottom-right corner ({boy}px)`)
+		end
 	end
 
 	if ziplamaIzlenen ~= dugme then

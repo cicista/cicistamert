@@ -25,19 +25,17 @@ local function tercihOf(): Tur?
 	return if ok then sonuc else nil
 end
 
+local function sadeceDokunmatik(): boolean
+	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+end
+
 local function sonGirdiOf(tip: Enum.UserInputType): Tur?
 	if string.sub(tip.Name, 1, 7) == "Gamepad" then
 		return "gamepad"
 	elseif tip == Enum.UserInputType.Touch then
 		return "dokunmatik"
-	elseif
-		tip == Enum.UserInputType.Keyboard
-		or tip == Enum.UserInputType.MouseMovement
-		or tip == Enum.UserInputType.MouseButton1
-		or tip == Enum.UserInputType.MouseButton2
-		or tip == Enum.UserInputType.MouseWheel
-	then
-		return "klavye"
+	elseif tip == Enum.UserInputType.Keyboard or tip == Enum.UserInputType.MouseButton1 or tip == Enum.UserInputType.MouseButton2 then
+		return if sadeceDokunmatik() then "dokunmatik" else "klavye"
 	end
 	return nil
 end
@@ -54,7 +52,7 @@ local function hesapla(): Tur
 	if GuiService:IsTenFootInterface() then
 		return "gamepad"
 	end
-	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+	if sadeceDokunmatik() then
 		return "dokunmatik"
 	end
 	if UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled then
