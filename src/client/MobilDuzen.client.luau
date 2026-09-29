@@ -14,6 +14,7 @@ local MASA_ARA = 14
 local DOKUNMATIK_ARA = 8
 local KENAR = 8
 local UST = 6
+local SOL_SUTUN_DOKUNMATIK = 3
 
 local PARA_DOKUNMATIK_OLCEGI = 0.62
 
@@ -74,9 +75,11 @@ local function solDuzenle(sol: GuiObject, dokunmatik: boolean)
 	kaydet(sol)
 	local izgara = sol:FindFirstChildOfClass("UIGridLayout")
 	local ara = if dokunmatik then DOKUNMATIK_ARA else MASA_ARA
-	sol.Size = UDim2.fromOffset(MENU_BOYU * 2 + ara, 0)
+	local sutun = if dokunmatik then SOL_SUTUN_DOKUNMATIK else 2
+	sol.Size = UDim2.fromOffset(MENU_BOYU * sutun + ara * (sutun - 1), 0)
 	if izgara then
 		izgara.CellPadding = UDim2.fromOffset(ara, ara)
+		izgara.StartCorner = if dokunmatik then Enum.StartCorner.BottomLeft else Enum.StartCorner.TopLeft
 	end
 end
 
