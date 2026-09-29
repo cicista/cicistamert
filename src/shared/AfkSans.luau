@@ -95,12 +95,15 @@ export type Alan = {
 	robux: string?,
 }
 
+-- Mythic alaninin yonca puani; Secret bunun iki kati (Mythic degisirse o da degisir)
+local MYTHIC_PUAN = 500
+
 local alanlar: { Alan } = {
 	{ id = "Common", displayName = "Common Clover Field", puanYonca = 25, fiyat = 0 },
 	{ id = "Rare", displayName = "Rare Clover Field", puanYonca = 60, fiyat = kurekFiyati(6) },
 	{ id = "Epic", displayName = "Epic Clover Field", puanYonca = 135, fiyat = kurekFiyati(11) },
 	{ id = "Legendary", displayName = "Legendary Clover Field", puanYonca = 270, fiyat = oltaFiyati(1) },
-	{ id = "Mythic", displayName = "Mythic Clover Field", puanYonca = 500, fiyat = oltaFiyati(5) },
+	{ id = "Mythic", displayName = "Mythic Clover Field", puanYonca = MYTHIC_PUAN, fiyat = oltaFiyati(5) },
 	--[[
 		SECRET: yalnizca Robux (300 R$, bkz. Shared > RobuxMagaza "AfkSecretAlan").
 		Mythic'in iki kati puan: tavana ~25 saatte ulasilir.
@@ -109,7 +112,7 @@ local alanlar: { Alan } = {
 		id = "Secret",
 		kademe = "Gizli",
 		displayName = "Secret Clover Field",
-		puanYonca = 1000,
+		puanYonca = MYTHIC_PUAN * 2,
 		fiyat = 0,
 		robux = "AfkSecretAlan",
 	},
