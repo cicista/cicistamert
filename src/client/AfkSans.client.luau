@@ -84,6 +84,17 @@ local FLYBOARD_TABAN = "FlyboardTabanHiz"
 ------------------------------------------------------------------
 -- YARDIMCILAR
 ------------------------------------------------------------------
+--[[
+	KOYU KADEME (Secret siyah)
+	Isik sacan (LightEmission 1) parcacik siyahi HIC cizmez, koyu zemindeki
+	siyah bar da gorunmez. Koyu kademede parcaciklar normal karisimla
+	(koyu toz gibi) cizilir, barin zemini acik olur, kontur beyaz.
+]]
+local function koyuMu(renk: Color3): boolean
+	local _, _, parlaklik = renk:ToHSV()
+	return parlaklik < 0.25
+end
+
 local function virgullu(n: number): string
 	local metin = tostring(math.floor(n))
 	local sonuc = metin:reverse():gsub("(%d%d%d)", "%1,"):reverse()
@@ -353,8 +364,11 @@ local function suzmeKur(alan: Ayar.Alan, z: BasePart)
 	local toz = Instance.new("ParticleEmitter")
 	toz.Name = "Toz"
 	toz.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	toz.Color = ColorSequence.new(renk:Lerp(BEYAZ, 0.35), renk)
-	toz.LightEmission = 1
+	local koyu = koyuMu(renk)
+	toz.Color = if koyu
+		then ColorSequence.new(renk:Lerp(BEYAZ, 0.12), renk)
+		else ColorSequence.new(renk:Lerp(BEYAZ, 0.35), renk)
+	toz.LightEmission = if koyu then 0 else 1
 	toz.LightInfluence = 0
 	toz.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
@@ -383,7 +397,7 @@ local function suzmeKur(alan: Ayar.Alan, z: BasePart)
 	isik.Name = "Isik"
 	isik.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	isik.Color = ColorSequence.new(renk)
-	isik.LightEmission = 1
+	isik.LightEmission = if koyu then 0 else 1
 	isik.LightInfluence = 0
 	isik.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
@@ -757,11 +771,13 @@ local function barKur(g: YoncaGorsel, renk: Color3): Bar
 	kutu.AnchorPoint = Vector2.new(0.5, 0.5)
 	kutu.Position = UDim2.fromScale(0.5, 0.5)
 	kutu.Size = UDim2.fromOffset(160, 24)
-	kutu.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+	-- Koyu kademede (Secret) siyah dolgu acik zeminde gorunsun
+	local koyu = koyuMu(renk)
+	kutu.BackgroundColor3 = if koyu then Color3.fromRGB(205, 205, 215) else Color3.fromRGB(20, 22, 30)
 	kutu.BorderSizePixel = 0
 	kutu.Parent = gui
 	UI.corner(kutu, 12)
-	UI.stroke(kutu, SIYAH, 3)
+	UI.stroke(kutu, if koyu then BEYAZ else SIYAH, 3)
 
 	local olcek = Instance.new("UIScale")
 	olcek.Parent = kutu
@@ -1633,7 +1649,8 @@ local function panelCiz(veri: any)
 		row.LayoutOrder = i
 		row.Parent = panelListe
 		UI.corner(row, 10)
-		UI.stroke(row, if alan.buyable then renk else SIYAH, if alan.buyable then 3 else 2)
+		-- Koyu kademede (Secret) kontur siyah zeminde kaybolmasin: yazi rengi (beyaz)
+		UI.stroke(row, if alan.buyable then (if koyuMu(renk) then yaziRengi else renk) else SIYAH, if alan.buyable then 3 else 2)
 		if not alan.owned and not alan.buyable then
 			row.BackgroundTransparency = 0.35
 		end
