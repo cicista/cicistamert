@@ -77,7 +77,7 @@ local function buildIslandList(player: Player, fromIndex: number?)
 		local first = Config.Islands[1]
 		table.insert(list, {
 			index = 1,
-			name = `{first.name}'ya Don`,
+			name = `Back to {first.name}`,
 			desc = "Free ride back to the starter island.",
 			price = 0,
 			color = Color3.fromRGB(120, 230, 150),
