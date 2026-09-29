@@ -1,40 +1,9 @@
---[[
-	AdminPanel  (Script)
-	Yeri: ServerScriptService > AdminPanel
-
-	Test/yonetim paneli. Yetki Config.Admin.userIds listesinden gelir;
-	Studio'da allowInStudio acikken herkese aciktir (canli sunucuda degil).
-
-	YETKI SUNUCUDA DOGRULANIR: client'tan gelen her komut yeniden kontrol edilir,
-	panel gorunmese bile yetkisiz bir oyuncu komut calistiramaz.
-
-	Komutlar:
-	  giveAllTools   -- butun kurek ve dedektor seviyelerinin en ustunu verir
-	  giveRot        -- Config.Admin.rotGrant kadar Rot
-	  revealAll      -- envanterdeki tum siyah brainrotlarin kimligini acar
-	  giveLuckyBlock -- secilen turden BIR Lucky Block verir (arg: tur id'si)
-	  luckyEvent     -- blok yagmuru etkinligini hemen baslatir
-	  sahteOyuncu    -- sunucuda N kisi varmis gibi davranir (arg: 0 = kapat)
-	  giveBrainrot   -- secilen rarity'de brainrot uretir
-	                    (arg: rarity ya da { rarity = ..., mutation = ... })
-	  setShovel      -- kurek seviyesi ayarlar (arg: shovelId)
-	  setDetector    -- dedektor seviyesi ayarlar (arg: detectorId)
-	  setFlyboard    -- flyboard kademesi verir (arg: flyboardId)
-	  setRod         -- olta kademesi verir (arg: rodId)
-	  clearInventory -- envanteri bosaltir (slottakiler dahil)
-	  spawnBeam      -- istenen kademede isik suzmesi dogurur (arg: rarity)
-	  spawnGirdap    -- istenen kademede deniz girdabi dogurur (arg: rarity)
-	  giveGizliBrainrot -- kimligi ACILMAMIS brainrot verir (arg: rarity)
-	  haritaRaporu   -- adalarin, base lerin ve NPC lerin konumlarini Output a yazar
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
--- Ogretici adim tanimlari (admin komutlari icin)
 local OgreticiAdimlar = require(Shared:WaitForChild("Ogretici"))
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
@@ -61,7 +30,6 @@ local Tools = require(Modules:WaitForChild("Tools"))
 local Beams = require(Modules:WaitForChild("Beams"))
 local Sand = require(Modules:WaitForChild("Sand"))
 
--- BaseSistemi'nin slot modellerini envanterle esitleyen tetigi
 local baseYenile = script.Parent:WaitForChild("BaseSistemi"):WaitForChild("BaseYenile") :: BindableEvent
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
@@ -73,9 +41,6 @@ local AdminKomut = Net.event("AdminKomut")
 local A = Config.Admin
 local rng = Random.new()
 
-------------------------------------------------------------------
--- YETKI
-------------------------------------------------------------------
 local function isAdmin(player: Player): boolean
 	if A.allowInStudio and RunService:IsStudio() then
 		return true
@@ -90,13 +55,9 @@ local function isAdmin(player: Player): boolean
 	return false
 end
 
-------------------------------------------------------------------
--- KOMUTLAR
-------------------------------------------------------------------
 local commands: { [string]: (player: Player, data: any, arg: any) -> string? } = {}
 
 function commands.giveAllTools(player, data)
-	-- En ust kurek ve dedektor
 	local topShovel = Shovels.Order[#Shovels.Order]
 	local topDetector = Detectors.Order[#Detectors.Order]
 
@@ -116,7 +77,6 @@ function commands.giveRot(player, data)
 	return `+{Format.short(A.rotGrant)} Rot`
 end
 
--- Rot Coin: panelde +10 / +100 / +1000 dugmeleri (baska miktar kabul edilmez)
 local ROT_COIN_MIKTARLARI = { [10] = true, [100] = true, [1000] = true }
 
 function commands.giveRotCoins(player, data, arg)
@@ -128,26 +88,6 @@ function commands.giveRotCoins(player, data, arg)
 	return `+{miktar} Rot Coin  (toplam {data.rotCoins})`
 end
 
---[[
-	OGRETICIYI BASA SAR
-
-	Ogretici bir kere bitince (ya da eski bir kayitta hic baslamayinca) bir
-	daha gorunmuyor; test etmek icin her seferinde yeni hesap acmak gerekirdi.
-	Bu komut oyuncuyu ilk adima dondurur ve istemciye yeni durumu yollar.
-]]
---[[
-	OGRETICI SONRASI IPUCLARI  --  serit onlarla da acik kaliyor
-
-	Ogretici bitince ekrandaki serit KAPANMIYOR gibi gorunuyordu: sunucu
-	iki saniyede bir "ogretici bitti mi, parasi yetiyor mu" diye bakip
-	KUREK / ADA ipucunu aciyor (bkz. Modules > Ogretici > ipucuKontrol) ve
-	serit bu kez ipucu yazisiyla geri geliyordu. Test eden adminin parasi
-	her zaman yettigi icin bu, ogretici hic kapanmamis gibi duruyordu.
-
-	Bu yuzden "bitir" ikisini de GORULMUS isaretliyor, "basa sar" ise
-	sifirliyor -- iki komut da niteligi temizliyor ki istemci aninda
-	kapatsin.
-]]
 local function ipuclariniAyarla(player: Player, data: any, gorulmus: boolean)
 	data.tutorial.adaIpucu = gorulmus
 	data.tutorial.kurekIpucu = gorulmus
@@ -171,7 +111,6 @@ function commands.ogreticiSifirla(player, data)
 	return "Ogretici basa sarildi: 1. adim"
 end
 
--- Ogretici modulunu bir kez cozer (yoksa nil)
 local function ogreticiModulu(): any?
 	local modul = script.Parent:FindFirstChild("Modules")
 	local node = modul and modul:FindFirstChild("Ogretici")
@@ -184,12 +123,6 @@ local function ogreticiModulu(): any?
 	return nil
 end
 
---[[
-	SIRADAKI ADIMA GEC
-
-	Adimin isini yapmadan ilerletir: test ederken her seferinde kazi yapip
-	dedektife kosmak gerekmesin.
-]]
 function commands.ogreticiAtla(player, data)
 	if data.tutorial.bitti then
 		return "Ogretici zaten bitmis"
@@ -197,11 +130,6 @@ function commands.ogreticiAtla(player, data)
 
 	local toplam = OgreticiAdimlar.adimSayisi()
 
-	--[[
-		Kayitli adim listeden buyuk olabilir (adim silindi ya da eski bir
-		kayit): once listeye sigdiriliyor, yoksa "siradaki adim" hicbir
-		zaman bulunamaz ve ogretici hep asili kalirdi.
-	]]
 	data.tutorial.adim = math.clamp(math.floor(data.tutorial.adim), 1, toplam)
 
 	if data.tutorial.adim >= toplam then
@@ -220,15 +148,6 @@ function commands.ogreticiAtla(player, data)
 		else `Ogretici {data.tutorial.adim}. adima gecti`
 end
 
---[[
-	BUTUN OGRETICIYI BITIRIR  --  ekranda hicbir yonerge kalmaz
-
-	Yalnizca "bitti" demek yetmiyordu: adim sayaci son adima alinmali,
-	"uc kazi" listesi bosaltilmali ve ogretici sonrasi ipuclari gorulmus
-	sayilmali (yoksa serit birkac saniye sonra ipucu yazisiyla geri gelir).
-	Adim niteligi de siliniyor -- sunucu tarafinda kalan kancalar (garanti
-	suzme, isaretler) onu okuyor.
-]]
 function commands.ogreticiBitir(player, data)
 	data.tutorial.bitti = true
 	data.tutorial.adim = OgreticiAdimlar.adimSayisi()
@@ -244,36 +163,19 @@ function commands.ogreticiBitir(player, data)
 	return "Ogretici bitirildi (ipuclari dahil)"
 end
 
---[[
-	ADA IPUCUNU SIFIRLA
-
-	"Parasi yetti, Teleporter'i goster" ipucunu yeniden gosterilebilir
-	yapar (bkz. Shared > Ogretici > AdaIpucu).
-]]
 function commands.adaIpucuSifirla(player, data)
 	data.tutorial.adaIpucu = nil
 	player:SetAttribute(OgreticiAdimlar.AdaIpucu.nitelik, nil)
-	-- Ilk kurek ipucu de ayni dugmeyle sifirlaniyor: ikisi de "ogretici sonrasi"
 	data.tutorial.kurekIpucu = nil
 	player:SetAttribute(OgreticiAdimlar.KurekIpucu.nitelik, nil)
 	return "Ada ve kurek ipuclari sifirlandi (parasi yetince yeniden cikar)"
 end
 
--- Etkinligi beklemeden tetikler (normalde saatte bir)
 function commands.luckyEvent(player, data)
 	LuckyBlockOdul.runEvent()
 	return `Etkinlik baslatildi ({LuckyBlock.toplamBlok()} blok)`
 end
 
---[[
-	SAHTE OYUNCU SAYISI
-
-	"Sunucuda 4 kisi varmis gibi davran" der. Blok yagmuru bildirimi
-	4 kisiden itibaren cikip 3'te kayboldugu ve 6'da geri sayim basladigi
-	icin tek basina sinamanin baska yolu yok.
-
-	arg = 0 ise gercek oyuncu sayisina donulur.
-]]
 function commands.sahteOyuncu(player, data, arg)
 	local sayi = LuckyBlockOdul.sahteOyuncuAyarla(tonumber(arg) or 0)
 	return if sayi > 0
@@ -281,7 +183,6 @@ function commands.sahteOyuncu(player, data, arg)
 		else "Gercek oyuncu sayisina donuldu"
 end
 
--- Her tikta TEK blok verir; tur arg ile gelir
 function commands.giveLuckyBlock(player, data, arg)
 	local tierId = if type(arg) == "string" and LuckyBlock.exists(arg) then arg else LuckyBlock.Default
 	local tier = LuckyBlock.get(tierId)
@@ -293,20 +194,6 @@ function commands.giveLuckyBlock(player, data, arg)
 	return `+1 {tier.displayName}  (toplam {PlayerData.luckyBlockCount(player, tierId)})`
 end
 
---[[
-	arg iki bicimde gelebilir:
-	    "Legendary"                                 -- eski panel
-	    { rarity = "Legendary", mutation = "Hacker" }  -- mutasyon secili panel
-	Mutasyon testi icin sart: Hacker binde bir cikiyor, elle uretilemezse
-	yesil modellerin dogru calistigi dogrulanamaz.
-]]
---[[
-	Panelden brainrot verir.
-
-	Mutasyon VARSAYILAN OLARAK RASTGELE cekilir -- oyunun her yerinde
-	oldugu gibi Gold %7, Diamond %3, Galaxy %1. Panelde belirli bir
-	mutasyon secilmisse onun yerine o kullanilir.
-]]
 function commands.giveBrainrot(player, data, arg)
 	local rarityId = "Common"
 	local mutationId: string? = nil
@@ -319,7 +206,6 @@ function commands.giveBrainrot(player, data, arg)
 		if type(arg.rarity) == "string" and Rarity.Info[arg.rarity] then
 			rarityId = arg.rarity
 		end
-		-- "Random" ya da bos: rastgele cekilis
 		if type(arg.mutation) == "string" and Mutations.Info[arg.mutation] then
 			mutationId = arg.mutation
 		end
@@ -336,14 +222,6 @@ function commands.giveBrainrot(player, data, arg)
 		return nil
 	end
 
-	--[[
-		Panelden verilen brainrot ACIK gelir.
-
-		Normal akista brainrot simsiyah cikar ve kimligi -- mutasyonu dahil --
-		Detective acana kadar gizlidir. Panel bir test araci oldugu icin
-		burada bekletmenin anlami yok: mutasyonu ve ismi hemen gorunsun,
-		yoksa "mutasyon hic gelmiyor" gibi gorunur.
-	]]
 	item.name = Brainrots.roll(rarityId :: any, rng).name
 	item.revealed = true
 
@@ -357,13 +235,6 @@ function commands.giveBrainrot(player, data, arg)
 	return `{item.name}  ({Rarity.displayName(rarityId)}, {Condition.get(condition).shortName}, {mutationInfo.displayName}){suffix}`
 end
 
---[[
-	Envanterdeki TUM siyah brainrotlarin kimligini aciga cikarir.
-	Detective'in yaptigi isin toplu ve beklemesiz hali: rarity sabit kalir,
-	isim esyanin KAZILDIGI ADANIN (ve onceki adalarin) havuzundan secilir --
-	Detective ile birebir ayni kural. Eskiden butun havuzdan seciyordu ve
-	main island'da kazilanlara diger adalarin brainrotlari cikiyordu.
-]]
 function commands.revealAll(player, data)
 	local count = 0
 
@@ -384,14 +255,6 @@ function commands.revealAll(player, data)
 	return `{count} brainrot'un kimligi acildi`
 end
 
---[[
-	ELDEKI brainrotu secilen mutasyona cevirir.
-
-	Panelde mutasyona basildiginda calisir: elde acilmis (kimligi belli)
-	bir brainrot varsa o brainrot dogrudan mutasyonlu haline doner.
-	Kapali (obtainable = false) mutasyonlar da buradan verilebilir --
-	panelin amaci zaten test.
-]]
 function commands.setMutation(player, data, arg)
 	if type(arg) ~= "string" or not Mutations.Info[arg] then
 		return nil
@@ -417,21 +280,12 @@ function commands.setMutation(player, data, arg)
 
 	item.mutation = arg
 
-	-- Tool yeniden uretilir: model, isim ve efektler mutasyona gore degisir
 	Envanter.syncBrainrots(player)
 
 	local info = Mutations.get(arg)
 	return `{item.name} -> {info.displayName} ({info.multiplier}x)`
 end
 
---[[
-	MUTASYON TESTI
-
-	Mutasyon cekilisini 1000 kez calistirip dagilimi Output'a yazar.
-	"Mutasyon hic gelmiyor" sikayetinin kaynagini kesinlestirir:
-	burada dogru dagilim cikiyorsa cekilis calisiyor demektir, sorun
-	baska yerdedir (ornegin brainrot siyah oldugu icin gorunmuyordur).
-]]
 function commands.testMutation(player, data)
 	local counts: { [string]: number } = {}
 	local rolls = 1000
@@ -451,15 +305,6 @@ function commands.testMutation(player, data)
 	return `{special}/{rolls} mutasyonlu -- ayrinti Output'ta`
 end
 
---[[
-	ISIK SUZMESI SPAWNLA
-
-	Istenen kademede bir suzme dogurur: cekilis yok, sans yok, adet siniri
-	yok. Amaci suzmelerin gorunumunu ve o kademedeki kazi zorlugunu istedigin
-	an sinayabilmek -- yoksa Divine'i gormek icin saatlerce kazmak gerekirdi.
-
-	arg: rarity kimligi ("Common".."Secret"), maden kimligi ya da "LuckyBlock"
-]]
 function commands.spawnBeam(player, data, arg)
 	if type(arg) ~= "string" then
 		return nil
@@ -476,7 +321,6 @@ function commands.spawnBeam(player, data, arg)
 		return "Suzme dogurulamadi -- karakterin yok mu?"
 	end
 
-	-- Maden: kaya dogar, adanin kazmasi gerekir
 	if maden then
 		local cfg = Ores.island(maden.island)
 		local kazma = if cfg then Ores.Pickaxes[cfg.pickaxe] else nil
@@ -488,16 +332,6 @@ function commands.spawnBeam(player, data, arg)
 	return `{label} suzmesi dogdu -- kuregi eline al ve kaz`
 end
 
---[[
-	GIRDAP SPAWNLA
-
-	Denizdeki girdabin suzme karsiligi. Normalde girdap yalnizca elinde
-	OLTA varken, flyboardla denizin ustundeyken ve sansa bagli doguyor;
-	burada uc sart da atlanir.
-
-	Yakinda su yoksa girdap oyuncunun ONUNE konur ve mesajda yazar --
-	gorunumu ve donusu karada da bakilabilsin diye.
-]]
 function commands.spawnGirdap(player, data, arg)
 	if type(arg) ~= "string" or not Rarity.Info[arg] then
 		return nil
@@ -514,13 +348,6 @@ function commands.spawnGirdap(player, data, arg)
 		else `{label} girdabi ONUNE kondu (yakinda su yok)`
 end
 
---[[
-	KIMLIKSIZ BRAINROT VER
-
-	giveBrainrot'un aynisi ama brainrot ACILMAMIS geliyor: siyah yumurta
-	olarak cantaya giriyor ve kimligi Detective'te aciliyor. Yumurtalarin
-	kademe kademe boyunu ve efektini sinamanin en kisa yolu.
-]]
 function commands.giveGizliBrainrot(player, data, arg)
 	local rarityId = if type(arg) == "string" and Rarity.Info[arg] then arg else "Common"
 
@@ -529,10 +356,6 @@ function commands.giveGizliBrainrot(player, data, arg)
 		return nil
 	end
 
-	--[[
-		ADI SIMDIDEN yaziliyor ama revealed KAPALI: Detective acana kadar
-		oyuncuya gorunmuyor, normal kazi akisinda da boyle oluyor.
-	]]
 	item.name = Brainrots.roll(rarityId :: any, rng).name
 	item.revealed = false
 
@@ -542,19 +365,6 @@ function commands.giveGizliBrainrot(player, data, arg)
 	return `Kimliksiz {Rarity.displayName(rarityId)} brainrot verildi -- Detective'e goturup ac`
 end
 
---[[
-	HARITA RAPORU
-
-	Oyunun haritada NE GORDUGUNU Output'a yazar: adalarin isinlanma
-	noktalari, base'ler ve NPC'ler nerede duruyor, hangisi eksik.
-
-	Harita Studio'da tasindiginda "kod eski konuma gonderiyor" mu yoksa
-	"nesne hic bulunamiyor" mu -- bunu tahminle degil olcumle ayirmak icin.
-
-	Kod nesneleri ISIMLE buluyor, koordinatla degil. Bu yuzden bir nesne
-	tasindiginda kodda degistirilecek bir sey normalde YOKTUR; rapor da
-	bunu dogrulamaya yariyor.
-]]
 local function vec(position: Vector3): string
 	return string.format("%.1f, %.1f, %.1f", position.X, position.Y, position.Z)
 end
@@ -614,12 +424,6 @@ function commands.haritaRaporu(player, data)
 	print("")
 	print("BASE'LER  (isimle bulunur, konum kodda yazmaz)")
 
-	--[[
-		Arama BaseSistemi ile AYNI fonksiyondan geciyor (Bases.findFolder).
-		Rapor baska turlu arasaydi oyunun gordugunden farkli bir sey
-		soyleyebilirdi -- nitekim bir kez oyle oldu: rapor Workspace'in
-		kokune bakiyordu, klasor ise adanin icindeydi.
-	]]
 	local bases = Bases.findFolder()
 
 	if not bases then
@@ -628,14 +432,6 @@ function commands.haritaRaporu(player, data)
 	else
 		print(`  Klasor yeri: {bases:GetFullName()}`)
 
-		--[[
-			Once klasorun ICINDE NE VAR onu yaz.
-
-			BaseSistemi "Base1".."Base6" adlarini arar, bulamazsa klasordeki
-			diger modelleri ada gore siralayip sirayla atar. Yani isimler
-			farkli olsa da oyun calisabilir -- ama neyin ne oldugunu gormek
-			icin once ham icerigi listelemek lazim.
-		]]
 		local children = bases:GetChildren()
 		print(string.format("  Klasor icerigi: %d nesne", #children))
 
@@ -684,7 +480,6 @@ function commands.haritaRaporu(player, data)
 		Config.Seller.altName,
 		Config.Fuse.machineName,
 		Config.Fuse.machineAltName,
-		-- VFX ayari Shared > Fuse'da, Config.Fuse'da degil
 		Fuse.VFX.name,
 	}
 
@@ -705,14 +500,6 @@ function commands.haritaRaporu(player, data)
 		else `{eksik} nesne EKSIK -- ayrinti Output'ta`
 end
 
---[[
-	KUM RAPORU
-
-	GPS kumun uzerinde kendiliginden ele geliyor; gelmiyorsa sebep ya
-	zeminin malzemesi ya da adidir. Bu komut oyuncunun TAM O AN bastigi
-	zemin hakkinda oyunun ne gordugunu Output'a yazar -- "algilamadi"
-	sikayetini tahminden cikarip olcume cevirir.
-]]
 function commands.kumRaporu(player, data)
 	local onSand, lines = Sand.report(player)
 
@@ -727,18 +514,6 @@ function commands.kumRaporu(player, data)
 		else "Kumda DEGILSIN -- sebep Output'ta"
 end
 
---[[
-	VFX RAPORU
-
-	Suzme efektinin (Config.BeamVFX.name) icinde NE VAR, hepsini Output
-	icine listeler: sinif, ad, renk ve HSV degerleri.
-
-	Ne ise yarar: efektte gorunmesini istemedigin bir sey varsa -- ornegin
-	ortadaki kucuk yesil nokta -- hangi nesne oldugunu buradan bulur,
-	adini Config.BeamVFX.hide listesine yazip kaldirirsin.
-
-	YESIL, cok parlak ve cok kucuk nesneler ayrica isaretlenir.
-]]
 local function hsvOf(color: Color3): string
 	local h, s, v = color:ToHSV()
 	return string.format("H=%.2f S=%.2f V=%.2f", h, s, v)
@@ -749,14 +524,6 @@ local function isGreenish(color: Color3): boolean
 	return h >= 0.22 and h <= 0.45 and s >= 0.35 and v >= 0.35
 end
 
---[[
-	GIZLI BRAINROT RAPORU
-
-	Kimligi belirlenmemis brainrotlar duz kutu gorunuyorsa sebebi burada
-	belli olur. Model Studio agacinda NEREDE olursa olsun bulunsun diye
-	butun yaygin servisler taranir; ayrica Workspace'in dogrudan
-	cocuklari da listelenir ki adin gercek yazilisi gozle gorulsun.
-]]
 function commands.gizliRaporu(player, data)
 	local cfg = Assets.HiddenBrainrot
 
@@ -765,7 +532,6 @@ function commands.gizliRaporu(player, data)
 	print(`  Korunan   : "{cfg.keepPart}"`)
 	print("")
 
-	-- Adinda "hidden" gecen her sey, hangi serviste olursa olsun
 	print("  Adinda \"hidden\" gecenler (tum servisler):")
 	local seen = 0
 	for _, root in Assets.searchRoots() do
@@ -781,14 +547,6 @@ function commands.gizliRaporu(player, data)
 	end
 	print("")
 
-	--[[
-		HER SATIR BENZERSIZ OLMALI
-
-		Roblox Output ayni metinli satirlari tek satirda GRUPLAR ("(x5)"
-		seklinde) ve gizler. Onceki raporda Water Block gibi tekrar eden
-		nesneler bu yuzden hic gorunmedi. Bastaki sira numarasi her satiri
-		benzersiz kildigi icin artik hicbiri gizlenmiyor.
-	]]
 	local kids = Workspace:GetChildren()
 	print(`  Workspace'in dogrudan cocuklari ({#kids} adet):`)
 	for index, node in kids do
@@ -912,7 +670,6 @@ function commands.vfxRaporu(player, data)
 	return `{total} nesne listelendi, {flagged} isaretli -- ayrinti Output icinde`
 end
 
--- Kazma verir: tek bir kazma id'si ya da "all"
 function commands.givePickaxe(player, data, arg)
 	if arg == "all" then
 		for id in Ores.Pickaxes do
@@ -929,10 +686,6 @@ function commands.givePickaxe(player, data, arg)
 	return `{Ores.Pickaxes[arg].displayName} verildi`
 end
 
---[[
-	Maden verir (her tikta 10). arg bir maden id'si ise yalnizca o maden,
-	bir ada id'si ise ("sekerkum") o adanin uc madeni birden.
-]]
 local MADEN_ADEDI = 10
 
 function commands.giveOres(player, data, arg)
@@ -963,7 +716,6 @@ function commands.setShovel(player, data, arg)
 	end
 
 	data.shovel = arg
-	-- Admin verdigi kademeyi kalici da yapar (satici listesinde gorunsun)
 	if Shovels.get(arg :: any).level > Shovels.get(data.shovelMax :: any).level then
 		data.shovelMax = arg
 	end
@@ -981,7 +733,6 @@ function commands.setRod(player, data, arg)
 		data.rodMax = arg
 	end
 
-	-- Yalnizca flyboardla denizdeyse ele gelir; karada olta elde durmaz
 	if player:GetAttribute("Flyboarding") == true then
 		Envanter.removeRod(player)
 		Envanter.equipRod(player)
@@ -1017,15 +768,6 @@ function commands.setDetector(player, data, arg)
 	return `Dedektor: {Detectors.get(arg).displayName}`
 end
 
---[[
-	SCRIPT RAPORU
-
-	Bizim kodumuz yalnizca ServerScriptService, StarterPlayerScripts ve
-	ReplicatedStorage > Shared icinde. Bunlarin DISINDAKI butun scriptler
-	(haritaya ya da modellere gomulu olanlar) Output'a yazilir. Hazir
-	modellerle gelen, hata veren ya da disaridan modul yukleyen (require)
-	scriptleri bulup silmek icin.
-]]
 function commands.scriptRaporu(player, data)
 	local ServerScriptService = game:GetService("ServerScriptService")
 	local StarterPlayer = game:GetService("StarterPlayer")
@@ -1071,7 +813,6 @@ function commands.scriptRaporu(player, data)
 	return `{#bulunan} yabanci script -- liste Output'ta`
 end
 
--- Robux gecisini bu oturum icin ver / geri al (kayda yazilmaz)
 function commands.togglePass(player, data, arg)
 	local info = if type(arg) == "string" then Passler.get(arg) else nil
 	if not info then
@@ -1082,11 +823,6 @@ function commands.togglePass(player, data, arg)
 	return `{info.ad}: {if yeni then "VERILDI" else "ALINDI"} (bu oturum)`
 end
 
---[[
-	Hiz scriptine "yeniden uygula" der. Script bulunamazsa sorun degil:
-	Hiz scripti yarim saniyede bir veriyi kontrol edip kendisi uygular.
-	Yurume hizi burada da hemen yazilir ki fark aninda hissedilsin.
-]]
 local function hiziYenile(player: Player)
 	local data = PlayerData.get(player)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -1106,7 +842,6 @@ local function hiziYenile(player: Player)
 	end
 end
 
--- Hiz rebirth sayisini ayarla (0..Hiz.MaxRebirth)
 function commands.setRebirth(player, data, arg)
 	local adet = tonumber(arg)
 	if not adet then
@@ -1117,7 +852,6 @@ function commands.setRebirth(player, data, arg)
 	return `Hiz rebirth: {data.speedRebirth}`
 end
 
--- Hiz yukseltmesi sayisini ayarla (0..100)
 function commands.setSpeed(player, data, arg)
 	local adet = tonumber(arg)
 	if not adet then
@@ -1133,17 +867,12 @@ function commands.clearInventory(player, data)
 	table.clear(data.inventory)
 
 	Envanter.syncBrainrots(player)
-	-- Base'e yerlestirilmis olanlarin sahnedeki modelleri de kaldirilir
 	baseYenile:Fire(player)
 
 	return `{count} brainrot silindi`
 end
 
-------------------------------------------------------------------
--- BAGLANTILAR
-------------------------------------------------------------------
 AdminKomut.OnServerEvent:Connect(function(player, command, arg)
-	-- Panel gorunmese bile yetki burada tekrar dogrulanir
 	if not isAdmin(player) then
 		return
 	end
@@ -1162,15 +891,6 @@ AdminKomut.OnServerEvent:Connect(function(player, command, arg)
 		return
 	end
 
-	--[[
-		Komut hatasi SESSIZCE yutulmasin.
-
-		Bir komut calisirken hata verdiginde eskiden butun olay isleyicisi
-		duruyordu: panelde tiklarsin, hicbir sey olmaz, Output icinde de
-		yalnizca ham bir yigin izi belirirdi. Artik hata yakalanip
-		ekranda kirmizi bir bildirim olarak gosteriliyor -- "calismiyor"
-		ile "hata veriyor" birbirinden ayrilabiliyor.
-	]]
 	local ok, message = pcall(handler, player, data, arg)
 
 	if not ok then
@@ -1186,7 +906,6 @@ AdminKomut.OnServerEvent:Connect(function(player, command, arg)
 	end
 end)
 
--- Oyuncuya yetkisini bildirir; client paneli buna gore acar
 local function announce(player: Player)
 	task.wait(1)
 	if not player.Parent then

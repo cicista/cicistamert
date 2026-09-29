@@ -1,34 +1,4 @@
 --!strict
---[[
-	Gacha  (ModuleScript)
-	Yeri: ServerScriptService > Modules > Gacha
-
-	Yumurta gachasinin sunucu tarafi. Ayarlar Shared > Gacha'da.
-
-	  Gacha.baslat()         ServerScriptService > Gacha cagirir (bir kez):
-	                         NPC'ye prompt takar, admin denemesini dinler
-	  Gacha.ver(player)      bir cevirme: kademeyi secer, yumurtayi cantaya
-	                         yazar ve gosteriyi baslatir. BEKLEMEZ -- Robux
-	                         fisi (ProcessReceipt) bunu cagiriyor.
-
-	AKIS
-	  1. NPC'nin promptu -> GachaAc (pencere acilir, admin ise deneme dugmesi)
-	  2. Istemci RobuxUrunAl("Gacha") -> RobuxMagaza penceresi acar
-	  3. Oyuncu oderse ProcessReceipt -> Gacha.ver
-	  4. Yumurta HEMEN kayda yazilir (cark donerken oyuncu cikarsa kaybolmaz)
-	     ama cantaya ve ekrana cark DURUNCA yansir; surpriz bozulmasin.
-	  5. GachaSonuc ile istemci carki cevirir; sure dolunca burada
-	     FuseExplosion + kademe renginde FuseVFX patlar (Modules > Patlama).
-
-	CANTA DOLU OLSA DA VERILIR
-	Para odenmis ve geri verilemiyor; yumurta kapasite siniri gozetilmeden
-	eklenir. Pencere acilmadan once canta dolu mu diye ayrica bakiliyor
-	(bkz. RobuxMagaza.server) -- oyuncu once yer acsin.
-
-	UST USTE ALIM
-	Cark donerken ikinci bir fis gelirse ikinci gosteri birincisi bitince
-	baslar (sira). Yumurtalarin ikisi de fis aninda kayda yazilmistir.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -51,12 +21,8 @@ local Gacha = {}
 
 local rng = Random.new()
 
--- Oyuncunun sirada bekleyen gosterileri (bkz. UST USTE ALIM)
 local mesgul: { [Player]: boolean } = {}
 
-------------------------------------------------------------------
--- YETKI  (AdminPanel ile ayni kural: Shared > OyunConfig > Admin)
-------------------------------------------------------------------
 local function adminMi(player: Player): boolean
 	local A = OyunConfig.Admin
 	if A.allowInStudio and RunService:IsStudio() then
@@ -70,11 +36,7 @@ local function adminMi(player: Player): boolean
 	return false
 end
 
-------------------------------------------------------------------
--- GOSTERI
-------------------------------------------------------------------
 local function gosteri(player: Player, rarityId: string, onceki: number, yeni: number)
-	-- Onceki cevirme bitene kadar sira bekle
 	while mesgul[player] and player.Parent do
 		task.wait(0.2)
 	end
@@ -84,10 +46,8 @@ local function gosteri(player: Player, rarityId: string, onceki: number, yeni: n
 	mesgul[player] = true
 
 	local ad = Ayar.yumurtaAdi(Rarity.displayName(rarityId))
-	-- onceki: cark donerken gosterilen sanslar; yeni: cark durunca bara yansiyan
 	Net.event("GachaSonuc"):FireClient(player, { rarity = rarityId, ad = ad, onceki = onceki, iska = yeni })
 
-	-- Yumurtanin elde edildigi an: FuseExplosion + kademe renginde FuseVFX
 	task.wait(Ayar.toplamSure())
 	if player.Parent then
 		Patlama.oynat(player, rarityId)
@@ -97,43 +57,31 @@ local function gosteri(player: Player, rarityId: string, onceki: number, yeni: n
 		Net.event("Bildirim"):FireClient(player, `You got a {ad}!`, Rarity.color(rarityId))
 	end
 
-	-- Sonuc ekranda biraz dursun; sonraki cevirme hemen ustune binmesin
 	task.wait(Ayar.SonucSuresi)
 	mesgul[player] = nil
 end
 
---[[
-	Bir cevirme. Yumurtayi kayda yazar ve gosteriyi arka planda baslatir.
-	Hata verirse (veri yok) cagiran taraf bunu gorur: fis geri alinir.
-]]
 function Gacha.ver(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
 		error("oyuncu verisi yok")
 	end
 
-	-- Sans artisi (pity): Infernal/Abyssal cikmayan her cevirme ikisini de buyutur
 	local onceki = data.gachaIska
 	local rarityId = Ayar.sec(rng, onceki)
-	-- Kazidakiyle ayni: boyut ve mutasyon da cikar, mutasyon acilana kadar gizli
 	local condition = Condition.roll(rng)
 	local mutation = Mutations.roll(rng)
 
-	-- Ada yok: isim acilinca o kademenin butun havuzundan secilir
 	local item = PlayerData.addBrainrot(player, rarityId, condition, mutation, nil, true)
 	if not item then
 		error("yumurta cantaya eklenemedi")
 	end
 
-	-- Biri cikinca artis sifirlanir; cikmazsa bir artar (tavan: kesin cevirme)
 	data.gachaIska = if Ayar.ArtanKademeler[rarityId] then 0 else math.min(onceki + 1, Ayar.maxIska())
 
 	task.spawn(gosteri, player, rarityId, onceki, data.gachaIska)
 end
 
-------------------------------------------------------------------
--- NPC
-------------------------------------------------------------------
 local npcParcalari: { [BasePart]: boolean } = {}
 
 local function tutunmaParcasi(node: Instance): BasePart?
@@ -156,12 +104,10 @@ local function pencereyiAc(player: Player)
 	local data = PlayerData.get(player)
 	Net.event("GachaAc"):FireClient(player, {
 		admin = adminMi(player),
-		-- Sans artisi cubugu bununla cizilir
 		iska = if data then data.gachaIska else 0,
 	})
 end
 
--- Bu adla butun NPC'lere prompt takar; zaten takiliysa atlar. Kac tane bulundugunu dondurur
 local function npcBagla(): number
 	local hedef = string.lower(Ayar.NpcAdi)
 	local sayi = 0
@@ -203,9 +149,6 @@ local function npcBagla(): number
 	return sayi
 end
 
-------------------------------------------------------------------
--- BASLAT
-------------------------------------------------------------------
 local basladi = false
 
 function Gacha.baslat()
@@ -214,10 +157,6 @@ function Gacha.baslat()
 	end
 	basladi = true
 
-	--[[
-		ADMIN DENEMESI: pencerede yalnizca adminlere gorunen dugme.
-		Ucretsiz bir cevirme; yetki burada, sunucuda denetleniyor.
-	]]
 	Net.event("GachaDene").OnServerEvent:Connect(function(player)
 		if not adminMi(player) then
 			return
@@ -236,7 +175,6 @@ function Gacha.baslat()
 		mesgul[player] = nil
 	end)
 
-	-- NPC sonradan gelebilir (akis, elle ekleme): eklenince yeniden baglanir
 	if npcBagla() == 0 then
 		warn(`[Gacha] '{Ayar.NpcAdi}' NPC'si haritada bulunamadi; eklenince baglanacak`)
 	end

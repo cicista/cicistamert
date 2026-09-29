@@ -1,22 +1,3 @@
---[[
-	Flyboard  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Flyboard
-
-	Iki isi var:
-
-	1. SATICI PANELI
-	   FlyboardSeller NPC'sine basinca acilir: 5 kademe, fiyatlariyla.
-	   Kurek ve dedektorde oldugu gibi sirayla alinir -- yalnizca bir
-	   sonraki kademenin dugmesi calisir.
-
-	2. YUKSEKLIK TUSLARI
-	   Tahtadayken Space yukseltir, Shift alcaltir. Tus BASILI oldUGU surece
-	   sunucuya yon gonderilir; sinirlari (taban yukseklik ve en fazla
-	   yukselme) sunucu uygular, istemci yalnizca niyeti bildirir.
-
-	   Ziplama sunucuda kapatildigi icin Space burada serbest kalir.
-]]
-
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -43,9 +24,6 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-------------------------------------------------------------------
--- PANEL
-------------------------------------------------------------------
 local panel = UI.panel(screen, UDim2.fromOffset(520, 470), "FlyboardSatici")
 
 UI.text({
@@ -81,7 +59,6 @@ liste.ScrollBarImageColor3 = UI.Colors.panelLight
 liste.CanvasSize = UDim2.new()
 liste.AutomaticCanvasSize = Enum.AutomaticSize.Y
 liste.Parent = panel
--- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 UI.listePayi(liste)
 
 local listeDizilim = Instance.new("UIListLayout")
@@ -121,10 +98,6 @@ local function satirCiz(entry: any, order: number)
 		parent = row,
 	})
 
-	--[[
-		Sahip olunan kademeler kalici: kusanili olan "EQUIPPED" der,
-		digerine basinca ucretsiz kusanilir.
-	]]
 	if entry.equipped then
 		UI.text({
 			text = "EQUIPPED",
@@ -202,13 +175,9 @@ FlyboardAc.OnClientEvent:Connect(function(data)
 	panel.Visible = true
 end)
 
-------------------------------------------------------------------
--- YUKSEKLIK TUSLARI
-------------------------------------------------------------------
 local YUKSEL = "FlyboardYukari"
 local ALCAL = "FlyboardAsagi"
 
--- Basili tutuldugu surece sunucuya yon gonderilir
 local yon = 0
 
 ContextActionService:BindAction(YUKSEL, function(_, state)
@@ -221,11 +190,6 @@ ContextActionService:BindAction(ALCAL, function(_, state)
 	return Enum.ContextActionResult.Pass
 end, false, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
 
---[[
-	Tus basiliyken saniyede ~15 paket: her karede gondermek gereksiz,
-	sunucu zaten adimi kendi hesapliyor. Tahtada degilken sunucu paketi
-	sessizce yok sayar.
-]]
 task.spawn(function()
 	while true do
 		task.wait(1 / 15)

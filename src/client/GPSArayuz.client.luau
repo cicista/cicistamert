@@ -1,19 +1,3 @@
---[[
-	GPSArayuz  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > GPSArayuz
-
-	Brainrot GPS'in ekran tarafi.
-
-	Kumlu alandayken server periyodik olarak yakindaki isik suzmelerini gonderir.
-	Bu script:
-	  - Her suzmenin uzerine rarity'sini yazan bir dunya etiketi koyar
-	  - Ekranin kenarinda suzmeleri mesafeye gore siralayan bir liste gosterir
-	  - En yakin suzme kazi mesafesindeyse "E ile kaz" ipucu verir
-
-	Oyuncu suzmenin rengine bakip kazip kazmayacagina kendisi karar verir;
-	kum artik dogrudan kazilmaz.
-]]
-
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,9 +21,6 @@ local SuzmeKaz = Net.event("SuzmeKaz")
 local DIG_ACTION = "SuzmeKazEylemi"
 local G = Config.GPS
 
-------------------------------------------------------------------
--- ARAYUZ
-------------------------------------------------------------------
 local screen = Instance.new("ScreenGui")
 screen.Name = "BrainrotGPS"
 screen.ResetOnSpawn = false
@@ -47,12 +28,10 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Enabled = true
 screen.Parent = playerGui
 
--- Ekran altindaki kazi ipucu
 local hint = Instance.new("Frame")
 hint.Name = "KaziIpucu"
 hint.AnchorPoint = Vector2.new(0.5, 1)
 hint.Position = UDim2.new(0.5, 0, 1, -110)
--- Madende solda ikon duruyor; yazi sigsin diye 280'den genisletildi
 hint.Size = UDim2.fromOffset(310, 44)
 hint.BackgroundColor3 = UI.Colors.panel
 hint.BackgroundTransparency = 0.1
@@ -72,7 +51,6 @@ local hintLabel = UI.text({
 	parent = hint,
 })
 
--- Maden suzmesinde ipucunun solunda madenin ikonu (Assets > Icons)
 local hintIkon = Instance.new("ImageLabel")
 hintIkon.Name = "MadenIkonu"
 hintIkon.AnchorPoint = Vector2.new(0, 0.5)
@@ -83,28 +61,14 @@ hintIkon.ScaleType = Enum.ScaleType.Fit
 hintIkon.Visible = false
 hintIkon.Parent = hint
 
-------------------------------------------------------------------
--- DUNYA ETIKETLERI
-------------------------------------------------------------------
 local labelFolder = Instance.new("Folder")
 labelFolder.Name = "GPSEtiketleri"
 labelFolder.Parent = playerGui
 
--- [beamId] = BillboardGui
 local labels: { [string]: BillboardGui } = {}
--- Server'dan gelen son liste
 local beams: { { id: string, kind: string, position: Vector3 } } = {}
 local nearest: { id: string, distance: number }? = nil
 
---[[
-	Suzme turu kademe OLMAYABILIR (maden, "LuckyBlock").
-
-	Onceden burada Rarity.get cagriliyordu; o bilinmeyen kimlikte assert
-	atiyor ve hata bu fonksiyondan cagiran GPSGuncelle isleyicisine kadar
-	firliyordu. Sonuc: bir Lucky Block suzmesi dogar dogmaz GPS arayuzunun
-	tamami olu kaliyor, hicbir suzme kazilamiyordu. Artik uc turu de guvenle
-	karsilayan paylasimli yardimcilar kullaniliyor.
-]]
 local function kindColor(kind: string): Color3
 	return Rarity.beamColor(kind)
 end
@@ -114,7 +78,6 @@ local function kindName(kind: string): string
 end
 
 local function makeLabel(beam: { id: string, kind: string, position: Vector3 }): BillboardGui
-	-- Etiketin tutunacagi gorunmez bir nokta
 	local anchor = Instance.new("Part")
 	anchor.Name = `GPSAnchor_{beam.id}`
 	anchor.Size = Vector3.one
@@ -129,13 +92,11 @@ local function makeLabel(beam: { id: string, kind: string, position: Vector3 }):
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = `GPSLabel_{beam.id}`
 	billboard.Adornee = anchor
-	-- Yalnizca kademe yazisi var (mesafe kaldirildi): pencere kucuk
 	billboard.Size = UDim2.fromOffset(130, 34)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = G.scanRadius + 20
 	billboard.Parent = labelFolder
 
-	-- Anchor etiketle birlikte silinsin
 	billboard.Destroying:Connect(function()
 		if anchor.Parent then
 			anchor:Destroy()
@@ -165,11 +126,6 @@ local function makeLabel(beam: { id: string, kind: string, position: Vector3 }):
 		name = "Kind",
 	})
 
-	--[[
-		Kademe suzmelerinde yazi kademesine gore biciimlenir: Epic ve ustu
-		parlar, Divine sari <-> beyaz parildar. Rot Coin ve Lucky Block
-		kademe olmadigi icin disarida kalir.
-	]]
 	if Rarity.Info[beam.kind] then
 		UI.rarityStyle(kindLabel, beam.kind)
 	end
@@ -177,10 +133,6 @@ local function makeLabel(beam: { id: string, kind: string, position: Vector3 }):
 	return billboard
 end
 
-
-------------------------------------------------------------------
--- KAZMA
-------------------------------------------------------------------
 local function digNearest()
 	if not nearest then
 		return
@@ -188,22 +140,6 @@ local function digNearest()
 	SuzmeKaz:FireServer(nearest.id)
 end
 
---[[
-	SOL TIK ile kazilir. Gamepad'de X yedek olarak duruyor.
-
-	E TUSU KALDIRILDI: kazi hem kumda hem denizde yalnizca tiklamayla
-	baslar. Kum minioyunu zaten tiklama tabanli oldugu icin ayni tus hem
-	kaziyi baslatiyor hem ilk vurusu vuruyor -- arada tus degistirmek
-	akisi boluyordu.
-
-	Kurek oyuncunun elinde DEGILDIR -- kumda GPS tasiniyor. Suzmenin
-	menziline girip sol tiklamak "kazmak istiyorum" demek: sunucu kuregi
-	eline verir, kazi biter bitmez GPS geri gelir.
-
-	Menzilde suzme yoksa digNearest hicbir sey yapmaz, yani bos tiklamalar
-	zararsizdir. Eylem Pass donduruyor: tiklama yutulmuyor, tool ve arayuz
-	kendi islerini gormeye devam ediyor.
-]]
 ContextActionService:BindAction(DIG_ACTION, function(_, state)
 	if state == Enum.UserInputState.Begin then
 		digNearest()
@@ -217,19 +153,10 @@ hint.InputBegan:Connect(function(input)
 	end
 end)
 
-------------------------------------------------------------------
--- GUNCELLEME
-------------------------------------------------------------------
 GPSGuncelle.OnClientEvent:Connect(function(list)
 	beams = list or {}
 
-
-	-- Artik olmayan etiketleri sil
 	local alive: { [string]: boolean } = {}
-	--[[
-		ETIKETLER ARTIK SUNUCUDA kuruluyor (Modules > Beams, herkes gorur);
-		burada yeni etiket uretilmez. Onceden kalanlar asagida temizlenir.
-	]]
 	for _, beam in beams do
 		alive[beam.id] = false
 	end
@@ -243,7 +170,6 @@ GPSGuncelle.OnClientEvent:Connect(function(list)
 
 end)
 
--- En yakin suzmeyi (kazi ipucu icin) her karede degil, saniyede birkac kez bul
 task.spawn(function()
 	while true do
 		task.wait(0.15)
@@ -266,25 +192,15 @@ task.spawn(function()
 			end
 		end
 
-		-- Girdaba olta uzaktan atilir; suzmeye ise sokulmak gerekir
 		local erisim = if best and best.sea then G.seaDigDistance else G.digDistance
 
 		if best and best.distance <= erisim then
 			nearest = { id = best.id, distance = best.distance }
 
-			--[[
-				IPUCU HER KADEMEDE CIKAR
-
-				Bir ara Epic ve ustunde gizleniyordu; ama ekranin altindaki
-				bu yazi ayni zamanda "menzile girdin" demek oluyor. Gizli
-				oldugunda oyuncu -- ozellikle denizde, girdap 30 stud oteden
-				atildigi icin -- ne zaman tiklayabilecegini kestiremiyordu.
-			]]
 			local color = kindColor(best.kind)
 			hintStroke.Color = color
 			hintLabel.TextColor3 = color
 
-			-- Madense ikon solda; yazi ona yer acmak icin biraz saga kayar
 			local madenAnahtari = `ore_{best.kind}`
 			local madenMi = Icons.Map[madenAnahtari] ~= nil
 			if madenMi then
@@ -293,7 +209,6 @@ task.spawn(function()
 			hintIkon.Visible = madenMi
 			hintLabel.Position = UDim2.fromOffset(if madenMi then 16 else 0, 0)
 
-			-- Denizdeki girdapta "dig" degil "fish" yazar
 			local eylem = if best.sea then "fish" else "dig"
 			hintLabel.Text = if UserInputService.TouchEnabled
 				then `{kindName(best.kind)} - tap to {eylem}`

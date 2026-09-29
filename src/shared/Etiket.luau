@@ -1,27 +1,4 @@
 --!strict
---[[
-	BRAINROT ETIKETI  --  uc satirlik dunya yazisi
-
-	    Tralalero Tralala        <- isim, kademe renginde
-	    Huge (3x)  Gold (8x)     <- boyut ve mutasyon carpanlari
-	    1.5M/sn                  <- saniyelik gelir, para renginde
-
-	IKI YERDE KULLANILIR
-	  1. Base slotuna yerlestirilen brainrot  (ServerScriptService > BaseSistemi)
-	  2. ELDE TASINAN brainrot                (Modules > Tools)
-
-	Ikisi ayri ayri kurulsaydi zamanla birbirinden ayrisirdi: birinde
-	mutasyon yazar digerinde yazmaz, biri parlar digeri parlamaz olurdu.
-	Tek yerden uretiliyor ki elde tasirken gorunen sey base'te gorunenle
-	birebir ayni olsun.
-
-	RENK KURALLARI (oyunun her yerinde ayni)
-	  - Isim HER ZAMAN kademe renginde. Epic ve ustunde parilti gradyani,
-	    Divine'da sari <-> beyaz parildama (istemci cizer, bkz. Shared > Divine).
-	  - Boyut satiri HER ZAMAN boyut renginde; mutasyon o rengi ele geciremez,
-	    yalnizca kendi adiyla yazar.
-	  - Gelir satiri para renginde (sari).
-]]
 
 local Bases = require(script.Parent.Bases)
 local Brainrots = require(script.Parent.Brainrots)
@@ -36,15 +13,10 @@ local Etiket = {}
 
 Etiket.Name = "Etiket"
 
---[[
-	Satir yerlesimi. Yazi boyutlarini buradan degistirirsen iki yerde
-	birden degisir.
-]]
 Etiket.Layout = {
 	width = 190,
 	height = 82,
 
-	-- Kademe satiri (DIVINE, SECRET, ABYSSAL...) en ustte, efekt onun uzerinde
 	raritySize = 15,
 	nameSize = 18,
 	statSize = 14,
@@ -55,7 +27,6 @@ Etiket.Layout = {
 	statY = 42,
 	incomeY = 60,
 
-	-- Kac studdan uzakta gorunmez olsun
 	maxDistance = 120,
 }
 
@@ -81,28 +52,7 @@ local function line(
 	return label
 end
 
---[[
-	Etiketi kurar ve adornee'ye baglar.
-
-	item   -- envanter kaydi (name, rarity, condition, mutation)
-	adornee -- etiketin tutunacagi parca
-	lift   -- kac stud YUKARIDA dursun (dunya uzayinda; parca donse de
-	          yazi hep yukarida kalir)
-
-	Ayni adornee'de eskiden bir etiket varsa once o silinir, boylece
-	tekrar cagirmak guvenlidir.
-]]
 function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
-	--[[
-		KADEMEYE GORE BUYUME
-
-		Adaya bagli ust kademeler (Cosmic, Secret, Infernal, Abyssal)
-		etikette daha iri gorunur; carpan Divine'a kadar 1 oldugu icin
-		mevcut kademelerin gorunumu hic degismez (bkz. Rarity.labelScale).
-
-		Carpan HEM yazi boyutlarina HEM cercevenin olcusune uygulaniyor --
-		yalnizca yaziyi buyutseydik satirlar cerceveye sigmazdi.
-	]]
 	local buyutme = Rarity.labelScale(item.rarity)
 
 	local L = {
@@ -137,31 +87,10 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	billboard.Size = UDim2.fromOffset(L.width, L.height)
 	billboard.AlwaysOnTop = false
 	billboard.MaxDistance = L.maxDistance
-	--[[
-		StudsOffsetWorldSpace: parca donerken yazi savrulmasin diye DUNYA
-		ekseninde yukari kayar. Normal StudsOffset parcanin eksenine bagli
-		oldugu icin donen modelde yazi da donerdi.
-	]]
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, lift or 0, 0)
-	--[[
-		ISIKTAN ETKILENMESIN
-
-		Mutasyonlu modellerin kendi renkli isiklari var (Galaxy mor, Gold sari).
-		Isik etkisi acikken yazi o rengi aliyordu: Legendary bir brainrot Galaxy
-		olunca adi sari yerine MOR gorunuyordu. Sifirlaninca yazi her isikta
-		kendi renginde kalir.
-	]]
 	billboard.LightInfluence = 0
 	billboard.Parent = adornee
 
-	------------------------------------------------------------------
-	-- KADEME SATIRI
-	--
-	-- Brainrotun uzerinde kademesi de yaziyor: MYTHIC, DIVINE, ABYSSAL...
-	-- Butun gorsel efekt (parlak gradyan + suzulen parlama bandi) ARTIK
-	-- BURADA. Isim sade kalinca ikisi birbiriyle yarismiyor ve etiket
-	-- uzaktan da okunuyor.
-	------------------------------------------------------------------
 	local rarityLabel = line(
 		billboard,
 		"Kademe",
@@ -172,39 +101,14 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 	)
 
 	if Rarity.isDivine(item.rarity) then
-		--[[
-			Mythic ile ayni parlak gradyan, ustune parildama etiketi.
-			tagIf: Cosmic mor, Secret siyah, Infernal kirmizi, Abyssal mavi.
-		]]
 		Fonts.applyGlow(rarityLabel, Rarity.textColor(item.rarity))
 		Divine.tagIf(rarityLabel, item.rarity)
 	elseif Rarity.isGlowing(item.rarity) then
 		Fonts.applyGlow(rarityLabel, Rarity.textColor(item.rarity))
 	end
 
-	------------------------------------------------------------------
-	-- ISIM
-	--
-	-- TEK RENK: kademenin rengi. Efekt kademe satirinda oldugu icin isim
-	-- sade duruyor -- iki satir birden parlarsa hicbiri okunmuyor.
-	------------------------------------------------------------------
 	local nameLabel = line(billboard, "Isim", item.name or "???", Rarity.textColor(item.rarity), L.nameSize, L.nameY)
 
-	------------------------------------------------------------------
-	-- BOYUT (+ mutasyon)
-	------------------------------------------------------------------
-	--[[
-		BOYUT VE MUTASYON AYRI YAZI, AYRI RENK
-
-		Tek satirda tek renk oldugunda "Galaxy (8x)" de boyutun renginde
-		yaziliyordu. Simdi iki ayri TextLabel yan yana duruyor ve her biri
-		kendi rengini tasiyor.
-
-		Ayri olmalarinin ikinci sebebi: Galaxy ve Hacker mutasyonlarinin
-		rengi SABIT DEGIL, iki renk arasinda gidip geliyor. Canlandirmayi
-		yapan istemci scripti bir NESNEYI boyuyor, yazinin bir parcasini
-		degil -- RichText ile bu mumkun olmazdi.
-	]]
 	local statRow = Instance.new("Frame")
 	statRow.Name = "Stat"
 	statRow.BackgroundTransparency = 1
@@ -250,13 +154,9 @@ function Etiket.build(item: any, adornee: Instance, lift: number?): BillboardGui
 			mutationInfo.color,
 			2
 		)
-		-- Galaxy ve Hacker: rengi istemci her karede degistirir
 		Mutations.tagIf(mutasyon, item.mutation)
 	end
 
-	------------------------------------------------------------------
-	-- GELIR
-	------------------------------------------------------------------
 	local income = if item.name then Brainrots.income(item.name, item.condition, item.mutation) else 0
 	line(billboard, "Gelir", Format.perSecond(income), Bases.RotColor, L.incomeSize, L.incomeY)
 

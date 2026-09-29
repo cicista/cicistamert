@@ -1,19 +1,4 @@
 --!strict
---[[
-	Brainrot BOYUTU -- rarity ve mutasyondan bagimsiz ikinci stat.
-
-	Kucukten buyuge: Tiny -> Small -> Normal -> Large -> Huge
-
-	Iki sey belirler:
-	  scale      -> modelin kendi boyunun kac kati gorunecegi
-	                (Tiny = ceyregi, Huge = iki kati)
-	  multiplier -> saniyelik geliri kac katina cikardigi (1x .. 3x)
-
-	Pasif gelir = rarity tabani * boyut carpani * mutasyon carpani
-
-	Tanimadigi bir kimlik gelirse (bozuk ya da cok eski kayit) hataya
-	donusmez, varsayilan boyuta duser.
-]]
 
 export type ConditionId = "Tiny" | "Small" | "Normal" | "Large" | "Huge"
 
@@ -22,11 +7,8 @@ export type ConditionInfo = {
 	shortName: string,
 	displayName: string,
 	order: number,
-	-- Modelin kendi boyuna gore olcek
 	scale: number,
-	-- Gelir carpani
 	multiplier: number,
-	-- Kazidan bu boyutun cikma sansi (yuzde, toplam 100)
 	chance: number,
 	color: Color3,
 }
@@ -94,9 +76,6 @@ Condition.Info = {
 
 Condition.Default = "Normal" :: ConditionId
 
---[[
-	Kimligi cozer. Bilinmeyen deger hataya donusmez, varsayilana duser.
-]]
 function Condition.get(id: string?): ConditionInfo
 	if id then
 		local direct = Condition.Info[id :: ConditionId]
@@ -112,25 +91,6 @@ function Condition.scale(id: string?): number
 	return Condition.get(id).scale
 end
 
---[[
-	KADEMEYE GORE BOYUT SINIFI OLCEGI
-
-	Cosmic SONRASI kademelerde (Secret, Infernal, Abyssal) en kucuk sinif
-	artik kucuk degil: Tiny, Regular ile AYNI boyda duruyor ve ustu oradan
-	buyuyerek devam ediyor.
-
-	    sinif      normal   Cosmic sonrasi
-	    Tiny        0.25        1.0
-	    Small       0.60        1.2
-	    Regular     1.00        1.5
-	    Large       1.40        1.8
-	    Huge        2.00        2.2
-
-	Sebep: o kademelerdeki bir brainrotun Tiny cikmasi onu degersiz
-	gostermemeli; kademe zaten nadir, en kucugu bile heybetli dursun.
-
-	Kademe verilmezse normal olcek doner -- eski cagrilar bozulmuyor.
-]]
 local USTUN_OLCEK: { [string]: number } = {
 	Tiny = 1.0,
 	Small = 1.2,

@@ -1,18 +1,3 @@
---[[
-	AdaSaticilari  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > AdaSaticilari
-
-	Candy, Snow ve Volcano adalarindaki saticilarin ekranlari:
-
-	  KUREK SATICISI  adanin 5 kuregi; her satirda Rot bedeli ve adanin uc
-	                  madeninden istenen adet. Yetmeyen bedel sari yazilir.
-	  KAZMA SATICISI  adanin kazmasi + maden takasi ("GET 1": diger iki
-	                  madenden birer tane verip bunu al).
-
-	Panel verisini sunucu gonderir (bkz. ServerScriptService > AdaSaticilari);
-	satin alma / takas sonrasi guncel veriyle yeniden cizilir.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -40,9 +25,6 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-------------------------------------------------------------------
--- ORTAK
-------------------------------------------------------------------
 local function liste(parent: Instance, position: UDim2, size: UDim2): ScrollingFrame
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Liste"
@@ -55,7 +37,6 @@ local function liste(parent: Instance, position: UDim2, size: UDim2): ScrollingF
 	scroll.CanvasSize = UDim2.new()
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = parent
-	-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 	UI.listePayi(scroll)
 
 	local layout = Instance.new("UIListLayout")
@@ -105,13 +86,6 @@ local function satir(parent: Instance, order: number, renk: Color3, vurgulu: boo
 	return row
 end
 
---[[
-	MADEN IKONU  (Assets > Icons)
-
-	Ikon gelene kadar gizli. Seritteki UIListLayout gizli nesneye yer
-	ayirmadigi icin ikonu bulunamayan maden bosluk birakmaz, yalnizca
-	yazisiyla kalir.
-]]
 local function madenIkonu(parent: Instance, oreId: string, boy: number): ImageLabel
 	local ikon = Instance.new("ImageLabel")
 	ikon.Name = "MadenIkonu"
@@ -128,13 +102,6 @@ local function madenIkonu(parent: Instance, oreId: string, boy: number): ImageLa
 	return ikon
 end
 
---[[
-	IKONLU YAZI SERIDI
-
-	Eskiden maden adlari tek bir duz yaziydi ("Needs: 5 Amethyst, 5 Opal").
-	Artik yan yana parcalar: her parca istege bagli bir maden ikonu +
-	yazisi. Oyuncu madeni adini okumadan ikonundan taniyor.
-]]
 type Parca = { ore: string?, yazi: string }
 
 local function serit(
@@ -161,7 +128,6 @@ local function serit(
 
 	local sira = 0
 	for i, parca in parcalar do
-		-- Parcalar arasinda nefes payi (ilkinden once degil)
 		if i > 1 then
 			sira += 1
 			local ara = Instance.new("Frame")
@@ -194,7 +160,6 @@ local function serit(
 	return kap
 end
 
--- "Your ores:  [ikon] x3  [ikon] x1  [ikon] x0"
 local function madenStogu(ores: { any }): { Parca }
 	local parcalar: { Parca } = { { yazi = "Your ores:" } }
 	for _, ore in ores do
@@ -240,13 +205,9 @@ local function panelBasligi(panel: Frame): (TextLabel, TextLabel)
 	return baslik, alt
 end
 
-------------------------------------------------------------------
--- KUREK SATICISI
-------------------------------------------------------------------
 local kurekPanel = UI.panel(screen, UDim2.fromOffset(600, 520), "AdaKurekSaticisi")
 local kurekBaslik, kurekAlt = panelBasligi(kurekPanel)
 local kurekListe = liste(kurekPanel, UDim2.fromOffset(14, 80), UDim2.new(1, -28, 1, -94))
--- Basliktaki "Your ores" seridi; her acilista yeniden kuruluyor
 local kurekSerit: Frame? = nil
 
 AdaKurekAc.OnClientEvent:Connect(function(payload)
@@ -279,7 +240,6 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 	for i, entry in payload.shovels do
 		local row = satir(kurekListe, i, entry.color, entry.equipped or entry.buyable, 96)
 
-		-- Bu kurekle kazilabilen en yuksek kademe
 		local kademe = KaziMinigame.enYuksekKademe(entry.id)
 		if kademe then
 			local kazYazi = UI.text({
@@ -306,11 +266,9 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 			parent = row,
 		})
 
-		-- Bedel satiri: yetiyorsa yesil, sirasi gelmis ama yetmiyorsa sari
 		local yeterli = payload.rot >= entry.price
 		local parcalar: { Parca } = { { yazi = "Needs:" } }
 		if (entry.oreCost or 0) <= 0 then
-			-- Adanin ilk kuregi: yalnizca Rot
 			parcalar = { { yazi = "No ores needed" } }
 		else
 			for _, ore in payload.ores do
@@ -337,7 +295,6 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 				parent = row,
 			})
 		else
-			-- "Needs:  [ikon] 5  [ikon] 5  [ikon] 5"
 			serit(row, UDim2.fromOffset(14, 34), UDim2.new(1, -170, 0, 20), parcalar, bedelRengi, 16)
 		end
 
@@ -364,9 +321,6 @@ AdaKurekAc.OnClientEvent:Connect(function(payload)
 	kurekPanel.Visible = true
 end)
 
-------------------------------------------------------------------
--- KAZMA SATICISI + TAKAS
-------------------------------------------------------------------
 local kazmaPanel = UI.panel(screen, UDim2.fromOffset(540, 480), "KazmaSaticisi")
 local kazmaBaslik, kazmaAlt = panelBasligi(kazmaPanel)
 local kazmaListe = liste(kazmaPanel, UDim2.fromOffset(14, 80), UDim2.new(1, -28, 1, -94))
@@ -396,7 +350,6 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 
 	local order = 0
 
-	-- KAZMA
 	order += 1
 	bolumBasligi(kazmaListe, "PICKAXE  --  needed to mine this island's ores", order)
 
@@ -414,7 +367,6 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 		parent = kazmaSatiri,
 	})
 
-	-- "Mines  [ikon] Ruby  [ikon] Obsidian  [ikon] Basalt"
 	local kazdiklari: { Parca } = { { yazi = "Mines" } }
 	for _, ore in payload.ores do
 		table.insert(kazdiklari, { ore = ore.id, yazi = ore.displayName })
@@ -439,7 +391,6 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 		UI.hover(kazmaSatiri)
 	end
 
-	-- TAKAS
 	order += 1
 	bolumBasligi(kazmaListe, `TRADE  --  give {payload.tradeCost} of each other ore, get 1`, order)
 
@@ -447,7 +398,6 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 		order += 1
 		local row = satir(kazmaListe, order, ore.color, false)
 
-		-- Satirin solunda alinacak madenin buyuk ikonu
 		local buyukIkon = madenIkonu(row, ore.id, 44)
 		buyukIkon.Position = UDim2.fromOffset(12, 15)
 
@@ -461,7 +411,6 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 			parent = row,
 		})
 
-		-- "Costs  [ikon] 1  [ikon] 1"
 		local bedel: { Parca } = { { yazi = "Costs" } }
 		local yeterli = true
 		for _, diger in payload.ores do

@@ -1,27 +1,4 @@
 --!strict
---[[
-	Arkadaslar  (ModuleScript)
-	Yeri: ServerScriptService > Modules > Arkadaslar
-
-	ARKADAS BUFFI
-	Ayni sunucuda en az bir Roblox arkadasi olan oyuncu kazida BONUS kadar
-	fazla sans alir (bkz. KaziSistemi > luckFor). Arkadas sayisi arttikca
-	bonus UST USTE BINMEZ: bir arkadas da, bes arkadas da ayni %15.
-
-	Istemci bonusu Rot gostergesinin ustunde ve Friends sekmesinde gosterir
-	(ArkadasDurum). Bonusun kendisi yalnizca burada, sunucuda hesaplanir.
-
-	--------------------------------------------------------------
-	NEDEN ONBELLEK
-
-	Player:IsFriendsWith Roblox'un web servisine gider ve bekletir. Her
-	kazida sormak hem yavas olur hem istek sinirina takilir. Iki oyuncu
-	arasindaki arkadaslik, biri sunucuya girince BIR KEZ soruluyor ve
-	oyuncu cikana kadar saklaniyor.
-
-	Web istegi hata verirse o cift arkadas SAYILMAZ (bonus yanlislikla
-	verilmesin); bir sonraki giriste yeniden sorulur.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,20 +12,10 @@ local ArkadasAc = Net.event("ArkadasAc")
 
 local Arkadaslar = {}
 
--- Ayni sunucuda arkadas varken kazidaki sans bonusu (0.15 = %15)
 Arkadaslar.BONUS = 0.15
 
---[[
-	STUDIO TEST KAPISI
-
-	Studio'nun "Test > 2 oyuncu" hesaplari gercek Roblox hesabi olmadigi
-	icin IsFriendsWith hep false doner ve buff hic denenemez. Acikken,
-	YALNIZCA STUDIO'DA, sunucudaki diger oyuncular arkadas sayilir.
-	Yayindaki oyunda RunService:IsStudio() false oldugu icin etkisi yok.
-]]
 Arkadaslar.TEST_STUDIO = true
 
--- [userIdA][userIdB] = arkadas mi (iki yone de yazilir)
 local iliski: { [number]: { [number]: boolean } } = {}
 
 local function kaydet(a: number, b: number, arkadas: boolean)
@@ -66,7 +33,6 @@ local function kaydet(a: number, b: number, arkadas: boolean)
 	ikincinin[a] = arkadas
 end
 
--- Oyuncunun su an ayni sunucudaki arkadaslari
 function Arkadaslar.liste(player: Player): { Player }
 	local sonuc: { Player } = {}
 	local benim = iliski[player.UserId]
@@ -82,7 +48,6 @@ function Arkadaslar.liste(player: Player): { Player }
 	return sonuc
 end
 
--- Kazidaki sans carpanina eklenecek deger (arkadas yoksa 1)
 function Arkadaslar.carpan(player: Player): number
 	return if #Arkadaslar.liste(player) > 0 then 1 + Arkadaslar.BONUS else 1
 end
@@ -103,13 +68,11 @@ function Arkadaslar.push(player: Player)
 
 	ArkadasDurum:FireClient(player, {
 		sayi = #arkadaslar,
-		-- Bonusun yuzdesi her zaman gider: sekme "arkadasla oyna, %15 kazan" diyebilsin
 		yuzde = math.floor(Arkadaslar.BONUS * 100 + 0.5),
 		arkadaslar = arkadaslar,
 	})
 end
 
--- Yeni gelen oyuncuyu sunucudaki herkesle bir kez eslestir
 local function eslestir(yeni: Player)
 	for _, diger in Players:GetPlayers() do
 		if diger == yeni then
@@ -128,7 +91,6 @@ local function eslestir(yeni: Player)
 
 		kaydet(yeni.UserId, diger.UserId, arkadas)
 
-		-- Karsi taraf da yeni arkadasini hemen gorsun
 		if arkadas then
 			Arkadaslar.push(diger)
 		end
@@ -140,7 +102,6 @@ end
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(eslestir, player)
 
-	-- Istemcinin arayuzu hazir olmadan giden ilk durum kaybolmasin
 	task.delay(4, Arkadaslar.push, player)
 end)
 
@@ -161,7 +122,6 @@ Players.PlayerRemoving:Connect(function(player)
 			karsi[player.UserId] = nil
 		end
 
-		-- Arkadasi cikan oyuncunun buffu kalkabilir: durumu tazelensin
 		if arkadas then
 			local kalan = Players:GetPlayerByUserId(userId)
 			if kalan then

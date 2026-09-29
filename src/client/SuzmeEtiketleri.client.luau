@@ -1,17 +1,3 @@
---[[
-	SuzmeEtiketleri  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > SuzmeEtiketleri
-
-	Suzme / girdap / maden etiketlerine KIME AIT OLDUGUNA gore sus verir.
-
-	Etiketin kendisi sunucuda kuruluyor ve herkese gidiyor (bkz.
-	ServerScriptService > Modules > Beams): kademe + "Ahmet's". Burasi yalnizca
-	bu oyuncunun ekraninda gorunusu ayarlar:
-
-	    KENDI SUZMEN    buyuk, "YOURS" yesil, kalin cerceve, kademe parlamasi
-	    BASKASININKI    kucuk, soluk, sahibinin adi, yakina gelmeden gorunmez
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -27,7 +13,6 @@ local ETIKET_ADI = "SuzmeEtiketi"
 local KLASOR_ADI = "IsikSuzmeleri"
 
 local BENIM_RENK = Color3.fromRGB(120, 255, 150)
--- Baskasinin suzmesinin etiketi bu mesafeden uzakta gorunmez
 local BASKASI_MESAFE = 70
 
 local function sus(gui: BillboardGui)
@@ -55,7 +40,6 @@ local function sus(gui: BillboardGui)
 		if cerceve and cerceve:IsA("UIStroke") then
 			cerceve.Thickness = 3
 		end
-		-- Epic ve ustu parlar, Divine parildar
 		if type(kind) == "string" and Rarity.Info[kind] then
 			UI.rarityStyle(ad, kind)
 		end
@@ -75,7 +59,6 @@ end
 
 local function incele(nesne: Instance)
 	if nesne:IsA("BillboardGui") and nesne.Name == ETIKET_ADI then
-		-- Cocuklar etiketten hemen sonra gelebilir: bir kare bekle
 		task.defer(sus, nesne)
 	end
 end

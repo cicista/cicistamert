@@ -1,24 +1,4 @@
 --!strict
---[[
-	MUTASYON GOSTERISI  (ModuleScript, istemci)
-	Yeri: StarterPlayer > StarterPlayerScripts > MutasyonGosterisi
-
-	Bir brainrotun mutasyonu ortaya ciktiginda ekranin ortasinda BUYUK
-	harflerle, etkileyici bir yazi cikar:
-
-	        GOLD MUTATION!
-	    Tralalero Tralala  -  8x income
-
-	Yazi buyuyerek belirir, sallanir, arkasinda mutasyon renginde bir
-	parlama nabiz atar; birkac saniye sonra soner. Ust uste gelen
-	mutasyonlar SIRAYLA gosterilir (Detective ayni anda birkac tane acabilir).
-
-	Cagiranlar: Detective sonucu, Lucky Block carki, Fuse makinesi.
-
-	    MutasyonGosterisi.goster(mutationId, brainrotAdi)
-
-	Mutasyonsuz (Normal) cagrilar sessizce yok sayilir.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,7 +11,6 @@ local UI = require(script.Parent:WaitForChild("UI"))
 
 local MutasyonGosterisi = {}
 
--- Yazinin ekranda kalma suresi (saniye)
 local EKRANDA = 2.6
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -56,7 +35,6 @@ kutu.Parent = ekran
 local olcek = Instance.new("UIScale")
 olcek.Parent = kutu
 
--- Arkadaki parlama: mutasyon renginde, ortasi dolu kenarlari seffaf bir elips
 local parlama = Instance.new("Frame")
 parlama.Name = "Parlama"
 parlama.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -116,7 +94,6 @@ local function oynat(oge: Oge)
 	Mutations.untag(baslik)
 	baslik.Text = `{string.upper(bilgi.displayName)} MUTATION!`
 	baslik.TextColor3 = bilgi.color
-	-- Galaxy / Hacker gibi canli renkler her karede degisir
 	Mutations.tagIf(baslik, oge.id)
 
 	alt.Text = if oge.ad then `{oge.ad}  -  {bilgi.multiplier}x income` else `{bilgi.multiplier}x income`
@@ -133,13 +110,11 @@ local function oynat(oge: Oge)
 	olcek.Scale = 0.2
 	baslik.Rotation = 0
 
-	-- Buyuyerek belirme: once biraz fazla, sonra yerine otur
 	local buyu = TweenService:Create(olcek, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.15 })
 	buyu:Play()
 	buyu.Completed:Wait()
 	TweenService:Create(olcek, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Scale = 1 }):Play()
 
-	-- Sallanma ve parlama nabzi
 	local salla = TweenService:Create(
 		baslik,
 		TweenInfo.new(0.16, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 5, true),

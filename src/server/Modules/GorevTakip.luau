@@ -1,27 +1,4 @@
 --!strict
---[[
-	GOREV TAKIBI
-
-	Gorev panosunun sunucu tarafi: ilerlemeyi sayar, biten gorevin odulunu
-	verir ve arayuze gonderir.
-
-	ILERLEME NEREDEN GELIYOR
-	Diger sistemler (kazi, satici, base, fuse, lucky block) tek bir cagri
-	yapiyor:  GorevTakip.ilerlet(player, "dig", 1)
-	Hangi gorevin bundan etkilenecegini burasi bulur; cagiran tarafin panoda
-	ne oldugunu bilmesi gerekmez.
-
-	YENILENME
-	Pano yarim saatte bir kendiliginden degisir. Ayri bir "sifirla" isi yok:
-	kaydin icindeki cycle numarasi o anki dilimle uyusmuyorsa ilerleme
-	sifirdan baslar (bkz. tazele). Boylece sunucu kapaliyken gecen dilimler
-	de dogru sayilir.
-
-	ODUL
-	Odul BRAINROT: biten gorevin zorluguna gore o kademeden kimligi ACIK bir
-	brainrot cantaya girer (Normal boy, mutasyonsuz, oyuncunun ulastigi
-	adaya gore). Coin sistemi kaldirildi.
-]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -40,14 +17,9 @@ local GorevDurum = Net.event("GorevDurum")
 
 local GorevTakip = {}
 
--- Bildirim renkleri
 local ILERLEME_RENGI = Color3.fromRGB(190, 205, 225)
 local BITTI_RENGI = Color3.fromRGB(140, 230, 160)
 
---[[
-	Oyuncunun gorev durumu. Dilim degistiyse ilerleme burada sifirlanir.
-	Veri henuz yuklenmediyse nil doner ve cagiran taraf sessizce vazgecer.
-]]
 local function tazele(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
@@ -66,7 +38,6 @@ local function tazele(player: Player)
 	return durum
 end
 
--- Arayuze gidecek paket
 local function paket(player: Player)
 	local durum = tazele(player)
 	if not durum then
@@ -84,7 +55,6 @@ local function paket(player: Player)
 			text = def.text,
 			target = def.target,
 			progress = ilerleme,
-			-- done: odul ALINDI. ready: hedef doldu ama odul bekliyor.
 			done = alindi,
 			ready = not alindi and ilerleme >= def.target,
 			reward = Gorevler.rewardText(def),
@@ -99,7 +69,6 @@ local function paket(player: Player)
 	}
 end
 
--- Panoyu arayuze yollar. Veri henuz yuklenmediyse false doner.
 function GorevTakip.gonder(player: Player): boolean
 	local veri = paket(player)
 	if not veri then
@@ -112,10 +81,6 @@ end
 
 local odulRng = Random.new()
 
---[[
-	Gorev odulunu verir: kademesinden kimligi acik brainrot(lar).
-	Verilen brainrotlarin adlari doner (bildirim yazisi icin).
-]]
 function GorevTakip.odulVer(player: Player, def: Gorevler.QuestDef): { string }
 	local reward = Gorevler.reward(def)
 	local ada = PlayerData.reachedIsland(player)
@@ -137,17 +102,6 @@ function GorevTakip.odulVer(player: Player, def: Gorevler.QuestDef): { string }
 	return adlar
 end
 
---[[
-	Bir eylemi panoya isler.
-
-	kind    -- "dig" | "collect" | "sell" | "place" | "lucky" | "fuse"
-	amount  -- kac tane (varsayilan 1)
-	rarity  -- yalnizca "collect" icin: toplanan brainrotun kademesi
-	          (kademesi olmayan gorevler bunu yok sayar)
-
-	Ayni eylem birden fazla gorevi ilerletebilir (ornegin "20 kaz" ve
-	"90 kaz" ayni anda panodaysa ikisi de sayar).
-]]
 function GorevTakip.ilerlet(player: Player, kind: string, amount: number?, rarity: string?)
 	local durum = tazele(player)
 	if not durum then
@@ -161,7 +115,6 @@ function GorevTakip.ilerlet(player: Player, kind: string, amount: number?, rarit
 		if def.kind ~= kind or durum.done[def.id] then
 			continue
 		end
-		-- Kademe gorevleri yalnizca kendi kademesini sayar
 		if def.rarity and def.rarity ~= rarity then
 			continue
 		end
@@ -175,13 +128,6 @@ function GorevTakip.ilerlet(player: Player, kind: string, amount: number?, rarit
 		degisti = true
 
 		if yeni >= def.target then
-			--[[
-				ODUL BURADA VERILMEZ.
-
-				Gorev "toplanmayi bekliyor" durumuna gecer; oyuncu odulunu
-				Quests panelindeki Collect dugmesiyle alir (bkz. GorevTakip.al).
-				Boylece odul gorunmeden cebe girmiyor, alirken gosterisi de oluyor.
-			]]
 			Bildirim:FireClient(
 				player,
 				`Quest Ready: {def.text}`,

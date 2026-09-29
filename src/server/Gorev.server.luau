@@ -1,18 +1,4 @@
 --!strict
---[[
-	GOREV PANOSU  (Script)
-	Yeri: ServerScriptService > Gorev
-
-	Iki isi var:
-
-	1. Arayuz istedikce panoyu gonderir (client panel acilinca GorevAc yollar).
-
-	2. Yarim saatlik dilim degistiginde herkese YENI panoyu gonderir ve
-	   haber verir. Sayaci client kendi icinde isletiyor ama yenilenme anini
-	   sunucu bildirsin: iki taraf birkac saniye kaysa bile pano dogru olur.
-
-	Ilerlemeyi bu script saymaz; onu Modules > GorevTakip yapiyor.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -34,7 +20,6 @@ GorevAc.OnServerEvent:Connect(function(player)
 	GorevTakip.gonder(player)
 end)
 
--- Collect dugmesi: odulu topla (butun kontroller GorevTakip.al icinde)
 GorevAl.OnServerEvent:Connect(function(player, id)
 	if type(id) ~= "string" then
 		return
@@ -42,11 +27,6 @@ GorevAl.OnServerEvent:Connect(function(player, id)
 	GorevOdul.topla(player, id)
 end)
 
---[[
-	Oyuncu girer girmez pano hazir olsun. Kayit birkac saniye sonra
-	yuklendigi icin gonder() basarana kadar denenir; basardigi anda durur.
-	Once veri beklenir: oturum cakismasinda yukleme 20 saniyeyi gecebilir.
-]]
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(function()
 		if not PlayerData.bekle(player) then

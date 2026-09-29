@@ -1,24 +1,3 @@
---[[
-	SeviyeArayuz  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > SeviyeArayuz
-
-	Ekranin ust ortasinda LEVEL gostergesi:
-
-	    (LEVEL 12) [ XP 340 / 1,000              ]
-	               [=========>-------------------]
-	                          +25 XP
-
-	Gorunum: mavi-mor parlak panel, cevresinde nabiz atan camgobegi isilti,
-	solda altin level rozeti, ustunden isik suzulen camgobegi dolum ve
-	kenarlarda goz kirpan yildizlar.
-
-	Level atlayinca ortada "LEVEL UP!" yazisi buyuyerek belirir; altinda
-	kazanilan Rot Coin ve kalici sans yazar.
-
-	Veriler sunucudan gelir (bkz. ServerScriptService > Modules > Seviye);
-	burasi yalnizca gosterir.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -44,24 +23,12 @@ local screen = Instance.new("ScreenGui")
 screen.Name = "SeviyeArayuzu"
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
--- Roblox'un ust cubugunun boslugu yok sayilir: bar ekranin en ustune, cubugun
--- bos orta kismina cikabilsin
 screen.IgnoreGuiInset = true
 screen.Parent = playerGui
 
-------------------------------------------------------------------
--- XP BARI
-------------------------------------------------------------------
--- Renkler
 local CAMGOBEGI = Color3.fromRGB(90, 225, 255)
 local BEYAZ = Color3.new(1, 1, 1)
 
---[[
-	OLCULER (arayuz olceginden once; %100'de ekranda 1.25 kati)
-
-	Yukseklik bilerek kisa tutuldu: bar ust cubugun ortasinda duruyor ve
-	altinda Lucky Block yagmuru sayaci var (bkz. Menuler > sayacKutu).
-]]
 local GENISLIK = 270
 local YUKSEKLIK = 38
 local ROZET = 38
@@ -75,10 +42,6 @@ kutu.BackgroundTransparency = 1
 kutu.Visible = false
 kutu.Parent = screen
 
---[[
-	PANEL: rozetin yarisindan baslar; rozet panelin sol kenarina oturup
-	tasar (gorseldeki gibi), panel saga kadar uzanir.
-]]
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.AnchorPoint = Vector2.new(0, 0.5)
@@ -102,20 +65,14 @@ do
 
 	UI.caprazDesen(panel)
 	for _, cocuk in panel:GetChildren() do
-		-- Desen artik bir CanvasGroup (bkz. UI.stripeLayer), Frame degil
 		if cocuk:IsA("GuiObject") and cocuk.Name == "Desen" then
 			UI.corner(cocuk, 12)
 		end
 	end
 end
 
--- Parlak camgobegi kenar + disinda koyu ince cizgi
 local panelKontur = UI.stroke(panel, CAMGOBEGI, 3)
 
---[[
-	ISILTI: panelin arkasinda biraz daha buyuk, kenari camgobegi bir
-	cerceve; kalinligi ve saydamligi nabiz atar -> panel parliyormus gibi.
-]]
 local isilti = Instance.new("Frame")
 isilti.Name = "Isilti"
 isilti.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -133,7 +90,6 @@ TweenService:Create(
 ):Play()
 isiltiKontur.Transparency = 0.25
 
--- Ust satir: XP yazisi (rozetin sagindan baslar)
 local xpYazi = UI.text({
 	text = "",
 	size = 12,
@@ -147,7 +103,6 @@ local xpYazi = UI.text({
 	zIndex = 5,
 })
 
--- Bar yolu (koyu oluk)
 local bar = Instance.new("Frame")
 bar.Name = "Bar"
 bar.AnchorPoint = Vector2.new(0, 1)
@@ -171,7 +126,6 @@ dolgu.Parent = bar
 UI.corner(dolgu, 8)
 
 do
-	-- Camgobegi dolum: ustu acik, alti koyu
 	local renk = Instance.new("UIGradient")
 	renk.Rotation = 90
 	renk.Color = ColorSequence.new({
@@ -181,11 +135,6 @@ do
 	})
 	renk.Parent = dolgu
 
-	--[[
-		SUZULEN ISIK: dolumun uzerinden soldan saga beyaz bir bant gecer.
-		Bant dondurulmus bir cerceve degil, kayan saydamlik gecisi: dolum
-		ClipsDescendants ile kirpiyor ve gecis hep kendi sinirinda kalir.
-	]]
 	local isik = Instance.new("Frame")
 	isik.Name = "Isik"
 	isik.Size = UDim2.fromScale(1, 1)
@@ -212,10 +161,6 @@ do
 	):Play()
 end
 
---[[
-	DOLUMUN UCU: parlayan beyaz bir nokta. Dolumun cocugu degil (dolum
-	kirpiyor); barin cocugu olarak dolumun sag kenarini takip eder.
-]]
 local uc = Instance.new("Frame")
 uc.Name = "Uc"
 uc.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -229,10 +174,6 @@ UI.corner(uc, 7)
 local ucKontur = UI.stroke(uc, CAMGOBEGI, 3)
 ucKontur.Transparency = 0.2
 
---[[
-	LEVEL ROZETI: altin, cilali, yuvarlak; ustte kucuk "LEVEL", altta sayi.
-	Panelin sol kenarina oturur.
-]]
 local rozet = Instance.new("Frame")
 rozet.Name = "Rozet"
 rozet.AnchorPoint = Vector2.new(0, 0.5)
@@ -275,10 +216,6 @@ local levelYazi = UI.text({
 	zIndex = 7,
 })
 
---[[
-	GOZ KIRPAN YILDIZLAR: panelin koselerinde ve kenarlarinda sirayla
-	parlayip sonen kucuk elmaslar.
-]]
 local yildizlar: { Frame } = {}
 for i, yer in { Vector2.new(0.08, 0), Vector2.new(0.55, 0), Vector2.new(0.35, 1), Vector2.new(0.85, 1), Vector2.new(0.95, 0.1) } do
 	local y = Instance.new("Frame")
@@ -310,7 +247,6 @@ RunService.RenderStepped:Connect(function(dt)
 		y.Rotation = 45 + zaman * 90
 	end
 
-	-- Dolumun ucu dolumu takip eder ve hafifce nabiz atar
 	local oran = dolgu.Size.X.Scale
 	uc.Visible = oran > 0.02 and oran < 0.999
 	uc.Position = UDim2.fromScale(oran, 0.5)
@@ -319,13 +255,9 @@ RunService.RenderStepped:Connect(function(dt)
 	uc.Size = UDim2.fromOffset(ucBoy, ucBoy)
 	ucKontur.Transparency = 0.1 + nabiz * 0.5
 
-	-- Panel kenari da hafifce parlayip soner
 	panelKontur.Color = CAMGOBEGI:Lerp(BEYAZ, nabiz * 0.35)
 end)
 
-------------------------------------------------------------------
--- LEVEL UP GOSTERISI
-------------------------------------------------------------------
 local gosteri = Instance.new("Frame")
 gosteri.Name = "LevelUp"
 gosteri.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -380,7 +312,6 @@ local function levelUpOynat(data: any)
 	local sira = gosteriSirasi
 
 	levelUpAlt.Text = `Level {data.level}`
-	-- Rot Coin her levelde gelmiyor (bkz. Shared > Seviye); gelmediyse yazilmaz
 	local coin = tonumber(data.rotCoins) or 0
 	levelUpOdul.Text = if coin > 0
 		then `+{coin} Rot Coin   +{data.luck or 0}% Luck`
@@ -396,7 +327,6 @@ local function levelUpOynat(data: any)
 		Scale = 1,
 	}):Play()
 
-	-- Rozet de bir kez ziplar
 	rozetOlcek.Scale = 1.5
 	TweenService:Create(rozetOlcek, TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
 		Scale = 1,
@@ -417,9 +347,6 @@ local function levelUpOynat(data: any)
 	end)
 end
 
-------------------------------------------------------------------
--- "+25 XP" YAZISI
-------------------------------------------------------------------
 local function xpUcur(miktar: number)
 	local yazi = UI.text({
 		text = `+{Format.short(miktar)} XP`,
@@ -444,9 +371,6 @@ local function xpUcur(miktar: number)
 	end)
 end
 
-------------------------------------------------------------------
--- DURUM
-------------------------------------------------------------------
 local sonLevel = 0
 
 SeviyeDurum.OnClientEvent:Connect(function(data)
@@ -474,7 +398,6 @@ SeviyeDurum.OnClientEvent:Connect(function(data)
 	local bilgi = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 	if sonLevel > 0 and level > sonLevel then
-		-- Level atladi: bar once dolar, sifirlanir, sonra yeni orana gider
 		local dol = TweenService:Create(dolgu, bilgi, { Size = UDim2.fromScale(1, 1) })
 		dol:Play()
 		dol.Completed:Once(function()

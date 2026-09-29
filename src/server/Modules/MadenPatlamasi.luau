@@ -1,13 +1,4 @@
 --!strict
---[[
-	MADEN PATLAMASI  --  sunucu tarafi
-
-	Maden damari kirilinca madenin renginde (Shared > Ores > GemColors)
-	kucuk taslar etrafa sacilir ve Workspace'teki "FuseExplosion" sesi
-	calar. Taslar birkac saniye sonra kendiliginden silinir.
-
-	    MadenPatlamasi.oynat(konum, renk)
-]]
 
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,7 +18,6 @@ local rng = Random.new()
 function MadenPatlamasi.oynat(konum: Vector3, renk: Color3)
 	local merkez = konum + Vector3.new(0, 1.5, 0)
 
-	-- Sesin calacagi gorunmez tutamak
 	local tutamak = Instance.new("Part")
 	tutamak.Name = "MadenPatlamaSesi"
 	tutamak.Anchored = true
@@ -46,7 +36,6 @@ function MadenPatlamasi.oynat(konum: Vector3, renk: Color3)
 		local tas = Instance.new("Part")
 		tas.Name = "MadenTasi"
 		tas.Size = Vector3.new(boy, boy * rng:NextNumber(0.6, 1), boy * rng:NextNumber(0.7, 1.1))
-		-- Tonu biraz oynat: hepsi birebir ayni renk olmasin
 		tas.Color = renk:Lerp(Color3.new(1, 1, 1), rng:NextNumber(0, 0.25))
 		tas.Material = if rng:NextNumber() < 0.5 then Enum.Material.Slate else Enum.Material.Glass
 		tas.CFrame = CFrame.new(merkez + Vector3.new(rng:NextNumber(-0.6, 0.6), 0, rng:NextNumber(-0.6, 0.6)))
@@ -56,7 +45,6 @@ function MadenPatlamasi.oynat(konum: Vector3, renk: Color3)
 		tas.CanTouch = false
 		tas.Massless = true
 		tas.CastShadow = false
-		-- Oyunculari itmesin diye cok hafif
 		tas.CustomPhysicalProperties = PhysicalProperties.new(0.1, 0.4, 0.3)
 		tas.Parent = Workspace
 

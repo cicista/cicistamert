@@ -1,38 +1,3 @@
---[[
-	AfkSans  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > AfkSans
-
-	AFK sans sisteminin istemci tarafi (bkz. Shared > AfkSans,
-	ServerScriptService > Modules > AfkSans):
-
-	  YONCALAR     sunucunun yolladigi konumlara Assets > Clovers modelleri
-	               dizilir (yalnizca bu oyuncu gorur) ve ruzgarda sallanir.
-	               Model yoksa yedek yonca cizilir.
-	  OTOMATIK     acik alanda OtoBaslamaBekleme saniye kendisi yurumeyen
-	               oyuncuda KENDILIGINDEN baslar ve karakteri yoncadan yoncaya
-	               yurutur. Oyuncu kendisi yururse durur, durunca yine baslar.
-	               Sol tik / ekrana dokunma / STOP ile kapatilirsa alandan
-	               cikip girene ya da tekrar AUTO'ya basana kadar baslamaz.
-	  AFK DONUSU   alanda YenidenBaglanSuresi girdisiz kalinca sunucudan
-	               ayni sunucuya yeniden baglanma istenir (Roblox 20 dk'da
-	               atiyor); sunucu oyuncuyu ayni noktaya geri koyar.
-	  HIZ          otomatik modda yurume hizi TabanHiz'a (16) sabitlenir; hizli
-	               oyuncu yoncayi gecip geri donmesin. Mod kapaninca hiz
-	               yukseltmesinin degeri geri gelir.
-	  TOPLAMA      yoncanin yanina varinca ustunde 3'ten geri sayan bar cikar
-	               (kademe renginde, son saniyede titrer). Bu sirada ekranda
-	               Luck ikonlari (Simulator Icon Pack > Luck) yagar.
-	  BARIKATLAR   acilmis alanin barikati bu istemcide gecilebilir ve
-	               gorunmez olur; kilitli alanin ustunde "LOCKED" yazar.
-	  LEPRECHAUN   alan yukseltme paneli.
-
-	HEDEF KILIDI
-	Otomatik mod bir yoncayi hedef alinca ona varana kadar degistirmez.
-	Eskiden her karede "en yakin" yeniden seciliyordu: kosarken baska yonca
-	yakinlasinca hedef degisiyor, karakter yoncadan yoncaya kosup hic
-	toplamiyordu.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -50,7 +15,6 @@ local Format = require(Shared:WaitForChild("Format"))
 local Hiz = require(Shared:WaitForChild("Hiz"))
 local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
--- Robux ile acilan alanlarin fiyati (bkz. Shared > AfkSans > Alan.robux)
 local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
@@ -68,28 +32,13 @@ local SIYAH = Color3.new(0, 0, 0)
 local BEYAZ = Color3.new(1, 1, 1)
 local YONCA_YESIL = Color3.fromRGB(70, 200, 90)
 
--- Karakteri yoncaya yururken MoveTo'nun yenilenme araligi
 local YURUME_YENILE = 0.5
--- Yoncaya bu kadar yaklasinca durup toplamaya baslar (yaricapa ek, Erisim'den kucuk)
 local VARIS = 1.5
--- Sunucu reddederse ayni yonca bu kadar sonra yeniden denenir
 local RED_BEKLEME = 0.4
--- Ayni yonca bu kadar kez reddedilirse baska yoncaya gecilir
 local RED_SINIRI = 3
--- Bar bittikten sonra sunucu cevabi bu kadar gecikirse toplama birakilir
 local CEVAP_BEKLEME = 3
--- Flyboard binerken taban hizi bu nitelikte tutuyor (bkz. Hiz.server)
 local FLYBOARD_TABAN = "FlyboardTabanHiz"
 
-------------------------------------------------------------------
--- YARDIMCILAR
-------------------------------------------------------------------
---[[
-	KOYU KADEME (Secret siyah)
-	Isik sacan (LightEmission 1) parcacik siyahi HIC cizmez, koyu zemindeki
-	siyah bar da gorunmez. Koyu kademede parcaciklar normal karisimla
-	(koyu toz gibi) cizilir, barin zemini acik olur, kontur beyaz.
-]]
 local function koyuMu(renk: Color3): boolean
 	local _, _, parlaklik = renk:ToHSV()
 	return parlaklik < 0.25
@@ -126,13 +75,11 @@ local function seviye(): number
 	return tonumber(player:GetAttribute(Ayar.SeviyeNiteligi)) or 1
 end
 
--- Robux alaninin fiyati (urun yoksa 0)
 local function robuxFiyati(alan: Ayar.Alan): number
 	local urun = if alan.robux then RobuxMagaza.get(alan.robux) else nil
 	return if urun then urun.fiyat else 0
 end
 
--- Bu siradaki alan acik mi (Rot sirasi ya da Robux ile)
 local function acikMi(sira: number): boolean
 	return Ayar.sahip(sira, seviye(), Ayar.ozelCoz(player:GetAttribute(Ayar.OzelNiteligi)))
 end
@@ -145,7 +92,6 @@ local function yataydaUzaklik(a: Vector3, b: Vector3): number
 	return ((a - b) * Vector3.new(1, 0, 1)).Magnitude
 end
 
--- Oyuncunun kendi yurume girdisi (klavye, gamepad, mobil cubuk)
 local kontroller = nil
 task.spawn(function()
 	local ok, sonuc = pcall(function()
@@ -167,10 +113,6 @@ local function oyuncuYuruyor(): boolean
 	return ok and typeof(yon) == "Vector3" and yon.Magnitude > 0.1
 end
 
-------------------------------------------------------------------
--- BARIKATLAR
-------------------------------------------------------------------
--- Parcanin ilk hali (acilan barikat kilitlenirse geri donsun diye)
 local ilkHal: { [BasePart]: { cc: boolean, tr: number } } = {}
 local kilitYazilari: { [string]: BillboardGui } = {}
 
@@ -234,12 +176,6 @@ local function kilitYazisi(alan: Ayar.Alan, parca: BasePart): BillboardGui
 	return bb
 end
 
---[[
-	KILITLI ALAN UYARISI
-
-	Oyuncu kilitli alanin barikatina carpinca ekranin ust ortasinda ne
-	yapmasi gerektigi yazar: alani nereden ve kaca acacagi.
-]]
 local uyariEkrani = Instance.new("ScreenGui")
 uyariEkrani.Name = "AfkKilitUyarisi"
 uyariEkrani.ResetOnSpawn = false
@@ -316,7 +252,6 @@ local function kilitUyarisi(alan: Ayar.Alan)
 	end)
 end
 
--- Her barikat parcasina bir kez baglanir; carpan kendi karakterimizse ve alan hala kilitliyse uyarir
 local dokunmaBagli: { [BasePart]: boolean } = {}
 
 local function dokunmaBagla(parca: BasePart, sira: number, alan: Ayar.Alan)
@@ -332,13 +267,6 @@ local function dokunmaBagla(parca: BasePart, sira: number, alan: Ayar.Alan)
 	end)
 end
 
---[[
-	ALAN SUZMELERI
-
-	Her alanin ustunde kendi kademe renginde hafif, yavasca yukselen isik
-	tozlari. Istemcide gorunmez bir parca zemini kaplar, ParticleEmitter
-	onun hacminden yayar. Yogunluk alanin buyuklugune gore.
-]]
 local suzmeler: { [string]: BasePart } = {}
 
 local function suzmeKur(alan: Ayar.Alan, z: BasePart)
@@ -392,7 +320,6 @@ local function suzmeKur(alan: Ayar.Alan, z: BasePart)
 	toz.Rate = math.clamp(alanBoyu / 60, 6, 40)
 	toz.Parent = kutu
 
-	-- Seyrek ama iri, yumusak parlamalar
 	local isik = Instance.new("ParticleEmitter")
 	isik.Name = "Isik"
 	isik.Texture = "rbxasset://textures/particles/sparkles_main.dds"
@@ -458,7 +385,6 @@ local function barikatlariGuncelle()
 	end
 end
 
--- Akis (streaming) barikati sonradan getirebilir: duzenli yenilenir
 task.spawn(function()
 	while true do
 		barikatlariGuncelle()
@@ -468,41 +394,31 @@ end)
 player:GetAttributeChangedSignal(Ayar.SeviyeNiteligi):Connect(barikatlariGuncelle)
 player:GetAttributeChangedSignal(Ayar.OzelNiteligi):Connect(barikatlariGuncelle)
 
-------------------------------------------------------------------
--- YONCA MODELLERI
-------------------------------------------------------------------
 local yoncaKlasoru = Instance.new("Folder")
 yoncaKlasoru.Name = "AfkYoncalari"
 yoncaKlasoru.Parent = Workspace
 
 type YoncaGorsel = {
 	id: number,
-	-- Yoncanin bulundugu alan; butun alanlarin yoncalari ayni anda sahnede
 	alan: string,
 	pos: Vector3,
 	yaricap: number,
 	model: Model,
-	-- Barin tutundugu gorunmez nokta (yoncanin tepesi)
 	nokta: BasePart,
-	-- Tam boydaki pivot ile yoncanin tabani arasindaki yukseklik
 	altFark: number,
 	aci: number,
 	donus: CFrame,
 	olcek: number,
-	-- Anlik boy (tam boyun kaci) ve yukari kayma (toplanma animasyonu)
 	k: number,
 	yukari: number,
-	-- Ruzgar salinimi: her yoncanin kendi evresi ve hizi
 	faz: number,
 	tempo: number,
 }
 
 local yoncalar: { [number]: YoncaGorsel } = {}
--- Toplanma animasyonu suren yoncalar (listeden cikmis ama hala sahnede)
 local gidenler: { [YoncaGorsel]: boolean } = {}
 local aktifAlan: string? = nil
 
--- Model bulunamazsa: dort yaprakli basit yonca (yaricap ~1 stud)
 local function yedekYonca(renk: Color3): Model
 	local model = Instance.new("Model")
 	model.Name = "YedekYonca"
@@ -531,11 +447,6 @@ local function yedekYonca(renk: Color3): Model
 	return model
 end
 
---[[
-	Rig modelini sahneye hazirlar: carpismaz, tiklanmaz, dusmez.
-	Motor6D ile bagli (animasyonlu) parcalar SABITLENMEZ, yoksa animasyon
-	oynamaz; onlar kok parcaya bagli oldugu icin yine yerinde durur.
-]]
 local function hazirla(model: Model)
 	Assets.stripScripts(model)
 
@@ -560,13 +471,6 @@ local function hazirla(model: Model)
 	end
 end
 
---[[
-	RUZGAR SALINIMI
-
-	Yonca tabanindan (zemine degdigi noktadan) egilir: iki yavas dalga +
-	ustune kucuk bir titresim. Her yoncanin evresi ve temposu farkli; hepsi
-	ayni anda ayni yone yatmaz, alan canli gorunur.
-]]
 local SALINIM_ACI = math.rad(7)
 
 local function konumla(g: YoncaGorsel, t: number)
@@ -578,7 +482,6 @@ local function konumla(g: YoncaGorsel, t: number)
 	g.model:PivotTo(taban * CFrame.new(0, g.altFark * g.k + g.yukari, 0) * g.donus)
 end
 
--- k: tam boyun kaci (0..1); taban zeminde kalacak sekilde yerlestirir
 local function boyutla(g: YoncaGorsel, k: number, yukari: number?)
 	g.k = k
 	g.yukari = yukari or 0
@@ -601,7 +504,6 @@ local function yoncaKur(alanId: string, v: any)
 	model:SetAttribute("TabanOlcek", taban)
 	model:ScaleTo(taban * v.olcek)
 
-	-- Tam boyda pivot ile en alt nokta arasindaki fark
 	local pivot = model:GetPivot()
 	local kutu, boy = model:GetBoundingBox()
 	local altFark = pivot.Position.Y - (kutu.Position.Y - boy.Y / 2)
@@ -640,7 +542,6 @@ local function yoncaKur(alanId: string, v: any)
 	model.Parent = yoncaKlasoru
 	Assets.playAnimations(model)
 
-	-- Dogus: kucukten buyuyerek ziplar
 	local deger = Instance.new("NumberValue")
 	deger.Value = 0.05
 	deger.Changed:Connect(function(k)
@@ -709,7 +610,6 @@ local function yoncaSil(id: number, toplandi: boolean)
 		return
 	end
 
-	-- Toplanma: yukari suzulup kuculerek kaybolur
 	gidenler[g] = true
 	local deger = Instance.new("NumberValue")
 	deger.Value = 1
@@ -725,7 +625,6 @@ local function yoncaSil(id: number, toplandi: boolean)
 	tw:Play()
 end
 
--- Ruzgar: yalnizca kameraya yakin yoncalar oynatilir
 local SALINIM_MESAFE = 160
 
 RunService.RenderStepped:Connect(function()
@@ -745,9 +644,6 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-------------------------------------------------------------------
--- TOPLAMA BARI (kademe renginde, 3'ten geri sayar, son saniyede titrer)
-------------------------------------------------------------------
 type Bar = {
 	gui: BillboardGui,
 	kutu: Frame,
@@ -771,7 +667,6 @@ local function barKur(g: YoncaGorsel, renk: Color3): Bar
 	kutu.AnchorPoint = Vector2.new(0.5, 0.5)
 	kutu.Position = UDim2.fromScale(0.5, 0.5)
 	kutu.Size = UDim2.fromOffset(160, 24)
-	-- Koyu kademede (Secret) siyah dolgu acik zeminde gorunsun
 	local koyu = koyuMu(renk)
 	kutu.BackgroundColor3 = if koyu then Color3.fromRGB(205, 205, 215) else Color3.fromRGB(20, 22, 30)
 	kutu.BorderSizePixel = 0
@@ -828,7 +723,6 @@ local function barCiz(bar: Bar, gecen: number)
 		TweenService:Create(bar.olcek, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 
-	-- Titreme yalnizca son saniyede; bitise yaklastikca siddetlenir
 	if kalan <= Ayar.TitremeSuresi then
 		local siddet = 1.5 + (1 - kalan / Ayar.TitremeSuresi) * 3
 		bar.kutu.Position = UDim2.new(0.5, math.random(-100, 100) / 100 * siddet, 0.5, math.random(-100, 100) / 100 * siddet)
@@ -839,9 +733,6 @@ local function barCiz(bar: Bar, gecen: number)
 	end
 end
 
-------------------------------------------------------------------
--- LUCK IKON YAGMURU (toplama sirasinda)
-------------------------------------------------------------------
 local efektEkrani = Instance.new("ScreenGui")
 efektEkrani.Name = "AfkSansEfekt"
 efektEkrani.ResetOnSpawn = false
@@ -849,7 +740,6 @@ efektEkrani.IgnoreGuiInset = true
 efektEkrani.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 efektEkrani.Parent = playerGui
 
--- Normal cok, Super daha az, Ultra nadir; nadir olan daha iri ve parlak
 local LUCK_TURLERI = {
 	{ ikon = "luck1", agirlik = 60, boyMin = 44, boyMax = 80, renk = Color3.fromRGB(90, 230, 110) },
 	{ ikon = "luck2", agirlik = 30, boyMin = 60, boyMax = 100, renk = Color3.fromRGB(90, 170, 255) },
@@ -859,7 +749,6 @@ local LUCK_TOPLAM = 0
 for _, tur in LUCK_TURLERI do
 	LUCK_TOPLAM += tur.agirlik
 end
--- Iki ikon arasi sure (saniye): yogun bir yagmur
 local LUCK_ARALIK = 0.07
 
 local ikonOnbellek: { [string]: string } = {}
@@ -899,7 +788,6 @@ local function luckIkonu()
 	local kap = Instance.new("Frame")
 	kap.Name = "LuckIkonu"
 	kap.AnchorPoint = Vector2.new(0.5, 0.5)
-	-- Ekranin ortasi (karakter) bos kalsin: kenarlara dogru dagitilir
 	local x = math.random(8, 92) / 100
 	local y = math.random(12, 88) / 100
 	if math.abs(x - 0.5) < 0.15 and math.abs(y - 0.5) < 0.18 then
@@ -948,12 +836,6 @@ local function luckIkonu()
 	end)
 end
 
-------------------------------------------------------------------
--- HUD  (Clover Luck sayaci + AUTO dugmesi)
---
--- Puanin adi "Clover Luck". Sayi her yoncada sayarak buyur ve parlar; altinda
--- donen kisa yazilar oyuncuya burada AFK kalmanin ne kazandirdigini anlatir.
-------------------------------------------------------------------
 local screen = Instance.new("ScreenGui")
 screen.Name = "AfkSans"
 screen.ResetOnSpawn = false
@@ -973,7 +855,6 @@ hud.Parent = screen
 UI.corner(hud, 12)
 UI.stroke(hud, SIYAH, 3)
 
--- Iki sutun yan yana: CLOVER LUCK ve XP GAIN (ayni yazi tipi, boyu ve dizilisi)
 local SUTUN_GENISLIK = 170
 local XP_SUTUN_X = 14 + SUTUN_GENISLIK + 12
 
@@ -999,12 +880,6 @@ local hudPuan = UI.text({
 local hudPuanOlcek = Instance.new("UIScale")
 hudPuanOlcek.Parent = hudPuan
 
---[[
-	XP GAIN  --  bu alanda AFK kalirken toplanan oyuncu XP'sinin TOPLAMI.
-	CLOVER LUCK'in yaninda, onunla ayni dizilis: ustte baslik, altta buyuk
-	sayi. Her yoncada artar ve parlar; alandan cikip girince (ya da alan
-	degisince) sifirlanir (bkz. AfkAlan olayi).
-]]
 local toplamXp = 0
 local hudXpBaslik = UI.text({
 	text = "XP GAIN",
@@ -1032,7 +907,6 @@ local function xpGainYaz()
 	hudXpMiktar.Text = `+{virgullu(toplamXp)}`
 end
 
--- CLOVER LUCK sayisiyla ayni parlama: bir an buyur, altin olur, beyaza doner
 local function xpGainGoster(miktar: number)
 	toplamXp += miktar
 	xpGainYaz()
@@ -1047,7 +921,6 @@ local function xpGainSifirla()
 	xpGainYaz()
 end
 
--- Donen kisa yazilar: burada AFK kalmanin ne kazandirdigi
 local IPUCLARI = {
 	"Every clover makes your digs LUCKIER!",
 	"AFK here and come back with rarer Brainrots!",
@@ -1079,12 +952,6 @@ local otoDugme, _, otoYazi = UI.dugme3B(hud, "AUTO", UDim2.fromOffset(120, 50), 
 otoDugme.AnchorPoint = Vector2.new(1, 0.5)
 otoDugme.Position = UDim2.new(1, -10, 0.5, 0)
 
---[[
-	SAYARAK BUYUYEN SAYI
-
-	Puan artinca sayi bir anda degismiyor: kisa surede yeni degere sayarak
-	cikiyor ve bir an buyuyup parliyor. Kazanc gozle gorulsun.
-]]
 local gosterilen = 0
 local sayac = Instance.new("NumberValue")
 sayac.Changed:Connect(function(v)
@@ -1094,7 +961,6 @@ end)
 
 local function hudGuncelle()
 	local p = puan()
-	-- Oyuna giriste (ya da azalirsa) sayma yok, dogrudan yazilir
 	if player:GetAttribute(Ayar.PuanNiteligi) == nil or p <= gosterilen or not hud.Visible then
 		sayac.Value = p
 		return
@@ -1109,13 +975,8 @@ end
 player:GetAttributeChangedSignal(Ayar.PuanNiteligi):Connect(hudGuncelle)
 hudGuncelle()
 
-------------------------------------------------------------------
--- OTOMATIK MOD + HIZ SABITLEME
-------------------------------------------------------------------
 local oto = false
--- Oyuncu kendisi kapattiysa otomatik baslama bekler (bkz. Shared > AfkSans > OtoBaslamaBekleme)
 local elleKapatildi = false
--- Oyuncunun kendisi en son ne zaman yurudu
 local sonKendiYurume = os.clock()
 local hedefId: number? = nil
 local sonYurume = 0
@@ -1129,7 +990,6 @@ local function flyboardda(h: Humanoid): boolean
 	return h:GetAttribute(FLYBOARD_TABAN) ~= nil
 end
 
--- Hiz yukseltmesinin verdigi yurume hizi (sunucunun uyguladigi deger)
 local function normalHiz(): number
 	return Hiz.hiz(tonumber(player:GetAttribute(Hiz.Nitelik)) or 0)
 end
@@ -1162,22 +1022,8 @@ local function yurumeyiKes()
 	end
 end
 
---[[
-	TOPLAMA DURUSU
-
-	Toplama boyunca karakter yoncaya doner ve oyle kalir (AutoRotate kapali).
-	Karakterin "YoncaTopluyor" niteligi true olur: toplama animasyonu bu
-	nitelige baglanabilir (true iken oynat, false olunca durdur).
-]]
 local TOPLAMA_NITELIGI = "YoncaTopluyor"
 
---[[
-	TOPLAMA ANIMASYONU  (Shared > AfkSans > ToplamaAnimasyonu)
-
-	Karakter basina bir kez yuklenir. Animasyonun boyu ToplamaSuresi'nden
-	farkliysa hizi ayarlanir: bar bittigi an animasyon da biter. Yerel
-	karakterde oynatilan animasyon diger oyunculara kendiliginden yansir.
-]]
 local animIzleri: { [Humanoid]: AnimationTrack } = {}
 
 local function toplamaIzi(h: Humanoid): AnimationTrack?
@@ -1227,7 +1073,6 @@ local function toplamaDurusu(acik: boolean)
 	end
 	if acik then
 		iz:Play(0.15)
-		-- Boy henuz bilinmiyorsa (ilk yukleme) normal hizda oynar
 		if iz.Length > 0 then
 			iz:AdjustSpeed(iz.Length / Ayar.ToplamaSuresi)
 		end
@@ -1236,7 +1081,6 @@ local function toplamaDurusu(acik: boolean)
 	end
 end
 
--- Yalnizca yatayda doner (egilmez); dt ile yumusak
 local function yoncayaDon(root: BasePart, hedef: Vector3, dt: number)
 	local bak = Vector3.new(hedef.X, root.Position.Y, hedef.Z)
 	if (bak - root.Position).Magnitude < 0.05 then
@@ -1283,7 +1127,6 @@ local function otoAyarla(acik: boolean)
 	otoCiz()
 end
 
--- Yalnizca ustunde durulan alanin yoncalari hedef alinir
 local function hedefUygun(id: number, simdi: number): boolean
 	local g = yoncalar[id]
 	return g ~= nil and g.alan == aktifAlan and (reddedilen[id] or 0) <= simdi
@@ -1310,7 +1153,6 @@ RunService.Heartbeat:Connect(function(dt)
 		sonKendiYurume = os.clock()
 	end
 
-	-- OTOMATIK BASLAMA: alanda durup beklemek yeter, AUTO'ya basmak gerekmez
 	if not oto then
 		if aktifAlan and not elleKapatildi and os.clock() - sonKendiYurume >= Ayar.OtoBaslamaBekleme then
 			otoAyarla(true)
@@ -1325,7 +1167,6 @@ RunService.Heartbeat:Connect(function(dt)
 		return
 	end
 
-	-- Oyuncu kendisi yururse otomatik mod kapanir
 	if oyuncuYuruyor() then
 		otoAyarla(false)
 		return
@@ -1334,7 +1175,6 @@ RunService.Heartbeat:Connect(function(dt)
 	hiziSabitle(h)
 	local simdi = os.clock()
 
-	-- TOPLAMA SURUYOR
 	local t = toplanan
 	if t then
 		local g = yoncalar[t.id]
@@ -1343,7 +1183,6 @@ RunService.Heartbeat:Connect(function(dt)
 		elseif yataydaUzaklik(g.pos, root.Position) > g.yaricap + Ayar.Erisim + 1 then
 			toplamaBirak(true)
 		elseif simdi - t.basla > Ayar.ToplamaSuresi + CEVAP_BEKLEME then
-			-- Sunucu cevap vermedi; baska yoncaya gec
 			reddedilen[t.id] = simdi + 2
 			hedefId = nil
 			toplamaBirak(true)
@@ -1358,7 +1197,6 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 
-	-- HEDEF: varana kadar ayni yonca
 	local hedef = if hedefId and hedefUygun(hedefId, simdi) then yoncalar[hedefId] else nil
 	if not hedef then
 		hedef = enYakin(root, simdi)
@@ -1388,14 +1226,12 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
--- Oyuncunun kendi ac-kapa istegi: kapatirsa otomatik baslama da susar
 local function elleCevir()
 	local acilsin = not oto
 	otoAyarla(acilsin)
 	elleKapatildi = not acilsin
 end
 
--- Sol tik / ekrana dokunma: alandayken otomatik modu ac-kapa
 UserInputService.InputBegan:Connect(function(input, islendi)
 	if islendi or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 		return
@@ -1413,14 +1249,6 @@ end)
 
 otoDugme.MouseButton1Click:Connect(elleCevir)
 
-------------------------------------------------------------------
--- AFK DONUSU (bkz. Shared > AfkSans > YenidenBaglanSuresi)
-------------------------------------------------------------------
---[[
-	Roblox'un atmasi girdiye bakiyor (karakterin otomatik yurumesi sayilmaz).
-	Iki kaynak birlikte izleniyor: Roblox'un kendi Idled olayi ve son
-	girdinin zamani. Hangisi once sinira varirsa istek o an gider.
-]]
 local AfkYenidenBaglan = Net.event("AfkYenidenBaglan")
 local sonGirdi = os.clock()
 local istendi = false
@@ -1437,7 +1265,6 @@ local function yenidenBaglanIste()
 	end
 	istendi = true
 	AfkYenidenBaglan:FireServer()
-	-- Teleport tutmazsa bir sure sonra yeniden denenebilsin
 	task.delay(30, function()
 		istendi = false
 	end)
@@ -1458,13 +1285,6 @@ task.spawn(function()
 	end
 end)
 
-------------------------------------------------------------------
--- SUNUCU OLAYLARI
-------------------------------------------------------------------
---[[
-	BIR ALANIN YONCALARI  --  butun alanlar ayri ayri gelir ve hep gorunur.
-	Ayni alanin listesi yeniden gelirse (YoncaIste) o alanin eskileri silinir.
-]]
 YoncaListesi.OnClientEvent:Connect(function(alanId, liste)
 	if type(alanId) ~= "string" or not Ayar.get(alanId) then
 		return
@@ -1486,15 +1306,9 @@ YoncaListesi.OnClientEvent:Connect(function(alanId, liste)
 	end
 end)
 
---[[
-	USTUNDE DURULAN ACIK ALAN  --  HUD ve otomatik mod yalnizca burada.
-	Alan degisince ya da cikilinca otomatik mod ve hiz sifirlanir.
-]]
 Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	otoAyarla(false)
-	-- Yeni alanda toplama yine kendiliginden baslayabilsin
 	elleKapatildi = false
-	-- Cikip girince / alan degisince XP GAIN toplami bastan baslar
 	xpGainSifirla()
 	aktifAlan = if type(alanId) == "string" and Ayar.get(alanId) then alanId else nil
 
@@ -1510,7 +1324,6 @@ Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	hud.Visible = true
 end)
 
--- Sunucu listeleri oyuncu hazir olunca zaten yolluyor; bu script gec baslarsa kacirmasin
 YoncaIste:FireServer()
 
 YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
@@ -1523,7 +1336,6 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
 		toplamaBirak(false)
 	end
 
-	-- Sunucuda artik olmayan yonca: sahneden kaldir, baska yoncaya gec
 	if not ok and yok == true then
 		yoncaSil(id, false)
 		if hedefId == id then
@@ -1533,7 +1345,6 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
 	end
 
 	if not ok then
-		-- Kisa bekleyip ayni yoncayi yeniden dene; ust uste reddedilirse vazgec
 		local sayi = (redSayisi[id] or 0) + 1
 		redSayisi[id] = sayi
 		if sayi >= RED_SINIRI then
@@ -1564,16 +1375,12 @@ YoncaSonuc.OnClientEvent:Connect(function(id, ok, kazanc, yeni, yok)
 end)
 
 player.CharacterAdded:Connect(function()
-	-- Yeni karakterin hizini sunucu kurar; burada yalnizca mod kapatilir
 	oto = false
 	hedefId = nil
 	toplamaBirak(true)
 	otoCiz()
 end)
 
-------------------------------------------------------------------
--- LEPRECHAUN PANELI
-------------------------------------------------------------------
 local panel = UI.panel(screen, UDim2.fromOffset(620, 560), "Leprechaun")
 UI.closeButton(panel).MouseButton1Click:Connect(function()
 	panel.Visible = false
@@ -1649,7 +1456,6 @@ local function panelCiz(veri: any)
 		row.LayoutOrder = i
 		row.Parent = panelListe
 		UI.corner(row, 10)
-		-- Koyu kademede (Secret) kontur siyah zeminde kaybolmasin: yazi rengi (beyaz)
 		UI.stroke(row, if alan.buyable then (if koyuMu(renk) then yaziRengi else renk) else SIYAH, if alan.buyable then 3 else 2)
 		if not alan.owned and not alan.buyable then
 			row.BackgroundTransparency = 0.35
@@ -1686,10 +1492,6 @@ local function panelCiz(veri: any)
 				parent = row,
 			})
 		elseif alan.buyable and type(alan.robux) == "string" then
-			--[[
-				YALNIZCA ROBUX: mor dugme, Robux ikonu + fiyat. Satin alma
-				penceresini sunucu acar (RobuxMagaza), odeme gelince alan acilir.
-			]]
 			local urun = RobuxMagaza.get(alan.robux)
 			local dugme, yuz = UI.dugme3B(row, "", UDim2.fromOffset(160, 50), Color3.fromRGB(150, 60, 255))
 			dugme.Position = UDim2.new(1, -172, 0.5, -25)
@@ -1701,7 +1503,6 @@ local function panelCiz(veri: any)
 				RobuxUrunAl:FireServer(robuxAnahtari)
 			end)
 
-			-- "ROBUX ONLY" rozeti: adin yaninda altin renkte
 			UI.text({
 				text = "ROBUX ONLY",
 				size = UI.Sizes.tiny,

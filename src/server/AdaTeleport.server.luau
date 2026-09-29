@@ -1,11 +1,3 @@
---[[
-	AdaTeleport  (Script)
-	Yeri: ServerScriptService > AdaTeleport
-
-	Geminin yanindaki NPC'ye ProximityPrompt takar.
-	Oyuncu E'ye basinca ada menusu acilir, ada secilince isinlanir.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -20,17 +12,11 @@ local Envanter = require(script.Parent:WaitForChild("Modules"):WaitForChild("Env
 local Format = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Format"))
 local Passler = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Passler"))
 local Net = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Net"))
--- Sagdaki isinlayici butonu (Teleporter gecisi)
 local IsinlayiciGit = Net.event("IsinlayiciGit")
 
 local COOLDOWN = 3
 local lastUse = {}
 
-------------------------------------------------------------------
--- Yardimcilar
-------------------------------------------------------------------
-
--- NPC modelini bul
 local function findNPC()
 	local direct = Workspace:FindFirstChild(Config.NPC.name)
 	if direct and direct:IsA("Model") then
@@ -44,7 +30,6 @@ local function findNPC()
 	return nil
 end
 
--- Adanin hedef CFrame'i
 local function getIslandCFrame(island)
 	if island.spawnPartName then
 		local part = Workspace:FindFirstChild(island.spawnPartName, true)
@@ -55,16 +40,6 @@ local function getIslandCFrame(island)
 	return CFrame.new(island.position)
 end
 
---[[
-	Client'a gonderilecek ada listesi.
-
-	Adalar SIRAYLA acilir: oyuncu bir adayi almadan sonrakinin ne oldugunu
-	goremez. Acilmis adalar ve sirada olan (satin alinabilir) ada tam
-	gorunur; daha ilerisi kilitli "???" satiri olarak gelir.
-
-	fromIndex: konusulan kaptanin bulundugu ada. Ilk ada disindaki
-	kaptanlarda listenin basina BEDAVA donus satiri eklenir.
-]]
 local function buildIslandList(player: Player, fromIndex: number?)
 	local data = PlayerData.get(player)
 	local unlocked = if data then data.islands else 1
@@ -72,7 +47,6 @@ local function buildIslandList(player: Player, fromIndex: number?)
 
 	local list = {}
 
-	-- Baska bir adadaysan: ilk adaya bedava donus, listenin en ustunde
 	if home ~= 1 then
 		local first = Config.Islands[1]
 		table.insert(list, {
@@ -86,10 +60,8 @@ local function buildIslandList(player: Player, fromIndex: number?)
 	end
 
 	for i, island in ipairs(Config.Islands) do
-		-- Donus satiri zaten eklendiyse ilk adayi tekrar listeleme
 		if not (home ~= 1 and i == 1) then
 			if island.comingSoon then
-				-- Henuz oyunda olmayan ada: her zaman kilitli, adiyla gorunur
 				table.insert(list, {
 					index = i,
 					name = "Coming Soon",
@@ -99,7 +71,6 @@ local function buildIslandList(player: Player, fromIndex: number?)
 					state = "locked",
 				})
 			elseif i <= unlocked then
-				-- Zaten acik: bedava gidilir
 				table.insert(list, {
 					index = i,
 					name = island.name,
@@ -109,7 +80,6 @@ local function buildIslandList(player: Player, fromIndex: number?)
 					state = "owned",
 				})
 			elseif i == unlocked + 1 then
-				-- Sirada olan ada: satin alinabilir
 				table.insert(list, {
 					index = i,
 					name = island.name,
@@ -119,7 +89,6 @@ local function buildIslandList(player: Player, fromIndex: number?)
 					state = "buyable",
 				})
 			else
-				-- Henuz sirasi gelmedi: ne oldugu gizli
 				table.insert(list, {
 					index = i,
 					name = "???",
@@ -135,22 +104,6 @@ local function buildIslandList(player: Player, fromIndex: number?)
 	return list
 end
 
-------------------------------------------------------------------
--- NPC hazirla
-------------------------------------------------------------------
---[[
-	NPC KURULUMU
-
-	Haritada BIRDEN FAZLA kaptan olabilir (her adada bir tane). Onceki surum
-	yalnizca ilk buldugu modele prompt takiyordu, bu yuzden diger adalardaki
-	kaptanlarla konusulamiyordu.
-
-	Artik "Teleporter" adli (eskiden "Kaptan" / "Captain") TUM modeller
-	bulunur ve her birine ayri prompt takilir. Her NPC hangi adada
-	durdugunu bilir; ilk ada disindakiler menude bedava donus sunar.
-
-	Haritaya SONRADAN eklenen Teleporter da yakalanir (DescendantAdded).
-]]
 local npcAdlari: { [string]: boolean } = { [Config.NPC.name] = true }
 for _, ad in Config.NPC.altNames or { Config.NPC.altName } do
 	npcAdlari[ad] = true
@@ -172,7 +125,6 @@ local function findNPCs(): { Model }
 	return found
 end
 
--- Bir adanin dunya konumu (spawn parti varsa onu kullanir)
 local function islandPosition(island): Vector3
 	if island.spawnPartName then
 		local part = Workspace:FindFirstChild(island.spawnPartName, true)
@@ -183,12 +135,10 @@ local function islandPosition(island): Vector3
 	return island.position
 end
 
--- Verilen konuma en yakin adanin indeksi
 local function nearestIslandIndex(position: Vector3): number
 	local best, bestDistance = 1, math.huge
 
 	for index, island in ipairs(Config.Islands) do
-		-- Oyunda olmayan ada kaptan eslesmesine girmez
 		local distance = if island.comingSoon then math.huge else (islandPosition(island) - position).Magnitude
 		if distance < bestDistance then
 			bestDistance = distance
@@ -200,7 +150,6 @@ local function nearestIslandIndex(position: Vector3): number
 end
 
 local function setupNPC(npc: Model)
-	-- NPC yerinden oynamasin
 	local humanoid = npc:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		humanoid.WalkSpeed = 0
@@ -217,7 +166,6 @@ local function setupNPC(npc: Model)
 	end
 	root.Anchored = true
 
-	-- Bu kaptan hangi adada duruyor
 	local homeIndex = nearestIslandIndex(root.Position)
 
 	local old = root:FindFirstChild("AdaPrompt")
@@ -241,7 +189,6 @@ local function setupNPC(npc: Model)
 	print(`[AdaTeleport] Teleporter hazir: {npc:GetFullName()} (ada {homeIndex})`)
 end
 
--- Ayni NPC'ye iki kez prompt takilmasin
 local kurulan: { [Model]: boolean } = {}
 
 local function kur(npc: Model)
@@ -269,7 +216,6 @@ local function setupAllNPCs()
 		kur(npc)
 	end
 
-	-- Sonradan eklenen Teleporter (parcalari bir kare sonra gelebilir)
 	Workspace.DescendantAdded:Connect(function(obj)
 		if npcMi(obj) then
 			task.delay(1, function()
@@ -283,9 +229,6 @@ end
 
 task.defer(setupAllNPCs)
 
-------------------------------------------------------------------
--- Isinlanma istegi
-------------------------------------------------------------------
 AdayaGit.OnServerEvent:Connect(function(player, index)
 	if typeof(index) ~= "number" then return end
 
@@ -302,23 +245,16 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 	if not root or not humanoid or humanoid.Health <= 0 then return end
 
-	--[[
-		Rot kontrolu.
-		Onceden leaderstats.Para okunuyordu; o alan artik yok (Rot'a gecildi)
-		ve kontrol her zaman basarisiz oluyordu. Tek dogruluk kaynagi PlayerData.
-	]]
 	local data = PlayerData.get(player)
 	if not data then
 		return
 	end
 
-	-- Sirasi gelmemis adaya gidilemez
 	if index > data.islands + 1 then
 		Bildirim:FireClient(player, "Unlock the previous island first.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
-	-- Yeni ada: ucreti odenir ve kalici olarak acilir
 	if index > data.islands then
 		if data.rot < island.price then
 			Bildirim:FireClient(
@@ -331,7 +267,6 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 
 		PlayerData.addRot(player, -island.price)
 		data.islands = index
-		-- Ekrandaki Rot gostergesi hemen dussun
 		Envanter.push(player)
 		Bildirim:FireClient(player, `{island.name} unlocked!`, island.color or Color3.fromRGB(120, 220, 255))
 	end
@@ -345,13 +280,6 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 	Bildirim:FireClient(player, "Welcome to " .. island.name .. "!", island.color or Color3.fromRGB(120, 220, 255))
 end)
 
---[[
-	ISINLAYICI  (Teleporter gecisi)
-
-	Sagdaki isinlayici butonunun menusunden gelir. Yalnizca ACILMIS adalara
-	gidilir; ada burada satin alinmaz (o kaptanin isi). Gecis yoksa hicbir
-	sey olmaz, istemci zaten satin alma penceresini gosteriyor.
-]]
 IsinlayiciGit.OnServerEvent:Connect(function(player, index)
 	if typeof(index) ~= "number" then
 		return
@@ -385,7 +313,6 @@ IsinlayiciGit.OnServerEvent:Connect(function(player, index)
 		return
 	end
 
-	-- Kazi sirasinda karakter yerine sabit; flyboard'da da tahta yuzeye bagli
 	if char:GetAttribute("Kaziyor") == true then
 		Bildirim:FireClient(player, "Finish digging first!", Color3.fromRGB(255, 200, 90))
 		return

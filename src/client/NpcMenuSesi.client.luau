@@ -1,17 +1,4 @@
 --!strict
---[[
-	NpcMenuSesi  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > NpcMenuSesi
-
-	NPC'lerin actigi menulere de sol menu butonlarindaki TIKLAMA SESI
-	(ArayuzSesi, "Cartoon Bubble"):
-
-	  - menu ACILDIGINDA bir kez
-	  - menunun icindeki her dugmeye tiklandiginda (satin al, sat, kapat...)
-
-	Menuler adlariyla taniniyor (UI.panel'e verilen ad). Yeni bir NPC
-	menusu eklenirse adini NPC_MENULERI'ne yazmak yeterli.
-]]
 
 local Players = game:GetService("Players")
 
@@ -19,21 +6,20 @@ local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local ArayuzSesi = require(script.Parent:WaitForChild("ArayuzSesi"))
 
 local NPC_MENULERI: { [string]: boolean } = {
-	Magaza = true, -- Shopkeeper
-	AdaKurekSaticisi = true, -- ada kurek saticilari
-	KazmaSaticisi = true, -- kazma saticilari
-	AdaMenusu = true, -- Teleporter NPC (ada menusu)
+	Magaza = true,
+	AdaKurekSaticisi = true,
+	KazmaSaticisi = true,
+	AdaMenusu = true,
 	FlyboardSatici = true,
 	OltaSatici = true,
 	FuseMakinesi = true,
 	Detective = true,
-	SaticiPenceresi = true, -- brainrot saticisi
-	GachaPenceresi = true, -- Gacha NPC'si (yumurta gachasi)
+	SaticiPenceresi = true,
+	GachaPenceresi = true,
 }
 
 local ISARET = "NpcMenuSesi"
 
--- Nesnenin icinde bulundugu NPC menusu (yoksa nil)
 local function menusu(node: Instance): Frame?
 	local cursor = node.Parent
 	while cursor and cursor ~= playerGui do

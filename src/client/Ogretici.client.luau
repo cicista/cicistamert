@@ -1,31 +1,4 @@
 --!strict
---[[
-	Ogretici  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Ogretici
-
-	Yeni oyuncunun ilk turunda ne yapmasi gerektigini gosterir. Adimlarin
-	kendisi Shared > Ogretici'de, hangi adimda oldugumuz sunucudan geliyor
-	(ServerScriptService > Modules > Ogretici); burasi YALNIZCA GOSTERIR.
-
-	UC PARCA
-
-	  1. Yonerge seridi  ekranin ustunde, "Dig in the sand!" gibi
-	  2. Hedef isareti   hedefin etrafinda beyaz parlama + tepesinde nabiz
-	                     atan Locate ikonu (Simulator Icon Pack)
-	  3. Yol oklari      karakterden hedefe art arda dizilen, hedefe dogru
-	                     akan "Up" ok ikonlari (ikon yoksa sari isin)
-
-	HEPSI YEREL. Highlight ve BillboardGui PlayerGui'nin altinda duruyor ve
-	dunyaya Adornee ile baglaniyor; oklarin ve Beam'in tutamaklari da
-	istemcide olusturuluyor. Hedefin kendisine parent edilselerdi sunucudaki
-	herkes gorurdu, ogreticiyi coktan bitirmis oyuncular dahil.
-
-	HEDEFI BULMAK
-	Isimle: dedektif ve fuse makinesi Config'teki adlariyla, base sunucunun
-	yolladigi numarayla (Bases.baseName), kum ise oyuncuya EN YAKIN kum
-	zemini. Hedef bulunamazsa isaretler KAPANIYOR ve her saniye yeniden
-	araniyor -- onceki adimin hedefi ekranda kalmasin.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -41,18 +14,10 @@ local Net = require(Shared:WaitForChild("Net"))
 local Config = require(Shared:WaitForChild("OyunConfig"))
 local Bases = require(Shared:WaitForChild("Bases"))
 local Adimlar = require(Shared:WaitForChild("Ogretici"))
--- Anlatici rozetindeki ikon
 local Icons = require(Shared:WaitForChild("Icons"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
---[[
-	KUM ADIMINDA "ALANDAYIM" MESAFESI
-
-	Oyuncu kum isaretine bu kadar yaklastiysa isaretler kapanir; uzaklasinca
-	geri gelir. "Uc tane kaz" adiminda sari cizginin pesini birakmamasi
-	sikayet konusuydu.
-]]
 local KUM_YAKINLIK = 26
 
 local OgreticiDurum = Net.event("OgreticiDurum")
@@ -63,35 +28,19 @@ local ISARET = Adimlar.IsaretRengi
 local SIYAH = Color3.fromRGB(0, 0, 0)
 local BEYAZ = Color3.fromRGB(255, 255, 255)
 
-------------------------------------------------------------------
--- DURUM
-------------------------------------------------------------------
-
--- Sunucudan gelen son durum; cevapGeldi ilk pakete kadar false
 local cevapGeldi = false
 local siraNo = 0
 local bitti = true
 local toplamAdim = Adimlar.adimSayisi()
 
--- Sunucunun bildirdigi base numarasi (hedef "base" iken kullaniliyor)
 local baseIndex: number? = nil
 
--- O anki hedef; her saniye tazeleniyor
 local hedef: Instance? = nil
 
--- Output'a ayni satiri tekrar tekrar yazmamak icin son teshis imzasi
 local sonTeshis = ""
 
-------------------------------------------------------------------
--- YONERGE SERIDI
-------------------------------------------------------------------
 local ekran = Instance.new("ScreenGui")
 ekran.Name = "Ogretici"
---[[
-	Menu butonlarinin (5) ustunde, panellerin (20) altinda: acilan bir
-	pencere yonergeyi ortmesin ama yonerge de butonlarin onunde dursun.
-	Katman sirasi UI.luau > PANEL KATMANI'nda.
-]]
 ekran.DisplayOrder = 6
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -100,14 +49,6 @@ ekran.Parent = playerGui
 local serit = Instance.new("Frame")
 serit.Name = "Yonerge"
 serit.AnchorPoint = Vector2.new(0.5, 0)
---[[
-	GORUNUM  --  oyunun diger panelleriyle ayni dil
-
-	Koyu mavi-mor degrade zemin, capraz desen, kalin siyah kontur ve
-	cevresinde nabiz atan altin isilti. Solda yuvarlak ANLATICI rozeti
-	duruyor; yazilar onun sagindan basliyor ve sola yaslaniyor.
-]]
--- XP barinin hemen altinda (bar kucultuldu, serit de yukari alindi)
 serit.Position = UDim2.new(0.5, 0, 0, 66)
 serit.Size = UDim2.fromOffset(520, 86)
 serit.BackgroundColor3 = BEYAZ
@@ -117,9 +58,7 @@ serit.Parent = ekran
 UI.corner(serit, 16)
 UI.stroke(serit, SIYAH, 3)
 
--- Anlatici resminin boyu (seridin ICINDE, sag tarafta durur)
 local ANLATICI = 78
--- Yazilarin seridin solundan boslugu ve sagda anlaticiya birakilan yer
 local YAZI_SOL = 22
 local YAZI_SAG = ANLATICI + 24
 
@@ -135,7 +74,6 @@ do
 
 	UI.caprazDesen(serit, ISARET, 3)
 
-	-- Cevresinde nabiz atan altin isilti
 	local isilti = Instance.new("Frame")
 	isilti.Name = "Isilti"
 	isilti.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -154,28 +92,12 @@ do
 	):Play()
 end
 
---[[
-	ANLATICI RESMI  --  seridin ICINDE, SAG tarafta duran karakter
-
-	Resimler Studio'ya elle konuyor: ReplicatedStorage > Assets > Icons
-	icine "hosgeldin", "dusunce", "tesvik", "dans" adlariyla (bkz.
-	Shared > Ogretici > Anlaticilar). Her adim kendi resmini gosteriyor.
-
-	YUVARLAK MADALYON + ICINE SIGAN RESIM.
-	Resimler dikdortgen. Bir ara madalyon CanvasGroup yapilip resim
-	Crop ile doldurulmustu ama o haliyle hic gorunmedi; simdi yapi en
-	sade haliyle duruyor: yuvarlak bir cerceve ve ICINDE, kenarlara
-	degmeyecek kadar kucuk (yaklasik dortte uc) bir resim. Resim kucuk
-	oldugu icin kirpmaya gerek kalmiyor, yuvarlagin disina tasmiyor.
-]]
 local anlaticiKap = Instance.new("Frame")
 anlaticiKap.Name = "Anlatici"
 anlaticiKap.AnchorPoint = Vector2.new(1, 0.5)
--- Seridin sag ucunda, dikeyde ortali
 anlaticiKap.Position = UDim2.new(1, -12, 0.5, 0)
 anlaticiKap.Size = UDim2.fromOffset(ANLATICI, ANLATICI)
 anlaticiKap.BackgroundColor3 = ISARET
--- Hafif altin zemin: karakter koyu seritte kaybolmasin
 anlaticiKap.BackgroundTransparency = 0.82
 anlaticiKap.BorderSizePixel = 0
 anlaticiKap.ZIndex = 7
@@ -188,16 +110,13 @@ local anlaticiResim = Instance.new("ImageLabel")
 anlaticiResim.Name = "Resim"
 anlaticiResim.AnchorPoint = Vector2.new(0.5, 0.5)
 anlaticiResim.Position = UDim2.fromScale(0.5, 0.5)
--- Yuvarlagin icinde kalacak kadar: kose kose tasmasin
 anlaticiResim.Size = UDim2.fromScale(0.74, 0.74)
 anlaticiResim.BackgroundTransparency = 1
--- Fit: en-boy orani bozulmadan kutuya sigar
 anlaticiResim.ScaleType = Enum.ScaleType.Fit
 anlaticiResim.ZIndex = 8
 anlaticiResim.Parent = anlaticiKap
 
 do
-	-- Hafif sallanma
 	TweenService:Create(
 		anlaticiKap,
 		TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
@@ -206,13 +125,6 @@ do
 	anlaticiKap.Rotation = -4
 end
 
---[[
-	Adim icin anlatici resmini bulur.
-
-	Once Assets > Icons icinde ADI BIREBIR tutan (assetTam), sonra adi
-	ICEREN (asset) aranir. Bulunamazsa Output'a bir kez yazilir ve serit
-	resimsiz gorunur -- ogretici yine calisir.
-]]
 local anlaticiOnbellek: { [string]: string } = {}
 local anlaticiUyarildi: { [string]: boolean } = {}
 
@@ -288,17 +200,12 @@ local altYazi = UI.text({
 	zIndex = 5,
 })
 
-------------------------------------------------------------------
--- HEDEF ISARETI  --  parlama + tepesinde nabiz atan Locate ikonu
-------------------------------------------------------------------
--- Hedef BEYAZ parlar (serit ve yedek isaretler sari kaliyor)
 local parlama = Instance.new("Highlight")
 parlama.Name = "OgreticiParlamasi"
 parlama.FillColor = BEYAZ
 parlama.FillTransparency = 0.72
 parlama.OutlineColor = BEYAZ
 parlama.OutlineTransparency = 0
--- Duvar arkasindan da gorunsun: oyuncu hedefi ararken kaybolmasin
 parlama.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 parlama.Enabled = false
 parlama.Parent = playerGui
@@ -308,19 +215,10 @@ hedefTabela.Name = "OgreticiHedefi"
 hedefTabela.Size = UDim2.fromOffset(58, 58)
 hedefTabela.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
 hedefTabela.AlwaysOnTop = true
--- PlayerGui'de duruyor: yeniden doguste silinmesin (betik bir kez calisiyor)
 hedefTabela.ResetOnSpawn = false
 hedefTabela.Enabled = false
 hedefTabela.Parent = playerGui
 
---[[
-	Hedefin tepesinde paketteki LOCATE ikonu duruyor (Icons > ogreticiHedef).
-	Yonu yol oklari gosteriyor, tepedeki isaretin tek isi "burasi" demek.
-
-	Ikon ve yedek nokta ayni kabin icinde: nabiz kaba bagli, hangisi
-	gorunurse o atiyor. UIScale bir GuiObject'in altinda olmali
-	(BillboardGui degil).
-]]
 local hedefKabi = Instance.new("Frame")
 hedefKabi.Name = "Kap"
 hedefKabi.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -337,7 +235,6 @@ hedefIkonu.ScaleType = Enum.ScaleType.Fit
 hedefIkonu.Visible = false
 hedefIkonu.Parent = hedefKabi
 
--- YEDEK: paket istemciye gelmezse eski sari nokta gorunur
 local hedefNoktasi = Instance.new("Frame")
 hedefNoktasi.Name = "Nokta"
 hedefNoktasi.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -357,10 +254,6 @@ TweenService:Create(
 	{ Scale = 1.2 }
 ):Play()
 
---[[
-	Ikon bulunana kadar her tazelemede yeniden denenir: paket istemciye gec
-	replike olabiliyor. Bulununca onbellekten geliyor, maliyeti yok.
-]]
 local function hedefIkonunuKoy()
 	if hedefIkonu.Image == "" then
 		Icons.apply(hedefIkonu, "ogreticiHedef")
@@ -370,13 +263,6 @@ local function hedefIkonunuKoy()
 	hedefNoktasi.Visible = not var
 end
 
---[[
-	KIRMIZI PARLAMA  --  "buraya birak / buraya bas" adimlari
-
-	Slot ve toplama butonu adimlarinda hedef SARI degil KIRMIZI parlar:
-	oyuncu yerdeki kucuk bir parcayi ararken sari cizgiye degil, bariz
-	kirmizi parlamaya baksin. Nabzi asagidaki dongu ayarliyor.
-]]
 local KIRMIZI = Color3.fromRGB(255, 60, 60)
 
 local kirmiziParlama = Instance.new("Highlight")
@@ -389,19 +275,6 @@ kirmiziParlama.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 kirmiziParlama.Enabled = false
 kirmiziParlama.Parent = playerGui
 
---[[
-	ARAYUZ HALKASI  --  ekrandaki bir dugmeyi cember icine alir
-
-	2. adimda Detective penceresindeki "IDENTIFY ALL" dugmesi. Halka her
-	karede dugmenin ekrandaki yerine oturuyor (dugme panelle birlikte
-	kayabiliyor, arayuz olcegi degisebiliyor).
-
-	KAP KENDI OLCEGINI TASIYOR: UI modulu her ScreenGui'nin ust duzey
-	cocuklarina arayuz olcegini koyuyor. Halkanin olculeri zaten EKRAN
-	PIKSELI (AbsolutePosition/AbsoluteSize) oldugu icin bir kez daha
-	olceklenmemeli; kaba kendi UIScale'ini koyuyoruz ki modul ona
-	dokunmasin (bkz. UI.luau > nesneyeUygula).
-]]
 local halkaKabi = Instance.new("Frame")
 halkaKabi.Name = "HalkaKabi"
 halkaKabi.BackgroundTransparency = 1
@@ -423,7 +296,6 @@ halka.Parent = halkaKabi
 UI.corner(halka, 1000)
 local halkaCizgi = UI.stroke(halka, ISARET, 5)
 
--- Halkanin isaret edecegi dugme (yoksa halka gizli)
 local function halkaHedefi(adimId: string): GuiObject?
 	if adimId ~= "ilkCollect" then
 		return nil
@@ -437,20 +309,6 @@ local function halkaHedefi(adimId: string): GuiObject?
 	return if dugme and dugme:IsA("GuiObject") and dugme.Visible then dugme else nil
 end
 
-------------------------------------------------------------------
--- YOL CIZGISI  --  YEDEK: ok ikonu bulunamazsa sari isin
-------------------------------------------------------------------
---[[
-	Yolu artik asagidaki YOL OKLARI gosteriyor. Bu Beam yalnizca paketteki
-	ok ikonu istemciye gelmediginde aciliyor; ogretici ikonsuz da yol
-	gostermeye devam etsin diye.
-
-	TUTAMAKLAR TERRAIN'DE DURUYOR, karaktere ya da hedefe takilmiyor.
-	Karaktere takili tutamak yeniden doguste govdeyle birlikte Destroy
-	ediliyor ve bir daha hicbir yere takilamiyordu (Parent kilitlenir).
-	Simdi her karede karakterin ve hedefin konumuna tasiniyorlar (bkz.
-	YOL OKLARI > RenderStepped); oklar da bu iki noktanin arasina diziliyor.
-]]
 local kokTutamak = Instance.new("Attachment")
 kokTutamak.Name = "OgreticiBaslangic"
 kokTutamak.Parent = Workspace.Terrain
@@ -464,85 +322,35 @@ cizgi.Name = "OgreticiYolu"
 cizgi.Attachment0 = kokTutamak
 cizgi.Attachment1 = hedefTutamak
 cizgi.Color = ColorSequence.new(ISARET)
--- Isik almasin, kendi parlasin: gecede ve golgede de ayni sarida kalir
 cizgi.LightInfluence = 0
 cizgi.LightEmission = 1
 cizgi.FaceCamera = true
 cizgi.Width0 = 0.55
 cizgi.Width1 = 0.55
---[[
-	Uclari soluk, ortasi parlak: cizgi karakterin ve hedefin uzerine
-	yapisik durmasin, aralarindan geciyormus gibi gorunsun.
-]]
 cizgi.Transparency = NumberSequence.new({
 	NumberSequenceKeypoint.new(0, 0.85),
 	NumberSequenceKeypoint.new(0.15, 0.15),
 	NumberSequenceKeypoint.new(0.85, 0.15),
 	NumberSequenceKeypoint.new(1, 0.85),
 })
---[[
-	KAVIS YOK: cizgi dumduz gider.
-	Onceden CurveSize 6 idi. Kavis tutamaklarin X ekseni yonunde bukulur;
-	baslangic tutamagi karakterle birlikte donuyor, hedefinki de hedef
-	parcanin yonunde duruyor. Karakter dondukce kavis de yon degistiriyor,
-	cizgi yamuk yumuk gorunuyordu. Iki uc da govde ortasinda (zeminin
-	ustunde) oldugu icin duz cizgi zemine gomulmuyor.
-]]
 cizgi.CurveSize0 = 0
 cizgi.CurveSize1 = 0
 cizgi.Enabled = false
 cizgi.Parent = kokTutamak
 
-------------------------------------------------------------------
--- YOL OKLARI  --  karakterden hedefe art arda dizilen ok ikonlari
-------------------------------------------------------------------
---[[
-	Sari cizginin yerine paketteki "Up" ok ikonu (Icons > ogreticiOk)
-	karakterle hedef arasina belli araliklarla diziliyor ve hedefe dogru
-	akiyor.
-
-	NEDEN BEAM DOKUSU DEGIL: Beam dokuyu uzunlugu boyunca yatay seriyor;
-	yukari bakan ok cizgiye DIK durur ve dondurulemez. Bunun yerine her ok
-	ayri bir BillboardGui: her karede okun ve bir adim ilerisinin ekrandaki
-	yeri hesaplanip resim o yone cevriliyor. Kamera nereden bakarsa baksin
-	ok hedefi gosteriyor.
-
-	Oklar Terrain'e takili tutamaklarda duruyor (Terrain dunya merkezinde,
-	WorldPosition dogrudan dunya konumu). Hepsi istemcide: yalnizca bu
-	oyuncu goruyor.
-]]
--- Iki ok arasi ve okun dunyadaki boyu (stud)
 local OK_ARALIK = 4
 local OK_BOY = 2.4
--- En fazla ok: 30 * 4 = 120 stud; hedef daha uzaksa oklar oyuncunun onunde biter
 local OK_SAYI = 30
--- Akis hizi: saniyede kac ok araligi ilerler
 local OK_HIZ = 1.4
--- Karakterin ve hedefin dibinde ok olmasin
 local OK_BOSLUK_BAS = 3
 local OK_BOSLUK_SON = 3
--- Zemin bulunamazsa (bosluk, deniz): govde ortasindan bu kadar asagida akar
 local OK_ALCALMA = 1.8
---[[
-	OKLAR ZEMINE OTURUR
-
-	Karakterle hedef arasindaki duz cizgi tepeye, merdivene, egimli zemine
-	gomuluyordu. Artik her okun ustunden asagi isin atiliyor; ok carptigi
-	parcanin (ya da Terrain'in) USTUNE, alt ucu yuzeye degecek yukseklige
-	konuyor.
-
-	Isin cizginin OK_TARAMA_UST kadar ustunden basliyor: cizgiden bu kadar
-	yuksege cikan tepe yakalanir, tavani daha yukarida kalan (base cati gibi)
-	yerlerde de ok catiya cikmaz.
-]]
 local OK_TARAMA_UST = 6
 local OK_TARAMA_BOY = 40
--- Okun merkezi yuzeyin bu kadar ustunde: alt ucu yuzeyden biraz yukarida
 local OK_YER = OK_BOY / 2 + 0.2
 
 local okIsini = RaycastParams.new()
 okIsini.FilterType = Enum.RaycastFilterType.Exclude
--- Gorunmez tetik alanlari (yonca alani vs.) carpisma kapali: ok onlara takilmasin
 okIsini.RespectCanCollide = true
 okIsini.IgnoreWater = false
 
@@ -556,7 +364,6 @@ for i = 1, OK_SAYI do
 
 	local tabela = Instance.new("BillboardGui")
 	tabela.Name = `OgreticiOk{i}`
-	-- Olcek = stud: oklar uzaklastikca kuculur, yol derinlik kazanir
 	tabela.Size = UDim2.fromScale(OK_BOY, OK_BOY)
 	tabela.LightInfluence = 0
 	tabela.ResetOnSpawn = false
@@ -574,12 +381,9 @@ for i = 1, OK_SAYI do
 	table.insert(oklar, { tutamak = tutamak, tabela = tabela, resim = resim })
 end
 
--- Yolun iki ucu (hedefiTazele yaziyor, isaretleriKapat siliyor)
 local yolKoku: BasePart? = nil
 local yolHedefi: BasePart? = nil
--- Oklar mi aciyor (true) yoksa yedek cizgi mi (false)
 local okluYol = false
--- 0..1 arasi akis: her ok bir sonrakinin yerine kayar, sonra basa sarar
 local okFaz = 0
 
 local function oklariGizle()
@@ -595,22 +399,12 @@ local function yoluKapat()
 	oklariGizle()
 end
 
---[[
-	Karakterden hedefe yolu acar. Ok ikonu bulunduysa oklar, bulunamadiysa
-	yedek sari cizgi gorunur. Tutamaklar ilk kareyi beklemeden yerine
-	konuyor; cizgi bir kare yanlis yerde gorunmesin.
-
-	haric: oklarin USTUNE cikmamasi gereken hedef (NPC, fuse makinesi).
-	Yoksa hedefin dibindeki oklar makinenin ya da NPC'nin kafasina oturur.
-	Base ve kum gibi uzerinde yurunen hedefler haric tutulmaz.
-]]
 local function yoluAc(kok: BasePart, isaretKoku: BasePart, haric: Instance?)
 	yolKoku = kok
 	yolHedefi = isaretKoku
 	kokTutamak.WorldPosition = kok.Position
 	hedefTutamak.WorldPosition = isaretKoku.Position
 
-	-- Karakterler (bizimki dahil) zemin sayilmaz; liste saniyede bir tazeleniyor
 	local disarida: { Instance } = {}
 	for _, oyuncu in Players:GetPlayers() do
 		if oyuncu.Character then
@@ -634,26 +428,16 @@ local function yoluAc(kok: BasePart, isaretKoku: BasePart, haric: Instance?)
 	cizgi.Enabled = not okluYol
 end
 
---[[
-	HER KARE: oklari karakterle hedef arasina diz ve hedefe dogru cevir.
-
-	Ekrandaki yon her okta ayri hesaplaniyor: perspektif yuzunden ayni
-	dogru uzerindeki oklarin ekrandaki acisi birbirinden farkli olabiliyor.
-	Resim yukari bakiyor, ekranda Y asagi artiyor: aciya 90 eklenince ok
-	gidis yonune donuyor.
-]]
 RunService.RenderStepped:Connect(function(dt)
 	local kok, uc = yolKoku, yolHedefi
 	if not kok or not uc then
 		return
 	end
-	-- Karakter ya da hedef silindi: bir sonraki tazeleme yeniden kurar
 	if not kok.Parent or not uc.Parent then
 		yoluKapat()
 		return
 	end
 
-	-- Tutamaklar yedek cizgi icin de tasiniyor
 	kokTutamak.WorldPosition = kok.Position
 	hedefTutamak.WorldPosition = uc.Position
 
@@ -668,21 +452,14 @@ RunService.RenderStepped:Connect(function(dt)
 
 	okFaz = (okFaz + dt * OK_HIZ) % 1
 
-	-- Hedefin dibindeyiz: gosterecek yol yok
 	if uzunluk < OK_BOSLUK_BAS + OK_BOSLUK_SON + 1 then
 		oklariGizle()
 		return
 	end
 
 	local yon = fark / uzunluk
-	--[[
-		Oklar zemine oturdugu icin ekrandaki yon YATAY gidis yonunden
-		hesaplaniyor; cizginin egimi (hedef asagida/yukarida) oku yere
-		dogru egmesin. Hedef tam tepede ya da dipteyse cizginin kendi yonu.
-	]]
 	local yatay = Vector3.new(yon.X, 0, yon.Z)
 	local bakis = if yatay.Magnitude > 0.1 then yatay.Unit else yon
-	-- Son okun durabilecegi yer: hedefin dibi ya da ok sayisinin yettigi yer
 	local sinir = math.min(uzunluk - OK_BOSLUK_SON, OK_BOSLUK_BAS + (OK_SAYI - 1) * OK_ARALIK)
 
 	for i, ok in oklar do
@@ -693,7 +470,6 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 
 		local konum = bas + yon * mesafe
-		-- Zemine oturt (bkz. OKLAR ZEMINE OTURUR); zemin yoksa cizgide kalir
 		local carpan = Workspace:Raycast(
 			konum + Vector3.new(0, OK_TARAMA_UST, 0),
 			Vector3.new(0, -OK_TARAMA_BOY, 0),
@@ -711,10 +487,6 @@ RunService.RenderStepped:Connect(function(dt)
 			ok.resim.Rotation = math.deg(math.atan2(dy, dx)) + 90
 		end
 
-		--[[
-			Uclarda yumusak gecis: bastaki ok belirerek dogar, sondaki
-			sonerek kaybolur. Basa sarma aninda ok zipliyormus gibi durmaz.
-		]]
 		local gorunurluk = math.clamp(
 			math.min((mesafe - OK_BOSLUK_BAS) / OK_ARALIK, (sinir - mesafe) / OK_ARALIK),
 			0,
@@ -725,16 +497,6 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
-------------------------------------------------------------------
--- HEDEF ARAMA
-------------------------------------------------------------------
-
--- Adi bu olan ilk nesne (ic ice klasorler dahil)
---[[
-	Karsilastirma icin ad: kucuk harf, bosluk/alt cizgi/tire yok.
-	Haritadaki model "Fuse Machine" ya da "fuse_machine" diye adlandirilmis
-	olabiliyor; ogretici yine de bulsun.
-]]
 local function sadeAd(ad: string): string
 	return (string.gsub(string.lower(ad), "[%s_%-]", ""))
 end
@@ -747,11 +509,6 @@ local function modelBul(adlar: { string }): Instance?
 		end
 	end
 
-	--[[
-		Birebir ad tutmadi: buyuk/kucuk harf ve bosluk farkini yok sayarak,
-		sonra da ADIN ICINDE gecmesine bakarak ara. Fuse makinesinin
-		isaretlenmemesinin sebebi buydu.
-	]]
 	local hedefler: { string } = {}
 	for _, ad in adlar do
 		table.insert(hedefler, sadeAd(ad))
@@ -776,23 +533,6 @@ local function modelBul(adlar: { string }): Instance?
 	return icerenAday
 end
 
---[[
-	EN YAKIN OLANI  --  haritada ayni adda BIRDEN COK model varken
-
-	Teleporter her adada bir tane: dordu de "Teleporter" adli. modelBul ilk
-	bulduguna donuyordu, o da cogu zaman baska bir adadaki oluyordu -- serit
-	"isinlayiciya git" derken isaret denizin otesini gosteriyordu.
-
-	Burada AYNI ADDAKI hepsi toplanip oyuncuya en yakini seciliyor.
-]]
---[[
-	ADAYLAR ONBELLEKTE
-
-	hedefiTazele saniyede bir calisiyor; her seferinde butun Workspace'i
-	gezmek gereksiz. Ayni adlar icin bulunan modeller birkac saniye
-	saklaniyor, aradaki cagrilarda yalnizca "hangisi daha yakin" hesabi
-	yapiliyor. Silinmis modeller kullanilmadan once eleniyor.
-]]
 local adayOnbellek: { [string]: { zaman: number, liste: { Instance } } } = {}
 local ADAY_OMRU = 5
 
@@ -856,21 +596,9 @@ local function enYakinModel(adlar: { string }): Instance?
 		end
 	end
 
-	-- Hicbiri birebir tutmadi: eski arama (icinde gecen ad, vs.)
 	return enIyi or modelBul(adlar)
 end
 
---[[
-	KUM HEDEFI ICIN GORUNMEZ BIR ISARET NOKTASI
-
-	Kum plaji cogu zaman kocaman tek bir parca. Isaretleri dogrudan ona
-	baglayinca nokta plajin ORTASINDA beliriyor ve parlama butun plaji
-	sariya boyuyor; oyuncu uzaktayken de "en yakin kum" olarak NPC'lerin
-	durdugu zemin parcasi secilip isaret dedektifin dibinde cikiyordu.
-
-	Bunun yerine burada gorunmez bir parca var: kumun oyuncuya EN YAKIN
-	noktasina tasiniyor ve isaretler ona baglaniyor.
-]]
 local kumIsareti = Instance.new("Part")
 kumIsareti.Name = "OgreticiKumNoktasi"
 kumIsareti.Size = Vector3.new(1, 1, 1)
@@ -881,13 +609,6 @@ kumIsareti.CanQuery = false
 kumIsareti.CanTouch = false
 kumIsareti.Parent = Workspace
 
---[[
-	Parca bir karakterin ya da NPC'nin icinde mi.
-
-	Dedektif, satici ve fuse makinesi kum zemininin uzerinde duruyor ve
-	bazilarinin kendi tabani da kum. Oyuncu plajdan uzaklasinca en yakin
-	kum olarak O taban secilip isaret NPC'nin dibinde cikiyordu.
-]]
 local function karakterinIcinde(node: Instance): boolean
 	local cursor: Instance? = node.Parent
 	while cursor and cursor ~= Workspace do
@@ -899,15 +620,6 @@ local function karakterinIcinde(node: Instance): boolean
 	return false
 end
 
---[[
-	Kazilabilir bir kum zemini mi.
-
-	Tanim sunucudakiyle ayni (Config.Sand): Sand materyali ya da adinda
-	"kum"/"sand" gecen bir Part. BOYUT VE SABITLIK SARTI YOK -- kum parcaya
-	bolunmus olabilir. Tek eleme karakterlerin ve NPC'lerin kendi parcalari:
-	bazilarinin tabani da kum ve oyuncu plajdan uzaklasinca "en yakin kum"
-	olarak onlar secilip isaret NPC'nin dibinde cikiyordu.
-]]
 local function kumZeminiMi(node: BasePart): boolean
 	if Config.Sand.materials[node.Material] ~= true then
 		local ad = string.lower(node.Name)
@@ -926,21 +638,6 @@ local function kumZeminiMi(node: BasePart): boolean
 	return not karakterinIcinde(node)
 end
 
---[[
-	Oyuncuya EN YAKIN kumun uzerindeki isaret noktasi.
-
-	MESAFE SINIRI YOK: once bir yaricap vardi, oyuncu kumdan uzaklasinca
-	isaret kayboluyordu. Ogreticinin isi zaten oyuncuyu oraya goturmek --
-	uzaksa cizgi daha uzun olur, o kadar.
-]]
---[[
-	ISARETLENEN KUM PARCASI
-
-	Kum adimlarinda cizgi gorunmez bir noktaya gidiyor (bkz. kumIsareti) ama
-	PARLAMA plajin kendisine takiliyor: butun alan sari parliyor, oyuncu
-	nereyi kazacagini uzaktan goruyor. kumBul her cagrildiginda buraya
-	yaziyor.
-]]
 local kumParcasi: BasePart? = nil
 
 local function kumBul(kok: BasePart): Instance?
@@ -964,10 +661,6 @@ local function kumBul(kok: BasePart): Instance?
 		return nil
 	end
 
-	--[[
-		Parcanin UST yuzeyinde, oyuncunun tam karsisina gelen nokta: plajin
-		merkezi degil, oyuncunun kosup varacagi kenari.
-	]]
 	local yerel = enYakin.CFrame:PointToObjectSpace(merkez)
 	local yari = enYakin.Size / 2
 	kumIsareti.Position = enYakin.CFrame:PointToWorldSpace(Vector3.new(
@@ -979,23 +672,11 @@ local function kumBul(kok: BasePart): Instance?
 	return kumIsareti
 end
 
---[[
-	SUNUCUNUN VERDIGI KONUM
-
-	Ilk kazida isaret kumun kenarina degil, oyuncu icin dogurulan GARANTI
-	suzmeye gider; konumu sunucudan geliyor (bkz. Modules > Ogretici).
-	Konum geldiginde kum isareti o noktaya tasinir, gerisi ayni: cizgi ve
-	ucundaki nokta oraya bakar.
-]]
 local sunucuKonumu: Vector3? = nil
 
 local function hedefiBul(tur: Adimlar.Hedef, kok: BasePart): Instance?
 	local konum = sunucuKonumu
 	if konum and tur == "kum" then
-		--[[
-			Ilk kazida cizgi garanti suzmeye gider; PARLAMA yine plaja
-			takilsin diye kum parcasi ayrica aranir (kumBul onu yaziyor).
-		]]
 		kumBul(kok)
 		kumIsareti.Position = konum
 		return kumIsareti
@@ -1011,12 +692,6 @@ local function hedefiBul(tur: Adimlar.Hedef, kok: BasePart): Instance?
 			return nil
 		end
 
-		--[[
-			BASE ADIMLARINDA HEDEF BASENIN KENDISI DEGIL, ISIN YAPILACAGI PARCA:
-			  slot adimi -> 1. slot (oraya brainrot birakilacak)
-			  para adimi -> ToplaButonu (ustune basilacak)
-			Ikisi de bulunamazsa base modeline dusulur.
-		]]
 		local adim = Adimlar.adim(siraNo)
 		local parcaAdi = if adim and adim.id == "slot"
 			then Bases.slotName(1)
@@ -1037,21 +712,6 @@ local function hedefiBul(tur: Adimlar.Hedef, kok: BasePart): Instance?
 	return nil
 end
 
---[[
-	Isaretlerin baglanacagi nesne ve parca.
-
-	Highlight bir Model'e ya da BasePart'a, BillboardGui ile Attachment ise
-	yalnizca bir BasePart'a baglanabiliyor. Model'in govdesi yoksa ikisi de
-	nil doner ve cagiran taraf isaretleri kapatir.
-]]
---[[
-	Isaretlerin baglanacagi nesne ve tutunacak parca.
-
-	PARCA DERIN ARANIR: Fuse makinesinin parcalari alt klasorlerde duruyor
-	(Workspace.FuseMachine.Decor.Part). Yalnizca DOGRUDAN cocuklara bakan
-	eski surumde kok parca bulunamiyor, fonksiyon sessizce nil donuyor ve
-	7. adimda hicbir isaret cikmiyordu.
-]]
 local function baglanacak(node: Instance): (Instance?, BasePart?)
 	if node:IsA("BasePart") then
 		return node, node
@@ -1060,14 +720,10 @@ local function baglanacak(node: Instance): (Instance?, BasePart?)
 		local kok = node.PrimaryPart or node:FindFirstChildWhichIsA("BasePart", true)
 		return node, kok
 	end
-	-- Model bile degil (Folder gibi): icinde parca varsa ona baglanilir
 	local kok = node:FindFirstChildWhichIsA("BasePart", true)
 	return (if kok then node else nil), kok
 end
 
-------------------------------------------------------------------
--- GOSTERIM
-------------------------------------------------------------------
 local function isaretleriKapat()
 	parlama.Enabled = false
 	kirmiziParlama.Enabled = false
@@ -1083,14 +739,6 @@ local function gizle()
 	isaretleriKapat()
 end
 
---[[
-	ADA IPUCU  --  ogreticiden sonraki tek yonlendirme
-
-	Sunucu, oyuncunun parasi ikinci adaya yetince IpucuAda niteligini
-	yaziyor (bkz. Modules > Ogretici). O acikken serit "yeni ada alabilirsin"
-	der ve Teleporter isaretlenir; ada alinip gidilince nitelik silinir,
-	serit ve isaret kendiliginden kapanir.
-]]
 local IP = Adimlar.AdaIpucu
 local KI = Adimlar.KurekIpucu
 
@@ -1102,12 +750,6 @@ local function kurekIpucuAcik(): boolean
 	return player:GetAttribute(KI.nitelik) == true
 end
 
---[[
-	OGRETICI BITTIKTEN SONRA acik olan ipucu (yoksa nil). Sunucu ikisini
-	ayni anda acmiyor; yine de kurek once geliyor cunku oyunun sirasi o.
-
-	Serit ve isaret ayni secimi kullansin diye tek yerde duruyor.
-]]
 local function ipucuOf(): ({ [string]: any }?, string?)
 	if kurekIpucuAcik() then
 		return KI :: any, "FIRST SHOVEL"
@@ -1118,10 +760,6 @@ local function ipucuOf(): ({ [string]: any }?, string?)
 end
 
 local function yonergeyiYaz()
-	--[[
-		Ogretici bittiyse yalnizca ipuclari kalir: adim yazisi yerine
-		ipucunun kendi yazisi gosterilir.
-	]]
 	if bitti or siraNo <= 0 then
 		local ipucu, baslik = ipucuOf()
 		if ipucu then
@@ -1145,28 +783,11 @@ local function yonergeyiYaz()
 	sayacYazi.Text = `STEP {siraNo} / {toplamAdim}`
 	yonergeYazi.Text = adim.yazi
 	altYazi.Text = adim.alt or ""
-	-- Adimin anlatici resmi (bkz. Shared > Ogretici > Anlaticilar)
 	anlaticiyiCiz(adim)
 	serit.Visible = true
 end
 
---[[
-	Hedefi arar ve isaretleri ona baglar.
-
-	Her saniye cagriliyor: hedef bulunamamis olabilir (harita gec yuklenir),
-	oyuncu baska adaya gecmis olabilir (en yakin kum degisir), base yeni
-	atanmis olabilir.
-
-	HER CIKIS YOLU ISARETLERI KAPATIYOR. Eskiden "hedef bulundu ama
-	baglanacak bir parcasi yok" durumunda fonksiyon sessizce donuyordu ve
-	ONCEKI adimin isareti ekranda kaliyordu: kum gosterilmesi gerekirken
-	dedektif, fuse gosterilmesi gerekirken yine dedektif parliyordu.
-]]
 local function hedefiTazele()
-	--[[
-		Ogretici bitti: kurek ipucu aciksa KUREK MAGAZASI, ada ipucu aciksa
-		TELEPORTER isaretlenir; ikisi de kapaliysa hicbir sey.
-	]]
 	if bitti or siraNo <= 0 then
 		isaretleriKapat()
 
@@ -1181,13 +802,6 @@ local function hedefiTazele()
 			return
 		end
 
-		--[[
-			Kurek ipucunun hedefi listeden geliyor (Magaza betigiyle ayni
-			adlar); ada ipucununki Teleporter NPC'si.
-
-			EN YAKINI seciliyor: her adada bir Teleporter var, ilk bulunan
-			cogu zaman baska bir adadaki oluyordu.
-		]]
 		local npc = enYakinModel(
 			if kurekIpucuAcik() then KI.modeller else { Config.NPC.name, Config.NPC.altName }
 		)
@@ -1195,11 +809,6 @@ local function hedefiTazele()
 			return
 		end
 
-		--[[
-			IF-IFADESI IKI DEGER DONDURMEZ: baglanacak iki sey donduruyor,
-			"if ... then baglanacak(npc) else nil" yazilsaydi ikincisi
-			kaybolur ve isaret hic kurulmazdi.
-		]]
 		local adornee, isaretKoku = baglanacak(npc)
 		if not adornee or not isaretKoku then
 			return
@@ -1211,22 +820,10 @@ local function hedefiTazele()
 		hedefIkonunuKoy()
 		hedefTabela.Adornee = isaretKoku
 		hedefTabela.Enabled = true
-		-- NPC'nin (kurek saticisi / Teleporter) ustune ok cikmasin
 		yoluAc(kok, isaretKoku, npc)
 		return
 	end
 
-	--[[
-		HER TAZELEMEDE ONCE TEMIZLE.
-
-		Eskiden isaretler yalnizca "hedef bulunamadi" dallarinda kapatiliyordu
-		ve arada bir dal gozden kacinca ONCEKI adimin hedefi ekranda kaliyordu:
-		yonerge "Dig in the sand!" derken cizgi hala dedektife gidiyordu.
-
-		Simdi her tazeleme bos bir sayfayla basliyor. Hedef bulunursa ayni
-		karede yeniden aciliyor, bulunamazsa hicbir sey gorunmuyor -- yanlis
-		hedef gostermek imkansiz.
-	]]
 	isaretleriKapat()
 
 	local adim = Adimlar.adim(siraNo)
@@ -1248,33 +845,12 @@ local function hedefiTazele()
 
 	hedef = bulunan
 
-	--[[
-		TESHIS: hangi adimda neyin isaretlendigi Output'a bir kez dusuyor.
-		Adim ya da hedef degismedikce tekrar yazmiyor. "Kum kaz" derken
-		dedektifin isaretlenmesi gibi bir durum olursa sebebi buradan
-		gorulebilsin diye.
-	]]
 	local imza = `{siraNo}|{adim.hedef}|{bulunan:GetFullName()}`
 	if imza ~= sonTeshis then
 		sonTeshis = imza
 		print(`[Ogretici] adim {siraNo} ({adim.hedef}) -> {bulunan:GetFullName()}`)
 	end
 
-	--[[
-		KUM HEDEFINDE PARLAMA YOK: isaret gorunmez bir noktaya bagli, onu
-		parlatmanin anlami yok. Kum adiminda yol gosteren sey cizgi ve
-		ucundaki nokta.
-	]]
-	--[[
-		KUM ADIMINDA OYUNCU ZATEN ORADAYSA ISARET KAPANIR
-
-		"Uc tane ayni kademe kaz" adiminda oyuncu kumun uzerinde gezerken
-		sari cizgi pesini birakmiyordu. Artik kum isaretine yaklasinca
-		isaretler kapaniyor, alandan cikinca geri geliyor.
-
-		Ilk kazi bunun DISINDA: orada isaret oyuncunun yanindaki garanti
-		suzmeyi gosteriyor (sunucudan konum geliyor), kapanmamali.
-	]]
 	if adim.hedef == "kum" and not sunucuKonumu then
 		if (kok.Position - kumIsareti.Position).Magnitude <= KUM_YAKINLIK then
 			isaretleriKapat()
@@ -1282,22 +858,11 @@ local function hedefiTazele()
 		end
 	end
 
-	--[[
-		KIRMIZI ADIMLAR: slot ve para. Yerdeki kucuk parca bariz gorunsun
-		diye sari yerine kirmizi parlar (bkz. kirmiziParlama).
-	]]
 	local kirmiziMi = adim.id == "slot" or adim.id == "para"
 
 	kirmiziParlama.Adornee = if kirmiziMi then adornee else nil
 	kirmiziParlama.Enabled = kirmiziMi
 
-	--[[
-		KUM ADIMINDA PLAJIN TAMAMI BEYAZ PARLAR
-
-		Isaret noktasi gorunmez oldugu icin parlama ONA degil, altindaki kum
-		parcasina takiliyor. Cizgi ve nokta yine hedefi (ilk kazida garanti
-		suzmeyi) gosteriyor; parlama "kazi alani burasi" diyor.
-	]]
 	local sariAdornee: Instance? = if adim.hedef == "kum" then kumParcasi else adornee
 
 	parlama.Adornee = if not kirmiziMi then sariAdornee else nil
@@ -1307,15 +872,10 @@ local function hedefiTazele()
 	hedefTabela.Adornee = isaretKoku
 	hedefTabela.Enabled = true
 
-	-- Yolun iki ucu: karakterin govdesi ve hedefin govdesi. Dedektif ve fuse
-	-- makinesinin ustune ok cikmasin; base ve kumun ustunde yurunuyor.
 	local haric = if adim.hedef == "dedektif" or adim.hedef == "fuse" then bulunan else nil
 	yoluAc(kok, isaretKoku, haric)
 end
 
-------------------------------------------------------------------
--- SUNUCU
-------------------------------------------------------------------
 OgreticiDurum.OnClientEvent:Connect(function(veri)
 	if type(veri) ~= "table" then
 		return
@@ -1329,7 +889,6 @@ OgreticiDurum.OnClientEvent:Connect(function(veri)
 
 	if bitti then
 		gizle()
-		-- Ogretici bitti ama ada ipucu acik olabilir
 		yonergeyiYaz()
 		hedefiTazele()
 		return
@@ -1349,36 +908,20 @@ BaseGuncelle.OnClientEvent:Connect(function(veri)
 	end
 end)
 
---[[
-	Karakter yeniden dogunca yol eski govdeyi gosteriyor olur. Isaretler
-	kapatiliyor; asagidaki dongu bir saniye icinde hepsini yeni govdeye
-	baglayacak.
-]]
 player.CharacterAdded:Connect(isaretleriKapat)
 
---[[
-	Hedef aramasi saniyede bir. Her karede butun Workspace'i taramak pahali
-	ve gereksiz: hedefler yerinde duruyor, degisen sey oyuncunun nerede
-	oldugu.
-]]
 task.spawn(function()
 	while true do
 		task.wait(1)
-		-- Ogretici bittiyse de calisir: ada ipucu Teleporter'i isaretliyor
 		hedefiTazele()
 	end
 end)
 
--- Ipucu acilip kapandikca serit ve isaret aninda guncellensin
 player:GetAttributeChangedSignal(IP.nitelik):Connect(function()
 	yonergeyiYaz()
 	hedefiTazele()
 end)
 
---[[
-	HER KARE: arayuz halkasini dugmenin ustunde tut, kirmizi parlamayi
-	ve halkayi nabizlandir. Ogretici bittiyse ilk satirda cikar.
-]]
 RunService.RenderStepped:Connect(function()
 	if bitti or siraNo <= 0 then
 		return
@@ -1398,11 +941,6 @@ RunService.RenderStepped:Connect(function()
 
 	local dugme = halkaHedefi(adim.id)
 	if dugme then
-		--[[
-			Halka dugmeyi cember icine alir: en uzun kenarindan biraz genis
-			bir daire. Konum ekran pikseli; kabin ust cubuk boslugu ayni
-			oldugu icin AbsolutePosition dogrudan kullanilabiliyor.
-		]]
 		local boy = math.max(dugme.AbsoluteSize.X, dugme.AbsoluteSize.Y) + 26 + nabiz * 10
 		halka.Visible = true
 		halka.Size = UDim2.fromOffset(boy, boy)
@@ -1417,13 +955,6 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
---[[
-	DURUM GELENE KADAR SOR.
-
-	Sunucudaki kayit oyuncu girer girmez hazir olmuyor (DataStore okumasi);
-	tek bir istek yuklemeden once giderse cevapsiz kalir ve ogretici hic
-	baslamazdi. Cevap gelince dongu kendiliginden duruyor.
-]]
 task.spawn(function()
 	for _ = 1, 20 do
 		if cevapGeldi then

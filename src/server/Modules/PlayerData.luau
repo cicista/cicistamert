@@ -1,31 +1,4 @@
 --!strict
---[[
-	Oyuncu verisinin tek kaynagi.
-
-	Tutulan veri:
-	  rot        -- ana para birimi (pasif gelirle artar)
-	  luckyBlocks -- acilmayi bekleyen Lucky Block'lar, TURE gore: { Normal = 2 }
-	  shovel     -- sahip olunan TEK kurek (yenisi alininca eskisi silinir)
-	  inventory  -- envanterdeki brainrotlar (siyah veya acilmis)
-	  base       -- atanmis base indeksi (oturum boyunca)
-	  baseFloors -- base'te acilmis kat sayisi (1..3)
-	  baseSlots  -- acilmis toplam slot sayisi (10..30)
-	  lastReward -- son gunluk odulun alindigi an (os.time)
-	  rewardDay  -- gunluk odul takviminde siradaki gun (1..7)
-	  luckUntil  -- gecici sans carpaninin bitis ani (os.time)
-	  luckBonus  -- gecici sans carpani (1 = bonus yok)
-
-	Envanterdeki her brainrot:
-	  { uid, rarity, condition, mutation, name?, revealed }
-	  name yalnizca Detective temizledikten sonra dolar; o ana kadar
-	  oyuncu sadece rarity'yi gorur (simsiyah hal).
-
-	KAYIT  --  ProfileStore (Modules > ProfileStore)
-	  Her oyuncunun verisi bir OTURUM ile acilir: ayni anda yalnizca bir
-	  sunucu yazabilir. Oyuncu baska sunucuya gecerse yeni sunucu eskisinin
-	  son kaydini bekler. Veri yuklenemezse oyuncu atilir; bos veriyle
-	  devam edilmez (yoksa bos veri gercek kaydin ustune yazilirdi).
-]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -39,34 +12,21 @@ local Rods = require(Shared:WaitForChild("Rods"))
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Passler = require(Shared:WaitForChild("Passler"))
--- Gunluk odul takviminin gun sayisi (rewardDay sinirlari)
 local Rewards = require(Shared:WaitForChild("Rewards"))
 local Ores = require(Shared:WaitForChild("Ores"))
--- Canta kapasitesi ve yukseltme fiyatlari
 local Canta = require(Shared:WaitForChild("Canta"))
--- AFK sans puani tavani ve alan sayisi
 local AfkSans = require(Shared:WaitForChild("AfkSans"))
 local Gacha = require(Shared:WaitForChild("Gacha"))
--- Canta dolunca oyuncuyu uyarmak icin
 local Net = require(Shared:WaitForChild("Net"))
 
 export type InventoryItem = {
 	uid: string,
 	rarity: string,
 	condition: string,
-	-- Model ve gelir carpani (Normal, Gold, Lava, Diamond, Galaxy, Rainbow, Hacker)
 	mutation: string,
 	name: string?,
 	revealed: boolean,
-	-- Base'e yerlestirildiyse slot indeksi, degilse nil
 	slot: number?,
-	--[[
-		Kazildigi ada (kum, sekerkum, snowkum, alevkum, deniz).
-
-		Detective adi SECERKEN kullaniliyor: esya hangi adadan ciktiysa o
-		adanin listesinden isim aliyor. Eski kayitlarda yok; nil gelirse
-		ilk ada sayiliyor.
-	]]
 	island: string?,
 }
 
@@ -78,220 +38,83 @@ export type QuestState = {
 
 export type Data = {
 	rot: number,
-	-- Ikinci para birimi (HUD'da Rot'un altinda)
 	rotCoins: number,
 	luckyBlocks: { [string]: number },
-	--[[
-		SURELI GECISLER  --  { [gecisAdi] = bitecegi an (os.time) }
-
-		Playtime ve gunluk odullerden cikan gecici Auto Clicker / Teleporter
-		burada duruyor. Suresi gecenler yuklenirken temizlenir.
-	]]
 	tempPasses: { [string]: number },
-	-- Mutasyon scroll sayaclari (bkz. Shared > Scrolls)
 	scrolls: { [string]: number },
-	--[[
-		KADEMELI ESYALAR
-
-		Iki alan var: KUSANILAN kademe ve SAHIP OLUNAN EN YUKSEK kademe.
-		Oyuncu satin aldigi butun kademeleri kalici olarak tasir; saticidan
-		istedigi zaman alt kademeye geri donebilir (orn. daha kucuk barli
-		kurek isteyen oyuncu). Satin alma hep en yuksek kademeye bakar.
-	]]
 	shovel: string,
 	shovelMax: string,
 	detector: string,
 	detectorMax: string,
-	-- Olta: kusanilan ve sahip olunan en yuksek (hic yoksa nil)
 	rod: string?,
 	rodMax: string?,
-	-- Flyboard: kusanilan ve en yuksek (hic yoksa nil)
 	flyboard: string?,
 	flyboardMax: string?,
 	inventory: { InventoryItem },
 	base: number?,
-	-- Base gelisimi: kac kat acik ve toplam kac slot kullanilabilir
 	baseFloors: number,
 	baseSlots: number,
-	--[[
-		CANTA KAPASITESI  --  slota KONMAMIS brainrot siniri
-
-		20 ile baslar, Rot ile 5'er 5'er 100'e kadar buyur
-		(bkz. Shared > Canta). Base slotundaki brainrotlar bu sayiya
-		girmiyor' onlar base'de duruyor.
-	]]
 	inventoryMax: number,
-	-- Gunluk odul ve gecici sans
 	lastReward: number,
-	-- Gunluk odul takviminde siradaki gun (bkz. Shared > Rewards)
 	rewardDay: number,
 	luckUntil: number,
 	luckBonus: number,
-	-- Level sistemi (bkz. Shared > Seviye)
 	level: number,
 	xp: number,
-	-- Rewards > Social: alinan tek seferlik oduller ("group", "like") ve kullanilan kodlar
 	socialClaimed: { [string]: boolean },
 	redeemedCodes: { [string]: boolean },
-	--[[
-		REWARDS > PLAYTIME  --  gunluk
-
-		Basamaklar OTURUMA degil GUNE bagli: oyuncu cikip girince sayac
-		sifirlanmiyor, alinan basamaklar geri gelmiyor. Gun degisince
-		(playtimeGun) ikisi de sifirlanir.
-
-		playtimeGun   : hangi gun (os.time // 86400, UTC)
-		playtimeSure  : o gun oyunda gecirilen toplam saniye
-		playtimeAlinan: o gun alinan basamaklarin sirasi
-	]]
 	playtimeGun: number,
 	playtimeSure: number,
-	-- Anahtar METIN ("1", "2"): sayi anahtari karisirsa DataStore kaydi reddeder
 	playtimeAlinan: { [string]: boolean },
-	-- Detective'e birakilan toplu inceleme: { bitis = os.time, toplam, uids }
 	detectiveJob: any?,
-	-- Acilmis en yuksek ada indeksi (1 = sadece baslangic adasi)
 	islands: number,
-	--[[
-		KAZI YAPILAN EN ILERI ADA (Brainrots.IslandOrder kimligi)
-
-		Lucky Block, gunluk odul ve Fuse coin brainrotlari bu adaya KADAR
-		olan havuzdan seciliyor; oyuncu henuz gitmedigi adanin brainrotunu
-		bu yollardan da alamaz.
-	]]
 	reachedIsland: string,
-	-- Madenler: { Amethyst = 3, ... } (bkz. Shared > Ores)
 	ores: { [string]: number },
-	-- Satin alinmis kazmalar: { CandyPickaxe = true }
 	pickaxes: { [string]: boolean },
-	-- Arayuz olcegi yuzdesi (Settings > Interface Scale); 100 = varsayilan
 	uiScale: number,
-	--[[
-		SES AYARLARI
-
-		Yeni oyuncu VARSAYILAN_MUZIK / VARSAYILAN_SFX ile basliyor (bkz.
-		asagidaki sabitler). Tam sesle acmak fazla geliyordu: oyuncunun ilk
-		isi sesi kismak oluyordu, bazisi da hic acmadan sessize aliyordu.
-
-		Bir kez ayar yapan oyuncunun degeri kayitta; bu sabitler yalnizca
-		HIC ayar yapmamis olanlar icin gecerli.
-	]]
 	musicVolume: number,
 	musicMuted: boolean,
 	sfxVolume: number,
 	sfxMuted: boolean,
-	-- Ekran sarsintisi kapali mi (Settings > Screen Shake)
 	shakeOff: boolean,
-	-- Alinan hiz yukseltmesi sayisi (0..100, bkz. Shared > Hiz)
 	speedLevel: number,
-	-- Hiz rebirth sayisi (0..Hiz.MaxRebirth); arkadaki izin boyu ve rengi
 	speedRebirth: number,
-	--[[
-		AFK SANS  (bkz. Shared > AfkSans)
-
-		afkPuan  : yonca toplayarak biriken sans puani (0..MaxPuan)
-		afkSeviye: acilmis en yuksek yonca alani (1 = Common, 5 = Mythic)
-	]]
 	afkPuan: number,
 	afkSeviye: number,
-	-- Robux ile acilmis yonca alanlari (id -> true), bkz. Shared > AfkSans > Alan.robux
 	afkOzel: { [string]: boolean },
-	-- Yumurta gachasinda ust uste Infernal/Abyssal CIKMAYAN cevirme sayisi (bkz. Shared > Gacha)
 	gachaIska: number,
-	-- Gorev panosu: hangi yarim saatlik dilimdeyiz ve o dilimin ilerlemesi
 	quests: QuestState,
-	--[[
-		INDEX  --  kimligi ogrenilmis brainrot adlari
-
-		Esyanin kendisi degil BILGISI tutuluyor: oyuncu brainrotu satsa,
-		fuse etse, base'e koysa da Index'te kayitli kalir. Anahtar
-		brainrotun katalogdaki tam adi.
-	]]
 	discovered: { [string]: boolean },
-	--[[
-		MUTASYONLU INDEX  --  { Gold = { [brainrot adi] = true }, ... }
-
-		Yalnizca Mutations.IndexOrder'daki mutasyonlar tutulur. Normal
-		kesif (discovered) mutasyondan bagimsiz; bu tablo ayrica "Gold
-		haliyle de buldu mu" bilgisini tasir.
-	]]
 	discoveredMut: { [string]: { [string]: boolean } },
-	--[[
-		ISLENMIS ROBUX SATIN ALMALARI  --  { [PurchaseId] = os.time }
-
-		Roblox ayni fisi (receipt) birden fazla kez yollayabiliyor. Fis
-		burada kayitliysa urun ikinci kez VERILMEZ. Eski kayitlar yuklenirken
-		budaniyor (bkz. SATIN_ALMA_OMRU).
-	]]
 	purchases: { [string]: number },
-	--[[
-		OGRETICI  --  yeni oyuncunun ilk turu (bkz. Shared > Ogretici)
-
-		adim  : SIRADAKI adimin sira numarasi (1 = ilk adim)
-		bitti : butun adimlar tamamlandi; bir daha hic baslamaz
-
-		Eski kayitlarda bu alan yok; o oyuncular ogreticiyi gormus SAYILIR
-		(bitti = true). Aylardir oynayan birine "kuma git" demek sacma
-		olurdu.
-	]]
-	--[[
-		OGRETICI  --  adim, bitti mi ve ogretici sonrasi ada ipucu
-
-		kazilan : "uc tane kaz" adiminda kazilan brainrotlarin uid'leri
-		adaIpucu: 2. ada ipucu gosterildi ve tamamlandi mi (bir kez)
-	]]
 	tutorial: {
 		adim: number,
 		bitti: boolean,
 		kazilan: { string }?,
 		adaIpucu: boolean?,
-		-- kurekIpucu: ilk kurek ipucu gosterildi ve tamamlandi mi (bir kez)
 		kurekIpucu: boolean?,
 	},
 }
 
 local PlayerData = {}
 
---[[
-	SESIN VARSAYILAN SEVIYESI  (yuzde)
-
-	Yeni oyuncu bu degerlerle basliyor. Tam sesle acmak fazla geliyordu:
-	oyuncunun ilk isi sesi kismak oluyordu. Muzik arka planda kalsin,
-	efektler duyulsun ama bagirmasin.
-
-	Bir kez ayar yapan oyuncuyu ETKILEMEZ -- onun degeri kayitta duruyor.
-]]
 PlayerData.VarsayilanMuzik = 10
 PlayerData.VarsayilanSfx = 30
 
-
---[[
-	v3: ProfileStore'a gecisle sifirdan basladi. v1 ve v2 kayitlari
-	silinmedi, okunmuyor (oyun yayinlanmadan once yalnizca ekip verisiydi).
-]]
 local STORE_NAME = "BrainrotDig_v3"
 local ProfileStore = require(script.Parent:WaitForChild("ProfileStore"))
 
--- Eski sistemdeki otomatik kayit araligi korunuyor (ProfileStore varsayilani 300)
 ProfileStore.SetConstant("AUTO_SAVE_PERIOD", 120)
 
 local store = ProfileStore.New(STORE_NAME, {})
 
---[[
-	Studio'da kayit YOK (eski davranis): veriler bellekte, oyun kapaninca
-	gider. Canli veriyi Studio'dan denemek icin true yap; o zaman Game
-	Settings > Security > "Enable Studio Access to API Services" de acik olmali.
-]]
 local STUDIO_GERCEK_KAYIT = false
 local kaynak = if RunService:IsStudio() and not STUDIO_GERCEK_KAYIT then store.Mock else store
 
 local cache: { [Player]: Data } = {}
 local profiller: { [Player]: any } = {}
--- Yuklemesi suren oyuncular: ayni oyuncu icin ikinci yukleme baslamaz
 local yukleniyor: { [Player]: boolean } = {}
--- Veri bu kadar saniyede acilamazsa oyuncu atilir (bkz. PlayerData.load)
 local YUKLEME_SINIRI = 90
--- Oturumu release ile kapatilan (kendisi cikan) oyuncular
 local ayriliyor: { [Player]: boolean } = {}
 local uidCounter = 0
 
@@ -312,7 +135,6 @@ local function defaultData(): Data
 		flyboardMax = nil,
 		inventory = {},
 		base = nil,
-		-- 1. kat bedava gelir (bkz. Bases.Upgrade.startingSlots)
 		baseFloors = 1,
 		baseSlots = 10,
 		inventoryMax = Canta.Baslangic,
@@ -344,7 +166,6 @@ local function defaultData(): Data
 		afkOzel = {},
 		gachaIska = 0,
 		quests ={ cycle = 0, progress = {}, done = {} },
-		-- Yeni oyuncu ogreticinin ilk adiminda baslar
 		tutorial = { adim = 1, bitti = false },
 		discovered = {},
 		discoveredMut = {},
@@ -352,21 +173,8 @@ local function defaultData(): Data
 	}
 end
 
--- Kaydedilen veriyi mevcut sema ile birlestirir; eksik alanlari doldurur.
---[[
-	OYUNDAN KALDIRILAN BRAINROTLAR
-
-	Katalogdan bir brainrot cikarildiginda eski kayitlardaki kopyalari
-	ortada kalir: adi artik taninmadigi icin geliri 0 hesaplanir ve satista
-	da deger uretmez -- oyuncunun elinde ise yaramaz bir esya kalir.
-
-	Bu yuzden kayit yuklenirken boyle bir esya AYNI rarity havuzundan baska
-	bir brainrota cevriliyor. Oyuncu esyasini kaybetmiyor, kaldirilan isim de
-	oyunda hicbir yerde gorunmuyor.
-]]
 local degistirmeRng = Random.new()
 
--- Islenmis Robux fisleri bu kadar saniye saklanir (30 gun)
 local SATIN_ALMA_OMRU = 30 * 24 * 3600
 
 local function gecerliAd(name: any, rarity: any): string?
@@ -386,30 +194,21 @@ local function gecerliAd(name: any, rarity: any): string?
 	return pool[degistirmeRng:NextInteger(1, #pool)].name
 end
 
--- Kayittaki tek bir brainrot kaydini dogrular ve temiz bir kopya doner
 local function esyaOku(item: any): InventoryItem?
 	if type(item) ~= "table" or type(item.uid) ~= "string" or type(item.rarity) ~= "string" then
 		return nil
 	end
 
-	-- Katalogdan kaldirilmis bir isimse ayni rarity'den bir baskasi gelir
 	local ad = gecerliAd(item.name, item.rarity)
 
 	return {
 		uid = item.uid,
 		rarity = item.rarity,
 		condition = if type(item.condition) == "string" then item.condition else "Normal",
-		-- Mutasyon oncesi kayitlar Normal sayilir
 		mutation = if type(item.mutation) == "string" then item.mutation else "Normal",
 		name = ad,
-		-- Adsiz kalan esya "kimligi belirlenmemis" durumuna doner
 		revealed = item.revealed == true and ad ~= nil,
 		slot = tonumber(item.slot),
-		--[[
-			Ada KORUNMALI: eskiden burada dusuyordu ve yeniden girince
-			kimliksiz esya adasiz kaliyor, Detective butun havuzdan
-			isim veriyordu.
-		]]
 		island = if type(item.island) == "string" then item.island else nil,
 	} :: any
 end
@@ -421,36 +220,20 @@ local function migrate(raw: any): Data
 	end
 
 	data.rot = tonumber(raw.rot) or 0
-	-- Eski kayitlardaki Rot Coin bakiyesi de geri gelir
 	data.rotCoins = tonumber(raw.rotCoins) or 0
 
-	--[[
-		OGRETICI DURUMU
-
-		Alan YOKSA oyuncu ogreticiyi gormus sayilir: bu kayit ogretici
-		eklenmeden once acilmis, yani oyuncu oyunu zaten biliyor. Yalnizca
-		gercekten yeni kayitlar (defaultData) ogreticiye basliyor.
-	]]
 	local ogretici = if type(raw.tutorial) == "table" then raw.tutorial else nil
 	if ogretici then
 		data.tutorial = {
 			adim = math.max(1, math.floor(tonumber(ogretici.adim) or 1)),
 			bitti = ogretici.bitti == true,
-			-- Ada ipucu bir kez gosterilir; kayitta duruyorsa korunur
 			adaIpucu = ogretici.adaIpucu == true,
-			-- Ilk kurek ipucu de bir kez gosterilir
 			kurekIpucu = ogretici.kurekIpucu == true,
 		}
 	else
 		data.tutorial = { adim = 1, bitti = true }
 	end
 
-	--[[
-		SURELI GECISLER  --  suresi gecmis olanlar atilir
-
-		Zaman os.time ile mutlak; sunucu yeniden baslasa da oyuncu cikip
-		girse de kalan sure dogru hesaplanir.
-	]]
 	data.tempPasses = {}
 	if type(raw.tempPasses) == "table" then
 		local simdi = os.time()
@@ -462,9 +245,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	--[[
-		SCROLL SAYACLARI  --  eski kayitlarda yok, bos baslar
-	]]
 	data.scrolls = {}
 	if type(raw.scrolls) == "table" then
 		for id, adet in raw.scrolls do
@@ -475,10 +255,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	--[[
-		Eski kayitlarda luckyBlocks tek bir SAYIYDI (tur ayrimi yoktu).
-		O kayitlar Normal ture aktariliyor, yoksa oyuncunun bloklari ucardi.
-	]]
 	if type(raw.luckyBlocks) == "number" then
 		local count = math.max(0, math.floor(raw.luckyBlocks))
 		if count > 0 then
@@ -494,7 +270,6 @@ local function migrate(raw: any): Data
 	data.islands = math.max(1, tonumber(raw.islands) or 1)
 	data.reachedIsland = Brainrots.normalizeIsland(if type(raw.reachedIsland) == "string" then raw.reachedIsland else nil)
 
-	-- Maden oncesi kayitlarda bu alanlar yok; bos baslanir. Bilinmeyen kimlikler atilir.
 	if type(raw.ores) == "table" then
 		for id, count in raw.ores do
 			if Ores.get(id) and tonumber(count) then
@@ -510,20 +285,15 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	-- Ayar oncesi kayitlarda uiScale yok; varsayilan %100 ile acilir
 	data.uiScale = math.clamp(tonumber(raw.uiScale) or 100, 50, 150)
-	-- Ayar oncesi kayitlar da yeni varsayilanla acilir
 	data.musicVolume = math.clamp(tonumber(raw.musicVolume) or PlayerData.VarsayilanMuzik, 0, 100)
 	data.musicMuted = raw.musicMuted == true
 	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or PlayerData.VarsayilanSfx, 0, 100)
 	data.sfxMuted = raw.sfxMuted == true
 	data.shakeOff = raw.shakeOff == true
-	-- Hiz yukseltmesi oncesi kayitlar 0'dan baslar
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
-	-- AFK sans oncesi kayitlar sifir puan ve yalnizca Common alaniyla acilir
 	data.afkPuan = math.clamp(tonumber(raw.afkPuan) or 0, 0, AfkSans.MaxPuan)
-	-- Tavan yalnizca Rot ile SIRAYLA acilan alanlar (Robux alanlari ayri)
 	data.afkSeviye = math.clamp(math.floor(tonumber(raw.afkSeviye) or 1), 1, AfkSans.siraliSayi())
 	data.afkOzel = {}
 	if type(raw.afkOzel) == "table" then
@@ -536,29 +306,16 @@ local function migrate(raw: any): Data
 	end
 	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
 
-	-- Gelisim oncesi kayitlar 1 kat / 10 slot olarak acilir
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)
 	data.baseSlots = math.clamp(tonumber(raw.baseSlots) or 10, 10, 30)
-	-- Canta yukseltmesi oncesi kayitlar baslangic kapasitesiyle acilir
 	data.inventoryMax = Canta.duzelt(tonumber(raw.inventoryMax))
 
-	-- Odul oncesi kayitlarda bu alanlar yok; sifirdan baslarlar
 	data.lastReward = math.max(0, tonumber(raw.lastReward) or 0)
-	-- Takvim oncesi kayitlarda yok: 1. gunden baslarlar
 	data.rewardDay = math.clamp(math.floor(tonumber(raw.rewardDay) or 1), 1, #Rewards.Days)
 	data.luckUntil = math.max(0, tonumber(raw.luckUntil) or 0)
 	data.luckBonus = math.max(1, tonumber(raw.luckBonus) or 1)
-	-- Level sisteminden onceki kayitlar Level 1'den baslar
 	data.level = math.clamp(math.floor(tonumber(raw.level) or 1), 1, 100)
 	data.xp = math.max(0, math.floor(tonumber(raw.xp) or 0))
-	--[[
-		DETECTIVE ISI oyundan cikip girince de surer.
-
-		Yeni bicim: brainrotlar envanterden CIKIP isin icinde durur (items);
-		is bitince (bitti) oyuncu Detective'e gidip geri alir.
-		Eski bicimde yalnizca uid listesi vardi, esyalar envanterdeydi: onlar
-		asagida, envanter okunduktan sonra ise tasiniyor.
-	]]
 	local is = raw.detectiveJob
 	local eskiIsUidleri: { string }? = nil
 	if type(is) == "table" and type(is.bitis) == "number" then
@@ -587,7 +344,6 @@ local function migrate(raw: any): Data
 		}
 	end
 
-	-- Social Rewards (onceki kayitlarda yok: hic alinmamis sayilir)
 	data.socialClaimed = {}
 	data.redeemedCodes = {}
 	for alan, hedef in { socialClaimed = data.socialClaimed, redeemedCodes = data.redeemedCodes } do
@@ -600,13 +356,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	--[[
-		PLAYTIME  --  gun degistiyse sifirla
-
-		Kayittaki gun bugun degilse sayac da alinan basamaklar da sifirlanir;
-		boylece oduller HER GUN bir kez alinir. Eski kayitlarda alan yok,
-		onlar da sifirdan baslar.
-	]]
 	data.playtimeGun = tonumber(raw.playtimeGun) or 0
 	data.playtimeSure = math.max(0, tonumber(raw.playtimeSure) or 0)
 	data.playtimeAlinan = {}
@@ -614,7 +363,6 @@ local function migrate(raw: any): Data
 		for anahtar, deger in raw.playtimeAlinan do
 			local sira = tonumber(anahtar)
 			if sira and deger == true then
-				-- playtimeAl / playtimeAlindi metin anahtar kullaniyor
 				data.playtimeAlinan[tostring(sira)] = true
 			end
 		end
@@ -625,15 +373,6 @@ local function migrate(raw: any): Data
 		data.playtimeAlinan = {}
 	end
 
-	-- Fuse coinleri (coin sisteminden onceki kayitlarda bu alan yok)
-	--[[
-		COIN SISTEMI KALDIRILDI  --  eski coinler brainrota cevrilir
-
-		Fuse makinesi ve gorevler artik coin degil brainrot veriyor, Coin
-		Trader da yok. Kayitta coin kalan oyuncu kaybetmesin: her coin,
-		kendi kademesinden (oyuncunun ulastigi adaya gore) kimligi ACIK bir
-		brainrota donusur; boyut ve mutasyon coinden aynen gecer.
-	]]
 	if type(raw.coins) == "table" then
 		for _, coin in raw.coins do
 			if type(coin) ~= "table" or type(coin.rarity) ~= "string" then
@@ -667,19 +406,10 @@ local function migrate(raw: any): Data
 		data.detector = raw.detector
 	end
 
-	-- Flyboard oncesi kayitlarda bu alan yok; tahtasiz baslanir
 	if type(raw.flyboard) == "string" and Flyboard.exists(raw.flyboard) then
 		data.flyboard = raw.flyboard
 	end
 
-	--[[
-		EN YUKSEK KADEMELER
-
-		"Alt kademeye geri don" ozelliginden ONCEKI kayitlarda bu alanlar yok:
-		o kayitlarda kusanilan kademe ayni zamanda en yuksegidir, cunku satin
-		alma eskiyi siliyordu. Bu yuzden yoklarsa kusanilandan dolduruluyor --
-		hic kimse parasini verdigi kademeyi kaybetmiyor.
-	]]
 	if type(raw.shovelMax) == "string" and Shovels.Info[raw.shovelMax] then
 		data.shovelMax = raw.shovelMax
 	else
@@ -698,7 +428,6 @@ local function migrate(raw: any): Data
 		data.flyboardMax = data.flyboard
 	end
 
-	-- Olta oncesi kayitlarda bu alanlar yok; oltasiz baslanir
 	if type(raw.rod) == "string" and Rods.exists(raw.rod) then
 		data.rod = raw.rod
 	end
@@ -709,8 +438,6 @@ local function migrate(raw: any): Data
 		data.rodMax = data.rod
 	end
 
-	-- Skin sistemi kaldirildi: eski kayitlardaki skins/equipped okunmuyor, sonraki kayitta duser
-
 	if type(raw.inventory) == "table" then
 		for _, item in raw.inventory do
 			local kopya = esyaOku(item)
@@ -720,7 +447,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	-- Eski bicim Detective isi: esyalar envanterden isin icine tasinir
 	local isVerisi = data.detectiveJob
 	if eskiIsUidleri and isVerisi then
 		local istenen: { [string]: boolean } = {}
@@ -735,14 +461,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	--[[
-		INDEX GERI YUKLENIYOR
-
-		Katalogdan cikarilmis isimler ATILIYOR (envanterdeki esyalarda
-		oldugu gibi baska bir brainrota cevrilmiyor): Index bir kayit
-		defteri, oyuncuya gormedigi bir brainrotu gormus gibi yazmak
-		yanlis olur. Artik var olmayan isim de panelde cizilemez.
-	]]
 	if type(raw.discovered) == "table" then
 		for name, kesfedildi in raw.discovered do
 			if kesfedildi == true and type(name) == "string" and Brainrots.get(name) then
@@ -751,7 +469,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	-- Mutasyonlu Index: yalnizca Index'te gosterilen mutasyonlar ve katalogdaki adlar
 	if type(raw.discoveredMut) == "table" then
 		for _, mutasyon in Mutations.IndexOrder do
 			local kayit = raw.discoveredMut[mutasyon]
@@ -767,7 +484,6 @@ local function migrate(raw: any): Data
 		end
 	end
 
-	-- Robux fisleri: Roblox en fazla birkac gun tekrar dener, eskileri tutulmaz
 	data.purchases = {}
 	if type(raw.purchases) == "table" then
 		local sinir = os.time() - SATIN_ALMA_OMRU
@@ -786,21 +502,6 @@ function PlayerData.newUid(): string
 	return string.format("%d_%d", os.time() % 1000000, uidCounter)
 end
 
---[[
-	OYUNCU AYRILIRKEN, SON KAYITTAN ONCE calisan kancalar.
-
-	Baska sistemler oyuncunun esyalarini gecici olarak verisinden CIKARIP
-	kendilerinde tutabiliyor (ornegin Fuse makinesi, icine konan brainrotlari).
-	Bu kancalar o esyalari veriye geri yazar.
-
-	ProfileStore'un OnLastSave sinyaline bagli: oyuncu ciktiginda, sunucu
-	kapanirken ve baska sunucu oturumu devraldiginda -- uc durumda da son
-	kayittan HEMEN ONCE calisir, cache hala doludur.
-
-	KANCA BEKLEMEMELI (task.wait, Async cagri yok): ProfileStore kancayi
-	baslatir ve ilk beklemede kayda gecer; bekleyen kancanin sonrasi
-	kayda girmez.
-]]
 local beforeRelease: { (player: Player) -> () } = {}
 
 function PlayerData.onBeforeRelease(callback: (player: Player) -> ())
@@ -808,7 +509,6 @@ function PlayerData.onBeforeRelease(callback: (player: Player) -> ())
 end
 
 local function kancalariCalistir(player: Player)
-	-- Biri patlarsa digerleri ve kayit yine de calissin
 	for _, callback in beforeRelease do
 		local ok, err = pcall(callback, player)
 		if not ok then
@@ -821,13 +521,6 @@ local function oyunda(player: Player): boolean
 	return player.Parent == Players
 end
 
---[[
-	Oyuncunun verisini acar. Ayni oyuncu icin ikinci cagri yeni yukleme
-	baslatmaz, ilkinin bitmesini bekler.
-
-	nil donerse veri ACILAMADI: oyuncu atilmistir (ya da zaten cikmistir).
-	Cagiran taraf bos veriyle devam etmemeli.
-]]
 function PlayerData.load(player: Player): Data?
 	if cache[player] then
 		return cache[player]
@@ -842,15 +535,8 @@ function PlayerData.load(player: Player): Data?
 
 	yukleniyor[player] = true
 
-	--[[
-		Cancel verilince ProfileStore kendi 120 sn'lik siniri KAPATIYOR;
-		sinir burada. DataStore coktugunde oyuncu bozuk oyunda sonsuza kadar
-		beklemesin, atilsin. Oturum devri (~40 sn) bu sureye sigar.
-	]]
-	-- Yukleme basarisiz: bekleyenler serbest kalir, oyuncu atilir
 	local function vazgec(sebep: string): nil
 		yukleniyor[player] = nil
-		-- Sunucu kapaniyorsa oyuncu zaten cikarilacak; "yuklenemedi" demek yaniltir
 		if oyunda(player) and not ProfileStore.IsClosing then
 			warn(`[PlayerData] {player.Name} verisi acilamadi ({sebep}), oyuncu atiliyor`)
 			player:Kick("Your data could not be loaded. Please rejoin in a moment.")
@@ -859,10 +545,8 @@ function PlayerData.load(player: Player): Data?
 	end
 
 	local baslangic = os.clock()
-	-- ProfileStore hata da firlatabilir; yakalanmazsa yukleniyor hep true kalirdi
 	local basladi, profile = pcall(function()
 		return kaynak:StartSessionAsync(tostring(player.UserId), {
-			-- Oyuncu yukleme sirasinda cikarsa ya da sure dolarsa istek birakilir
 			Cancel = function()
 				return not oyunda(player) or os.clock() - baslangic > YUKLEME_SINIRI
 			end,
@@ -876,7 +560,6 @@ function PlayerData.load(player: Player): Data?
 		return vazgec("oturum acilamadi")
 	end
 
-	-- Oturum acilirken oyuncu cikti: veriyi hemen birak, cache'e koyma
 	if not oyunda(player) then
 		yukleniyor[player] = nil
 		profile:EndSession()
@@ -885,15 +568,10 @@ function PlayerData.load(player: Player): Data?
 
 	profile:AddUserId(player.UserId)
 
-	-- Yeni profil bos tablo gelir: ogreticiyle baslayan temiz veri alir
 	local okundu, data = pcall(function(): Data
 		return if next(profile.Data) == nil then defaultData() else migrate(profile.Data)
 	end)
 	if not okundu then
-		--[[
-			Kayit okunamadi. Oturum kapatilir: profile.Data hala kayittaki ham
-			veri, yani son kayit ayni veriyi geri yazar -- hicbir sey kaybolmaz.
-		]]
 		profile:EndSession()
 		return vazgec(`kayit okunamadi: {tostring(data)}`)
 	end
@@ -906,8 +584,6 @@ function PlayerData.load(player: Player): Data?
 	profile.OnSessionEnd:Connect(function()
 		profiller[player] = nil
 		cache[player] = nil
-		-- Oturumu baska sunucu devraldi: bu sunucudaki kopya artik kaydedilmiyor
-		-- Normal cikista (release) ve sunucu kapanirken atma yok
 		local cikiyor = ayriliyor[player]
 		ayriliyor[player] = nil
 		if oyunda(player) and not cikiyor and not ProfileStore.IsClosing then
@@ -925,10 +601,6 @@ function PlayerData.get(player: Player): Data?
 	return cache[player]
 end
 
---[[
-	Veri yuklenene kadar bekler. Oyuncu cikarsa (ya da veri acilamayip
-	atilirsa) nil doner.
-]]
 function PlayerData.bekle(player: Player): Data?
 	while oyunda(player) and cache[player] == nil do
 		task.wait(0.25)
@@ -936,14 +608,6 @@ function PlayerData.bekle(player: Player): Data?
 	return cache[player]
 end
 
---[[
-	ROBUX FISI KAYDA ULASTI MI  --  bkz. RobuxMagaza > ProcessReceipt
-
-	Fis data.purchases'a yazildiktan sonra cagrilir. Kaydi hemen baslatir
-	ve fis DataStore'daki son kayitta (LastSavedData) gorunene kadar bekler.
-	true donerse PurchaseGranted donulebilir; false ise NotProcessedYet
-	donulmeli -- fis bellekte kalir, Roblox tekrar dener.
-]]
 local FIS_KAYIT_SURESI = 30
 
 function PlayerData.fisKaydedildi(player: Player, fisId: string): boolean
@@ -961,7 +625,6 @@ function PlayerData.fisKaydedildi(player: Player, fisId: string): boolean
 		return true
 	end
 
-	-- Studio'da (mock) de gercek kayit gibi calisir; ek bir durum yok
 	profile:Save()
 
 	local sinir = os.clock() + FIS_KAYIT_SURESI
@@ -971,39 +634,14 @@ function PlayerData.fisKaydedildi(player: Player, fisId: string): boolean
 	return kayitli()
 end
 
--- Oyuncu ayrildi: kancalar (OnLastSave) ve son kayit ProfileStore'da
 function PlayerData.release(player: Player)
 	local profile = profiller[player]
 	if profile then
-		-- OnSessionEnd bunu gorup "baska sunucu" diye atmaz
 		ayriliyor[player] = true
 		profile:EndSession()
 	end
 end
 
-------------------------------------------------------------------
--- ENVANTER YARDIMCILARI
-------------------------------------------------------------------
-
---[[
-	island: brainrotun HANGI ADADAN cikitigi.
-
-	Kazi aninda adi henuz belli degil (Detective acana kadar gizli), o
-	yuzden ada esyanin uzerinde tasiniyor ve isim SECILIRKEN kullaniliyor
-	-- boylece Snow adasindan kazilan bir Epic, Snow'un Epic listesinden
-	cikiyor.
-
-	Eski kayitlarda bu alan yok; nil gelirse butun havuza dusuluyor.
-]]
---[[
-	CANTA DOLU UYARISI
-
-	Uyari BURADA veriliyor cunku dolulugu gorebilen tek yer burasi; kazi,
-	olta, Fuse ve Lucky Block yollarinin hepsi addBrainrot'tan geciyor.
-
-	SEYRELTILIYOR: oyuncu canta doluyken kazmaya devam ederse her vurusta
-	bir bildirim cikardi. Ayni oyuncuya UYARI_ARASI saniyede bir kez.
-]]
 local UYARI_ARASI = 6
 local sonDoluUyarisi: { [Player]: number } = {}
 
@@ -1024,12 +662,6 @@ local function cantaDoluUyar(player: Player, data: Data)
 	end)
 end
 
---[[
-	CANTADAKI (slota konmamis) brainrot sayisi.
-
-	Base slotundakiler sayilmiyor: onlar base'de duruyor ve kendi
-	siniri var (bkz. Shared > Bases > Upgrade).
-]]
 function PlayerData.cantaSayisi(player: Player): number
 	local data = cache[player]
 	if not data then
@@ -1045,17 +677,11 @@ function PlayerData.cantaSayisi(player: Player): number
 	return n
 end
 
--- Cantanin su anki kapasitesi
 function PlayerData.cantaKapasitesi(player: Player): number
 	local data = cache[player]
 	return if data then Canta.duzelt(data.inventoryMax) else Canta.Baslangic
 end
 
---[[
-	Kapasiteyi bir adim buyutur. Odeme CAGIRAN tarafta yapiliyor
-	(bkz. ServerScriptService > Envanter kapasitesi); burasi yalnizca
-	sayiyi artiriyor. Buyutulemezse false doner.
-]]
 function PlayerData.cantayiYukselt(player: Player): boolean
 	local data = cache[player]
 	if not data then
@@ -1077,7 +703,6 @@ function PlayerData.addBrainrot(
 	condition: string,
 	mutation: string?,
 	island: string?,
-	-- Robux ile alinan odul: canta dolu olsa da girer (para geri verilemiyor)
 	kapasiteyiGec: boolean?
 ): InventoryItem?
 	local data = cache[player]
@@ -1085,13 +710,6 @@ function PlayerData.addBrainrot(
 		return nil
 	end
 
-	--[[
-		CANTA DOLUYSA BRAINROT ALINMIYOR
-
-		Denetim BURADA, cagiran yerlerde degil: kazi, olta, Fuse, Lucky
-		Block ve gorev odulu -- hepsi bu fonksiyondan geciyor, tek satirla
-		hepsi kapsaniyor. Cagiranlar zaten nil donusunu bekliyor.
-	]]
 	if not kapasiteyiGec and PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
 		cantaDoluUyar(player, data)
 		return nil
@@ -1108,17 +726,6 @@ function PlayerData.addBrainrot(
 		island = island,
 	}
 
-	--[[
-		DETECTIVE PASS  --  kimlik dedektife ugramadan acilir
-
-		Pass sahibinin kazdigi ve oltadan cikardigi her brainrot ACIK gelir:
-		isim burada, dedektifin yaptigi isin aynisiyla seciliyor (kazildigi
-		adanin havuzundan). Mutasyon zaten esyanin uzerinde, acilinca
-		gorunur oluyor.
-
-		Kanca BURADA, cagiran yerlerde degil: kazi, olta ve sonradan
-		eklenecek her yol bu fonksiyondan geciyor, tek satirla hepsi kapsanir.
-	]]
 	if Passler.sahip(player, "DetectivePass") then
 		local secilen = Brainrots.rollIsland(rarity :: any, island, Random.new())
 		if secilen then
@@ -1131,13 +738,6 @@ function PlayerData.addBrainrot(
 	return item
 end
 
---[[
-	INDEX'E BIR BRAINROT ISLE
-
-	Yeni kayit eklendiyse true doner (cagiran taraf "yeni kesif" bildirimi
-	gostermek isterse kullanir). Katalogda olmayan ad yok sayilir.
-]]
--- Maden ekler (eksi deger duser); yeni adedi doner
 function PlayerData.addOre(player: Player, oreId: string, amount: number): number
 	local data = cache[player]
 	if not data or not Ores.get(oreId) then
@@ -1158,7 +758,6 @@ function PlayerData.hasPickaxe(player: Player, pickaxeId: string?): boolean
 	return data ~= nil and pickaxeId ~= nil and data.pickaxes[pickaxeId] == true
 end
 
--- Kazi yapilan adayi kaydeder; yalnizca ILERI gider
 function PlayerData.reachIsland(player: Player, island: string?)
 	local data = cache[player]
 	if not data or not island then
@@ -1190,19 +789,11 @@ function PlayerData.discover(player: Player, name: string?): boolean
 	return true
 end
 
--- Index panelinin okudugu kesif tablosu; salt okunur kullanilmali
 function PlayerData.discovered(player: Player): { [string]: boolean }
 	local data = cache[player]
 	return if data then data.discovered else {}
 end
 
---[[
-	PLAYTIME  --  gunluk sayac
-
-	Dort islem de once GUNU denetler: kayittaki gun bugun degilse sayac ve
-	alinan basamaklar sifirlanir. Boylece oyuncu gece yarisini oyunun
-	icinde gecirse bile oduller yenilenir -- girise cikisa bagli degil.
-]]
 local function playtimeGunuTazele(data: Data)
 	local bugun = os.time() // 86400
 	if data.playtimeGun ~= bugun then
@@ -1212,7 +803,6 @@ local function playtimeGunuTazele(data: Data)
 	end
 end
 
--- O gun toplanan sureye ekleme yapar ve yeni toplami dondurur
 function PlayerData.playtimeEkle(player: Player, saniye: number): number
 	local data = cache[player]
 	if not data then
@@ -1225,7 +815,6 @@ function PlayerData.playtimeEkle(player: Player, saniye: number): number
 	return data.playtimeSure
 end
 
--- O gun oyunda gecirilen toplam sure
 function PlayerData.playtimeSuresi(player: Player): number
 	local data = cache[player]
 	if not data then
@@ -1235,7 +824,6 @@ function PlayerData.playtimeSuresi(player: Player): number
 	return data.playtimeSure
 end
 
--- Basamak bugun alindi mi
 function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
 	local data = cache[player]
 	if not data then
@@ -1245,7 +833,6 @@ function PlayerData.playtimeAlindi(player: Player, sira: number): boolean
 	return data.playtimeAlinan[tostring(sira)] == true
 end
 
--- Basamagi alinmis isaretler; bugun ilk kez aliniyorsa true
 function PlayerData.playtimeAl(player: Player, sira: number): boolean
 	local data = cache[player]
 	if not data then
@@ -1260,13 +847,11 @@ function PlayerData.playtimeAl(player: Player, sira: number): boolean
 	return true
 end
 
--- Index'te gosterilen mutasyonlar (Mutations.IndexOrder) kume olarak
 local indexMutasyonu: { [string]: boolean } = {}
 for _, mutasyon in Mutations.IndexOrder do
 	indexMutasyonu[mutasyon] = true
 end
 
--- Brainrotu bu mutasyonla bulunmus olarak isaretler; yeni kesifse true
 function PlayerData.discoverMutation(player: Player, name: string?, mutation: string?): boolean
 	if type(name) ~= "string" or type(mutation) ~= "string" or not indexMutasyonu[mutation] then
 		return false
@@ -1290,7 +875,6 @@ function PlayerData.discoverMutation(player: Player, name: string?, mutation: st
 	return true
 end
 
--- Mutasyonlu kesif tablosu; salt okunur kullanilmali
 function PlayerData.discoveredMutations(player: Player): { [string]: { [string]: boolean } }
 	local data = cache[player]
 	return if data then data.discoveredMut else {}
@@ -1323,7 +907,6 @@ function PlayerData.removeItem(player: Player, uid: string): InventoryItem?
 	return nil
 end
 
--- Base'e yerlestirilmis brainrotlar (gelir hesabi bunlari kullanir)
 function PlayerData.placedItems(player: Player): { InventoryItem }
 	local data = cache[player]
 	if not data then
@@ -1339,7 +922,6 @@ function PlayerData.placedItems(player: Player): { InventoryItem }
 	return out
 end
 
--- Rot Coin ekler (eksi deger duser, sifirin altina inmez)
 function PlayerData.addRotCoins(player: Player, amount: number)
 	local data = cache[player]
 	if not data then
@@ -1356,10 +938,6 @@ function PlayerData.addRot(player: Player, amount: number)
 	data.rot = math.max(0, data.rot + amount)
 end
 
---[[
-	Gecici sans carpani. Suresi dolduysa 1 doner ve kayit temizlenir,
-	boylece eski bonus veride birikmez.
-]]
 function PlayerData.luckBonus(player: Player): number
 	local data = cache[player]
 	if not data then
@@ -1395,12 +973,6 @@ function PlayerData.addLuckyBlocks(player: Player, tierId: string, amount: numbe
 	data.luckyBlocks[tierId] = if next > 0 then next else nil
 end
 
---[[
-	SCROLL SAYACI  --  bkz. Shared > Scrolls
-
-	Eksi miktar da gecerli: kullanilinca -1 ile cagriliyor. Sayac sifirin
-	altina dusmez ve sifirlanan tur tablodan silinir (kayit sismesin).
-]]
 function PlayerData.addScroll(player: Player, scrollId: string, amount: number): number
 	local data = cache[player]
 	if not data then
@@ -1425,18 +997,9 @@ function PlayerData.luckyBlockCount(player: Player, tierId: string): number
 	return data.luckyBlocks[tierId] or 0
 end
 
-------------------------------------------------------------------
--- OTURUM
-------------------------------------------------------------------
-
---[[
-	Otomatik kayit (120 sn) ve sunucu kapanirken son kayit ProfileStore'da;
-	kapanista da OnLastSave, yani ayrilma kancalari calisir.
-]]
 Players.PlayerRemoving:Connect(function(player)
 	PlayerData.release(player)
 	sonDoluUyarisi[player] = nil
-	-- OnSessionEnd release icinde hemen calisir; burasi yalnizca yedek temizlik
 	ayriliyor[player] = nil
 end)
 

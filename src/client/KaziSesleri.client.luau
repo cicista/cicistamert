@@ -1,27 +1,3 @@
---[[
-	KaziSesleri  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > KaziSesleri
-
-	Iki kisiye ozel ses (yalnizca bu oyuncu duyar, SoundService:PlayLocalSound):
-
-	    SUZME SESI  -- BU OYUNCUNUN suzmesi dogunca (baskasinin suzmesinde calmaz)
-	    KAZI SESI   -- bu oyuncu kaziya basladigi AN (kumda / madende; denizde olta
-	                   atarken calmaz)
-	    KAZI DONGUSU -- "Dirt Digging": kazi SURDUGU SURECE calar, kazi
-	                   bitince susar. Ses kendi uzunlugunda DONMEZ: her
-	                   DONGU_ARALIGI (0.4 sn) saniyede basa sarilir --
-	                   kurek ve kazma animasyonlarinin vurus hiziyla ayni
-
-	Sesler Studio'ya elle konan Sound'lar; ADIYLA bulunur. Turkce harfler,
-	buyuk/kucuk harf, bosluk, _ ve - yok sayilir:
-	    "süzmeses", "Süzme Ses", "SuzmeSes"  -> suzme sesi
-	    "kazı", "Kazi Sesi", "KAZI"          -> kazi sesi
-	SoundService, Workspace ya da ReplicatedStorage icinde olabilir.
-
-	Suzme sesi oyuna girildiginde ZATEN VAR OLAN suzmeler icin calmaz; her
-	suzme icin yalnizca bir kez calar.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -29,16 +5,13 @@ local Workspace = game:GetService("Workspace")
 
 local localPlayer = Players.LocalPlayer
 
-------------------------------------------------------------------
--- SES BULMA
-------------------------------------------------------------------
 local HARFLER = {
-	["\u{FC}"] = "u", ["\u{DC}"] = "u", -- u noktali
-	["\u{131}"] = "i", ["\u{130}"] = "i", -- noktasiz i / noktali buyuk I
-	["\u{15F}"] = "s", ["\u{15E}"] = "s", -- s cengelli
-	["\u{E7}"] = "c", ["\u{C7}"] = "c", -- c cengelli
-	["\u{F6}"] = "o", ["\u{D6}"] = "o", -- o noktali
-	["\u{11F}"] = "g", ["\u{11E}"] = "g", -- yumusak g
+	["\u{FC}"] = "u", ["\u{DC}"] = "u",
+	["\u{131}"] = "i", ["\u{130}"] = "i",
+	["\u{15F}"] = "s", ["\u{15E}"] = "s",
+	["\u{E7}"] = "c", ["\u{C7}"] = "c",
+	["\u{F6}"] = "o", ["\u{D6}"] = "o",
+	["\u{11F}"] = "g", ["\u{11E}"] = "g",
 }
 
 local function sade(ad: string): string
@@ -70,7 +43,6 @@ end
 local function cal(kayit: SesKaydi)
 	local ses = kayit.ses
 	if not ses or not ses.Parent then
-		-- Bulunamadiysa en fazla 5 saniyede bir aranir
 		local simdi = os.clock()
 		if simdi - kayit.sonArama < 5 then
 			return
@@ -93,17 +65,12 @@ end
 
 local suzmeSesi = sesKaydi("suzme")
 local kaziSesi = sesKaydi("kazi")
--- Kazi SURDUKCE dongude calan ses ("Dirt Digging")
 local kaziDongusu = sesKaydi("dirtdigging")
 
-------------------------------------------------------------------
--- SUZME DOGUNCA
-------------------------------------------------------------------
 task.spawn(function()
 	local klasor = Workspace:WaitForChild("IsikSuzmeleri")
 	local gorulen: { [string]: boolean } = {}
 
-	-- Girildiginde zaten olanlar sessizce isaretlenir
 	for _, model in klasor:GetChildren() do
 		local id = model:GetAttribute("BeamId")
 		if type(id) == "string" then
@@ -124,21 +91,8 @@ task.spawn(function()
 	end)
 end)
 
-------------------------------------------------------------------
--- KAZI BASLAYINCA
---
--- Sunucu kazi BASLAR BASLAMAZ (hazirlik beklemesinden once) karaktere
--- "Kaziyor" niteligini yazar; yalnizca kumda ve madende, denizde yazmaz
--- (bkz. ServerScriptService > KaziSistemi). Ses tam o an calar.
-------------------------------------------------------------------
---[[
-	KAZI DONGUSU: kazi basladiginda "Dirt Digging" sesinin bir KOPYASI bu
-	oyuncunun SoundService'ine konup dongude calar (yalnizca bu oyuncu duyar);
-	kazi bitince (nitelik kalkinca) ya da karakter degisince durup silinir.
-]]
 local donguSesi: Sound? = nil
 
--- Kazi sesi bu kadar saniyede bir basa sarilir (kurek ve kazma vurusu)
 local DONGU_ARALIGI = 0.4
 
 local function donguyuDurdur()
@@ -168,7 +122,6 @@ local function donguyuBaslat()
 
 	local kopya = kaynak:Clone()
 	kopya.Name = "KaziDongusu"
-	-- Kendi basina donmez; asagidaki dongu her 0.4 sn'de basa sarar
 	kopya.Looped = false
 	kopya.Parent = SoundService
 	donguSesi = kopya

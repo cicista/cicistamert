@@ -1,22 +1,4 @@
 --!strict
---[[
-	PassSayaci  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > PassSayaci
-
-	Odulden cikan SURELI gecislerin kalan suresini ekranin sag ustunde
-	gosterir: gecisin ikonu ve yanindaki geri sayim.
-
-	    [kilic] 14:52      (Auto Clicker, 15 dakikalik)
-	    [ok]    11:59:03   (Teleporter, 12 saatlik)
-
-	SURE NITELIKTEN OKUNUYOR. Sunucu sureli hakki verirken bitis anini
-	oyuncunun ustune yaziyor (bkz. Modules > SureliGecis):
-
-	    player:GetAttribute("PassSure_AutoClicker")  -- os.time cinsinden
-
-	Yani burasi sunucuya hic soru sormuyor; nitelik degisince satir cikiyor,
-	sure bitince kendiliginden kayboluyor.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,13 +12,8 @@ local Passler = require(Shared:WaitForChild("Passler"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
--- Sunucudaki onadla ayni (bkz. Modules > SureliGecis)
 local SURE_ONADI = "PassSure_"
 
---[[
-	Hangi gecis hangi ikonla gorunsun. Auto Clicker kazi minigame'inde
-	calistigi icin kurek/kilic ikonu, Teleporter da kendi ikonuyla.
-]]
 local IKONLAR: { [string]: string } = {
 	AutoClicker = "shovel",
 	Teleporter = "teleporter",
@@ -44,7 +21,6 @@ local IKONLAR: { [string]: string } = {
 
 local ekran = Instance.new("ScreenGui")
 ekran.Name = "PassSayaci"
--- HUD katmani: menu butonlarinin ve panellerin altinda
 ekran.DisplayOrder = 2
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -53,7 +29,6 @@ ekran.Parent = playerGui
 local liste = Instance.new("Frame")
 liste.Name = "Sayaclar"
 liste.AnchorPoint = Vector2.new(1, 0)
--- Sag ust: Store butonunun altinda kalacak kadar asagida
 liste.Position = UDim2.new(1, -16, 0, 150)
 liste.Size = UDim2.fromOffset(190, 0)
 liste.AutomaticSize = Enum.AutomaticSize.Y
@@ -67,7 +42,6 @@ dizilim.Padding = UDim.new(0, 6)
 dizilim.SortOrder = Enum.SortOrder.LayoutOrder
 dizilim.Parent = liste
 
--- Kalan sure: "14:52" ya da "11:59:03"
 local function sureYazisi(saniye: number): string
 	local t = math.max(0, math.floor(saniye))
 	if t >= 3600 then
@@ -117,10 +91,6 @@ local function satirKur(gecisAdi: string, siraNo: number): Satir
 	yazi.Name = "Sure"
 
 	if info then
-		--[[
-			Gecisin adi kutuya sigmiyor; uzerine gelince gorunsun diye
-			ipucu olarak duruyor.
-		]]
 		kap.Name = info.ad
 	end
 

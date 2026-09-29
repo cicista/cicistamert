@@ -1,32 +1,8 @@
---[[
-	HataEkrani  (LocalScript)  --  YALNIZCA STUDIO
-	Yeri: StarterPlayer > StarterPlayerScripts > HataEkrani
-
-	Hata ve uyarilari oyun ekraninin sag altinda gosterir; Output penceresini
-	acmadan hangi scriptin nerede bozuldugu gorulsun diye.
-
-	    - istemcideki hata / uyarilar (script baslamadan onceki gecmis dahil)
-	    - sunucudaki hata / uyarilar (ServerScriptService > HataIletici yollar)
-
-	GURULTU GOSTERILMEZ: bizim kodumuzla ilgisi olmayan bilinen mesajlar
-	(Studio'da DataStore kapali, ikon paketinde olmayan ikon) ayiklanir.
-	Kutu X ile kapanir; yeni hata gelmezse 20 saniye sonra kendiliginden
-	gizlenir, yeni hata gelince tekrar acilir.
-
-	Hicbir modul kullanmaz: diger scriptler bozuk olsa da calisir.
-	Yayinlanan oyunda (Studio disinda) hicbir sey yapmaz.
-]]
-
 local LogService = game:GetService("LogService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
---[[
-	KAPALI: ekip hata kutusunu Studio'da da gormek istemiyor. Hatalar yine
-	Output penceresinde. Tekrar acmak icin ACIK = true yap (HataEkrani ve
-	HataIletici ikisinde de).
-]]
 local ACIK = false
 if not ACIK then
 	return
@@ -39,10 +15,9 @@ end
 local EN_FAZLA = 14
 local KENDILIGINDEN_KAPANMA = 20
 
--- Gosterilmeyecek bilinen mesajlar (duz metin parcasi)
 local YOKSAY = {
-	"StudioAccessToApisNotAllowed", -- Studio'da DataStore izni kapali (Oyun Ayarlari > Guvenlik)
-	"ikon hazir, BULUNAMAYAN", -- ikon paketinde olmayan ikon; kullanilmiyor
+	"StudioAccessToApisNotAllowed",
+	"ikon hazir, BULUNAMAYAN",
 	"HataEkrani",
 }
 
@@ -104,7 +79,6 @@ local function ekle(kaynak: string, mesaj: string, tur: Enum.MessageType)
 	end
 	local etiket = if tur == Enum.MessageType.MessageError then "HATA" else "uyari"
 	local satir = `[{kaynak} {etiket}] {mesaj}`
-	-- Ayni mesaj tekrar gelince listeyi sisirmesin
 	if table.find(satirlar, satir) then
 		return
 	end

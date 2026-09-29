@@ -1,31 +1,10 @@
 --!strict
---[[
-	ROTCOIN MAGAZASI  --  urunler ve fiyatlar
-
-	Sol menudeki Rot Coin butonu bu magazayi acar (eski Pets butonunun yeri).
-	Satin alma SUNUCUDA dogrulanir (bkz. ServerScriptService > RotCoinMagaza);
-	istemci yalnizca urunun id'sini yollar.
-
-	URUN TURLERI
-	  luckyblock -- cantaya Lucky Block girer
-	  potion     -- belirli sure kazida sans carpani (PlayerData.grantLuck)
-
-	SANS IKSIRI KURALLARI
-	  - Ayni iksirden tekrar alinirsa SURE UZAR (en fazla MaxPotionSeconds).
-	  - Daha guclu iksir alinirsa zayif olanin yerini alir.
-	  - Guclu iksir aktifken zayif olan alinamaz (Rot Coin bosa gitmesin).
-	  - Arkadas buffi ile carpilir, ikisi birlikte calisir.
-
-	Fiyatlari degistirmek icin yalnizca bu dosyayi duzenle; panel de sunucu
-	da buradan okuyor.
-]]
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Scrolls = require(script.Parent.Scrolls)
 
 local RotCoinMagaza = {}
 
--- Ust uste alinan iksirlerin toplam suresi en fazla (saniye). 7200 = 2 saat
 RotCoinMagaza.MaxPotionSeconds = 7200
 
 export type Urun = {
@@ -34,22 +13,16 @@ export type Urun = {
 	name: string,
 	desc: string,
 	price: number,
-	-- Icons.Map kisa adi
 	icon: string,
 	color: Color3,
-	-- Ikon urunun renginde hafifce boyansin mi
 	tint: boolean?,
-	-- luckyblock
 	tier: string?,
 	amount: number?,
-	-- scroll (bkz. Shared > Scrolls)
 	scroll: string?,
-	-- potion
 	multiplier: number?,
 	seconds: number?,
 }
 
--- Lucky Block fiyatlari (Rot Coin). Yazilmayan tur: sirasi x 5
 local LUCKY_FIYAT: { [string]: number } = {
 	Normal = 3,
 	Golden = 8,
@@ -58,10 +31,6 @@ local LUCKY_FIYAT: { [string]: number } = {
 
 local urunler: { Urun } = {}
 
---[[
-	Kazidan CIKMAYAN kademeler (dropWeight 0) burada satilmaz: Hacker Lucky
-	Block yalnizca Robux magazasinda (bkz. Shared > RobuxMagaza).
-]]
 for _, tur in LuckyBlock.Tiers do
 	if tur.dropWeight <= 0 then
 		continue
@@ -81,12 +50,6 @@ for _, tur in LuckyBlock.Tiers do
 	})
 end
 
---[[
-	MUTASYON SCROLL'LARI  --  bkz. Shared > Scrolls
-
-	Fiyat ve aciklama scroll tanimindan geliyor; buraya yeni bir satir
-	yazmak gerekmiyor, Scrolls.Order'a eklemek yetiyor.
-]]
 for _, id in Scrolls.Order do
 	local info = Scrolls.get(id)
 	if info then
@@ -104,16 +67,6 @@ for _, id in Scrolls.Order do
 	end
 end
 
---[[
-	SANS IKSIRLERI  --  iki sure: 5 / 15 dakika
-
-	Sure uzadikca carpan da yukseliyor; en gucluleri Robux magazasindaki
-	x3'un altinda kaliyor ki Rot Coin ile Robux urunleri birbirini yemesin
-	(bkz. Shared > RobuxMagaza > MegaLuck).
-
-	Kurallar degismedi: ayni iksir tekrar alinirsa SURE UZAR, daha guclusu
-	zayifin yerini alir, guclu aktifken zayif alinamaz (bkz. dosya basi).
-]]
 local IKSIRLER = {
 	{
 		id = "LuckPotion5",
@@ -160,12 +113,10 @@ function RotCoinMagaza.get(id: string): Urun?
 	return byId[id]
 end
 
--- "x1.5", "x2"
 function RotCoinMagaza.carpanYazisi(carpan: number): string
 	return `x{string.format("%g", math.floor(carpan * 100 + 0.5) / 100)}`
 end
 
--- Kalan sure: "14:59" ya da "1:05:00"
 function RotCoinMagaza.sureYazisi(saniye: number): string
 	local t = math.max(0, math.floor(saniye))
 	if t >= 3600 then

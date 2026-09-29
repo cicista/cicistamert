@@ -1,14 +1,3 @@
---[[
-	Magaza  (Script)
-	Yeri: ServerScriptService > Magaza
-
-	Kurek magazasi. Workspace'teki "Shop" modeline prompt takar.
-
-	Tek kurek kurali: yeni kurek alindiginda eskisi envanterden silinir,
-	yerine yenisi gecer (PlayerData.shovel tek bir id tutar).
-	Kurekler sirayla alinir -- Lv.2 almadan Lv.3 alinamaz.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -29,18 +18,15 @@ local MagazaAc = Net.event("MagazaAc")
 local KurekAl = Net.event("KurekAl")
 local GPSAl = Net.event("GPSAl")
 
--- KaziSistemi'ndeki kurek yenileme tetigi
 local kaziSistemi = script.Parent:WaitForChild("KaziSistemi")
 local kurekYenile = kaziSistemi:WaitForChild("KurekYenile") :: BindableEvent
 
 local function shovelList(player: Player)
 	local data = PlayerData.get(player)
-	-- Satin alma EN YUKSEK kademeye bakar, kusanma ayri tutulur
 	local maxLevel = if data then Shovels.get(data.shovelMax :: any).level else 1
 	local equipped = if data then data.shovel else nil
 
 	local out = {}
-	-- Yalnizca ana adanin kurekleri (Lv 1-5); ada kurekleri ada saticilarinda
 	for _, info in Shovels.forIsland(nil) do
 		table.insert(out, {
 			id = info.id,
@@ -52,7 +38,6 @@ local function shovelList(player: Player)
 			barSize = info.barSize,
 			owned = info.level <= maxLevel,
 			equipped = info.id == equipped,
-			-- Sadece bir sonraki kurek satin alinabilir
 			buyable = info.level == maxLevel + 1,
 		})
 	end
@@ -90,9 +75,6 @@ local function shopPayload(player: Player)
 	}
 end
 
-------------------------------------------------------------------
--- SATIN ALMA
-------------------------------------------------------------------
 KurekAl.OnServerEvent:Connect(function(player, shovelId)
 	if type(shovelId) ~= "string" then
 		return
@@ -110,12 +92,6 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 
 	local enYuksek = Shovels.get(data.shovelMax :: any)
 
-	--[[
-		SAHIP OLUNAN KADEME: SATIN ALMA DEGIL, KUSANMA
-
-		Alt kademeler kalici olarak oyuncunun: tiklayinca ucretsiz kusanilir.
-		Boylece dar barli kuregi ozleyen oyuncu geri donebilir.
-	]]
 	if info.level <= enYuksek.level then
 		if data.shovel == info.id then
 			Bildirim:FireClient(player, `{info.displayName} is already equipped.`, Color3.fromRGB(180, 200, 220))
@@ -132,7 +108,6 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 		return
 	end
 
-	-- Ada kurekleri Rot + maden ister ve yalnizca adanin saticisinda satilir
 	if info.island then
 		Bildirim:FireClient(player, "Buy island shovels from the island's shovel seller.", Color3.fromRGB(255, 200, 90))
 		return
@@ -154,7 +129,6 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 
 	PlayerData.addRot(player, -info.price)
 
-	-- Yeni kademe hem kusanilir hem kalici olarak kaydedilir
 	data.shovel = info.id
 	data.shovelMax = info.id
 	kurekYenile:Fire(player)
@@ -169,11 +143,6 @@ KurekAl.OnServerEvent:Connect(function(player, shovelId)
 	)
 end)
 
---[[
-	Dedektor (GPS) satin alma.
-	Kurekle ayni kural: tek dedektor tasinir, sirayla yukseltilir.
-	Yuksek seviye dedektor yuksek rarity suzme sansini artirir.
-]]
 GPSAl.OnServerEvent:Connect(function(player, detectorId)
 	if type(detectorId) ~= "string" then
 		return
@@ -191,7 +160,6 @@ GPSAl.OnServerEvent:Connect(function(player, detectorId)
 
 	local enYuksek = Detectors.get(data.detectorMax :: any)
 
-	-- Sahip olunan kademe ucretsiz kusanilir (bkz. kurek)
 	if info.level <= enYuksek.level then
 		if data.detector == info.id then
 			Bildirim:FireClient(player, `{info.displayName} is already equipped.`, Color3.fromRGB(180, 200, 220))
@@ -238,23 +206,6 @@ GPSAl.OnServerEvent:Connect(function(player, detectorId)
 	)
 end)
 
-------------------------------------------------------------------
--- MAGAZA PROMPTU
-------------------------------------------------------------------
---[[
-	MAGAZA NPC'SI
-
-	Haritadaki model her yerde ayni adla durmuyor; kabul edilen adlar
-	asagida. Aranan sey MODEL OLMAK ZORUNDA DEGIL:
-
-	  - Model  -> PrimaryPart, HumanoidRootPart ya da icindeki ilk parca
-	  - Folder -> icindeki ilk parca (ic ice olsa da bulunur)
-	  - Part   -> kendisi
-
-	Onceden yalnizca Model kabul ediliyor ve parca aramasi da yalnizca
-	DOGRUDAN cocuklara bakiyordu. NPC bir Folder'sa ya da parcalari alt
-	modellerin icindeyse prompt hic kurulamiyor, magaza acilmiyordu.
-]]
 local MAGAZA_ADLARI = { "Shop", "Shopkeeper", "ShovelShop", "Magaza", "KurekMagazasi" }
 
 local function anchorFrom(node: Instance): BasePart?
@@ -274,16 +225,10 @@ local function anchorFrom(node: Instance): BasePart?
 		end
 	end
 
-	-- Model, Folder ya da baska bir kap: ICINDEKI ilk parca (derin arama)
 	local part = node:FindFirstChildWhichIsA("BasePart", true)
 	return part
 end
 
---[[
-	Ad karsilastirmasi BUYUK/KUCUK HARF ve bosluk gozetmez: haritada
-	"SHOP", "Shop " ya da "shop" yazsa da bulunur. NPC'ler MAIN ISLAND gibi
-	bir modelin icinde durabilir, o yuzden arama butun Workspace'i tarar.
-]]
 local function adEsit(a: string, b: string): boolean
 	return string.lower(string.gsub(a, "%s", "")) == string.lower(string.gsub(b, "%s", ""))
 end
@@ -309,11 +254,6 @@ local function attachPrompt()
 	local anchor = findShopAnchor()
 
 	if not anchor then
-		--[[
-			Haritada magaza yoksa Kaptan'in yanina basit bir tezgah kurulur.
-			Bu bir YEDEK: normalde haritadaki model bulunur ve prompt ona
-			takilir. Output'ta bu uyariyi goruyorsan model adi listede yok.
-		]]
 		warn(
 			`[Magaza] Su adlarla model bulunamadi: {table.concat(MAGAZA_ADLARI, ", ")}`
 				.. " -- yedek tezgah kuruldu"

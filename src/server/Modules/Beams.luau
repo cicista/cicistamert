@@ -1,16 +1,4 @@
 --!strict
---[[
-	Isik suzmeleri.
-
-	Kum uzerinde gezen her oyuncunun etrafinda periyodik olarak isik suzmeleri
-	dogar. Suzmenin RENGI icinden cikacak brainrot'un rarity'sini ele verir --
-	oyuncu kazip kazmayacagina buna bakarak karar verir.
-
-	Kum artik dogrudan kazilmaz; SADECE suzmeler kazilir.
-
-	Bir suzme tek bir oyuncuya aittir (baskasi kazamaz), boylece 6 kisilik
-	sunucuda oyuncular birbirinin suzmesini calamaz.
-]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -39,18 +27,12 @@ local W = Config.WhirlVFX
 export type Beam = {
 	id: string,
 	owner: Player,
-	kind: string,        -- RarityId, maden kimligi ya da "LuckyBlock"
+	kind: string,
 	position: Vector3,
 	model: Model,
 	bornAt: number,
-	claimed: boolean,    -- kazi basladiysa tekrar kazilamaz
-	-- Denizde dogan GIRDAP mi (olta sistemi), yoksa kumdaki suzme mi
+	claimed: boolean,
 	sea: boolean?,
-	--[[
-		Dogdugu adanin kimligi (kum, sekerkum, snowkum, alevkum, deniz).
-		Kazidan cikan brainrot bu adanin VE onceki adalarin havuzundan
-		seciliyor (bkz. Brainrots.islandPool).
-	]]
 	island: string?,
 }
 
@@ -64,15 +46,7 @@ if not folder then
 	folder.Parent = Workspace
 end
 
-------------------------------------------------------------------
--- GORSEL
-------------------------------------------------------------------
--- YEDEK GORUNUM: VFX yoksa kullanilan basit isik sutunu
 local function buildFallbackModel(kind: string, position: Vector3): Model
-	--[[
-		Ozel suzme turunun (Lucky Block) kendi iki renkli gecisi
-		var; kademe suzmeleri tek renk.
-	]]
 	local special = if kind == "LuckyBlock" then Rarity.LuckyBlock else nil
 
 	local colorA = if special then special.colorA else Rarity.color(kind)
@@ -81,7 +55,6 @@ local function buildFallbackModel(kind: string, position: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = `Suzme_{kind}`
 
-	-- Yerden yukselen isik sutunu
 	local column = Instance.new("Part")
 	column.Name = "Column"
 	column.Size = Vector3.new(2.6, 26, 2.6)
@@ -97,8 +70,6 @@ local function buildFallbackModel(kind: string, position: Vector3): Model
 	column.Parent = model
 	model.PrimaryPart = column
 
-	-- Ozel suzmeler (Rot Coin, Lucky Block) iki renk arasinda gidip gelir;
-	-- kademe suzmeleri sabit renk kalir
 	if special then
 		task.spawn(function()
 			local toBlack = TweenService:Create(column, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Color = colorB })
@@ -113,7 +84,6 @@ local function buildFallbackModel(kind: string, position: Vector3): Model
 		end)
 	end
 
-	-- Zemindeki halka
 	local ring = Instance.new("Part")
 	ring.Name = "Ring"
 	ring.Shape = Enum.PartType.Cylinder
@@ -129,7 +99,6 @@ local function buildFallbackModel(kind: string, position: Vector3): Model
 	ring.Transparency = 0.3
 	ring.Parent = model
 
-	-- Yukari yukselen parcaciklar
 	local attachment = Instance.new("Attachment")
 	attachment.Position = Vector3.new(0, -12, 0)
 	attachment.Parent = column
@@ -157,11 +126,6 @@ local function buildFallbackModel(kind: string, position: Vector3): Model
 	light.Brightness = 3
 	light.Parent = column
 
-	--[[
-		Divine suzmesi tek renk degil: sari ile beyaz arasinda parildar.
-		Sunucu yalnizca etiketler, rengi her oyuncunun makinesi cizer
-		(bkz. StarterPlayerScripts > IlahiRenk).
-	]]
 	if kind == "Secret" then
 		Divine.tag(column)
 		Divine.tag(ring)
@@ -172,18 +136,6 @@ local function buildFallbackModel(kind: string, position: Vector3): Model
 	return model
 end
 
---[[
-	Bir hazirlik adimini GUVENLE calistirir.
-
-	Adimlarin her biri (renklendirme, olcekleme, yerlestirme...) paketin
-	icerigine bagli ve hepsi hata verebiliyor. Eskiden tek bir adim
-	patlayinca butun VFX cope gidiyor ve suzme eski basit sutuna dusuyordu
-	-- ekranda "VFX hic yok" gibi gorunuyordu.
-
-	Artik her adim kendi icinde korunuyor: biri patlarsa YALNIZCA o adim
-	atlanir, efektin geri kalani calismaya devam eder. Hangi adimin
-	patladigi Output icine bir kez yazilir, boylece sebep gorunur kalir.
-]]
 local function step(label: string, fn: () -> ())
 	local ok, err = pcall(fn)
 	if not ok then
@@ -194,15 +146,6 @@ local function step(label: string, fn: () -> ())
 	end
 end
 
---[[
-	VFX'ten suzme kurar.
-
-	Sablon bir Part de olabilir bir Model de; ikisi de tek bir Model'in
-	icine sarilip dondurulur, boylece cagiran taraf ne geldigini bilmek
-	zorunda kalmaz.
-
-	Bulunamazsa nil doner ve yedek gorunume dusulur.
-]]
 local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	local template = Assets.vfxTemplate(cfg.name)
 	if not template then
@@ -211,10 +154,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 
 	local color = Rarity.beamColor(kind)
 
-	--[[
-		ISTENMEYEN NESNELERI SIL
-		Config.BeamVFX.hide icinde adi gecenler efektten kaldirilir.
-	]]
 	step("hide", function()
 		for _, name in cfg.hide do
 			local doomed = template:FindFirstChild(name, true)
@@ -225,30 +164,12 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		end
 	end)
 
-	--[[
-		PAKETIN KENDI SCRIPTLERINI SIL
-
-		Toolbox efektlerinin icinde kendi dondurme/animasyon scriptleri
-		oluyor. Girdabin donusunu oyunun kendisi yonetiyor (bkz. spin);
-		paketin scripti ayni modeli ayri bir eksende cevirince efekt yan
-		yatmis gibi donuyordu. Ayrica efekt paketinin script CALISTIRMASI
-		icin bir sebep yok -- olmayan script arka kapi da olamaz.
-	]]
 	if cfg.stripScripts then
 		step("script temizligi", function()
 			Assets.stripScripts(template)
 		end)
 	end
 
-	--[[
-		EFEKT BORUSU  --  sira onemli
-
-		  1. SIYAH KATMANI SIL   Renklendirme parlakligi korudugu icin siyah
-		     her kademede siyah kalir; temizlenmezse koyu duman one gecer.
-		  2. KADEMEYE BOYA       Mor tonlar suzmenin rengine doner.
-		  3. BEYAZI YUMUSAT      Renklendirme beyaza dokunamaz, o yuzden en
-		     sona birakildi; boyamadan sonra calisir ki ezilmesin.
-	]]
 	if cfg.removeDark then
 		step("siyah katman", function()
 			Assets.removeDarkEffects(template, cfg.darkThreshold, cfg.keepColor)
@@ -259,36 +180,12 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		Assets.tintEffects(template, color, cfg.preserveShading, cfg.keepColor, cfg.vividness)
 	end)
 
-	--[[
-		YUZEY RENKLENDIRME
-
-		Bazi paketler efekti parcaciklarla degil DOKULU PARCALARLA kuruyor
-		(donen bir disk, uzerine yapistirilmis bir Decal...). Onlarin rengi
-		parcanin kendisinde durur ve tintEffects oraya bakmaz. tintParts
-		acikken parcalar, decal'lar ve dokular da kademeye boyanir.
-
-		Girdap icin acik: VortexVFX dokulu parcalardan kurulu ve kapaliyken
-		kademe ne olursa olsun hep ayni mavi kaliyordu.
-	]]
 	if cfg.tintParts then
 		step("yuzey renklendirme", function()
 			Assets.tintSurfaces(template, color, cfg.preserveShading, cfg.keepColor, cfg.vividness)
 		end)
 	end
 
-	--[[
-		PARCACIK GECISI  --  beyaz patlamaya karsi
-
-		Duz tek renkte parcaciklar ekranda beyaza patliyordu. Sebep renk
-		degil LightEmission: yuksek oldugunda parcacik eklemeli cizilir ve
-		rengi ne olursa olsun merkez bembeyaz olur.
-
-		Acikken parcaciklar kademe renginin ACIK -> KOYU gecisine cevrilir
-		ve parlama tavana cekilir. Flyboard tahtalarinda da ayni yol
-		kullaniliyor.
-
-		Bu adim renklendirmeden SONRA gelir: parcaciklarda son soz onun.
-	]]
 	if cfg.ramp then
 		step("parcacik gecisi", function()
 			Assets.rampEffects(template, color, cfg.ramp, cfg.keepColor)
@@ -310,14 +207,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		end)
 	end
 
-	--[[
-		YERLESTIRME KAYMASI
-
-		Efektin sinirlarina (min/max) bakip onu suzmenin noktasina tasiyacak
-		oteleme. Hem asil yerlestirmede hem taslarin Common yerini
-		hesaplarken AYNI formul kullaniliyor -- ikisi ayri yazilsaydi biri
-		degistiginde taslar yine kayardi.
-	]]
 	local function yerlestirmeKaymasi(min: Vector3, max: Vector3): Vector3
 		local tabanY = cfg.fixedY or position.Y
 		local targetY = tabanY + cfg.height
@@ -332,18 +221,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		)
 	end
 
-	--[[
-		ZEMIN PARCALARI (Rocks) COMMON YERINDE KALIR
-
-		Kademe olcegi efektin TAMAMINI buyutuyor ve sonra alt ucu zemine
-		oturtuluyordu. Isik sutunu tasin altina da uzandigi icin buyuyen
-		modelde taslar sutunla birlikte YUKARI kayiyor, nadir suzmelerde
-		havada asili duruyordu.
-
-		Olceklemeden ONCE taslarin Common'da (olcek 1) nereye oturacagi ve
-		boyu kaydediliyor; yerlestirmeden sonra taslar oraya geri konuyor.
-		Efektin geri kalani oldugu gibi buyuyup yerlesiyor.
-	]]
 	type ZeminParcasi = {
 		part: BasePart,
 		cframe: CFrame,
@@ -353,17 +230,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	local zeminParcalari: { ZeminParcasi } = {}
 	local kademeOlcegi = (cfg.baseScale or 1) * (cfg.scaleByRarity[kind] or 1)
 
-	--[[
-		KOK PART DA OLABILIR
-
-		DigLightVFX'in koku bir Model degil, bir PART (isik sutunu); Rocks
-		onun icinde bir Model. Bu adim ilk yazildiginda yalnizca Model kokunu
-		kabul ediyordu ve hic calismadi -- taslar yine havada kaldi.
-
-		Sinirlar, asil yerlestirmedeki ile BIREBIR ayni sekilde olculmeli:
-		orada Assets.worldBounds(model) cagriliyor ve kok Part da sayiliyor.
-		Bu yuzden sablon gecici bir Model'e konup ayni fonksiyonla olculuyor.
-	]]
 	if cfg.groundParts and #cfg.groundParts > 0 and kademeOlcegi ~= 1
 		and (template:IsA("Model") or template:IsA("BasePart"))
 	then
@@ -414,17 +280,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		end)
 	end
 
-	--[[
-		BUYUKLUK
-
-		Parcacik boyu/hizi, isik menzili ve efektin kendi geometrisi birlikte
-		olceklenir; yoksa cap degil yalnizca hiz artar.
-
-		Kademe carpani paketin KENDI taban olcegiyle carpilir. baseScale
-		sonradan eklendi: girdap paketinin boyu oyuna gore cok kucuktu ve
-		carpani 1 olan Common/Rare girdaplar ekranda tek bir parcacik gibi
-		duruyordu. Kumda taban 1 -- o paket zaten dogru boyda kurulmus.
-	]]
 	local scale = (cfg.baseScale or 1) * (cfg.scaleByRarity[kind] or 1)
 	if scale ~= 1 then
 		step("olcekleme", function()
@@ -434,7 +289,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 				local asModel = template :: Model
 				asModel:ScaleTo(asModel:GetScale() * scale)
 			elseif template:IsA("BasePart") then
-				-- Tek parcalik paket: Model olmadigi icin ScaleTo yok
 				template.Size *= scale
 			end
 		end)
@@ -443,22 +297,9 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	local model = Instance.new("Model")
 	model.Name = `{cfg.label}_{kind}`
 
-	--[[
-		SABLON OLDUGU GIBI ALINIR
-
-		Efekt Studio'da nasil kurulduysa oyle kalmali: taslar (Rocks) isik
-		sutununa gore hangi noktadaysa orada durmali. Bu yuzden parcalar tek
-		tek yerlestirilmiyor; sablon OLDUGU GIBI iceri alinip TAMAMI ayni
-		vektorle oteleniyor.
-	]]
 	if template:IsA("Model") or template:IsA("BasePart") then
 		template.Parent = model
 	else
-		--[[
-			Folder gibi beklenmedik bir kok geldi. Icindekileri tasiyip
-			devam ediyoruz -- eskiden burada vazgecilip basit sutuna
-			dusuluyordu ve efekt hic gorunmuyordu.
-		]]
 		for _, child in template:GetChildren() do
 			child.Parent = model
 		end
@@ -470,10 +311,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		)
 	end
 
-	--[[
-		Parcalar sabitlenir ve isin/dokunma disina alinir. Sabitlenmezse
-		efekt yere duser; isina gorunur kalirsa kum aramasi ona carpar.
-	]]
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") then
 			part.Anchored = true
@@ -487,31 +324,12 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart", true)
 	end
 
-	--[[
-		YERINE TASI
-
-		Efektin tamami TEK bir vektorle otelenir: yatayda suzmenin noktasina
-		ortalanir, dikeyde alt ucu zemine oturur (alignToGround). Oteleme her
-		parcaya ayni miktarda uygulandigi icin taslarin isik sutununa gore
-		konumu aynen korunur.
-	]]
 	step("yerlestirme", function()
 		local min, max = Assets.worldBounds(model)
 		if not min or not max then
 			return
 		end
 
-		--[[
-			DIKEY YER
-
-			Normalde noktanin kendi Y'si kullanilir. cfg.fixedY verilmisse
-			onun yerine o sabit yukseklik gecerlidir.
-
-			Deniz icin sabit: isin dalganin tepesine ya da cukuruna denk
-			gelebiliyor ve girdap bazen suyun biraz altinda/ustunde
-			kaliyordu. Kumda fixedY yok -- zemin her yerde ayni yukseklikte
-			degil, orada isinin buldugu nokta dogru olan.
-		]]
 		local shift = yerlestirmeKaymasi(min, max)
 
 		for _, part in model:GetDescendants() do
@@ -521,22 +339,8 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		end
 	end)
 
-	--[[
-		TASLAR COMMON YERINE DONER
-
-		Efektin geri kalani buyuyup yerlesti; zemin parcalari olceklenmeden
-		once kaydedilen boy ve konumlarina geri aliniyor. Boyut ONCE
-		yaziliyor, sonra CFrame -- tersi olsaydi boy degisimi merkezi
-		kaydirabilirdi.
-	]]
 	if #zeminParcalari > 0 then
 		step("zemin parcalari geri", function()
-			--[[
-				DigLightVFX bir Rig: tas parcalari Motor6D / Weld ile govdeye
-				bagli. Bagli parcaya yazilan CFrame yok sayiliyor ve taslar
-				buyuyen govdeyle birlikte havada kaliyordu. Once taslara
-				dokunan eklemler sokulur, sonra taslar sabitlenip yerine konur.
-			]]
 			local taslar: { [Instance]: boolean } = {}
 			for _, kayit in zeminParcalari do
 				taslar[kayit.part] = true
@@ -573,10 +377,6 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 		end)
 	end
 
-	--[[
-		Divine suzmesi tek renk degil: isiklari sari <-> beyaz parildar.
-		Yalnizca ISIKLAR etiketlenir; parcaciklarin kendi gecisi korunur.
-	]]
 	if kind == "Secret" then
 		for _, node in model:GetDescendants() do
 			if node:IsA("Light") then
@@ -588,28 +388,7 @@ local function buildVFXModel(cfg, kind: string, position: Vector3): Model?
 	return model
 end
 
---[[
-	VFX varsa onu, yoksa eski sutunu kurar.
-
-	VFX kurulumu HICBIR ZAMAN suzmeyi engellememeli: paket degistiginde,
-	bir ayar bozuk kaldiginda ya da renklendirme sirasinda hata ciktiginda
-	eskiden suzme hic olusmuyor ve oyuncu "kazacak bir sey yok" durumunda
-	kaliyordu. Artik hata yakalanir, sebep Output icine bir kez yazilir ve
-	basit isik sutununa dusulur -- suzme her zaman dogar.
-]]
---[[
-	GIRDAP  --  denizdeki suzmenin karsiligi
-
-	Kumdaki isik sutununun yerine su yuzeyinde donen bir HUNI durur:
-	  - alttaki dar uc ile ustteki genis agiz arasinda konik bir govde
-	  - kademenin renginde donen bir halka
-	  - yukari savrulan su parcaciklari
-
-	Kademe rengi disinda karadaki suzmeyle ayni kurallara tabi: ayni
-	kimlikle kaydedilir, ayni sekilde kazilir, ayni sekilde temizlenir.
-]]
 local function buildFallbackWhirl(kind: string, position: Vector3): Model
-	-- Ozel turlerin iki renkli gecisi var; kademe girdaplari tek renk
 	local special = if kind == "LuckyBlock" then Rarity.LuckyBlock else nil
 
 	local colorA = if special then special.colorA else Rarity.color(kind)
@@ -618,13 +397,6 @@ local function buildFallbackWhirl(kind: string, position: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = `Girdap_{kind}`
 
-	--[[
-		HUNI
-
-		Roblox'ta koni parcasi yok; iki ucu farkli genislikte bir Beam
-		kullaniliyor (Flyboard isik konisiyle ayni yol). FaceCamera ile her
-		acidan huni gibi gorunur.
-	]]
 	local core = Instance.new("Part")
 	core.Name = "Govde"
 	core.Size = Vector3.new(1, 6, 1)
@@ -665,7 +437,6 @@ local function buildFallbackWhirl(kind: string, position: Vector3): Model
 	})
 	huni.Parent = core
 
-	-- Su yuzeyinde donen halka
 	local halka = Instance.new("Part")
 	halka.Name = "Halka"
 	halka.Shape = Enum.PartType.Cylinder
@@ -681,7 +452,6 @@ local function buildFallbackWhirl(kind: string, position: Vector3): Model
 	halka.Transparency = 0.35
 	halka.Parent = model
 
-	-- Yukari savrulan su
 	local serpinti = Instance.new("ParticleEmitter")
 	serpinti.Name = "Serpinti"
 	serpinti.Color = ColorSequence.new({
@@ -710,15 +480,6 @@ local function buildFallbackWhirl(kind: string, position: Vector3): Model
 	return model
 end
 
---[[
-	VFX varsa onu, yoksa kodla cizilen yedek gorunumu kurar.
-
-	VFX kurulumu HICBIR ZAMAN suzmeyi engellememeli: paket degistiginde,
-	bir ayar bozuk kaldiginda ya da renklendirme sirasinda hata ciktiginda
-	eskiden suzme hic olusmuyor ve oyuncu "kazacak bir sey yok" durumunda
-	kaliyordu. Artik hata yakalanir, sebep Output icine bir kez yazilir ve
-	yedek gorunume dusulur -- suzme her zaman dogar.
-]]
 local function buildWithVFX(
 	cfg: any,
 	kind: string,
@@ -741,22 +502,6 @@ local function buildWithVFX(
 	return fallback(kind, position)
 end
 
---[[
-	MADEN KAYASI  --  low poly gem damari
-
-	Koyu, dik duran bir kaya kulesi (ust uste binmis egik bloklar) ve
-	aralarindan disari dogru firlayan PARLAK KRISTALLER. Kristaller gemin
-	kendi renginde (bkz. Shared > Ores > GemColors).
-
-	Kristal: 45 derece cevrilmis ince uzun bir parca -- kesiti baklava
-	oldugu icin tek parcayla kesilmis tas gibi gorunur. Dibi kayaya
-	gomulu, ucu disari bakar; yanina kisa bir ikinci kristal eslik eder.
-
-	Butun model rastgele bir Y acisiyla doner: her maden ayni durmasin.
-	Uzerinden yurunebilsin diye carpisma kapali.
-]]
-
--- { boyut, merkez (tabana gore), egim (x, y, z), renk }
 local KAYA_BLOKLARI = {
 	{ Vector3.new(3.4, 5.6, 3.0), Vector3.new(0, 2.8, 0), Vector3.new(0.08, 0, -0.1), Color3.fromRGB(78, 70, 64) },
 	{ Vector3.new(2.8, 3.6, 2.6), Vector3.new(1.5, 1.8, 0.6), Vector3.new(0, 0.4, 0.18), Color3.fromRGB(64, 58, 54) },
@@ -764,7 +509,6 @@ local KAYA_BLOKLARI = {
 	{ Vector3.new(1.8, 2.0, 1.8), Vector3.new(0.1, 6.2, 0.2), Vector3.new(0.25, 0.5, 0.15), Color3.fromRGB(70, 64, 60) },
 }
 
--- { kok noktasi (kaya yuzeyinde), egim (x, z), uzunluk }
 local KRISTALLER = {
 	{ Vector3.new(1.4, 3.8, 0.9), Vector2.new(0.3, -0.75), 1.7 },
 	{ Vector3.new(1.9, 1.5, -0.6), Vector2.new(0, -1.1), 1.9 },
@@ -792,10 +536,6 @@ local function buildOreModel(kind: string, position: Vector3): Model
 	local renk = if maden then maden.color else Color3.new(1, 1, 1)
 	local rng = Random.new()
 
-	--[[
-		Cok koyu gemler (Obsidian) neonla parlayamaz -- siyah neon yok gibi
-		gorunur. Onlar parlak cam gibi cizilir: yansima isigi yakalar.
-	]]
 	local koyu = (renk.R + renk.G + renk.B) / 3 < 0.25
 
 	local model = Instance.new("Model")
@@ -819,7 +559,6 @@ local function buildOreModel(kind: string, position: Vector3): Model
 		local kok = taban * CFrame.new(kristal[1])
 		local egim = CFrame.Angles(kristal[2].X, 0, kristal[2].Y)
 
-		-- Ana kristal + yaninda kisa ikincisi; dibi kayada, ucu disarida
 		for j, olcek in { 1, 0.6 } do
 			local uzunluk = kristal[3] * olcek
 			local kalinlik = 0.5 * (if j == 1 then 1 else 0.75)
@@ -835,22 +574,15 @@ local function buildOreModel(kind: string, position: Vector3): Model
 				part.Material = Enum.Material.Neon
 			end
 
-			-- Ikinci kristal biraz yana ve farkli aciyla: tek cubuk gibi durmasin
 			local yan = if j == 1 then CFrame.identity else CFrame.new(0.35, 0, 0.2) * CFrame.Angles(0.35, 0, -0.3)
 
 			if maden and maden.shape == "ball" then
-				--[[
-					YUVARLAK GEM (Basalt): ayni noktalardan cubuk yerine top
-					cikar. Capi kristal boyunun yarisi kadar; yarisi kayaya
-					gomulu durur, kaya yuzeyinden tomurcuk gibi tasar.
-				]]
 				local cap = uzunluk * 0.55
 				part.Shape = Enum.PartType.Ball
 				part.Size = Vector3.new(cap, cap, cap)
 				part.CFrame = kok * egim * yan * CFrame.new(0, cap * 0.2, 0)
 			else
 				part.Size = Vector3.new(kalinlik, uzunluk, kalinlik)
-				-- 45 derece donus: kesit baklava olur, kesilmis tas gibi gorunur
 				part.CFrame = kok
 					* egim
 					* yan
@@ -869,34 +601,14 @@ local function buildOreModel(kind: string, position: Vector3): Model
 	return model
 end
 
--- Kumdaki isik sutunu: DigLightVFX
 local function buildBeamModel(kind: string, position: Vector3): Model
 	return buildWithVFX(V, kind, position, buildFallbackModel)
 end
 
--- Denizdeki girdap: VortexVFX
 local function buildWhirlModel(kind: string, position: Vector3): Model
 	return buildWithVFX(W, kind, position, buildFallbackWhirl)
 end
 
-------------------------------------------------------------------
--- SUZME OLUSTURMA
-------------------------------------------------------------------
-
---[[
-	ZEMIN ARAMA  --  YUKARIDAN ASAGI
-
-	Eskiden isin oyuncunun 6 stud ustunden 12 stud asagi atiliyordu:
-	  - egimli adalarda (Volcano) zemin bu araligin disinda kaliyordu,
-	    suzme hic dogmuyordu
-	  - bir yapinin (ev, kaya, cati) ICINDEKI kum da bulunabiliyordu
-
-	Artik isin 80 stud yukaridan atiliyor. Ilk carpilan KATI ve GORUNUR
-	parca kum degilse (cati, kaya, duvar) o nokta reddedilir. Carpismasiz
-	ya da gorunmez parcalar (efekt kutulari, bolge isaretleri) atlanip isin
-	yeniden atilir. Kum bulunursa ustunde bos yer olup olmadigina da
-	bakilir: suzme bir duvarin icine dogmasin.
-]]
 local ARAMA_YUKSEKLIK = 80
 local ARAMA_DERINLIK = 200
 local ATLANABILIR_EN_FAZLA = 8
@@ -915,12 +627,10 @@ local function kumBul(x: number, ustY: number, z: number, haric: { Instance }): 
 
 		local parca = sonuc.Instance
 		if parca:IsA("BasePart") and (not parca.CanCollide or parca.Transparency >= 0.95) then
-			-- Carpismasiz / gorunmez: yok say, tekrar at
 			table.insert(liste, parca)
 			continue
 		end
 
-		-- Kum hemen ustten gelen isinla dogrulanir (Sand kurallari ayni kalsin)
 		local zemin = Sand.probe(sonuc.Position + Vector3.new(0, 0.5, 0), liste)
 		if zemin and zemin.isSand then
 			return zemin
@@ -931,14 +641,6 @@ local function kumBul(x: number, ustY: number, z: number, haric: { Instance }): 
 	return nil
 end
 
---[[
-	Kumun ustunde suzme kadar bos yer var mi (duvar, kaya, dag icinde degil).
-
-	Sinir kutusuyla degil GERCEK sekille bakilir (GetPartsInPart): buyuk
-	bir dag mesh'inin kutusu butun adayi kapliyor, kutuyla bakilsa hicbir
-	yerde suzme dogmazdi. Yukaridan atilan isin bir parcanin ICINDEN
-	baslarsa o parcayi goremez; bu kontrol o durumu da yakalar.
-]]
 local sorguParcasi = Instance.new("Part")
 sorguParcasi.Name = "SuzmeYerSorgusu"
 sorguParcasi.Size = Vector3.new(2.5, 4.5, 2.5)
@@ -957,7 +659,6 @@ local function ustuBosMu(konum: Vector3, zeminParcasi: BasePart?, haric: { Insta
 	end
 	overlap.FilterDescendantsInstances = liste
 
-	-- Zeminin 0.4 stud ustunden baslar: kumun kendisine degmesin
 	sorguParcasi.CFrame = CFrame.new(konum + Vector3.new(0, 0.4 + sorguParcasi.Size.Y / 2, 0))
 	if not sorguParcasi.Parent then
 		sorguParcasi.Parent = Workspace
@@ -971,7 +672,6 @@ local function ustuBosMu(konum: Vector3, zeminParcasi: BasePart?, haric: { Insta
 	return true
 end
 
--- Oyuncunun etrafinda kumlu bir nokta arar.
 local function findSandSpot(player: Player): (Vector3?, string?)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -981,8 +681,6 @@ local function findSandSpot(player: Player): (Vector3?, string?)
 
 	local origin = root.Position
 	local haric: { Instance } = { folder }
-	-- Butun oyuncularin karakterleri disarida (baska oyuncunun ustune dogmasin diye degil,
-	-- isin onlara takilmasin diye)
 	for _, diger in Players:GetPlayers() do
 		if diger.Character then
 			table.insert(haric, diger.Character)
@@ -997,11 +695,6 @@ local function findSandSpot(player: Player): (Vector3?, string?)
 
 		local ground = kumBul(x, origin.Y + ARAMA_YUKSEKLIK, z, haric)
 		if ground and ground.isSand and ustuBosMu(ground.position, ground.part, haric) then
-			--[[
-				Ada kimligi da doner. Parca adi ya da ust ada modeli
-				(MainIsland, CandyIsland...) uzerinden cozuluyor; taninmayan
-				zemin ilk ada sayilir, sonraki adalarin brainrotu sizmaz.
-			]]
 			return ground.position, Brainrots.islandOf(ground.part)
 		end
 	end
@@ -1009,23 +702,9 @@ local function findSandSpot(player: Player): (Vector3?, string?)
 	return nil
 end
 
---[[
-	Oyuncunun acik suzme sayisi.
-
-	sea verilirse yalnizca O TUR sayilir: kumdaki suzmeler ile denizdeki
-	girdaplarin limitleri AYRI. Onceden ikisi tek havuzdan sayiliyordu ve
-	kumda birkac suzme birakan oyuncu denizde hic girdap goremiyordu.
-]]
 function Beams.countFor(player: Player, sea: boolean?): number
 	local count = 0
 	for _, beam in active do
-		--[[
-			KAZILMAYA BASLANMIS OLANLAR SAYILMAZ.
-
-			claimed bir suzme artik kazilamaz, yalnizca temizlenmeyi bekler.
-			Limite dahil edilince bir hata yuzunden yarida kalan iki kazi bile
-			limiti sonsuza dek dolduruyor ve yeni suzme/girdap hic dogmuyordu.
-		]]
 		if beam.owner == player and not beam.claimed then
 			if sea == nil or (beam.sea == true) == sea then
 				count += 1
@@ -1035,18 +714,6 @@ function Beams.countFor(player: Player, sea: boolean?): number
 	return count
 end
 
---[[
-	SUZME ETIKETI  --  SUNUCUDA, HERKES ICIN
-
-	Etiketler eskiden her oyuncunun istemcisinde, yalnizca KENDI suzmeleri
-	icin kuruluyordu: baskasinin suzmesinde hic yazi yoktu ve istemci
-	tarafinda bir sey ters giderse oyuncu kendi etiketlerini de goremiyordu.
-
-	Artik etiket suzme modeliyle birlikte sunucuda kuruluyor ve herkese
-	gidiyor: KADEMESI ve SAHIBININ ADI yazar. Istemci yalnizca sus verir
-	(bkz. StarterPlayerScripts > SuzmeEtiketleri): kendi suzmen "YOURS"
-	olarak yesil ve belirgin, baskasininki soluk ve sahibinin adiyla.
-]]
 local ETIKET_ADI = "SuzmeEtiketi"
 
 local function etiketKur(model: Model, player: Player, kind: string, spot: Vector3)
@@ -1060,7 +727,6 @@ local function etiketKur(model: Model, player: Player, kind: string, spot: Vecto
 	local gui = Instance.new("BillboardGui")
 	gui.Name = ETIKET_ADI
 	gui.Size = UDim2.fromOffset(150, 52)
-	-- Suzmenin 16 stud ustunde (eski istemci etiketiyle ayni yukseklik)
 	gui.StudsOffsetWorldSpace = (spot + Vector3.new(0, 16, 0)) - ana.Position
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
@@ -1112,7 +778,6 @@ local function etiketKur(model: Model, player: Player, kind: string, spot: Vecto
 	gui.Parent = ana
 end
 
--- Suzmeyi fiilen kuran ortak adim; kimin, ne turde ve nerede oldugu belli.
 local function createBeam(player: Player, kind: string, spot: Vector3, sea: boolean?, island: string?): Beam
 	beamCounter += 1
 	local id = `beam_{beamCounter}`
@@ -1123,22 +788,10 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 		else buildBeamModel(kind, spot)
 	model:SetAttribute("BeamId", id)
 	model:SetAttribute("Owner", player.UserId)
-	-- StreamingEnabled: model (ve etiketi) istemciye TEK PARCA gelsin
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	etiketKur(model, player, kind, spot)
 	model.Parent = folder
 
-	--[[
-		GIRDAP YATAYDA DONER
-
-		Donusu ISTEMCI yapiyor: model etiketleniyor, her oyuncu kendi
-		ekraninda ceviriyor. Sunucuda cevirmek her karede CFrame
-		replikasyonu demek olurdu -- gorsel bir detay icin gereksiz trafik.
-
-		Tek eksen: dunya Y'si. Paketin kendi dondurme scriptleri silindigi
-		icin (stripScripts) baska bir eksende ceviren kimse kalmiyor;
-		girdap eskiden onlar yuzunden yan yatmis gibi donuyordu.
-	]]
 	if sea and W.spin and W.spin ~= 0 then
 		model:SetAttribute("DonusHizi", W.spin)
 		CollectionService:AddTag(model, W.spinTag)
@@ -1153,7 +806,6 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 		bornAt = os.clock(),
 		claimed = false,
 		sea = sea,
-		-- Denizde sabit; kumda kum parcasinin adi
 		island = if sea then "deniz" else island,
 	}
 	active[id] = beam
@@ -1165,19 +817,6 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 	return beam
 end
 
---[[
-	Oyuncu icin bir suzme dogurmayi dener.
-	luck: bulundugu adanin sans carpani
-	Donen: olusan Beam ya da nil
-]]
---[[
-	DENIZDE GIRDAP NOKTASI
-
-	Kumdaki findSandSpot'un deniz karsiligi: oyuncunun etrafinda rastgele
-	bir noktaya asagi isin gonderilir, su yuzeyine carparsa orasi girdabin
-	yeri olur. Terrain su da isim verilmis deniz parcalari da kabul edilir
-	(bkz. Shared > Flyboard > SeaNames).
-]]
 local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -1191,13 +830,6 @@ local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 
 	local origin = root.Position
 
-	--[[
-		GIRDAPLAR BIRBIRINE YAPISMAZ
-
-		Ayni oyuncunun iki girdabi arasinda en az seaSeparation stud olur.
-		Deniz genis; kumun dar sayilari burada girdaplari birbirinin dibine
-		yigiyordu.
-	]]
 	local function uygun(nokta: Vector3): boolean
 		for _, beam in active do
 			if beam.owner == player and (beam.position - nokta).Magnitude < G.seaSeparation then
@@ -1207,25 +839,9 @@ local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 		return true
 	end
 
-	--[[
-		DOGUM YARICAPI OLTADAN GELIR
-
-		Cok onemli: istemciye yalnizca oltanin scanRadius'u icindeki
-		girdaplar gonderiliyor (bkz. snapshotFor). Yaricapin disinda dogan
-		girdap oyuncuya hic ulasmaz -- gorunmez olur ve tiklanamaz. Bu yuzden
-		ust sinir sabit bir sayi DEGIL, dogrudan oltanin menzili.
-
-		Kenarda dogan girdap oyuncu azicik kipirdayinca menzilden cikip
-		titremesin diye biraz icerden kesiliyor.
-	]]
 	local enUzak = math.max((maxDistance or G.seaMaxSpawnDistance) * 0.9, G.seaMinSpawnDistance + 10)
 	local yaricap = enUzak - G.seaMinSpawnDistance
 
-	--[[
-		Ayrik durma sarti sikiysa cogu deneme bosa gider; deniz taramasinda
-		kumdan FAZLA deneme yapiliyor. Yine de yer bulunamazsa girdap bu tur
-		dogmaz -- oyuncu gezdikce yer acilir, zaten istenen de bu.
-	]]
 	for _ = 1, 30 do
 		local angle = math.random() * math.pi * 2
 		local distance = math.random() * yaricap + G.seaMinSpawnDistance
@@ -1233,7 +849,6 @@ local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 
 		local hit = Workspace:Raycast(candidate, Vector3.new(0, -80, 0), params)
 		if hit then
-			-- Terrain su ya da adi (veya ust modelinin adi) deniz olan bir parca
 			local suMu = hit.Material == Enum.Material.Water or Flyboard.isSeaInstance(hit.Instance)
 
 			if suMu and uygun(hit.Position) then
@@ -1245,21 +860,12 @@ local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 	return nil
 end
 
---[[
-	ADA IZNI: bu adada (onceki adalar dahil) brainrotu olmayan kademenin
-	isini hic dogmaz. Yoksa main island'da Cosmic isini cikip kaziya
-	baska adanin brainrotunu verirdi.
-]]
 local function adaIzni(ada: string?): (string) -> boolean
 	return function(kademe: string): boolean
 		return Brainrots.availableOn(kademe, ada)
 	end
 end
 
---[[
-	Denizde girdap dogurmayi dener. Kumdaki trySpawn ile ayni kurallar;
-	fark yalnizca noktanin suda aranmasi ve gorunumun huni olmasi.
-]]
 function Beams.trySpawnSea(player: Player, luck: number, rng: Random, maxWhirls: number?, scanRadius: number?): Beam?
 	if Beams.countFor(player, true) >= (maxWhirls or G.maxBeamsPerPlayer) then
 		return nil
@@ -1283,10 +889,6 @@ function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: num
 		return nil
 	end
 
-	--[[
-		MADEN: madenli adalarda (Candy, Snow, Volcano) suzme yerine
-		Ores.SpawnChance yuzde ihtimalle adanin madenlerinden biri cikar.
-	]]
 	if Ores.island(ada) and rng:NextNumber() * 100 < Ores.SpawnChance then
 		local maden = Ores.roll(ada, rng)
 		if maden then
@@ -1297,13 +899,6 @@ function Beams.trySpawn(player: Player, luck: number, rng: Random, maxBeams: num
 	return createBeam(player, Rarity.rollBeam(rng, luck, adaIzni(ada)), spot, false, ada)
 end
 
---[[
-	ISTENEN TURDE suzme dogurur -- cekilis yok, sans yok, adet siniri yok.
-
-	Yalnizca admin paneli kullanir: belirli bir kademenin suzmesini ve kazi
-	zorlugunu sinamak icin. Kum bulunamazsa oyuncunun ayaginin dibine konur,
-	boylece kumsuz bir yerde de test edilebilir.
-]]
 function Beams.spawnKind(player: Player, kind: string, istenen: Vector3?): Beam?
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -1313,17 +908,12 @@ function Beams.spawnKind(player: Player, kind: string, istenen: Vector3?): Beam?
 
 	local spot, ada = findSandSpot(player)
 
-	--[[
-		ISTENEN KONUM (ogretici): suzme tam soylenen noktaya konur. Zemin
-		yuksekligi yine olculur ki kumun icine gomulmesin ya da havada kalmasin.
-	]]
 	if istenen then
 		local zemin = Sand.probe(istenen + Vector3.new(0, 8, 0), { char, folder })
 		spot = if zemin then zemin.position else istenen
 	end
 
 	if not spot then
-		-- Kum yoksa: oyuncunun onunde, ayak hizasinda
 		local ground = Sand.probe(root.Position + root.CFrame.LookVector * 12, { char, folder })
 		spot = if ground then ground.position else root.Position - Vector3.new(0, 3, 0)
 	end
@@ -1331,17 +921,6 @@ function Beams.spawnKind(player: Player, kind: string, istenen: Vector3?): Beam?
 	return createBeam(player, kind, spot :: Vector3, false, ada)
 end
 
---[[
-	ISTENEN TURDE GIRDAP dogurur (admin paneli).
-
-	spawnKind'in deniz surumu: cekilis yok, sans yok, adet siniri yok.
-	Nokta once gercek suda aranir; su bulunamazsa oyuncunun ONUNE konur --
-	girdabin gorunumu ve donusu susuz bir yerde de sinanabilsin diye. O
-	durumda "su yok" bilgisi cagirana dondurulur ki panel bunu yazabilsin.
-
-	Arama yaricapi oltaninkinden GENIS ama SONSUZ DEGIL: findSeaSpot
-	yaricapi carpimla hesapliyor, sonsuzla bozulur.
-]]
 function Beams.spawnWhirlKind(player: Player, kind: string): (Beam?, boolean)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -1363,12 +942,6 @@ function Beams.get(id: string): Beam?
 	return active[id]
 end
 
---[[
-	Teshis anahtari.
-	Acikken her suzme dogumu/silinmesi sebebiyle birlikte Output'a yazilir.
-	"Suzme neden kayboldu?" sorusunu cevaplamak icin gecici olarak ac;
-	canlida kapali dursun, yoksa Output surekli akar.
-]]
 Beams.Debug = false
 
 function Beams.remove(id: string, reason: string?)
@@ -1382,13 +955,6 @@ function Beams.remove(id: string, reason: string?)
 	end
 
 	if beam.model.Parent then
-		--[[
-			Once yayicilar ve isiklar susturulur, SONRA model silinir.
-
-			Dogrudan Destroy edilince paketin uzun omurlu parcaciklari bir
-			sure daha havada asili kaliyor ve kazilmis suzme yerinde
-			duruyormus gibi gorunuyordu. Clear havadakileri de siler.
-		]]
 		for _, node in beam.model:GetDescendants() do
 			if node:IsA("ParticleEmitter") then
 				node.Enabled = false
@@ -1403,7 +969,6 @@ function Beams.remove(id: string, reason: string?)
 	active[id] = nil
 end
 
--- Bir oyuncunun butun suzmelerini siler (yalnizca oyuncu sunucudan cikinca)
 function Beams.clearFor(player: Player, reason: string?)
 	for id, beam in active do
 		if beam.owner == player then
@@ -1412,7 +977,6 @@ function Beams.clearFor(player: Player, reason: string?)
 	end
 end
 
--- Oyuncunun gorebilecegi suzmelerin client'a gonderilecek ozeti
 function Beams.snapshotFor(player: Player, scanRadius: number?): { { id: string, kind: string, position: Vector3 } }
 	local out = {}
 	local char = player.Character
@@ -1438,13 +1002,6 @@ function Beams.snapshotFor(player: Player, scanRadius: number?): { { id: string,
 	return out
 end
 
---[[
-	Suresi dolan suzmeleri temizler.
-
-	Kazilmaya baslanmis (claimed) bir suzme normal omrunu asabilir; ama
-	minigame yarida kalirsa sonsuza dek bellekte kalmasin diye onlara da
-	daha uzun bir ust sinir uygulanir.
-]]
 function Beams.cleanup()
 	local now = os.clock()
 	local claimedLimit = G.beamLifetime + 120
@@ -1465,4 +1022,3 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return Beams
--- MARKER_152426

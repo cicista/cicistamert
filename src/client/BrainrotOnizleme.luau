@@ -1,40 +1,4 @@
 --!strict
---[[
-	BrainrotOnizleme  (ModuleScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > BrainrotOnizleme
-
-	Kucuk bir kareye brainrotun 3B onizlemesini koyar. Kamera ve isik
-	Index'tekiyle ayni: model tam karsidan, goz hizasindan, kendi renkleriyle.
-
-	  kimligi acik    -> brainrotun kendi modeli (mutasyonluysa mutasyonlu model)
-	  kimligi kapali  -> oyunun "simsiyah brainrot" modeli; kim oldugu ele verilmez
-
-	Model bulunamazsa karenin eski gorunumu kalir.
-
-	IKI TUR PENCERE
-	  pencere(liste, panel)   Dikey kaydirma listesi (Envanter, Detective).
-	                          Kaydirma konumuna gore tazelenir.
-	  seritPencere(cerceve)   Yatay kayan cark seridi (Lucky Block, gunluk
-	                          odul). Serit tween'le aktigi icin her karede
-	                          tazelenir.
-
-	--------------------------------------------------------------
-	NEDEN GORUS PENCERESI + HAVUZ
-
-	Listeler ve cark seritleri sik sik bastan kuruluyor (envanter her
-	guncellemede, cark her cevirmede). Onizleme dogrudan kareye konsaydi her
-	seferinde butun modeller yeniden klonlanirdi.
-
-	  GORUS PENCERESI  Yalnizca gorunen (ve biraz pay birakilmis) karelere
-	                   onizleme kurulur; cikanlar birakilir. ViewportFrame
-	                   kirpma disinda da cizildigi icin bu fark ediyor.
-
-	  HAVUZ            Birakilan onizleme silinmez, havuza doner. Ayni
-	                   brainrot (ad + mutasyon) tekrar gerektiginde hazir
-	                   alinir; model yeniden klonlanmaz. Cark seridinde ayni
-	                   brainrot onlarca bolmede tekrarlandigi icin burada
-	                   ozellikle ise yariyor.
-]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -44,73 +8,39 @@ local Assets = require(Shared:WaitForChild("Assets"))
 
 local BrainrotOnizleme = {}
 
-------------------------------------------------------------------
--- AYARLAR
-------------------------------------------------------------------
-
--- Dikey listede gorus penceresinin ustune/altina birakilan pay (piksel)
 local PAY = 120
 
--- Havuzda ayni brainrottan en fazla kac onizleme bekler
 local HAVUZ_ANAHTAR_TAVAN = 6
--- Havuzda toplam en fazla kac onizleme bekler (bellek tavani)
 local HAVUZ_TOPLAM_TAVAN = 80
 
--- Modeli bulunamayan brainrot bu kadar saniye yeniden aranmaz
 local YOK_BEKLEME = 10
 
---[[
-	Kamera ve isik Index ile ayni (bkz. Index > BAKIS_YONU, ISIK):
-	modeller yuzu -Z'ye bakacak sekilde hazirlanmis; ViewportFrame sahne
-	isigini kullanmadigi icin kendi isigi tavana cekiliyor.
-]]
 local BAKIS_YONU = Vector3.new(0, 0, -1)
 local ISIK = Color3.fromRGB(255, 255, 255)
 local ISIK_YONU = Vector3.new(-0.4, -0.7, -0.6)
--- Kutunun kosegeninin bu kati kadar geri cekilir; 1'in alti kadraji doldurur
 local CERCEVE = 0.9
---[[
-	Kimligi acilmamis kup: kamera kupun on yuzunu kareye SIGDIRACAK kadar
-	geri cekilir (goruş acisi 70 derece). Eskiden kosegenin bir katiyla
-	yaklasiliyordu; kup cok yakin kaliyor, yalnizca "?" isaretinin ortasi
-	gorunuyordu. GIZLI_PAY buyudukce kup kucuk gorunur.
-]]
 local GORUS_YARI_ACI = math.rad(35)
 local GIZLI_PAY = 1.3
-
-------------------------------------------------------------------
 
 export type Kaynak = {
 	name: string?,
 	mutation: string?,
 	revealed: boolean,
-	-- Kimligi kapali olanin kademesi: Gold Ore bu renge boyanir
 	rarity: string?,
 }
 
 local havuz: { [string]: { ViewportFrame } } = {}
 local havuzToplam = 0
 
--- anahtar -> son basarisiz arama zamani
 local yokZamani: { [string]: number } = {}
 
 local function anahtarOf(k: Kaynak): string
 	if k.revealed and k.name then
 		return `{k.name}|{k.mutation or "Normal"}`
 	end
-	-- Kimligi kapali olanlar kademe renginde boyaniyor: kademe basina bir anahtar
 	return `__gizli|{k.rarity or ""}`
 end
 
---[[
-	KADRAJ: YALNIZCA GORUNEN PARCALAR
-
-	Model:GetBoundingBox() gorunmez parcalari da (tutamak, carpisma kutusu,
-	efekt tasiyicisi) sayiyor ve kutuyu PrimaryPart'in eksenine hizaliyor.
-	Kimligi acilmamis brainrot modelinde bu yuzden kamera bos bir noktaya
-	bakiyordu; kup karenin sol altinda kucucuk kaliyordu. Artik kutu
-	yalnizca gorunen parcalardan, dunya eksenlerinde hesaplaniyor.
-]]
 local function gorunenSinir(model: Model, yalnizcaNitelik: string?): (Vector3?, Vector3?)
 	local enAz: Vector3? = nil
 	local enCok: Vector3? = nil
@@ -119,7 +49,6 @@ local function gorunenSinir(model: Model, yalnizcaNitelik: string?): (Vector3?, 
 		if not parca:IsA("BasePart") or parca.Transparency >= 0.99 then
 			continue
 		end
-		-- Istenirse yalnizca bu nitelikli parcalar (gizli modelin "?" kupu)
 		if yalnizcaNitelik and not parca:GetAttribute(yalnizcaNitelik) then
 			continue
 		end
@@ -143,15 +72,6 @@ local function gorunenSinir(model: Model, yalnizcaNitelik: string?): (Vector3?, 
 	return enAz, enCok
 end
 
---[[
-	KIMLIGI ACILMAMIS BRAINROT: "?" KUPU, TAM KARSIDAN
-
-	Sahnede YALNIZCA kup (keepPart) kalir; modelin diger parcalari
-	silinir ya da gizlenir. Kamera kupun "?" yazan yuzune (uzerindeki
-	Decal / Texture / SurfaceGui'nin yuzu) dik ve tam karsidan bakar,
-	kup kareye sigacak kadar geri cekilir. Yazili yuz bulunamazsa kupun
-	on yuzu (Front) kullanilir.
-]]
 local gizliRaporVerildi = false
 
 local function gizliKupu(model: Model): BasePart?
@@ -165,7 +85,6 @@ local function gizliKupu(model: Model): BasePart?
 		return nil
 	end
 
-	-- Uzerinde yazi/resim olan parca oncelikli, sonra en buyugu
 	local secilen: BasePart? = nil
 	local enBuyuk = -1
 	for _, p in adaylar do
@@ -182,7 +101,7 @@ end
 local function yaziliYuz(kup: BasePart): Vector3
 	for _, d in kup:GetChildren() do
 		local yuz: Enum.NormalId? = nil
-		if d:IsA("Decal") then -- Texture da Decal sayilir
+		if d:IsA("Decal") then
 			yuz = d.Face
 		elseif d:IsA("SurfaceGui") then
 			yuz = d.Face
@@ -195,15 +114,6 @@ local function yaziliYuz(kup: BasePart): Vector3
 end
 
 local function gizliSahne(model: Model, kamera: Camera): boolean
-	--[[
-		HiddenPart modeli (Output raporundan):
-		  Cube          3x3x3 "?" blogu -- elde gorunen asil model (keepPart)
-		  Cube.014/.003 ~6 stud yanda koyu kutu + ince plaka
-		  FakeRootPart, VfxInstance  gorunmez
-		Kamera YALNIZCA "?" blogunu kadrajlar ve -Z yonunden (onden) bakar;
-		"?" o yonden okunuyor. Yandaki parcalar silinmez, gorunmez yapilir
-		(silmek bir onceki denemede kupu da kaybettirmisti).
-	]]
 	local kup = gizliKupu(model)
 	local enAz, enCok = nil, nil
 	if kup then
@@ -268,22 +178,18 @@ local function gizliSahne(model: Model, kamera: Camera): boolean
 end
 
 local function kur(k: Kaynak): ViewportFrame?
-	-- Iki fonksiyon da zaten Clone() donduruyor; bir daha klonlanmiyor
 	local model = if k.revealed and k.name
 		then Assets.brainrotModel(k.name, k.mutation)
-		-- Listedeki "?" resmi de elde tasinanla ayni yumurta
 		else Assets.hiddenBrainrotModel(k.rarity)
 
 	if not model then
 		return nil
 	end
 
-	-- Gold Ore elde tasinanla ayni kademe renginde
 	if not (k.revealed and k.name) then
 		Assets.tintHidden(model, k.rarity)
 	end
 
-	-- Onizlemede script/ses/parcacik calismasin: sahne sessiz ve sabit olsun
 	for _, nesne in model:GetDescendants() do
 		if
 			nesne:IsA("BaseScript")
@@ -310,11 +216,6 @@ local function kur(k: Kaynak): ViewportFrame?
 	kamera.Parent = vp
 	vp.CurrentCamera = kamera
 
-	--[[
-		KIMLIGI ACILMAMIS: kamera yalnizca "?" kupune (keepPart) bakar ve
-		daha yakindan cekilir. Modelin geri kalani kadraja katilinca kup
-		karenin kosesinde kucucuk kaliyordu.
-	]]
 	local gizli = not (k.revealed and k.name)
 	if gizli and gizliSahne(model, kamera) then
 		return vp
@@ -350,11 +251,6 @@ local function al(anahtar: string, k: Kaynak): ViewportFrame?
 
 	local vp = kur(k)
 	if not vp then
-		--[[
-			Olumsuz sonuc KALICI saklanmiyor: istemci acilirken modeller
-			henuz replike edilmemis olabilir (Assets de ayni sebeple
-			saklamiyor). Kisa bir sure sonra yeniden deneniyor.
-		]]
 		yokZamani[anahtar] = os.clock()
 	end
 	return vp
@@ -378,15 +274,9 @@ local function birak(anahtar: string, vp: ViewportFrame)
 	havuzToplam += 1
 end
 
-------------------------------------------------------------------
--- KAYITLAR  (iki pencere turunun ortak isi)
-------------------------------------------------------------------
 export type Pencere = {
-	-- Bir karenin kaydi; yedek, onizleme varken gizlenecek eski gorunum ("?")
 	ekle: (yuva: GuiObject, kaynak: Kaynak, yedek: GuiObject?) -> (),
-	-- Kareler silinmeden ONCE cagrilir: onizlemeler havuza doner
 	temizle: () -> (),
-	-- Gorunen kareleri yeniden hesaplar
 	tazele: () -> (),
 }
 
@@ -408,7 +298,6 @@ local function yeniKayit(yuva: GuiObject, kaynak: Kaynak, yedek: GuiObject?): Ka
 	}
 end
 
--- Kareye onizlemeyi takar (zaten takiliysa bir sey yapmaz)
 local function tak(kayit: Kayit)
 	if kayit.vp then
 		return
@@ -429,7 +318,6 @@ local function tak(kayit: Kayit)
 	end
 end
 
--- Karenin onizlemesini havuza birakir
 local function serbest(kayit: Kayit)
 	local vp = kayit.vp
 	if not vp then
@@ -444,11 +332,6 @@ local function serbest(kayit: Kayit)
 	end
 end
 
---[[
-	Nesne gercekten ekranda mi: kendisi ve butun GuiObject atalari Visible,
-	ScreenGui'si Enabled. Kapali bir panelin ic karesi "Visible" gorunur ama
-	cizilmez; onlara onizleme takmak bosuna bellek.
-]]
 local function ekrandaMi(nesne: GuiObject): boolean
 	local node: Instance? = nesne
 	while node do
@@ -464,9 +347,6 @@ local function ekrandaMi(nesne: GuiObject): boolean
 	return false
 end
 
-------------------------------------------------------------------
--- DIKEY LISTE PENCERESI  (Envanter, Detective)
-------------------------------------------------------------------
 function BrainrotOnizleme.pencere(liste: ScrollingFrame, panel: GuiObject): Pencere
 	local kayitlar: { Kayit } = {}
 	local bekliyor = false
@@ -501,11 +381,6 @@ function BrainrotOnizleme.pencere(liste: ScrollingFrame, panel: GuiObject): Penc
 		end
 	end
 
-	--[[
-		Satirlar ayni karede toplu ekleniyor; her ekleme icin ayri hesap
-		yerine tek bir ertelenmis tazeleme. Ertelemenin ikinci faydasi:
-		yeni satirlarin AbsolutePosition'i ancak yerlesimden sonra dogru.
-	]]
 	local function sonraTazele()
 		if bekliyor then
 			return
@@ -522,10 +397,8 @@ function BrainrotOnizleme.pencere(liste: ScrollingFrame, panel: GuiObject): Penc
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		if panel.Visible then
 			sonraTazele()
-			-- UI.panel acilista buyume animasyonu oynatiyor; bitince yerlesim kesinlesir
 			task.delay(0.3, tazele)
 		else
-			-- Kapali panelin sahneleri bellekte durmasin
 			hepsiniBirak()
 		end
 	end)
@@ -545,16 +418,6 @@ function BrainrotOnizleme.pencere(liste: ScrollingFrame, panel: GuiObject): Penc
 	}
 end
 
-------------------------------------------------------------------
--- YATAY SERIT PENCERESI  (Lucky Block, gunluk odul carki)
---
--- Cark seridi tween'le kaydigi icin kaydirma sinyali yok; kareler her
--- RenderStepped'te cercevenin yatay sinirlarina gore degerlendiriliyor.
--- Cercevenin iki yanina BIR BOLME GENISLIGI pay birakiliyor: kenardan
--- girecek bolmenin resmi o goruldugunde hazir olsun.
---
--- Dongu yalnizca kayitli kare varken bagli; temizle() ile kopar.
-------------------------------------------------------------------
 function BrainrotOnizleme.seritPencere(cerceve: GuiObject): Pencere
 	local kayitlar: { Kayit } = {}
 	local baglanti: RBXScriptConnection? = nil
@@ -566,7 +429,6 @@ function BrainrotOnizleme.seritPencere(cerceve: GuiObject): Pencere
 	end
 
 	local function tazele()
-		-- Panel kapaliysa sahneler bellekte durmasin
 		if not ekrandaMi(cerceve) then
 			hepsiniBirak()
 			return

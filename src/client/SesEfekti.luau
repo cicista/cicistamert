@@ -1,24 +1,4 @@
 --!strict
---[[
-	SES EFEKTLERI AYARI  (ModuleScript, istemci)
-	Yeri: StarterPlayer > StarterPlayerScripts > SesEfekti
-
-	Settings panelindeki "SOUND EFFECTS" ayari. Muzik DISINDAKI butun
-	sesler (kazi, tiklama, toplama, adim sesleri...) bu oyuncuda tek bir
-	SoundGroup'a baglanir; grubun sesi ayarla kisilir ya da kapanir.
-
-	NASIL
-	  SoundService > "SesEfektleri" (SoundGroup) istemcide kurulur.
-	  Workspace, SoundService, ReplicatedStorage ve PlayerGui'deki her
-	  Sound -- sonradan eklenenler dahil -- bu gruba baglanir. Degisiklik
-	  yalnizca bu oyuncuda olur; baskalarinin sesi etkilenmez.
-
-	  Muzik (bkz. Muzik modulu) gruba KATILMAZ: kendi ayari var.
-	  Haritada elle bir SoundGroup'a konmus sesler de oldugu gibi kalir.
-
-	    SesEfekti.ayarla(yuzde, kapali)   -- yuzde 0..100
-	    SesEfekti.yuzde()  /  SesEfekti.kapali()
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,7 +7,6 @@ local Workspace = game:GetService("Workspace")
 
 local SesEfekti = {}
 
--- Muzik sesleri: Studio'daki asil parca ve Muzik modulunun kopyasi
 local MUZIK_ADLARI = {
 	["Happy Shoppers"] = true,
 	ArkaPlanMuzigi = true,

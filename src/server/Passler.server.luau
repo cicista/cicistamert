@@ -1,24 +1,4 @@
 --!strict
---[[
-	Passler  (Script)
-	Yeri: ServerScriptService > Passler
-
-	Robux gecislerinin (Shared > Passler) SAHIPLIK KAYNAGI.
-
-	Her oyuncu icin her gecisin sahipligi MarketplaceService'ten ogrenilir
-	ve oyuncunun ustune nitelik olarak yazilir:
-	    player:SetAttribute("Pass_Teleporter", true)
-	Nitelik istemciye kendiliginden gider; arayuz ve diger sunucu
-	scriptleri yalnizca onu okur.
-
-	NEDEN DATASTORE YOK
-	Gecis sahipligi Roblox'un kendi kaydi. PlayerData'ya kopyalamak iki
-	dogruluk kaynagi yaratir ve iade durumunda ikisi ayrisir.
-
-	SATIN ALMA
-	Istemci PassSatinAl ile gecisin adini yollar. ID girilmisse satin alma
-	penceresi acilir; girilmemisse "Coming soon!" bildirimi gider.
-]]
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -32,18 +12,9 @@ local Passler = require(Shared:WaitForChild("Passler"))
 local Bildirim = Net.event("Bildirim")
 local PassSatinAl = Net.event("PassSatinAl")
 
--- Web cagrisi dusukse tekrar denemeden once beklenen sure
 local TEKRAR_BEKLEME = 10
 local DENEME_SAYISI = 3
 
---[[
-	Sahipligi oyuncunun ustune yazar.
-
-	IKI NITELIK: biri gecisin kendi niteligi (Passler.sahip onu okuyor),
-	obüru "bu KALICI mi" bayragi. Sureli gecisler de ayni ana niteligi
-	aciyor; suresi bitince kapatacaklari zaman kalici hakki elinden
-	almamalari icin bayraga bakiyorlar (bkz. Modules > SureliGecis).
-]]
 local function sahiplikYaz(player: Player, ad: string, sahip: boolean)
 	local info = Passler.get(ad)
 	if not info or not player.Parent then
@@ -55,17 +26,10 @@ local function sahiplikYaz(player: Player, ad: string, sahip: boolean)
 	if sahip then
 		player:SetAttribute(info.nitelik, true)
 	elseif player:GetAttribute("PassSure_" .. ad) == nil then
-		-- Sureli hakki da yoksa kapat
 		player:SetAttribute(info.nitelik, false)
 	end
 end
 
---[[
-	Bir gecisin sahipligini ogrenir. Sorgu hata verirse sahiplik false
-	VARSAYILMAZ; birkac kez daha denenir. Hic ogrenilemezse nitelik
-	yazilmaz (arayuz "satin al" gosterir, gercek sahip bir sonraki girisinde
-	gecisine kavusur).
-]]
 local function kontrol(player: Player, ad: string)
 	local info = Passler.get(ad)
 	if not info then
@@ -88,7 +52,6 @@ local function kontrol(player: Player, ad: string)
 		end)
 
 		if ok then
-			-- Oturum icinde satin alinmissa (ya da adminden verilmisse) geri alinmaz
 			if player:GetAttribute(info.nitelik) ~= true then
 				sahiplikYaz(player, ad, sonuc == true)
 			end
@@ -141,10 +104,6 @@ PassSatinAl.OnServerEvent:Connect(function(player, ad)
 	end
 end)
 
---[[
-	Satin alma bitti. Web cagrisinin yeni durumu gormesi bazen gecikiyor;
-	bu yuzden nitelik dogrudan yazilir.
-]]
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, purchased)
 	local ad = Passler.adiniBul(gamePassId)
 	if not ad or not purchased then

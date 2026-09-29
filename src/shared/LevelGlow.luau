@@ -1,20 +1,4 @@
 --!strict
---[[
-	Tool seviyesi parlamasi.
-
-	Kurek ve dedektor seviyeleri artik farkli GOVDE RENGI ile degil,
-	sabit bir PARLAMA ile ayirt edilir:
-
-	    Lv.1  yesil
-	    Lv.2  mavi
-	    Lv.3  mor
-	    Lv.4  sari
-	    Lv.5  kirmizi
-
-	Parlama SKINDEN BAGIMSIZDIR: skin degistiginde govde gorunumu degisir,
-	parlama rengi ayni kalir. Boylece uzaktan bakinca kimin kacinci seviye
-	tool tasidigi her zaman belli olur.
-]]
 
 local LevelGlow = {}
 
@@ -27,7 +11,6 @@ LevelGlow.Colors = {
 }
 
 function LevelGlow.color(level: number): Color3
-	-- Ada kurekleri adanin renginde parlar: Candy pembe, Snow buz mavisi, Volcano turuncu
 	if level > 15 then
 		return Color3.fromRGB(255, 140, 40)
 	elseif level > 10 then
@@ -38,12 +21,6 @@ function LevelGlow.color(level: number): Color3
 	return LevelGlow.Colors[math.clamp(level, 1, 5)] or LevelGlow.Colors[1]
 end
 
---[[
-	Tool'a seviye parlamasini uygular.
-	Handle'a bir PointLight ve tool'un tamamina rengi veren bir Highlight
-	konur. Ikisi de sabit isimlidir, boylece skin degisiminde yeniden
-	uretilebilir ve ust uste birikmez.
-]]
 function LevelGlow.apply(tool: Tool, level: number)
 	local handle = tool:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then
@@ -69,9 +46,6 @@ function LevelGlow.apply(tool: Tool, level: number)
 		oldHighlight:Destroy()
 	end
 
-	-- Kontur (border) YOK: eski hali duvar arkasindan gorunen bir cerceve
-	-- ciziyordu. Artik yalnizca tool.un kendisi parlama renginde parliyor
-	-- ve arkasinda kalan yuzeyler onu gizliyor (Occluded).
 	local highlight = Instance.new("Highlight")
 	highlight.Name = "LevelHighlight"
 	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
@@ -81,7 +55,6 @@ function LevelGlow.apply(tool: Tool, level: number)
 	highlight.Adornee = handle
 	highlight.Parent = tool
 
-	-- Client'in da bilmesi icin (envanter ekrani, skin dongusu)
 	tool:SetAttribute("LevelGlow", color)
 	tool:SetAttribute("Level", level)
 end

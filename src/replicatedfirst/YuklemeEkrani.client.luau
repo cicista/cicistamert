@@ -1,62 +1,4 @@
 --!strict
---[[
-	YuklemeEkrani  (LocalScript)
-	Yeri: ReplicatedFirst > YuklemeEkrani
-
-	Oyun acilirken gorunen ozel yukleme ekrani. Roblox'un kendi gri
-	yukleme ekranini kaldirip yerine geciyor.
-
-	    [ bulanik LoadingScreen resmi, hafifce yaklasiyor ]
-
-	         L O A D I N G . . .
-	    +---------------------------------+
-	    |#############              70%   |
-	    +---------------------------------+
-	      Loading world assets...
-
-	    (o)  <- donen disli                cicistamert
-
-	NEDEN ReplicatedFirst
-	Yukleme ekrani, oyunun geri kalani daha yuklenmeden gorunmek zorunda.
-	ReplicatedFirst istemcide CALISAN ILK yer; StarterPlayerScripts'teki
-	betikler sahne hazir olduktan sonra basliyor, oraya konsa ekran is
-	bittikten sonra acilirdi.
-
-	BURADA BASKA MODUL KULLANILMIYOR
-	Shared klasoru (UI, Assets, Icons...) bu noktada daha replike olmamis
-	olabilir; require etmek ekrani kilitler. Bu yuzden dosya kendi kendine
-	yetiyor -- renkler, sekiller, yardimcilar hep burada.
-
-	ILERLEME GERCEK
-	Cubuk sahte degil: Assets altindaki mesh, doku, resim, ses ve
-	animasyonlarin hepsi ContentProvider ile obek obek onbellege aliniyor
-	ve yuzde gercekten yuklenen orandan cikiyor. Sirayla:
-
-	    varliklar -> game.Loaded -> oyuncunun kaydi -> karakter
-
-	Yani ekran kalktiginda oyuncunun hicbir seyi "yukleniyor" halinde
-	olmuyor.
-
-	EN AZ 5 SANIYE
-	Her sey onbellekteyse yukleme bir saniyeden kisa suruyordu ve ekran
-	goz kirpmasi gibi gelip geciyordu. Artik bir ALT SINIR var; cubuk da o
-	sureye yayiliyor. Yukleme daha uzun surerse ekran acik kalmaya devam
-	ediyor.
-
-	KAPANMA KARARI OYUNCUNUN
-	Yukleme bitince ekran kendiliginden kapanmiyor: PLAY dugmesi
-	beliriyor ve oyuncu basana kadar bekliyor. Kendiliginden kapandiginda
-	oyuncu daha ekrana bakarken kendini oyunun ortasinda buluyordu.
-
-	ASILI KALMAZ
-	Her sey ters giderse EN_COK_BEKLEME saniye sonunda dugme yine de
-	cikiyor: oyuncu asla "yukleniyor" halinde kilitli kalmiyor.
-
-	ROBLOX'UN ARAYUZU DE KAPALI
-	Sohbet ve oyuncu listesi yukleme boyunca gizli (CoreGui bizim
-	ScreenGui'mizin USTUNDE ciziliyor, baska turlu ortulemiyor); ekran
-	kapanirken geri aciliyor.
-]]
 
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
@@ -64,93 +6,23 @@ local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
--- Yerlesim ekranin GERCEK olcusune baglaniyor (bkz. yerlesimiTazele)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-------------------------------------------------------------------
--- AYARLAR
-------------------------------------------------------------------
---[[
-	ARKA PLAN RESMI
-
-	ReplicatedStorage > Assets > Backgrounds > LoadingScreen. Resmi tasiyan
-	nesne Decal, Texture, ImageLabel ya da resim kimligini tutan bir
-	StringValue olabilir.
-
-	Resim gec gelebilir (Assets o an daha replike olmamis olabilir); o yuzden
-	ekran once gradyanla aciliyor, resim gelince arkasina yerlesiyor.
-]]
 local ARKA_PLAN_KLASORU = { "Assets", "Backgrounds" }
 local ARKA_PLAN_ADI = "LoadingScreen"
 
---[[
-	RESIM EKRANI NASIL DOLDURUR
-
-	ScaleType.Crop: resim, ekrani TAMAMEN kaplayana kadar buyutulur ve
-	tasan kismi kirpilir. En-boy orani korunur, yani resim asla ezilmez --
-	ama ekranin orani resmin oranindan farkliysa bir yerlerden kirpilir.
-
-	  16:9 resim,  16:9 ekran  ->  hicbir sey kirpilmaz
-	  1:1 resim,   16:9 ekran  ->  ustten ve alttan buyuk parca gider
-	  16:9 resim,  4:3 ekran   ->  saglan ve soldan gider
-
-	YANI: resmi 16:9 hazirla. 1920x1080 ideal. (Roblox yuklerken en buyuk
-	kenari 1024'e indiriyor, 1024x576 oluyor; bulanik bir zemin icin bu
-	fazlasiyla yeterli.)
-
-	ODAK  --  kirpilirken NERESI kalsin
-
-	Resmin onemli yeri ortada degilse burayi oynat. Yaklasma da bu
-	noktadan yapiliyor, yani secilen nokta hic kaymadan yerinde kaliyor:
-
-	    (0.5, 0.5)  orta          (varsayilan)
-	    (0.5, 0.25) ust taraf     (gokyuzu / logo yukaridaysa)
-	    (0.5, 0.75) alt taraf
-	    (0.25, 0.5) sol taraf
-]]
 local RESIM_ODAK = Vector2.new(0.5, 0.5)
 
--- Yukleme boyunca resim bu orana kadar yavasca yaklasir (1 = hic yaklasma)
 local RESIM_YAKLASMA = 1.04
 
--- Oyunun adi (alt kosede durur)
 local OYUN_ADI = "CICISTAMERT"
 
--- Ne olursa olsun bu kadar saniye sonra ekran kapanir
 local EN_COK_BEKLEME = 45
 
---[[
-	EN AZ GORUNME SURESI
-
-	Varliklar onbellekteyse (Studio'da her zaman, oyuna ikinci kez giren
-	oyuncuda cogu zaman) yukleme bir saniyeden kisa suruyor; ekran
-	dolmadan kapanip goz kirpmasi gibi duruyordu.
-
-	Ekran bu sureden once KAPANMIYOR ve cubuk da bu sureye yayiliyor
-	(bkz. asagida zamanSiniri): yukleme anlik bitse bile cubuk 0'dan
-	100'e duzgunce doluyor.
-
-	Yukleme daha UZUN surerse ekran acik kalmaya devam ediyor; bu bir
-	alt sinir, ust sinir degil.
-]]
 local EN_AZ_GORUNME = 5
 
---[[
-	AFK DONUSU: EKRAN KENDILIGINDEN KAPANIR
-
-	Yonca alaninda AFK kalan oyuncu, Roblox'un 20 dakikalik atmasindan
-	once sunucu tarafindan AYNI sunucuya yeniden baglaniyor (bkz.
-	ServerScriptService > Modules > AfkSans). O sirada oyuncu bilgisayarin
-	basinda degil: PLAY dugmesini bekleyen ekran onu burada tutar,
-	sohbet ve oyuncu listesi de kapali kalirdi.
-
-	Teleport verisinde AFK donus isareti varsa en az gorunme suresi
-	kisalir ve ekran PLAY beklemeden kendiliginden kapanir. Anahtar
-	Shared > AfkSans > TeleportVeriAnahtari ile ayni olmali (burada
-	Shared require edilemiyor, bkz. ust aciklama).
-]]
 local AFK_DONUS_ANAHTARI = "AfkDonus"
 
 local afkDonusu = false
@@ -162,51 +34,23 @@ do
 end
 
 if afkDonusu then
-	-- 0 olamaz: cubuk bu sureye bolunerek doluyor
 	EN_AZ_GORUNME = 0.5
 end
 
--- Renkler
 local NEON = Color3.fromRGB(70, 190, 255)
 local NEON_KOYU = Color3.fromRGB(20, 90, 160)
 local BEYAZ = Color3.fromRGB(255, 255, 255)
 local SOLGUN = Color3.fromRGB(170, 185, 200)
 
--- Cubugun olculeri
 local CUBUK_EN = 520
 local CUBUK_BOY = 34
 
---[[
-	Cubugun etrafinda suzulen toz tanesi sayisi. Cok olmasi gerekmiyor;
-	birkac tanesi bile ekrani "canli" yapiyor.
-]]
 local TOZ_SAYISI = 22
 
-------------------------------------------------------------------
--- ROBLOX'UN KENDI EKRANINI KALDIR
-------------------------------------------------------------------
---[[
-	pcall: bazi baglamlarda (Studio'da bazi test modlari) bu cagri hata
-	veriyor ve hatasi butun betigi durdururdu.
-]]
 pcall(function()
 	ReplicatedFirst:RemoveDefaultLoadingScreen()
 end)
 
-------------------------------------------------------------------
--- ROBLOX'UN KENDI ARAYUZU DE KAPALI
-------------------------------------------------------------------
---[[
-	Sohbet kutusu ve sag ustteki oyuncu listesi CoreGui'ye ait; bizim
-	ScreenGui'miz DisplayOrder ne olursa olsun onlarin ALTINDA kaliyor.
-	Yukleme ekraninin uzerinde durduklarinda ekran yarim kalmis gibi
-	gorunuyordu.
-
-	Kapatmanin tek yolu SetCoreGuiEnabled. Ekran kapanirken geri
-	aciliyor (bkz. coreGuiGeriAc) -- oyuncu sohbetsiz kalmasin.
-
-	Ilk karelerde bu cagri reddedilebiliyor; basarana kadar deneniyor.
-]]
 local KAPATILAN_COREGUI = {
 	Enum.CoreGuiType.Chat,
 	Enum.CoreGuiType.PlayerList,
@@ -224,16 +68,6 @@ local function coreGuiAyarla(acik: boolean)
 	end
 end
 
---[[
-	BIR KEZ KAPATMAK YETMIYOR
-
-	Roblox kendi arayuz modullerini yuklerken bizim kapatmamizi eziyor:
-	tek sefer kapatinca sohbet ve oyuncu listesi birkac saniye sonra geri
-	geliyordu. Bu yuzden ekran kapanana kadar SUREKLI kapali tutuluyor.
-
-	Ust seritteki dugmeler (sohbet, menu) da kapatiliyor; onlar CoreGui
-	turlerine degil SetCore'a bakiyor.
-]]
 local coreGuiSuruyor = true
 
 task.spawn(function()
@@ -246,13 +80,7 @@ task.spawn(function()
 	end
 end)
 
---[[
-	GERI ACARKEN Backpack'e DOKUNULMUYOR: onu kendi hotbar'imiz bilerek
-	kapali tutuyor (bkz. StarterPlayerScripts > Hotbar). Burada da acsaydik
-	Roblox'un cubugu bizimkinin yanina geri gelirdi.
-]]
 local function coreGuiGeriAc()
-	-- Once dongu dursun, yoksa actigimizi hemen geri kapatir
 	coreGuiSuruyor = false
 
 	for _, tur in KAPATILAN_COREGUI do
@@ -268,9 +96,6 @@ local function coreGuiGeriAc()
 	end)
 end
 
-------------------------------------------------------------------
--- KUCUK YARDIMCILAR  (Shared > UI burada kullanilamiyor)
-------------------------------------------------------------------
 local function kose(nesne: Instance, yaricap: number)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, yaricap)
@@ -302,79 +127,20 @@ local function yazi(ayar: { [string]: any }): TextLabel
 	return etiket
 end
 
-------------------------------------------------------------------
--- EKRAN
-------------------------------------------------------------------
 local ekran = Instance.new("ScreenGui")
 ekran.Name = "YuklemeEkrani"
--- Her seyin ustunde: hata ekrani bile (100) bunun altinda kalmali
 ekran.DisplayOrder = 1000
---[[
-	EKRANIN TAMAMINI KAPLA  --  IKI AYAR BIRDEN
-
-	IgnoreGuiInset eski ozellik; yeni surumlerde yerini ScreenInsets aldi
-	ve varsayilani CoreUISafeInsets. O ayarda arayuz, ust seridin ve sol
-	ustteki Roblox/menu dugmelerinin yerini BOS BIRAKIYOR: ekran soldan ve
-	ustten iceri kayiyor, ortaya konan panel de saga kaymis gorunuyordu.
-	Soldaki bosluk da buydu.
-
-	None demek "hicbir sey icin yer birakma": arayuz pencerenin tam
-	kosesinden baslar. Eski surumlerde ScreenInsets yok, o yuzden pcall;
-	orada IgnoreGuiInset zaten isi goruyor.
-]]
 ekran.IgnoreGuiInset = true
 pcall(function()
 	(ekran :: any).ScreenInsets = Enum.ScreenInsets.None
 end)
 ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
---[[
-	ARAYUZ OLCEGI BU EKRANA UYGULANMAZ
-
-	Asil sorun buydu: StarterPlayerScripts > UI, PlayerGui'deki HER
-	ekranin ust duzey cocuklarina 1.25'lik bir UIScale takiyor (ayarlardaki
-	"Interface Scale"). Perde de ust duzey oldugu icin sol ust kosesinden
-	1.25 kat buyuyordu:
-
-	    panel merkezi 960 yerine ~1210, boyu 600 yerine ~750 mantiksal
-	    arka plan resmi pencereden tasip sagi/alti kesiliyor
-
-	Bu nitelik UI modulune "bu ekrana dokunma" diyor. Nitelik ekran
-	PlayerGui'ye GIRMEDEN yaziliyor; sonradan yazilsaydi olcek o arada
-	takilmis olabilirdi.
-]]
 ekran:SetAttribute("OlcekDisi", true)
 ekran.Parent = playerGui
 
---[[
-	KOK PERDE  --  DUZ FRAME, CanvasGroup DEGIL
-
-	Eskiden butun ekran tek bir CanvasGroup'un icindeydi (kapanirken tek
-	bir GroupTransparency tweeni icin). CanvasGroup icerigini once bir
-	dokuya cizip sonra ekrana basiyor; tam ekran boyunda bir CanvasGroup'ta
-	(ozellikle Windows ekran olceklendirmesi %100 degilken) o doku YANLIS
-	OLCEKTE basildi -- ekran goruntusunden olculen:
-
-	    koddaki panel 600x262  ->  ekranda ~940x412
-	    merkezi 960            ->  ekranda ~1210
-
-	Yani her sey sol ust koseden ~1.26 kat buyuyordu: panel saga-asagi
-	kayiyor, arka plan resmi buyuyup sagi ve alti kesiliyor, yazilar da
-	dokudan buyutuldugu icin bulanik/cift gorunuyordu. Pikselle, oranla,
-	kamerayla yapilan butun "ortalama" denemeleri bu yuzden ise yaramadi --
-	sorun konumda degil, cizimdeydi.
-
-	Duz Frame'de boyle bir ara doku yok: her sey tam yerinde ve net
-	ciziliyor. Kapanistaki solma artik nesne nesne yapiliyor (bkz. KAPANIS
-	> hepsiniSoldur).
-]]
 local perde = Instance.new("Frame")
 perde.Name = "Perde"
---[[
-	EMNIYET: nitelige ragmen perdeye bir olcek takilirsa (eski surum bir
-	UI modulu, baska bir script) aninda sokulur. Perde her zaman pencerenin
-	kendisi kadar kalir.
-]]
 perde.ChildAdded:Connect(function(cocuk)
 	if cocuk:IsA("UIScale") then
 		task.defer(function()
@@ -388,13 +154,6 @@ perde.BorderSizePixel = 0
 perde.ZIndex = 1
 perde.Parent = ekran
 
-------------------------------------------------------------------
--- ARKA PLAN
-------------------------------------------------------------------
---[[
-	GRADYAN ZEMIN  --  resim gelene kadar (ve resmin altinda) duruyor.
-	Sicak ust, koyu alt: gun batimi hissi.
-]]
 local gokyuzu = Instance.new("Frame")
 gokyuzu.Name = "Gokyuzu"
 gokyuzu.Size = UDim2.fromScale(1, 1)
@@ -412,17 +171,6 @@ gokGecis.Color = ColorSequence.new({
 })
 gokGecis.Parent = gokyuzu
 
---[[
-	RESIM KABI  --  ekrani tam kaplar, tasani keser
-
-	SABIT duruyor ve ekranin TAM ORTASINDA: AnchorPoint verilmeseydi
-	(varsayilan 0,0) sol ust koseye yapisirdi.
-
-	TASMA PAYI: her kenardan birkac piksel BUYUK. Olcu yuvarlamasi ya da
-	perdenin bir piksel eksik cozulmesi yuzunden kenarda sacim gibi bir
-	bosluk kalabiliyordu; bu payla resim her zaman kenarlarin disina
-	tasiyor, yani ekranda hicbir bosluk gorunmuyor.
-]]
 local resimKabi = Instance.new("Frame")
 resimKabi.Name = "ResimKabi"
 resimKabi.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -433,22 +181,6 @@ resimKabi.ClipsDescendants = true
 resimKabi.ZIndex = 2
 resimKabi.Parent = perde
 
---[[
-	YAKLASAN KATMAN
-
-	Resmin yavasca buyumesi BU cercevede; kirpan kap sabit kaliyor.
-
-	Once buyuyen sey kabin KENDISIYDI ve kap sol ust koseden bagliydi:
-	buyudukce sag alta dogru tasiyor, ekranda resmin ortasi degil bir
-	kosesi kaliyordu. Simdi buyuyen cerceve ORTADAN bagli, yani her iki
-	yana esit aciliyor ve resmin ortasi hep ortada duruyor.
-]]
---[[
-	AnchorPoint ile Position AYNI nokta (RESIM_ODAK): cerceve buyurken o
-	nokta yerinde kaliyor, buyume onun etrafina dagiliyor. Ortada iken
-	iki yana esit aciliyor; ust tarafa alinirsa yaklasma asagi dogru
-	oluyor ve ustteki detay kadrajdan cikmiyor.
-]]
 local resimYaklasma = Instance.new("Frame")
 resimYaklasma.Name = "Yaklasma"
 resimYaklasma.AnchorPoint = RESIM_ODAK
@@ -458,24 +190,6 @@ resimYaklasma.BackgroundTransparency = 1
 resimYaklasma.ZIndex = 2
 resimYaklasma.Parent = resimKabi
 
---[[
-	BULANIKLIK
-
-	Roblox'ta arayuz icin gercek bir blur YOK (BlurEffect yalnizca 3B
-	kamerada calisir). Ayni resim birkac kez, birbirine gore birkac piksel
-	kaydirilmis ve daha soluk olarak ust uste seriliyor; kenarlar birbirine
-	karisiyor, goz bunu bulaniklik olarak okuyor.
-
-	Katman sayisi az: yukleme ekrani, makine zaten mesgul.
-]]
---[[
-	ARTIK TEK KATMAN: resim NET.
-
-	Kaydirilmis kopyalar resmin uzerindeki yaziyi (MYSTERY BEAMS logosu)
-	cift ve okunmaz yapiyordu. Arka plan butun potansiyeliyle gorunsun
-	diye bulaniklik kaldirildi; liste yine duruyor, istenirse kopya
-	eklenebilir.
-]]
 local BULANIK_KAYMA = {
 	Vector2.new(0, 0),
 }
@@ -489,7 +203,6 @@ for sira, kayma in BULANIK_KAYMA do
 	katman.Size = UDim2.fromScale(1, 1)
 	katman.BackgroundTransparency = 1
 	katman.ScaleType = Enum.ScaleType.Crop
-	-- Ilk katman tam, digerleri gittikce soluk: uzerine bindikce yumusuyor
 	katman.ImageTransparency = if sira == 1 then 0 else 0.55
 	katman.ZIndex = 2
 	katman.Visible = false
@@ -497,16 +210,7 @@ for sira, kayma in BULANIK_KAYMA do
 	table.insert(resimKatmanlari, katman)
 end
 
---[[
-	Resmi ARARKEN oyun beklemiyor: arama ayri bir iplikte, bulununca
-	katmanlara yaziliyor ve yavasca beliriyor.
-]]
 task.spawn(function()
-	--[[
-		Assets gec replike olabilir. WaitForChild'in zaman asimi var ki
-		klasor hic yoksa bu iplik sonsuza kadar beklemesin; o durumda
-		ekran gradyanla kaliyor.
-	]]
 	local node: Instance? = ReplicatedStorage
 	for _, ad in ARKA_PLAN_KLASORU do
 		node = if node then node:WaitForChild(ad, 10) else nil
@@ -517,10 +221,6 @@ task.spawn(function()
 		return
 	end
 
-	--[[
-		Resmi tasiyan nesne turu serbest: Decal/Texture'da Texture,
-		ImageLabel'da Image, StringValue'da dogrudan kimlik.
-	]]
 	local kimlik: string? = nil
 	if hedef:IsA("Decal") or hedef:IsA("Texture") then
 		kimlik = hedef.Texture
@@ -539,10 +239,6 @@ task.spawn(function()
 		katman.Visible = true
 	end
 
-	--[[
-		YAVAS YAKLASMA: resim %100'den %104'e buyuyor. Tek yonlu ve uzun
-		(yukleme ne kadar surerse sursun bitmiyor gibi duruyor).
-	]]
 	TweenService
 		:Create(
 			resimYaklasma,
@@ -552,31 +248,17 @@ task.spawn(function()
 		:Play()
 end)
 
---[[
-	KARARTMA: resmin uzerine koyu bir perde. Yazilarin okunmasi resme
-	degil buna bagli -- hangi resim konursa konsun metin okunur kaliyor.
-]]
 local karartma = Instance.new("Frame")
 karartma.Name = "Karartma"
 karartma.Size = UDim2.fromScale(1, 1)
 karartma.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
---[[
-	Koyuluk yuksek: arka plan resmi ne kadar parlak ve kalabalik olursa
-	olsun baslik ve cubuk okunur kalsin. Resmin kendisi yine seciliyor,
-	ama artik yazilarla yarismiyor.
-]]
 karartma.BackgroundTransparency = 0.35
 karartma.BorderSizePixel = 0
 karartma.ZIndex = 3
 karartma.Parent = perde
 
--- Kenarlara dogru koyulasan vinyet: goz ortaya, panele gidiyor
 local vinyet = Instance.new("UIGradient")
 vinyet.Rotation = 90
---[[
-	Ust hafif koyu, ORTA TAMAMEN ACIK (logo orada), alt koyu (panel orada
-	durdugu icin yazilar okunsun).
-]]
 vinyet.Transparency = NumberSequence.new({
 	NumberSequenceKeypoint.new(0, 0.55),
 	NumberSequenceKeypoint.new(0.4, 1),
@@ -585,21 +267,6 @@ vinyet.Transparency = NumberSequence.new({
 })
 vinyet.Parent = karartma
 
-------------------------------------------------------------------
--- ORTADAKI PANEL
-------------------------------------------------------------------
---[[
-	KONUM ORANLA DEGIL, PIKSELLE
-
-	Panel "cercevenin ortasi" (0.5) yerine "EKRANIN ortasi" olarak
-	konumlaniyor; konumu yerlesimiTazele veriyor.
-
-	Sebep: oran, icinde bulundugu cercevenin cozulmus olcusune bagli.
-	Cerceve bir sebeple pencereden genis cozulursa (arayuz eki, olcek,
-	kirpilmayan tasma) "ortasi" pencerenin ortasi olmuyor ve panel yana
-	kayiyor -- nitekim kayiyordu. Kameranin ViewportSize'i ise pencerenin
-	kendisi; tartisma birakmiyor.
-]]
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -610,43 +277,12 @@ panel.BorderSizePixel = 0
 panel.ZIndex = 4
 panel.Parent = perde
 
---[[
-	YERLESIM  --  ORANLA, kamera olcusuyle degil
-
-	Perde ekranin tamamini, panel de tam ortasini ORANLA aliyor.
-
-	Onceden ikisi de kameranin ViewportSize'indan piksel piksel
-	hesaplaniyordu. Bu script ReplicatedFirst'te, yani oyunun EN BASINDA
-	calisiyor: o anda kamera henuz yok ya da olcusu gecici (1x1) olabiliyor
-	ve perde o gecici olcuye gore kuruluyordu -- arka plan ekranin bir
-	kismini kaplamiyor, panel de ortadan kayiyordu.
-
-	Oranla verince boyle bir an yok: perde her zaman ekranin kendisi kadar,
-	panel de her zaman tam ortasinda. Pencere boyutu degisince (tam ekran,
-	telefon cevirme) kendiliginden uyuyor, dinlemeye gerek kalmiyor.
-
-	Oranin guvenli olmasinin sebebi ekranin ScreenInsets = None +
-	IgnoreGuiInset olmasi: arayuz alani pencerenin TAMAMI, yani "%100"
-	gercekten tam ekran demek (bkz. EKRAN bolumu).
-]]
 perde.Position = UDim2.fromScale(0, 0)
 perde.Size = UDim2.fromScale(1, 1)
 
---[[
-	PANEL ALTTA: arka plan resminin logosu ("MYSTERY BEAMS") ortada duruyor
-	ve panel ortadayken tam onu kapatiyordu. Panel artik alt ortada; resim
-	ve logo ustte tamamen gorunuyor.
-]]
 panel.AnchorPoint = Vector2.new(0.5, 1)
 panel.Position = UDim2.new(0.5, 0, 1, -24)
 
---[[
-	PANEL KUCUK: logonun altindaki Lucky Block da gorunsun
-
-	Tam boyda panel blogun yuzunu kapatiyordu. Icindeki her seyi tek tek
-	kucultmek yerine panelin tamamina bir olcek veriliyor; AnchorPoint alt
-	ortada oldugu icin panel kuculurken yerinden kaymiyor, dibe oturuyor.
-]]
 local PANEL_OLCEK = 0.72
 local panelOlcek = Instance.new("UIScale")
 panelOlcek.Name = "PanelOlcek"
@@ -655,13 +291,6 @@ panelOlcek.Parent = panel
 kose(panel, 18)
 kontur(panel, Color3.fromRGB(45, 60, 82), 2)
 
---[[
-	BASLIK
-
-	Beyaz govde + neon mavi kontur. Konturun saydamligi nabiz gibi gidip
-	geliyor: durgun bir ekranda tek hareketli sey bu olunca goz once
-	buraya geliyor.
-]]
 local baslik = yazi({
 	text = "LOADING...",
 	textSize = 46,
@@ -694,9 +323,6 @@ TweenService
 	)
 	:Play()
 
-------------------------------------------------------------------
--- ILERLEME CUBUGU
-------------------------------------------------------------------
 local cubuk = Instance.new("Frame")
 cubuk.Name = "Cubuk"
 cubuk.AnchorPoint = Vector2.new(0.5, 0)
@@ -704,7 +330,6 @@ cubuk.Position = UDim2.new(0.5, 0, 0, 104)
 cubuk.Size = UDim2.fromOffset(CUBUK_EN, CUBUK_BOY)
 cubuk.BackgroundColor3 = Color3.fromRGB(28, 33, 44)
 cubuk.BorderSizePixel = 0
--- Dolgu yuvarlak kosenin disina tasmasin
 cubuk.ClipsDescendants = true
 cubuk.ZIndex = 5
 cubuk.Parent = panel
@@ -720,17 +345,10 @@ dolgu.ZIndex = 6
 dolgu.Parent = cubuk
 kose(dolgu, CUBUK_BOY // 2)
 
--- Dolgunun kendi icinde koyudan parlaga gecisi: duz renk yerine isik
 local dolguGecis = Instance.new("UIGradient")
 dolguGecis.Color = ColorSequence.new(NEON_KOYU, NEON)
 dolguGecis.Parent = dolgu
 
---[[
-	DOLGUNUN UCUNDAKI PARLAMA
-
-	Dolgunun sag ucunda duran, ileri geri kayan acik bir bant: cubuk
-	"calisiyor" gibi duruyor, yuzde artmasa bile hareket var.
-]]
 local parlama = Instance.new("Frame")
 parlama.Name = "Parlama"
 parlama.AnchorPoint = Vector2.new(1, 0)
@@ -749,7 +367,6 @@ parlamaGecis.Transparency = NumberSequence.new({
 })
 parlamaGecis.Parent = parlama
 
--- Cubugun ICINDE duran yuzde yazisi
 local yuzdeYazi = yazi({
 	text = "0% Completed",
 	textSize = 18,
@@ -761,7 +378,6 @@ local yuzdeYazi = yazi({
 })
 kontur(yuzdeYazi, Color3.fromRGB(0, 0, 0), 2)
 
--- Cubugun altindaki aciklama satiri
 local durumYazi = yazi({
 	text = "Loading world assets... Please wait",
 	textSize = 16,
@@ -774,20 +390,6 @@ local durumYazi = yazi({
 	name = "Durum",
 })
 
-------------------------------------------------------------------
--- BASLA DUGMESI
-------------------------------------------------------------------
---[[
-	EKRAN KENDILIGINDEN KAPANMIYOR
-
-	Yukleme bitince ekran kapanmiyor, bu dugme beliriyor ve oyuncu
-	basana kadar bekliyor. Sebebi: oyuncu oyuna hazir OLDUGUNDA girsin.
-	Kendiliginden kapandiginda oyuncu daha ekrana bakarken kendini
-	oyunun ortasinda buluyordu.
-
-	Dugme yukleme bitene kadar GORUNMUYOR; hazir olunca asagidan
-	yukari kucuk bir yaylanmayla giriyor.
-]]
 local baslaDugme = Instance.new("TextButton")
 baslaDugme.Name = "Basla"
 baslaDugme.AnchorPoint = Vector2.new(0.5, 0)
@@ -803,7 +405,6 @@ baslaDugme.Parent = panel
 kose(baslaDugme, 12)
 kontur(baslaDugme, Color3.fromRGB(0, 0, 0), 3)
 
--- Ustten asagi hafif isik: duz renk yerine kabarik dugme
 local baslaGecis = Instance.new("UIGradient")
 baslaGecis.Rotation = 90
 baslaGecis.Color = ColorSequence.new(Color3.fromRGB(140, 220, 255), NEON)
@@ -822,7 +423,6 @@ local baslaYazi = yazi({
 local baslaOlcek = Instance.new("UIScale")
 baslaOlcek.Parent = baslaDugme
 
--- Fare ustundeyken hafifce buyur: tiklanabilir oldugu belli olsun
 baslaDugme.MouseEnter:Connect(function()
 	TweenService:Create(baslaOlcek, TweenInfo.new(0.12), { Scale = 1.06 }):Play()
 end)
@@ -830,14 +430,6 @@ baslaDugme.MouseLeave:Connect(function()
 	TweenService:Create(baslaOlcek, TweenInfo.new(0.12), { Scale = 1 }):Play()
 end)
 
-------------------------------------------------------------------
--- TOZ TANELERI
-------------------------------------------------------------------
---[[
-	Cubugun etrafinda yavasca yukari suzulen kucuk isiklar. Her biri kendi
-	hizinda ve kendi gecikmesiyle basliyor; hepsi ayni anda hareket etse
-	yagmur gibi gorunurdu.
-]]
 local tozKabi = Instance.new("Frame")
 tozKabi.Name = "Toz"
 tozKabi.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -863,7 +455,6 @@ for i = 1, TOZ_SAYISI do
 	tane.Parent = tozKabi
 
 	task.spawn(function()
-		-- Baslangic gecikmesi: hepsi ayni anda dogmasin
 		task.wait(rastgele:NextNumber(0, 3))
 
 		while tane.Parent do
@@ -878,7 +469,6 @@ for i = 1, TOZ_SAYISI do
 				TweenInfo.new(sure, Enum.EasingStyle.Linear),
 				{ Position = UDim2.fromScale(x + rastgele:NextNumber(-0.05, 0.05), -0.05) }
 			)
-			-- Yol boyunca sonuyor: tepeye varinca yok olmus oluyor
 			TweenService
 				:Create(tane, TweenInfo.new(sure, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 })
 				:Play()
@@ -889,14 +479,6 @@ for i = 1, TOZ_SAYISI do
 	end)
 end
 
-------------------------------------------------------------------
--- DONEN DISLI  (sol alt)
-------------------------------------------------------------------
---[[
-	Disli bir resim degil, CIZIM: sekiz cubuk bir daire etrafinda. Boylece
-	hicbir varliga bagli degil ve yukleme ekrani bir resmin yuklenmesini
-	beklemiyor -- ki bu ekranin butun amaci o beklemeyi doldurmak.
-]]
 local disli = Instance.new("Frame")
 disli.Name = "Disli"
 disli.AnchorPoint = Vector2.new(0, 1)
@@ -920,7 +502,6 @@ for i = 1, 8 do
 	kose(dis, 3)
 end
 
--- Ortadaki koyu goz: cubuklar disli gibi gorunsun
 local dislGobek = Instance.new("Frame")
 dislGobek.AnchorPoint = Vector2.new(0.5, 0.5)
 dislGobek.Position = UDim2.fromScale(0.5, 0.5)
@@ -945,16 +526,6 @@ yazi({
 	name = "DisliYazi",
 })
 
-------------------------------------------------------------------
--- ALT KOSE  (oyunun adi)
-------------------------------------------------------------------
---[[
-	Burada ROBLOX LOGOSU ve "(c) Roblox Corporation" YOK, bilerek: bu senin
-	oyunun yukleme ekrani, Roblox'un degil. Baskasinin markasini kendi
-	ekranina koymak hem yaniltici olur hem de Roblox'un marka kurallarina
-	girer. Yerine oyunun kendi adi duruyor; degistirmek icin yukaridaki
-	OYUN_ADI yeter.
-]]
 yazi({
 	text = OYUN_ADI,
 	textSize = 15,
@@ -968,20 +539,9 @@ yazi({
 	name = "OyunAdi",
 })
 
-------------------------------------------------------------------
--- ILERLEME
-------------------------------------------------------------------
---[[
-	CUBUK GERIYE GITMEZ, SICRAMAZ
-
-	Hedef yuzde adim adim degisiyor ama cubuk ona YUMUSAKCA yaklasiyor:
-	her karede aradaki farkin bir kismi kapaniyor. Bir obek aninda yuklenip
-	yuzde birden ziplasa bile cubuk akici kaliyor.
-]]
 local hedefYuzde = 0
 local gorunenYuzde = 0
 
--- Ekranin acildigi an; hem cubugun hizi hem kapanma izni buna bagli
 local basladi = os.clock()
 
 local function gecenSure(): number
@@ -998,61 +558,28 @@ end
 local cizimBagi: RBXScriptConnection? = nil
 
 cizimBagi = RunService.RenderStepped:Connect(function(dt: number)
-	--[[
-		CUBUK ZAMANI GECEMEZ
-
-		Gercek ilerleme anlik %100 olsa bile cubuk en az EN_AZ_GORUNME
-		saniyede doluyor. Yukleme daha yavassa bu sinir devreye girmiyor:
-		ikisinden KUCUK olan kullaniliyor, yani cubuk her zaman gercek
-		ilerlemenin gerisinde ya da esitinde.
-	]]
 	local zamanSiniri = math.clamp(gecenSure() / EN_AZ_GORUNME, 0, 1)
 	local hedef = math.min(hedefYuzde, zamanSiniri)
 
-	-- Kare hizindan bagimsiz yumusatma
 	gorunenYuzde += (hedef - gorunenYuzde) * math.min(1, dt * 5)
 
 	dolgu.Size = UDim2.fromScale(gorunenYuzde, 1)
 	yuzdeYazi.Text = `{math.floor(gorunenYuzde * 100)}% Completed`
 
-	-- Uctaki parlama yalnizca dolgu gorunurken anlamli
 	parlama.Visible = gorunenYuzde > 0.02
 end)
 
---[[
-	VARLIKLARI ONBELLEGE AL
-
-	ContentProvider varliklari obek obek indiriyor; her obekten sonra yuzde
-	ilerliyor. Obek kucuk tutuluyor ki cubuk sik sik ilerlesin -- tek
-	seferde hepsini vermek yuzdeyi 0'dan 100'e ziplatirdi.
-
-	PreloadAsync bir varlikta patlarsa butun yukleme durmasin diye her obek
-	pcall icinde.
-]]
 local function varliklariYukle()
 	ilerle(0.05, "Reaching the server...")
 
 	local kok = ReplicatedStorage:WaitForChild("Assets", 15)
 	if not kok then
-		-- Assets gelmedi: yalniz oyunun kendi yuklenmesini bekleyecegiz
 		ilerle(0.6, "Loading world...")
 		return
 	end
 
 	ilerle(0.12, "Loading world assets...")
 
-	--[[
-		NE YUKLENIYOR
-
-		Assets altindaki icerik tasiyan HER sey: brainrot ve blok
-		modellerinin mesh'leri, dokular, resimler, sesler, animasyonlar.
-		Oyuncu oyuna girdiginde hicbiri "yukleniyor" halinde olmasin.
-
-		Modellerin KENDISI listeye girmiyor, icindeki parcalar giriyor:
-		PreloadAsync bir Model verilince zaten icini geziyor, ama parca
-		parca vermek ilerlemeyi olcmeyi sagliyor -- tek bir devasa model
-		verilseydi cubuk o model bitene kadar hic kimildamazdi.
-	]]
 	local liste: { Instance } = {}
 	for _, node in kok:GetDescendants() do
 		if
@@ -1087,14 +614,10 @@ local function varliklariYukle()
 		end)
 
 		islenen += #obek
-		-- Varliklar toplamin %12 ile %75'i arasini dolduruyor
 		ilerle(0.12 + (islenen / #liste) * 0.63, `Loading world assets...  {islenen} / {#liste}`)
 	end
 end
 
-------------------------------------------------------------------
--- KAPANIS
-------------------------------------------------------------------
 local kapandi = false
 
 local function kapat()
@@ -1103,17 +626,8 @@ local function kapat()
 	end
 	kapandi = true
 
-	-- Sohbet ve oyuncu listesi geri gelsin
 	coreGuiGeriAc()
 
-	--[[
-		HEPSINI BIRLIKTE SOLDUR
-
-		Perde artik CanvasGroup degil (bkz. KOK PERDE); tek bir
-		GroupTransparency yok. Onun yerine perde ve icindeki her nesnenin
-		saydamlik ozellikleri AYNI tweenle 1'e cekiliyor -- ekranda yine
-		tek parca soluyormus gibi gorunuyor.
-	]]
 	local solma = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local sonTween: Tween? = nil
 
@@ -1142,7 +656,6 @@ local function kapat()
 		sonTween.Completed:Wait()
 	end
 
-	-- Her kare calisan cizim dongusu ekranla birlikte bitsin
 	if cizimBagi then
 		cizimBagi:Disconnect()
 		cizimBagi = nil
@@ -1151,17 +664,6 @@ local function kapat()
 	ekran:Destroy()
 end
 
-------------------------------------------------------------------
--- HAZIR: DUGMEYI GOSTER
-------------------------------------------------------------------
---[[
-	Her sey yuklendiginde (ya da guvenlik agi devreye girdiginde) ekran
-	KAPANMIYOR: cubuk doluyor, PLAY dugmesi beliriyor ve oyuncu basana
-	kadar bekliyor.
-
-	EN AZ GORUNME burada da gecerli: yukleme anlik bitse bile cubuk o
-	sureye yayildigi icin dugme ancak cubuk dolunca cikiyor.
-]]
 local hazirlandi = false
 
 local function hazirOl()
@@ -1172,7 +674,6 @@ local function hazirOl()
 
 	ilerle(1, "Everything is ready")
 
-	-- Cubuk dolana kadar bekle (bkz. zamanSiniri)
 	local kalan = EN_AZ_GORUNME - gecenSure()
 	if kalan > 0 then
 		task.wait(kalan)
@@ -1183,7 +684,6 @@ local function hazirOl()
 		return
 	end
 
-	-- AFK donusunde oyuncu basinda degil: PLAY beklemeden kapan
 	if afkDonusu then
 		kapat()
 		return
@@ -1192,7 +692,6 @@ local function hazirOl()
 	durumYazi.Text = "Click PLAY to start"
 	baslaDugme.Visible = true
 
-	-- Asagidan kucuk bir yaylanmayla girer
 	baslaOlcek.Scale = 0.6
 	TweenService
 		:Create(
@@ -1205,13 +704,6 @@ end
 
 baslaDugme.Activated:Connect(kapat)
 
---[[
-	GUVENLIK AGI
-
-	Yukleme takilirsa EN_COK_BEKLEME saniye sonunda dugme yine de cikar.
-	Ekrani KAPATMIYOR -- kapatma karari oyuncunun; bu yalnizca "artik
-	bekleme" demek.
-]]
 task.delay(EN_COK_BEKLEME, hazirOl)
 
 task.spawn(function()
@@ -1226,22 +718,11 @@ task.spawn(function()
 		game.Loaded:Wait()
 	end
 
-	--[[
-		OYUNCUNUN KENDI VERISI
-
-		leaderstats, sunucu oyuncunun kaydini yukledikten SONRA olusuyor
-		(bkz. ServerScriptService > Leaderstats). Yani o geldiyse oyuncunun
-		rotu, seviyesi, envanteri hazir demektir.
-
-		Zaman asimi var: veri bir sebeple hic gelmezse ekran burada
-		takilmasin, oyuncu yine de oyuna girsin.
-	]]
 	ilerle(0.88, "Loading your progress...")
 	player:WaitForChild("leaderstats", 15)
 
 	ilerle(0.94, "Almost there...")
 
-	-- Karakter gelene kadar bekle: ekran kalkinca oyuncu bosluga dusmesin
 	if not player.Character then
 		player.CharacterAdded:Wait()
 	end

@@ -1,17 +1,3 @@
---[[
-	SosyalOdul  (Script)
-	Yeri: ServerScriptService > SosyalOdul
-
-	Rewards panelinin Playtime ve Social Rewards sekmelerinin sunucu tarafi.
-	Ayarlar Shared > SosyalOdul'da; KODLAR yalnizca burada (istemci goremez).
-
-	Her istek sunucuda dogrulanir:
-	  grup     -- gruba uye mi (Roblox'a sorulur), daha once alinmis mi
-	  like     -- daha once alinmis mi (begeni Roblox'ta dogrulanamiyor)
-	  playtime -- oturum suresi yetiyor mu, bu oturumda alinmis mi
-	  kod      -- gecerli mi, bu hesap daha once kullanmis mi
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -35,39 +21,15 @@ local KodSonuc = Net.event("KodSonuc")
 local SARI = Color3.fromRGB(255, 215, 40)
 local KIRMIZI = Color3.fromRGB(255, 120, 120)
 
---[[
-	KODLAR  --  yeni kod eklemek icin buraya bir satir yaz.
-
-	Anahtar BUYUK HARFLE yazilir; oyuncunun yazdigi kod buyuk/kucuk harf ve
-	bosluk gozetmeden karsilastirilir ("release" = "RELEASE").
-	Her kod hesap basina bir kez kullanilir.
-]]
 local KODLAR: { [string]: { rotCoins: number } } = {
 	RELEASE = { rotCoins = 5 },
 }
 
---[[
-	PLAYTIME SAYACI  --  oturumun degil GUNUN sayaci
-
-	Eskiden sure her giriste sifirdan sayiliyor, alinan basamaklar da yalniz
-	bu tabloda duruyordu: oyuncu cikip girince hepsi yenileniyordu. Artik
-	toplam sure ve alinan basamaklar KAYITTA (bkz. PlayerData.playtime*) ve
-	gun degisince sifirlaniyor.
-
-	Burada tutulan tek sey `son`: kayda en son ne zaman sure islendigi.
-	Aradaki fark, durum her sorulunca kayda ekleniyor.
-]]
 local oturum: { [Player]: { son: number } } = {}
 
--- Ust uste gelen istekler ayni odulu iki kez vermesin
 local mesgul: { [Player]: boolean } = {}
 local sonKod: { [Player]: number } = {}
 
---[[
-	Son islemeden bu yana gecen sureyi kayda ekler ve o gunun TOPLAM
-	suresini dondurur. Veri henuz yuklenmediyse sayac baslamaz -- yukleme
-	beklerken gecen sure odule saydirilmaz.
-]]
 local function playtimeTazele(player: Player): number
 	local simdi = os.clock()
 	local o = oturum[player]
@@ -129,13 +91,6 @@ local function durumGonder(player: Player)
 	})
 end
 
---[[
-	Odulu verir; ekrana ne kazanildigini yazar.
-
-	SURELI GECIS odulunde (kind = "pass") sure saniye cinsinden gelir ve
-	kalici sahibi olan oyuncuya verilmez -- onun yerine bildirimde sebebi
-	yazar, odul de harcanmis sayilmaz.
-]]
 local function ver(player: Player, kind: string, amount: number, pass: string?, seconds: number?)
 	if kind == "rotcoin" then
 		PlayerData.addRotCoins(player, amount)
@@ -194,7 +149,6 @@ local function al(player: Player, tur: string, index: any)
 		if playtimeTazele(player) < odul.minutes * 60 then
 			return
 		end
-		-- Isaretleme ile odul ayni adimda: iki istek ayni basamagi alamaz
 		if not PlayerData.playtimeAl(player, i) then
 			return
 		end
@@ -220,7 +174,6 @@ KodKullan.OnServerEvent:Connect(function(player, kod)
 		return
 	end
 
-	-- Kod denemesi saniyede bir: tahminle kod aranmasin
 	local simdi = os.clock()
 	if sonKod[player] and simdi - sonKod[player] < 1 then
 		return
@@ -260,14 +213,6 @@ for _, player in Players:GetPlayers() do
 	oturum[player] = { son = os.clock() }
 end
 
---[[
-	PANEL ACILMASA DA SURE ISLENSIN
-
-	playtimeTazele yalnizca durum sorulunca calisiyor. Oyuncu Rewards'i hic
-	acmadan cikarsa o oturumun tamami kayda gecmezdi; dakikada bir isleyip
-	bu bosluğu kapatiyoruz. Ayrica gece yarisini oyunun icinde geciren
-	oyuncunun sayaci da burada sifirlaniyor.
-]]
 task.spawn(function()
 	while true do
 		task.wait(60)
@@ -277,16 +222,6 @@ task.spawn(function()
 	end
 end)
 
---[[
-	SON DILIM  --  son kayittan hemen once islenir
-
-	PlayerData'nin ayrilma kancasi: oyuncu cikarken, sunucu kapanirken ve
-	oturum baska sunucuya gecerken calisir, veri hala acikken. Yalnizca
-	PlayerRemoving'e baglansaydi sira sansa kalirdi.
-
-	oturum yoksa (PlayerRemoving once calisip sildiyse) dilim zaten islendi;
-	playtimeTazele'yi cagirmak bos bir oturum kaydi yaratirdi.
-]]
 PlayerData.onBeforeRelease(function(player: Player)
 	if oturum[player] then
 		playtimeTazele(player)
@@ -294,7 +229,6 @@ PlayerData.onBeforeRelease(function(player: Player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-	-- Kanca henuz calismadiysa dilim burada islenir (veri hala acik)
 	playtimeTazele(player)
 	oturum[player] = nil
 	mesgul[player] = nil

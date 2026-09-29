@@ -1,26 +1,3 @@
---[[
-	BaseSistemi  (Script)
-	Yeri: ServerScriptService > BaseSistemi
-
-	Sunucu 6 kisiliktir; her oyuncuya katildiginda bos bir base atanir.
-
-	YERLESTIRME (Brainrot Tsunami tarzi):
-	  Acilmis bir brainrotu ELINE AL, base'indeki bir slota yaklas, E'ye bas.
-	  Elindeki brainrot cantadan cikar, slotta belirir ve saniyelik gelir
-	  uretmeye baslar. Dolu bir slota eli bosken E basarsan brainrotu geri alirsin.
-
-	Gelir:
-	    lerp(rarity.min, rarity.max, brainrot.incomeFactor)
-	        * boyut carpani * mutasyon carpani
-	Yani ayni rarity'deki iki brainrot bile farkli kazandirir; boyut
-	Tiny(1x) -> Huge(3x) arasinda, mutasyon ise 1x -> 12x arasinda carpar.
-
-	TOPLAMA:
-	  Gelir dogrudan Rot'a YAZILMAZ. Base'de birikir; oyuncu base'inin
-	  onundeki TOPLA butonunun uzerine basinca birikmis rot hesabina gecer.
-	  Yani brainrotu koyar koymaz para gelmez, gidip toplaman gerekir.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -44,17 +21,6 @@ local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Tools = require(Modules:WaitForChild("Tools"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
---[[
-	OGRETICI ISTEGE BAGLI  --  modul yoksa bu sistem yine calisir.
-
-	Sert bir WaitForChild ile baglanirsa ve modul Studio'ya henuz
-	senkronize olmadiysa script o satirda SONSUZA KADAR bekler; sistemin
-	tamami (GPS'i cantaya koyan kod dahil) hic kurulmaz. Ogretici oyunun
-	yan islevi: yoksa oyun kendi bildigini okumali.
-
-	Bes saniye beklenmesinin sebebi Rojo: dosyalar sirayla geliyor, modul
-	scriptten birkac kare sonra dusebilir.
-]]
 local Ogretici = {
 	olay = function(_player: Player, _olay: string) end,
 	ucKontrol = function(_player: Player) end,
@@ -73,63 +39,31 @@ end
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 
 local Bildirim = Net.event("Bildirim")
--- Mutasyon scroll sonucu: istemci yesil gosterisi oynatiyor
 local ScrollSonuc = Net.event("ScrollSonuc")
 local BaseGuncelle = Net.event("BaseGuncelle")
 local SlotaKoy = Net.event("SlotaKoy")
 local SlottanAl = Net.event("SlottanAl")
--- Toplama aninda para destelerinin sacilma efekti (bkz. ParaSacma.client)
 local ParaSac = Net.event("ParaSac")
--- Sagdaki ev butonu: oyuncuyu kendi base'inin onune isinlar
 local BaseyeIsinlan = Net.event("BaseyeIsinlan")
 
--- [baseIndex] = Player | nil
 local owners: { [number]: Player? } = {}
--- [baseIndex][slotIndex] = Model
 local slotModels: { [number]: { [number]: Model } } = {}
--- [baseIndex] = henuz toplanmamis rot
 local pending: { [number]: number } = {}
--- [baseIndex] = TOPLA butonu parcasi
 local collectPads: { [number]: BasePart } = {}
--- [baseIndex] = gelisim tabelasi
 local upgradeSigns: { [number]: BasePart } = {}
--- [baseIndex] = toplama beklemesinin bitecegi an (os.clock)
 local collectUntil: { [number]: number } = {}
 
--- [player] = son toplama zamani (kol ve bacak ayni anda saymasin diye)
 local lastTouch: { [Player]: number } = {}
 
-
--- Slot promptlari ve buton asagida tanimlanan fonksiyonlari cagirir; ileri bildirim
 local placeInSlot: (player: Player, uid: string, slotIndex: number) -> ()
 local removeFromSlot: (player: Player, uid: string) -> ()
 local collectRot: (player: Player, baseIndex: number) -> ()
 local updateSign: (baseIndex: number) -> ()
 local buyUpgrade: (player: Player, baseIndex: number) -> ()
---[[
-	Slottaki brainrotu ciziyor. Ileride tanimlaniyor ama mutasyon scroll'u
-	(yukarida) ondan once cagirmak zorunda: scroll tuttugunda slottaki model
-	yeni mutasyonla yeniden cizilmeli.
-]]
 local showInSlot: (baseIndex: number, slotIndex: number, item: any) -> ()
 local pushBase: (player: Player) -> ()
 local finishCollectButton: (pad: Part, model: Model, baseIndex: number, cfg: any) -> BasePart
 
-------------------------------------------------------------------
--- WORKSPACE KURULUMU
-------------------------------------------------------------------
---[[
-	Base'leri tutan klasor.
-
-	Arama Workspace'in TAMAMINDA yapilir (bkz. Bases.findFolder): klasor
-	cogu zaman adanin modelinin icinde duruyor. Onceden yalnizca
-	Workspace'in dogrudan altina bakiliyordu; bulamayinca da kendisi BOS
-	bir klasor olusturuyordu ve oyun "hic base yok" sanip hicbirini
-	kurmuyordu -- ada tasininca yasanan tam olarak buydu.
-
-	Gercekten hicbir yerde yoksa yine olusturulur, ama bu sefer Output'a
-	uyari duser: sessizce bos kalmasin.
-]]
 local function basesFolder(): Instance
 	local found = Bases.findFolder()
 	if found then
@@ -148,13 +82,6 @@ local function basesFolder(): Instance
 	return created
 end
 
---[[
-	Base'in tamaminin sinir kutusunu verir.
-
-	Zemin parcasini isimle aramak guvenilir degil: slotlarin icinde de
-	"Platform" adli parcalar var ve base'ler elle kuruldugu icin isim
-	garantisi yok. Butun modelin sinir kutusu her duzende dogru sonuc verir.
-]]
 local function baseBounds(base: Model): (CFrame?, Vector3?)
 	local ok, cf, size = pcall(function()
 		return base:GetBoundingBox()
@@ -166,14 +93,6 @@ local function baseBounds(base: Model): (CFrame?, Vector3?)
 	return cf, size
 end
 
---[[
-	Sahiplik hologrami.
-
-	Base'in ONUNDE havada duran, zeminsiz buyuk yazi. Tabela/pano yok --
-	sadece parlayan metin, uzaktan okunacak kadar buyuk.
-	  sahipli -> sahibinin nicki, yesil
-	  bos     -> "EMPTY", beyaz
-]]
 local function buildHologram(model: Model, bounds: CFrame, size: Vector3)
 	local existing = model:FindFirstChild("Hologram")
 	if existing then
@@ -183,7 +102,6 @@ local function buildHologram(model: Model, bounds: CFrame, size: Vector3)
 	local anchor = Instance.new("Part")
 	anchor.Name = "Hologram"
 	anchor.Size = Vector3.new(1, 1, 1)
-	-- Base'in on kenarinin onunde ve tepesinin uzerinde
 	anchor.CFrame = bounds * CFrame.new(0, size.Y / 2 + Bases.HologramHeight, -size.Z / 2 - 4)
 	anchor.Anchored = true
 	anchor.CanCollide = false
@@ -204,7 +122,6 @@ local function buildHologram(model: Model, bounds: CFrame, size: Vector3)
 	billboard.Size = UDim2.fromOffset(345, 113)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = 1200
-	-- Isiktan etkilenmesin: hologram her isikta ayni parlaklikta gorunsun
 	billboard.LightInfluence = 0
 	billboard.Parent = anchor
 
@@ -219,11 +136,9 @@ local function buildHologram(model: Model, bounds: CFrame, size: Vector3)
 	nameLabel.TextSize = 51
 	nameLabel.TextScaled = false
 	nameLabel.TextStrokeTransparency = 1
-	-- Hafif saydamlik hologram hissini verir
 	nameLabel.TextTransparency = 0.1
 	nameLabel.Parent = billboard
 
-	-- Asagi dogru soluklasan hologram gecisi
 	local gradient = Instance.new("UIGradient")
 	gradient.Name = "Hologram"
 	gradient.Rotation = 90
@@ -234,14 +149,6 @@ local function buildHologram(model: Model, bounds: CFrame, size: Vector3)
 	})
 	gradient.Parent = nameLabel
 
-	--[[
-		SANIYELIK GETIRI  --  nickin hemen altinda.
-
-		Hologramla ayni BillboardGui'nin icinde oldugu icin tutamak
-		yukseldiginde bu da onunla birlikte yukselir. Yazi boyutu nickten
-		kucuk ama uzaktan okunacak kadar buyuk; rengi para rengiyle (sari)
-		ayni ki oyuncu bunun bir kazanc oldugunu ilk bakista anlasin.
-	]]
 	local incomeLabel = Instance.new("TextLabel")
 	incomeLabel.Name = "Gelir"
 	incomeLabel.Size = UDim2.new(1, 0, 0, 38)
@@ -256,16 +163,6 @@ local function buildHologram(model: Model, bounds: CFrame, size: Vector3)
 	incomeLabel.Parent = billboard
 end
 
---[[
-	TOPLA butonu.
-
-	Base'in onunde, hologramin altinda duran yassi bir pad. Uzerine basan
-	SAHIP, base'de birikmis rotu alir. Baskasi bastiginda hicbir sey olmaz.
-
-	Zemini isinla buluyoruz: base'ler haritada elle kuruldugu icin yukseklikleri
-	farkli. Pad, base'in on kenarinin ilerisindeki zemine oturur; altta bir sey
-	yoksa base'in alt hizasina konur.
-]]
 local function buildCollectButton(model: Model, bounds: CFrame, size: Vector3, baseIndex: number): BasePart
 	local cfg = Bases.CollectPad
 
@@ -274,18 +171,6 @@ local function buildCollectButton(model: Model, bounds: CFrame, size: Vector3, b
 		existing:Destroy()
 	end
 
-	--[[
-		BUTONUN YERI
-
-		Once haritada elle konulmus bir isaretci aranir:
-		    Base1 > ToplaNoktasi  (BasePart)
-
-		Varsa buton TAM ORAYA, o parcanin boyutunda kurulur. Boylece butonu
-		Studio'da istedigin yere surukleyip boyutlandirabilirsin; kod hicbir
-		sey hesaplamaya calismaz.
-
-		Isaretci yoksa base'in on kenarinin ilerisine kurulur (eski davranis).
-	]]
 	local marker = model:FindFirstChild(Bases.CollectMarkerName)
 	if marker and marker:IsA("BasePart") then
 		local pad = Instance.new("Part")
@@ -293,32 +178,8 @@ local function buildCollectButton(model: Model, bounds: CFrame, size: Vector3, b
 		pad.Size = marker.Size
 		pad.CFrame = marker.CFrame
 
-		--[[
-			ISARETCININ MALZEMESI KORUNUR
-
-			Buton, isaretcinin YERINE degil AYNI YERINE kuruluyor. Studio'da
-			isaretcinin malzemesini degistirmek eskiden hicbir ise
-			yaramiyordu: buton her zaman SmoothPlastic oluyordu.
-
-			Malzeme artik isaretciden geciyor. Renk yine kod tarafindan
-			veriliyor (yesil/kirmizi/gri), o yuzden RENGI YUTAN malzemeler
-			(Glass, ForceField) secilirse buton renk degistirmiyormus gibi
-			gorunur -- oyle bir durumda malzemeyi SmoothPlastic ya da
-			Neon yap.
-		]]
 		pad:SetAttribute("Malzeme", marker.Material.Name)
 
-		--[[
-			ISARETCI GIZLENIR
-
-			Isaretci ayni boyutta ve ayni yerde duruyor; gorunur kalirsa
-			butonun TAM USTUNE biniyor ve butonun rengi hic gorunmuyor.
-			Eskiden Studio'daki isaretci yari saydam oldugu icin bu fark
-			edilmiyordu; opak bir malzeme secilince buton kayboldu.
-
-			Silinmiyor, yalnizca gizleniyor: base yeniden kurulursa yer
-			bilgisi yine ondan okunacak.
-		]]
 		marker.Transparency = 1
 		marker.CanCollide = false
 		marker.CanQuery = false
@@ -342,26 +203,9 @@ local function buildCollectButton(model: Model, bounds: CFrame, size: Vector3, b
 	return finishCollectButton(pad, model, baseIndex, cfg)
 end
 
--- Butonun gorunumu ve dokunma baglantisi (yeri nasil belirlenmis olursa olsun)
 function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: any): BasePart
 	pad.Anchored = true
-	-- Uzerine basilabilsin ama takilmasin: carpisma yok, dokunma var
 	pad.CanCollide = false
-	--[[
-		DUZ, DOLGUN RENK
-
-		Once Neon'du. Neon rengi parlatip SOLDURUYOR: kirmizi soluk pembe-beyaz,
-		yesil acik yesil gorunuyor, bekleme rengi "gri" sanilacak kadar
-		solgundu. SmoothPlastic kirmiziyi kirmizi, yesili yesil gosteriyor --
-		diger brainrot oyunlarindaki toplama basamagi gibi.
-
-		Saydamlik ve yansima sifirlaniyor: Studio'da konan isaret parcasi
-		(ToplaNoktasi) yari saydamsa alttaki zemin rengi butona karisiyordu.
-	]]
-	--[[
-		Isaretciden gelen malzeme varsa o kullanilir (bkz. buildCollectButton);
-		yoksa varsayilan SmoothPlastic.
-	]]
 	local malzeme = pad:GetAttribute("Malzeme")
 	pad.Material = if type(malzeme) == "string" and (Enum.Material :: any)[malzeme]
 		then (Enum.Material :: any)[malzeme]
@@ -381,7 +225,6 @@ function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: an
 	glow.Enabled = false
 	glow.Parent = pad
 
-	-- Padin ust yuzundeki yazi
 	local surface = Instance.new("SurfaceGui")
 	surface.Name = "Yuzey"
 	surface.Face = Enum.NormalId.Top
@@ -389,8 +232,6 @@ function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: an
 	surface.LightInfluence = 0
 	surface.Parent = pad
 
-
-	-- Uzaktan okunan miktar yazisi
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "Yazi"
 	sign.Size = UDim2.fromOffset(240, 64)
@@ -431,23 +272,11 @@ function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: an
 	return pad
 end
 
-------------------------------------------------------------------
--- BASE GELISIMI
-------------------------------------------------------------------
-
--- Oyuncunun acik slot sayisi (veri bozuksa guvenli araliga cekilir)
 local function unlockedSlots(data: any): number
 	local floors = math.clamp(data.baseFloors or 1, 1, Bases.Upgrade.maxFloors)
 	return math.clamp(data.baseSlots or Bases.Upgrade.startingSlots, 0, floors * Bases.Upgrade.slotsPerFloor)
 end
 
---[[
-	Siradaki gelistirme.
-
-	Bulunulan kat dolduysa SONRAKI KAT (Rot Coin), dolmadiysa siradaki SLOT
-	(Rot) satilir. Tek bir sirada ilerledigi icin tabelada tek buton yetiyor.
-	Her sey acilmissa nil doner.
-]]
 local function nextUpgrade(data: any): { kind: string, cost: number, label: string }?
 	local U = Bases.Upgrade
 	local floors = math.clamp(data.baseFloors or 1, 1, U.maxFloors)
@@ -471,25 +300,8 @@ local function nextUpgrade(data: any): { kind: string, cost: number, label: stri
 	}
 end
 
---[[
-	SLOT NUMARASI: slot zemininin ustunde buyuk numara.
-	Envanterde "Slot 3" yazan brainrotun base'in neresinde durdugu boylece
-	bir bakista gorulur.
-
-	NEDEN AYRI BIR PARCA
-	Numara once padin "Top" yuzune yaziliyordu. Haritadaki padlarin bir
-	kismi DONDURULMUS (ornegin yan yatirilmis silindir): onlarin Top yuzu
-	yukari degil yana bakiyor, numara ya hic gorunmuyordu ya da yamuk
-	duruyordu. Yazinin yonu de padin kendi donusune bagliydi.
-
-	Artik padin ustune gorunmez, ince bir parca konuyor. Bu parcanin ON
-	yuzu her zaman YUKARI bakiyor ve yazinin ust kenari 'ust' yonune
-	cevriliyor (bkz. slotSirasiKur). Boylece padin nasil donduruldugu
-	onemsiz.
-]]
 local SLOT_NUMARA_KALINLIK = 0.05
 
--- Padin dunyadaki yari boyutlari (donmus parcalarda da dogru)
 local function dunyaYariBoyut(pad: BasePart): Vector3
 	local cf = pad.CFrame
 	local yari = pad.Size / 2
@@ -499,16 +311,6 @@ local function dunyaYariBoyut(pad: BasePart): Vector3
 	return Vector3.new(x, y, z)
 end
 
---[[
-	NUMARA NEREYE KONUR
-
-	Slot tek parca degil: tas cerceve + ustunde acik renkli kare gibi birden
-	fazla parcadan olusabiliyor. Numara yalnizca "pad" parcasinin ustune
-	konunca bazi slotlarda ustteki karenin ALTINDA kaliyordu (gorunmeyen
-	numaralar). Artik:
-	  - yatay merkez ve boyut: slotun GORUNEN butun parcalarinin kutusu
-	  - yukseklik: yukaridan asagi isin; slotun EN UST yuzeyi
-]]
 local function slotYuzeyi(node: Instance, pad: BasePart): (Vector3, number)
 	local parcalar: { BasePart } = {}
 	if node:IsA("BasePart") then
@@ -553,14 +355,12 @@ local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3, n
 	end
 
 	local yuzey, genislik = slotYuzeyi(node or pad, pad)
-	-- Kare: yazi dondurulse de sekli bozulmasin
 	local kenar = math.max(1, genislik * 0.7)
 	local merkez = yuzey + Vector3.new(0, SLOT_NUMARA_KALINLIK / 2 + 0.03, 0)
 
 	local tasiyici = Instance.new("Part")
 	tasiyici.Name = "SlotNumarasi"
 	tasiyici.Size = Vector3.new(kenar, kenar, SLOT_NUMARA_KALINLIK)
-	-- On yuz (LookVector) yukari, yazinin ustu 'ust' yonunde
 	tasiyici.CFrame = CFrame.lookAt(merkez, merkez + Vector3.yAxis, ust)
 	tasiyici.Anchored = true
 	tasiyici.CanCollide = false
@@ -600,16 +400,6 @@ local function buildSlotNumber(pad: BasePart, slotIndex: number, ust: Vector3, n
 	kontur.Parent = yazi
 end
 
---[[
-	MUTASYON SCROLL'U  --  base'deki brainrota mutasyon basar
-
-	Oyuncu scroll'u ELINDE TUTARKEN slot promptuna basinca calisir. Scroll
-	SANS TUTSUN TUTMASIN harcanir; tutarsa brainrot mutasyonu kazanir ve
-	slottaki model yeni haliyle yeniden cizilir.
-
-	Sesi ve bildirimi SUNUCU veriyor, ekrandaki mutasyon gosterisini
-	istemci (bkz. ScrollSonuc). Boylece yakindaki oyuncular da sesi duyuyor.
-]]
 local function elindekiScroll(player: Player): (string?, Tool?)
 	local karakter = player.Character
 	if not karakter then
@@ -632,7 +422,6 @@ local function scrollKullan(player: Player, data: any, scrollId: string, slotInd
 		return
 	end
 
-	-- Slotta ne var?
 	local hedef: any = nil
 	for _, item in data.inventory do
 		if item.slot == slotIndex then
@@ -655,7 +444,6 @@ local function scrollKullan(player: Player, data: any, scrollId: string, slotInd
 		return
 	end
 
-	-- Sayaci dusur; scroll tutsa da tutmasa da gider
 	if PlayerData.scrollCount(player, scrollId) <= 0 then
 		return
 	end
@@ -697,7 +485,6 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 	prompt.Name = "SlotPrompt"
 	prompt.ActionText = "Slot"
 	prompt.ObjectText = `Slot {slotIndex}`
-	-- Diger NPC'lerdeki gibi basili tutulur; yanlislikla basmayi onler
 	prompt.HoldDuration = 0.4
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
@@ -715,7 +502,6 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 			return
 		end
 
-		-- Kilitli slota yerlestirilemez; once tabeladan acilmali
 		if slotIndex > unlockedSlots(data) then
 			Bildirim:FireClient(
 				player,
@@ -725,25 +511,18 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 			return
 		end
 
-		--[[
-			ELDE SCROLL VARSA mutasyon denemesi yapilir; brainrot yerlestirme
-			ve geri alma ondan SONRA bakilir. Scroll elde tutulurken zaten
-			brainrot tutulamaz, bu yuzden iki yol cakismaz.
-		]]
 		local scrollId = elindekiScroll(player)
 		if scrollId then
 			scrollKullan(player, data, scrollId, slotIndex)
 			return
 		end
 
-		-- Elde brainrot varsa yerlestir
 		local _, heldUid = Tools.equippedBrainrot(player)
 		if heldUid then
 			placeInSlot(player, heldUid, slotIndex)
 			return
 		end
 
-		-- Eli bossa ve slot doluysa geri al
 		for _, item in data.inventory do
 			if item.slot == slotIndex then
 				removeFromSlot(player, item.uid)
@@ -755,15 +534,6 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 	end)
 end
 
---[[
-	Slotun uzerine brainrot konulacak zemin parcasini bulur.
-
-	Slotlar haritada elle kurulmustur; script hicbir pad uretmez.
-	Desteklenen yerlesimler:
-	    Base1 > Slot1                     (Slot dogrudan BasePart)
-	    Base1 > Slot1 (Model) > Platform  (Slot bir Model, zemini Platform)
-	    Base1 > Slots > Slot1             (klasor icinde, ikisi de olur)
-]]
 local function resolveSlotSurface(node: Instance?): BasePart?
 	if not node then
 		return nil
@@ -774,7 +544,6 @@ local function resolveSlotSurface(node: Instance?): BasePart?
 	end
 
 	if node:IsA("Model") then
-		-- Slot bir Model ise uzerine konulacak zemin parcasi aranir
 		local platform = node:FindFirstChild("Platform")
 		if platform and platform:IsA("BasePart") then
 			return platform
@@ -788,27 +557,8 @@ local function resolveSlotSurface(node: Instance?): BasePart?
 	return nil
 end
 
---[[
-	SLOT SIRASI  --  HARITADAKI ADA DEGIL KONUMA GORE
-
-	Haritada padlarin adlari (Slot1..Slot10) yerlerine gore duzenli
-	degildi: 1 numara bir yerde, 2 numara baska yerde duruyordu. Bu yuzden
-	her base'te slotlar KONUMLARINA gore yeniden siralanir (kus bakisi,
-	TOPLA butonu altta):
-
-	    5 . . . 6
-	    4 . . . 7
-	    3 . . . 8
-	    2 . . . 9
-	    1 [TOP] 10
-
-	Sol sutun onden arkaya 1-5, sag sutun arkadan one 6-10. 2. kat ayni
-	duzende 11-20. slotAdlari[base][mantiksal no] = haritadaki parca adi.
-]]
 local slotAdlari: { [Model]: { [number]: string } } = {}
--- [baseIndex] = base'in merkezinden TOPLA butonuna dogru yatay yon
 local onYonleri: { [number]: Vector3 } = {}
--- [base][mantiksal no] = numaranin ust kenarinin bakacagi yon
 local slotYonleri: { [Model]: { [number]: Vector3 } } = {}
 
 local function slotAdi(base: Model, slotIndex: number): string
@@ -832,25 +582,18 @@ local function findSlotPart(base: Model, slotIndex: number): BasePart?
 		end
 	end
 
-	-- Ic ice modellerde de ara (son care)
 	return resolveSlotSurface(base:FindFirstChild(name, true))
 end
 
---[[
-	Bir base'in slot sirasini konumlardan kurar (bkz. SLOT SIRASI).
-	on: base'in merkezinden TOPLA butonuna dogru yatay yon.
-]]
 type SlotKaydi = { ad: string, konum: Vector3 }
 
 local function slotSirasiKur(base: Model, on: Vector3)
-	-- Once haritadaki adlarla bulunur; eski sira silinir
 	slotAdlari[base] = nil
 	slotYonleri[base] = nil
 
 	local adlar: { [number]: string } = {}
 	local yonler: { [number]: Vector3 } = {}
 	local geri = -on
-	-- Arkaya bakan birinin sagi
 	local sag = geri:Cross(Vector3.yAxis).Unit
 	local aSayi = Bases.Upgrade.slotsPerFloor
 
@@ -883,7 +626,6 @@ local function slotSirasiKur(base: Model, on: Vector3)
 			end
 		end
 
-		-- Sol: onden arkaya; sag: arkadan one
 		table.sort(sol, function(a, b)
 			return (a.konum - merkez):Dot(on) > (b.konum - merkez):Dot(on)
 		end)
@@ -891,13 +633,7 @@ local function slotSirasiKur(base: Model, on: Vector3)
 			return (a.konum - merkez):Dot(on) < (b.konum - merkez):Dot(on)
 		end)
 
-		-- Numaranin ust kenari: koridora mi duvara mi (Bases.SlotNumberFacing)
 		local koridora = Bases.SlotNumberFacing ~= "wall"
-		--[[
-			SurfaceGui'nin on yuzu yukari cevrilince yazinin ustu parcanin
-			UpVector'unun TERSINE dusuyor (oyunda denendi: rakamlar duvara
-			bakiyordu). Bu yuzden istenen yonun tersi veriliyor.
-		]]
 		local solUst = if koridora then -sag else sag
 
 		local sira = ilk
@@ -917,13 +653,6 @@ local function slotSirasiKur(base: Model, on: Vector3)
 	slotYonleri[base] = yonler
 end
 
---[[
-	Base indekslerini gercek modellere baglar.
-
-	Once "Base1".."Base6" adli modeller aranir. Isimlendirmemis olanlar icin
-	klasordeki diger modeller ada gore siralanip sirayla atanir -- boylece
-	modelleri Bases klasorune atmak yeterli olur, isim sart degildir.
-]]
 local baseModels: { [number]: Model } = {}
 
 local function mapBases()
@@ -975,25 +704,6 @@ local function getSlotPart(baseIndex: number, slotIndex: number): BasePart?
 	return if base then findSlotPart(base, slotIndex) else nil
 end
 
---[[
-	Kilitli katlari gizler, acilanlari gosterir.
-
-	Parcalarin ozgun saydamligi ilk gizlemede nitelige yazilir; acilinca oradan
-	geri yuklenir. Boylece haritada bilerek yariseffaf yapilmis parcalar
-	acildiginda opak hale gelmez.
-]]
---[[
-	GORUNURLUK -- TEK KAYNAK
-
-	Hem kat hem slot gizleme ayni parcalara dokunuyor. Ikisi ayri ayri
-	"ozgun saydamlik" kaydetseydi sunlar olurdu: kat gizlenince saydamlik 1
-	olur, sonra slot sistemi 1'i "ozgun" diye kaydeder, slot satin alininca
-	1'e geri doner ve pad hic gorunmez. (Slot 11'in kayip olmasinin sebebi
-	tam olarak buydu.)
-
-	Bu yuzden ozgun deger TEK bir nitelige, ilk dokunusta yaziliyor; iki
-	sistem de oradan okuyor.
-]]
 local function setVisible(node: Instance, visible: boolean)
 	if node:IsA("BasePart") then
 		if node:GetAttribute("OzgunSaydamlik") == nil then
@@ -1034,25 +744,6 @@ local function applyFloors(baseIndex: number, floors: number)
 	end
 end
 
---[[
-	Base'leri oyuna hazirlar.
-
-	Haritadaki yapiya dokunulmaz: hicbir platform, slot padi ya da parca
-	uretilmez. Yalnizca mevcut Slot parcalarina prompt ve base'in onune
-	hologram yazi eklenir.
-]]
---[[
-	SLOT GORUNURLUGU  --  SAKLAYARAK
-
-	1. kattaki 10 slot her zaman aciktir. Ustundeki katlarda YALNIZCA satin
-	alinmis slotlar durur.
-
-	Once saydamlik 1 yapiliyordu ama bu yetmiyor: parcanin uzerindeki kaplama,
-	yazi, isik ve partikuller gorunmeye devam ediyor, slot "yarim" gorunuyordu.
-	Artik kilitli slot Workspace'ten TAMAMEN cikarilip ServerStorage'da
-	bekletiliyor; satin alininca ayni ebeveynine geri konuyor. Konumu
-	degismiyor, cunku Parent degistirmek CFrame'i etkilemez.
-]]
 local slotStore: Folder? = nil
 
 local function stashFolder(): Folder
@@ -1073,13 +764,8 @@ local function stashFolder(): Folder
 	return created
 end
 
--- [baseIndex][slotIndex] = { node = saklanan slot, parent = eski ebeveyni }
 local stashed: { [number]: { [number]: { node: Instance, parent: Instance } } } = {}
 
---[[
-	Slotun KENDISI (Model ya da Part) -- uzerine model konulan yuzey parcasi
-	degil. Saklarken slotun tamamini almamiz gerekiyor.
-]]
 local function slotNode(baseIndex: number, slotIndex: number): Instance?
 	local base = getBase(baseIndex)
 	if not base then
@@ -1115,16 +801,6 @@ local function setSlotVisible(baseIndex: number, slotIndex: number, visible: boo
 				saved.node.Parent = saved.parent
 			end
 
-			--[[
-				Slot yerine kondu ama gorunumu de geri verilmeli.
-
-				Kurulumda once applyFloors katin BUTUN parcalarini saydam
-				yapiyor, hemen ardindan applySlots slotlari saklamaya
-				kaldiriyor -- yani slot saydam halde ayriliyor. Kat sonradan
-				acildiginda applyFloors o slota ulasamiyor (artik katin icinde
-				degil), dolayisiyla slot yerine dondugunde saydam kaliyordu ve
-				hicbir sey gorunmuyordu.
-			]]
 			local nodes: { Instance } = saved.node:GetDescendants()
 			table.insert(nodes, saved.node)
 			for _, child in nodes do
@@ -1136,7 +812,6 @@ local function setSlotVisible(baseIndex: number, slotIndex: number, visible: boo
 		return
 	end
 
-	-- Zaten saklanmissa tekrar arama
 	if store[slotIndex] then
 		return
 	end
@@ -1157,20 +832,6 @@ local function applySlots(baseIndex: number, unlocked: number)
 	end
 end
 
---[[
-	KAT YUKSELME ANIMASYONU
-
-	Satin alinan kat riseHeight kadar asagida belirip yerine oturur.
-
-	Model:PivotTo MODELIN TAMAMINI birlikte tasir; slot padleri, promptlar ve
-	yeni acilan slot da beraber gelir. (Kaldirilan slot animasyonu boyle
-	degildi: slotun yalnizca yuzey parcasini tasiyor, Model olan slotlarin
-	gerisini yerinde birakiyordu. Sorun ondan cikmisti, bu fonksiyondan degil.)
-
-	Animasyon SIRASI onemli: once kat gorunur yapilir, sonra hediye slot
-	yerine konur, EN SON yukselir. Slot once yerine konmazsa kat yukselirken
-	geride kalir.
-]]
 local rising: { [Model]: boolean } = {}
 
 local function riseFloor(baseIndex: number, floorIndex: number)
@@ -1192,12 +853,10 @@ local function riseFloor(baseIndex: number, floorIndex: number)
 		while elapsed < U.riseTime and model.Parent do
 			elapsed += task.wait()
 			local alpha = math.clamp(elapsed / U.riseTime, 0, 1)
-			-- Kubik yavaslama: hizli baslar, yerine yumusak oturur
 			local eased = 1 - (1 - alpha) ^ 3
 			model:PivotTo(CFrame.new(start:Lerp(home.Position, eased)) * home.Rotation)
 		end
 
-		-- Yarida kesilse bile tam yerine otursun
 		if model.Parent then
 			model:PivotTo(home)
 		end
@@ -1205,18 +864,6 @@ local function riseFloor(baseIndex: number, floorIndex: number)
 	end)
 end
 
---[[
-	GELISIM TABELASI
-
-	Base'in icine TabelaNoktasi adinda bir Part koyduysan yazi DOGRUDAN O
-	PARCANIN uzerine cizilir: konumu, boyutu ve acisi tamamen senin elinde,
-	kod parcayi ne tasir ne de boyutunu degistirir.
-
-	Yazi parcanin HER IKI yuzune de konur; boylece parcayi hangi yone
-	cevirirsen cevir okunur, ters kalma diye bir sey olmaz.
-
-	TabelaNoktasi yoksa base'in onune kod kendi panosunu kurar.
-]]
 local function buildSignFace(board: BasePart, face: Enum.NormalId)
 	local sign = Instance.new("SurfaceGui")
 	sign.Name = "Yazi"
@@ -1226,10 +873,6 @@ local function buildSignFace(board: BasePart, face: Enum.NormalId)
 	sign.LightInfluence = 0
 	sign.Parent = board
 
-	--[[
-		Panel: ustten alta gecisli mavi zemin, altin cerceve, yuvarlak kose.
-		Duz siyah zemin sonik gorunuyordu; renkler Bases.Upgrade icinde.
-	]]
 	local U = Bases.Upgrade
 
 	local backdrop = Instance.new("Frame")
@@ -1277,10 +920,6 @@ end
 local function buildUpgradeSign(base: Model, bounds: CFrame, size: Vector3, baseIndex: number): BasePart
 	local U = Bases.Upgrade
 
-	--[[
-		Isaretci once dogrudan base'in altinda, bulunamazsa ic ice modellerde,
-		son care olarak harf duyarsiz aranir.
-	]]
 	local marker: Instance? = base:FindFirstChild(U.markerName)
 		or base:FindFirstChild(U.markerName, true)
 
@@ -1297,10 +936,8 @@ local function buildUpgradeSign(base: Model, bounds: CFrame, size: Vector3, base
 	local board: BasePart
 
 	if marker and marker:IsA("BasePart") then
-		-- SENIN parcan tabela olur: konumuna, boyutuna, acisina dokunulmaz
 		board = marker
 
-		-- Onceki oturumdan kalan yazi ve prompt temizlenir (parca korunur)
 		for _, child in board:GetChildren() do
 			if child:IsA("SurfaceGui") or child:IsA("ProximityPrompt") then
 				child:Destroy()
@@ -1337,25 +974,15 @@ local function buildUpgradeSign(base: Model, bounds: CFrame, size: Vector3, base
 		warn(`[Base] {base.Name}: '{U.markerName}' adinda Part yok, tabela base'in onune kuruldu`)
 	end
 
-	--[[
-		Yazi TEK bir yuze konur: parcanin en genis yuzlerinden, base'e SIRTINI
-		donen yani oyuncunun geldigi tarafa bakan yuz.
-
-		Iki yuze birden yazildiginda arka taraftan yazi ayna gibi ters
-		gorunuyordu. Hangi yuzun genis oldugu parcanin bicimine gore degisir:
-		yere yatik plakada Ust, ayakta duran panoda On ya da Arka.
-	]]
 	local boardSize = board.Size
 	local away = board.Position - bounds.Position
 	local face: Enum.NormalId
 
-	-- flipFace true ise secilen yuzun tam karsisi kullanilir
 	local flip = U.flipFace == true
 
 	if boardSize.Y <= boardSize.X and boardSize.Y <= boardSize.Z then
 		face = if flip then Enum.NormalId.Bottom else Enum.NormalId.Top
 	elseif boardSize.Z <= boardSize.X then
-		-- LookVector parcanin On yuzunun baktigi yon
 		local frontSide = board.CFrame.LookVector:Dot(away) >= 0
 		if flip then
 			frontSide = not frontSide
@@ -1371,10 +998,6 @@ local function buildUpgradeSign(base: Model, bounds: CFrame, size: Vector3, base
 
 	buildSignFace(board, face)
 
-	--[[
-		Parcanin kendisi tabela rengine boyanir ve icinden gecilebilir yapilir:
-		yazinin olmadigi yuzler beyaz kaliyordu ve oyuncu panoya carpiyordu.
-	]]
 	board.Color = U.color
 	board.Material = Enum.Material.SmoothPlastic
 	board.CanCollide = false
@@ -1396,10 +1019,6 @@ local function buildUpgradeSign(base: Model, bounds: CFrame, size: Vector3, base
 	return board
 end
 
---[[
-	Tabeladaki yazilari tazeler.
-	Parcanin iki yuzunde de yazi oldugu icin ikisi birden guncellenir.
-]]
 function updateSign(baseIndex: number)
 	local board = upgradeSigns[baseIndex]
 	if not board then
@@ -1449,10 +1068,6 @@ function updateSign(baseIndex: number)
 	end
 end
 
---[[
-	Siradaki gelistirmeyi satin alir.
-	Kat acmak Rot Coin, slot acmak Rot ister.
-]]
 function buyUpgrade(player: Player, baseIndex: number)
 	if owners[baseIndex] ~= player then
 		Bildirim:FireClient(player, "This is not your base!", Color3.fromRGB(255, 120, 120))
@@ -1470,7 +1085,6 @@ function buyUpgrade(player: Player, baseIndex: number)
 		return
 	end
 
-	-- Kat da slot da Rot ile alinir
 	if data.rot < up.cost then
 		Bildirim:FireClient(
 			player,
@@ -1490,21 +1104,10 @@ function buyUpgrade(player: Player, baseIndex: number)
 			Bases.SlotCount
 		)
 
-		--[[
-			HARITA GEOMETRISI TASINMIYOR.
-
-			Once kat ve yeni slot asagidan yukari kayarak geliyordu. Slotun
-			yalnizca YUZEY parcasi tasindigi icin, slot birden fazla parcadan
-			olusan bir Model ise gerisi yerinde kaliyor ve plakalar dagilmis
-			gorunuyordu. Artik sadece gorunurluk aciliyor: parcalar haritada
-			nasil kuruldularsa oyle kaliyorlar.
-		]]
 		applyFloors(baseIndex, data.baseFloors)
 
-		-- Katla birlikte yalnizca hediye slot gorunur, digerleri kilitli kalir
 		applySlots(baseIndex, unlockedSlots(data))
 
-		-- Slot yerine kondu, artik kat tumuyle yukselebilir
 		riseFloor(baseIndex, data.baseFloors)
 
 		Bildirim:FireClient(player, `{up.label} unlocked! New slot added.`, Color3.fromRGB(140, 230, 160))
@@ -1533,14 +1136,11 @@ local function setupBases()
 			continue
 		end
 
-		-- Onceki surumun biraktigi tabela nesnesi varsa temizle.
-		-- Sadece bizim urettigimiz olani sil: icinde "Tabela" BillboardGui olan.
 		local oldSign = base:FindFirstChild("Sign")
 		if oldSign and oldSign:FindFirstChild("Tabela") then
 			oldSign:Destroy()
 		end
 
-		-- Eski hologram ve buton sinir kutusuna dahil olup konumu kaydirmasin
 		local oldHologram = base:FindFirstChild("Hologram")
 		if oldHologram then
 			oldHologram:Destroy()
@@ -1552,11 +1152,6 @@ local function setupBases()
 		end
 		collectPads[index] = nil
 
-		--[[
-			STREAMING: base HER OYUNCUYA HER ZAMAN gonderilir. Uzak bir base'in
-			para toplama butonu (renk: kirmizi bekleme / yesil hazir) bazi
-			oyuncularda hic gelmiyor ya da gec geliyordu.
-		]]
 		if base:IsA("Model") then
 			base.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 		end
@@ -1573,7 +1168,6 @@ local function setupBases()
 			collectPads[index] = buildCollectButton(base, bounds, size, index)
 			upgradeSigns[index] = buildUpgradeSign(base, bounds, size, index)
 
-			-- Slot sirasi: merkezden TOPLA butonuna dogru yon "on" sayilir
 			local pad = collectPads[index]
 			local fark = if pad then pad.Position - bounds.Position else bounds.LookVector
 			local on = Vector3.new(fark.X, 0, fark.Z)
@@ -1616,7 +1210,6 @@ local function setupBases()
 			print(`[Base] {index} -> {base.Name} hazir ({found} slot)`)
 		end
 
-		-- Sahipsiz base tek katli gorunur; ustu sahibi acinca belirir
 		applyFloors(index, 1)
 		applySlots(index, Bases.Upgrade.startingSlots)
 		updateSign(index)
@@ -1626,18 +1219,11 @@ end
 
 setupBases()
 
-------------------------------------------------------------------
--- SLOTTAKI GORSEL BRAINROT
-------------------------------------------------------------------
 local function buildDisplay(item: any): Model
-	-- Yalnizca yedek kutunun rengi ve efekt temizligi icin; yazilar
-	-- Shared > Etiket'ten geliyor
 	local rarityInfo = Rarity.get(item.rarity)
 	local mutationInfo = Mutations.get(item.mutation)
 	local special = Mutations.isSpecial(item.mutation)
 
-	-- Model arama tek yerden: ReplicatedStorage > Assets > Brainrots
-	-- Mutasyonluysa once "Gold ..." surumu aranir
 	local source = Assets.brainrotModel(item.name, item.mutation)
 
 	local model: Model
@@ -1661,36 +1247,12 @@ local function buildDisplay(item: any): Model
 
 	model.Name = item.name
 
-	--[[
-		BOYUT
-
-		Model once ORTAK TABANA indirilir (Assets.BrainrotSize.slotSize),
-		boyut sinifi (Tiny 0.25 .. Huge 2) ondan sonra uygulanir. Boylece
-		pakette 3 studluk da 120 studluk da export edilmis olsa iki Huge
-		brainrot ayni buyuklukte durur.
-
-		Onceden dogrudan ScaleTo(scale) cagriliyordu ve buyuk export edilmis
-		modeller (Bananita Dolphinita, Orcalero Orcala) haritayi kapatacak
-		kadar devlesiyordu.
-
-		KADEME OLCEGI
-		Divine sonrasi kademeler boardda IKI KAT buyuk duruyor
-		(Rarity.modelScale); Cosmic sonrasinda boyut sinifi tabani da
-		yukseliyor -- Tiny artik Regular kadar (Condition.scaleFor).
-	]]
 	local boyutOlcegi = Condition.scaleFor(item.condition, rarityInfo.order)
 		* Rarity.modelScale(item.rarity)
 
 	Assets.fitModel(model, Assets.BrainrotSize.slotSize, boyutOlcegi)
 
-	--[[
-		Mutasyonsuz brainrotta gorsel efekt yok.
-		Paket modellerinin bazilarinda gomulu parcacik/isik efektleri var;
-		bunlar mutasyonu belli etmek icin anlamli, duz brainrotta gurultu.
-	]]
 	if not special then
-		-- Tek kaynak: Tools icindeki ortak temizlik (parcacik, iz, isik ve
-		-- adiyla belli olan susleme parcalari)
 		Tools.stripEffects(model)
 	end
 
@@ -1706,24 +1268,6 @@ local function buildDisplay(item: any): Model
 		return model
 	end
 
-	--[[
-		ETIKET
-		Yazi modelin TEPESININ uzerinde durur. Sabit offset kullanilirsa
-		Huge brainrotlarda yazi modelin icinde kaliyordu; bu yuzden
-		yukseklik modelin gercek boyundan hesaplanir.
-	]]
-	--[[
-		ETIKET TUTAMAGI
-
-		Etiket onceden PrimaryPart'a baglaniyordu ve yuksekligi ona gore
-		hesaplaniyordu. PrimaryPart modelin neresinde olursa olsun (bazi
-		paket modellerinde govdenin ortasinda, bazilarinda ayaginda) yazi
-		modelin icinde kalabiliyordu.
-
-		Artik etiketin kendi gorunmez tutamagi var; showInSlot onu modelin
-		GERCEK tepe noktasinin uzerine koyuyor. Boylece yazi modelin
-		bicimine ve boyutuna bakmaksizin hep ustte duruyor.
-	]]
 	local labelAnchor = Instance.new("Part")
 	labelAnchor.Name = "EtiketTutamagi"
 	labelAnchor.Size = Vector3.one
@@ -1734,7 +1278,6 @@ local function buildDisplay(item: any): Model
 	labelAnchor.CanTouch = false
 	labelAnchor.Massless = true
 	labelAnchor.CFrame = primary.CFrame
-	-- Gorunmez tutamak modelin olcusune ve merkezine karismasin
 	labelAnchor:SetAttribute(Assets.MeasureSkipAttribute, true)
 	labelAnchor.Parent = model
 
@@ -1743,20 +1286,8 @@ local function buildDisplay(item: any): Model
 	weld.Part1 = labelAnchor
 	weld.Parent = labelAnchor
 
-	--[[
-		Etiket Shared > Etiket'ten geliyor: ELDE TASINAN brainrot da ayni
-		modulu kullaniyor, boylece iki yerde gorunen sey birebir ayni.
-	]]
 	Etiket.build(item, labelAnchor)
 
-	--[[
-		EN UST KADEMELERIN KALICI EFEKTI (Divine, Cosmic, Secret, Infernal,
-		Abyssal). Elde tasinan brainrotta da ayni efekt var (bkz.
-		Tools.buildBrainrot); ikisi de Assets icindeki ayni sablondan geliyor.
-
-		Kimligi ACILMAMIS esyaya (yumurta) eklenmez: onun efekti modelin
-		kendi icinde duruyor.
-	]]
 	if item.revealed then
 		Assets.attachRarityVFX(model, item.rarity, primary)
 	end
@@ -1776,22 +1307,10 @@ local function clearSlotModel(baseIndex: number, slotIndex: number)
 	models[slotIndex] = nil
 end
 
---[[
-	Slotun GERCEK ust yuzeyi.
-
-	pad.Position.Y + Size.Y / 2 her zaman dogru sonuc vermiyor:
-	  - parca donmusse Size.Y dikey kalinlik degildir
-	  - plaka zemine GOMULUYSE gorunen yuzey zeminin kendisidir
-
-	Ikisi de hesaplanip YUKSEK olani kullanilir. Isina oyuncular ve daha once
-	yerlestirilmis brainrotlar dahil edilmez; yoksa slotun uzerinde duran
-	birinin kafasina model konurdu.
-]]
 local function slotSurfaceY(pad: BasePart): number
 	local cf = pad.CFrame
 	local size = pad.Size
 
-	-- Donmus bir kutunun gercek dikey yarim yuksekligi
 	local halfHeight = math.abs(cf.RightVector.Y) * size.X / 2
 		+ math.abs(cf.UpVector.Y) * size.Y / 2
 		+ math.abs(cf.LookVector.Y) * size.Z / 2
@@ -1820,11 +1339,6 @@ local function slotSurfaceY(pad: BasePart): number
 		params
 	)
 
-	--[[
-		Yuzey yalnizca AZ bir miktar yukselebilir (en fazla 2 stud).
-		Genis bir isin base'in ustundeki bir catiyi ya da koprulu bir yapiyi
-		yakalayip modeli oraya koyabilirdi; bu sinir onu engelliyor.
-	]]
 	if hit and hit.Position.Y > top and hit.Position.Y - top <= 2 then
 		return hit.Position.Y
 	end
@@ -1832,12 +1346,6 @@ local function slotSurfaceY(pad: BasePart): number
 	return top
 end
 
---[[
-	SLOT SESI
-
-	Koyma, alma ve takasta calar. Kaynak slotun kendi parcasi; o yoksa
-	toplama padi kullanilir, boylece ses yine base'in yaninda duyulur.
-]]
 local function playSlotSound(baseIndex: number, slotIndex: number?)
 	local part = (if slotIndex then getSlotPart(baseIndex, slotIndex) else nil) or collectPads[baseIndex]
 	if part then
@@ -1856,46 +1364,14 @@ function showInSlot(baseIndex, slotIndex, item)
 	local model = buildDisplay(item)
 	local D = Bases.Display
 
-	--[[
-		YERLESIM
-
-		1) Modelin kendi durusu korunur, uzerine Bases.Display.rotation
-		   duzeltmesi uygulanir. Paketteki modellerin hepsi kimlik donusuyle
-		   kayitli; mesh'in kendi ekseni tersse duzeltme oradan yapilir.
-
-		2) Model, SINIR KUTUSUNUN ALTI padin ust yuzeyine gelecek sekilde
-		   oturur. Onceki kod modelin PIVOTUNU hedefe koyuyordu; pivot kutu
-		   merkezinde degilse model zemine gomuluyor ya da havada kaliyordu.
-
-		3) Donme, modelin MERKEZINDEN gecen dikey eksende olur. Onceki kod
-		   pivot etrafinda donduruyordu: uzun modeller (10 studluk
-		   kopekbaligi) donerken padin disina savruluyordu.
-	]]
 	local correction = CFrame.Angles(math.rad(D.rotation.X), math.rad(D.rotation.Y), math.rad(D.rotation.Z))
 
-	-- Once donus: konum simdilik onemsiz, asagida hesaplanacak
 	local pivot = model:GetPivot()
 	model:PivotTo(CFrame.new(pivot.Position) * correction * pivot.Rotation)
 
-	--[[
-		Sonra konum: model GORSEL MERKEZINDEN padin ustune oturur.
-
-		Onceki kod modelin PIVOTUNU padin merkezine koyuyordu. Paket
-		modellerinin cogunda pivot govdenin ortasinda degil -- dort ayakli
-		bir brainrotta on ayagin dibinde, uzun bir modelde burnunda olabilir.
-		O yuzden model padin ortasinda durmuyor ve donerken kendi ekseni
-		yerine ayaginin etrafinda donuyordu; Huge boyutta bu apacik
-		gorunuyordu.
-
-		Artik butun parcalarin dunya uzayindaki sinir kutusu hesaplaniyor ve
-		o kutunun YATAY MERKEZI pada, ALTI da yuzeye hizalaniyor. Donme
-		ekseni de ayni merkezden geciyor (asagidaki SpinPivot), yani model
-		her boyutta simetrik donuyor.
-	]]
 	local min, max = Assets.worldBounds(model)
 
 	if not min or not max then
-		-- Hic parca yoksa yerlestirilecek bir sey de yok
 		model:Destroy()
 		return
 	end
@@ -1907,7 +1383,6 @@ function showInSlot(baseIndex, slotIndex, item)
 
 	local surfaceY = slotSurfaceY(pad)
 
-	-- Merkez pada, alt yuzeye gelsin diye modelin tamamini oteleyecek fark
 	local shift = Vector3.new(
 		pad.Position.X - centerX,
 		(surfaceY + D.gap) - lowest,
@@ -1916,12 +1391,6 @@ function showInSlot(baseIndex, slotIndex, item)
 
 	model:PivotTo(model:GetPivot() + shift)
 
-	--[[
-		Etiket tutamagi modelin GERCEK tepesinin uzerine oturur.
-		highest tasimadan ONCE olculdugu icin ayni oteleme ona da uygulanir;
-		boylece model ne kadar buyurse buyusun yazi hep tepenin 2.5 stud
-		uzerinde kalir.
-	]]
 	local anchor = model:FindFirstChild("EtiketTutamagi")
 	if anchor and anchor:IsA("BasePart") then
 		anchor.CFrame = CFrame.new(pad.Position.X, highest + shift.Y + 2.5, pad.Position.Z)
@@ -1932,31 +1401,11 @@ function showInSlot(baseIndex, slotIndex, item)
 	slotModels[baseIndex] = slotModels[baseIndex] or {}
 	slotModels[baseIndex][slotIndex] = model
 
-	-- Yerlesmis hali: donme ve suzulme bunun uzerine uygulanir
 	local home = model:GetPivot()
 
-	--[[
-		DONME / SUZULME  --  ISTEMCI TARAFINDA
-
-		Onceden donme burada, sunucuda yapiliyordu. Sunucu tarafindaki
-		hareket istemciye saniyede ~20 kez replike edilir; kac kez
-		PivotTo cagrilirsa cagrilsin oyuncu 20 fps'lik takilma gorur.
-		Sorunun sebebi dongunun hizi degil, replikasyonun kendisiydi.
-
-		Cozum: sunucu modeli yerlestirip birakir, donmeyi her oyuncunun
-		kendi makinesi cizer (StarterPlayerScripts > BaseGorsel).
-		Asagidaki ozellikler o script'in ihtiyaci olan her seyi tasir.
-	]]
 	model:SetAttribute("SpinDisplay", true)
-	-- Istemci mutasyon efektini (ornegin Rainbow renk dongusu) buna gore cizer
 	model:SetAttribute("Mutation", item.mutation or "Normal")
 	model:SetAttribute("SpinHome", home)
-	--[[
-		Donme ekseni modelin GORSEL merkezinden gecer -- yukarida sinir
-		kutusunun yatay merkezini pada hizaladigimiz icin bu, padin
-		merkezidir. Pivotun nerede oldugunun onemi yok; model artik her
-		zaman kendi ortasindan doner.
-	]]
 	model:SetAttribute("SpinPivot", CFrame.new(pad.Position.X, surfaceY, pad.Position.Z))
 	model:SetAttribute("SpinEnabled", D.spin)
 	model:SetAttribute("SpinSpeed", D.spinSpeed)
@@ -1964,9 +1413,6 @@ function showInSlot(baseIndex, slotIndex, item)
 	model:SetAttribute("BobSpeed", D.bobSpeed)
 end
 
-------------------------------------------------------------------
--- BASE ATAMA
-------------------------------------------------------------------
 local function totalIncome(player: Player): number
 	local total = 0
 	for _, item in PlayerData.placedItems(player) do
@@ -1980,11 +1426,6 @@ end
 local OWNED_COLOR = Color3.fromRGB(90, 235, 130)
 local EMPTY_COLOR = Color3.fromRGB(255, 255, 255)
 
---[[
-	Base'in onundeki hologram yazisini gunceller.
-	  sahipli -> sahibinin nicki, yesil
-	  bos     -> "EMPTY", beyaz
-]]
 local function setSignText(baseIndex: number, ownerName: string?, income: number)
 	local base = getBase(baseIndex)
 	local anchor = base and base:FindFirstChild("Hologram")
@@ -2012,23 +1453,6 @@ local function setSignText(baseIndex: number, ownerName: string?, income: number
 	end
 end
 
---[[
-	Butonun uzerindeki miktari ve rengini tazeler.
-	  bekleme suresinde  -> kirmizi, kalan sure yazili
-	  toplanacak rot var -> yesil, miktar yazili
-	  bos / sahipsiz     -> duz (gri)
-]]
---[[
-	BUTON KAYBOLURSA YENIDEN BULUNUR
-
-	collectPads yalnizca base kurulurken doluyor. Buton araya giren bir sey
-	yuzunden (base yeniden kuruldu, Studio'dan silindi, streaming) tablodan
-	dusunce updateCollectButton sessizce donuyordu: buton son rengiyle --
-	cogu zaman GRI -- kilitli kaliyordu. Rengin degismemesinin sebebi buydu.
-
-	Artik once tabloya, tutmazsa base modelinin icine bakiliyor ve bulunan
-	buton tabloya geri yaziliyor.
-]]
 local function collectPadBul(baseIndex: number): BasePart?
 	local pad = collectPads[baseIndex]
 	if pad and pad.Parent then
@@ -2055,24 +1479,6 @@ local function updateCollectButton(baseIndex: number)
 	local cfg = Bases.CollectPad
 	local waiting = pending[baseIndex] or 0
 
-	--[[
-		SANIYELIK GELIR ISTEMCIYE NITELIKLE GIDIYOR
-
-		Butonun ustunde her saniye beliren yazilari istemci ciziyor (bkz.
-		StarterPlayerScripts > GelirYazisi).
-
-		HER BRAINROT AYRI YAZI: toplam tek bir rakam olarak degil, slottaki
-		her brainrotun KENDI getirisi ayri ayri gonderiliyor. Sekiz dolu
-		slot -> saniyede sekiz ayri yazi. Oyuncu paranin nereden geldigini
-		ve akisi boyle hissediyor.
-
-		TEK NITELIKTE VIRGULLU LISTE: yirmi slot icin yirmi ayri nitelik
-		yazmak her saniye yirmi replikasyon demekti; tek yazi tek
-		replikasyon. Nitelikler tablo tasiyamadigi icin metne ceviriliyor.
-
-		Remote yerine nitelik cunku kendiliginden replike oluyor ve sonradan
-		giren oyuncu da guncel degeri goruyor.
-	]]
 	local sahip = owners[baseIndex]
 	pad:SetAttribute("SahipId", if sahip then sahip.UserId else nil)
 
@@ -2083,7 +1489,6 @@ local function updateCollectButton(baseIndex: number)
 			if item.revealed and item.name then
 				local gelir = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
 				if gelir > 0 then
-					-- %.2f: ustel gosterim (1e+06) cikmasin, istemci tonumber ile okuyor
 					table.insert(gelirler, string.format("%.2f", gelir))
 					toplam += gelir
 				end
@@ -2094,7 +1499,6 @@ local function updateCollectButton(baseIndex: number)
 	pad:SetAttribute("SaniyelikGelir", toplam)
 	pad:SetAttribute("SlotGelirleri", table.concat(gelirler, ","))
 
-	-- Toplama sonrasi bekleme: buton bu sure boyunca KIRMIZI ve kapali
 	local bekleme = math.max(0, (collectUntil[baseIndex] or 0) - os.clock())
 	local ready = owners[baseIndex] ~= nil and waiting >= 1 and bekleme <= 0
 
@@ -2125,18 +1529,11 @@ local function updateCollectButton(baseIndex: number)
 	end
 end
 
---[[
-	Birikmis rotu sahibine oder.
-
-	Butona basan kisi base'in sahibi degilse hicbir sey olmaz; herkes gecerken
-	birbirinin padine basacagi icin uyari da vermiyoruz.
-]]
 function collectRot(player: Player, baseIndex: number)
 	if owners[baseIndex] ~= player then
 		return
 	end
 
-	-- Bekleme surerken toplanmaz (buton kirmizi yanarken)
 	if os.clock() < (collectUntil[baseIndex] or 0) then
 		return
 	end
@@ -2147,18 +1544,9 @@ function collectRot(player: Player, baseIndex: number)
 		return
 	end
 
-	-- Kusurat birikmeye devam etsin
 	pending[baseIndex] = waiting - payout
 	PlayerData.addRot(player, payout)
 
-	--[[
-		BEKLEME BASLAR
-
-		Buton collectCooldown saniye boyunca kirmizi yanar ve toplama kabul
-		etmez. Sure dolunca buton kendiliginden yesile doner; bekleme bitisi
-		ayrica tazelenir, yoksa gelir dongusunun bir sonraki adimina kadar
-		kirmizi kalirdi.
-	]]
 	local cfg = Bases.CollectPad
 	collectUntil[baseIndex] = os.clock() + cfg.collectCooldown
 
@@ -2166,18 +1554,6 @@ function collectRot(player: Player, baseIndex: number)
 	if pad then
 		Assets.playSoundAt(cfg.collectSound, pad)
 
-		--[[
-			PARA SACMA EFEKTI
-
-			Desteler sunucuda KURULMUYOR; burasi yalnizca haber veriyor,
-			her istemci kendi desteleri kurup ucuruyor (bkz. StarterPlayer
-			Scripts > ParaSacma). Sunucuda ucan onlarca parca hem takilarak
-			gorunur hem agi doldururdu.
-
-			Herkese gidiyor: yakindaki oyuncular da baskasinin toplamasini
-			gorsun. Uzaktakileri istemci kendisi eliyor (GORUNME_MESAFESI).
-			Nokta padin UST yuzu; desteler oradan firliyor.
-		]]
 		ParaSac:FireAllClients(player, pad.Position + Vector3.new(0, pad.Size.Y * 0.5, 0), payout)
 	end
 
@@ -2187,12 +1563,10 @@ function collectRot(player: Player, baseIndex: number)
 		updateCollectButton(baseIndex)
 	end)
 
-	-- Ekrandaki Rot gostergesi bayat kalmasin
 	Envanter.push(player)
 
 	Bildirim:FireClient(player, `+{Format.short(payout)} Rot collected!`, Bases.RotColor)
 
-	-- Ogretici: "base'den parayi topla" adimini bitirir
 	Ogretici.olay(player, "parayiAldi")
 end
 
@@ -2224,12 +1598,10 @@ function pushBase(player: Player)
 	BaseGuncelle:FireClient(player, {
 		baseIndex = data.base,
 		slotCount = Bases.SlotCount,
-		-- Base gelisimi: acik kat ve slot sayisi
 		floors = math.clamp(data.baseFloors or 1, 1, Bases.Upgrade.maxFloors),
 		unlockedSlots = unlockedSlots(data),
 		slots = slots,
 		totalIncome = income,
-		-- Butonda bekleyen, henuz toplanmamis rot
 		pending = pending[data.base] or 0,
 	})
 end
@@ -2240,7 +1612,6 @@ local function assignBase(player: Player): number?
 		return nil
 	end
 
-	-- Zaten bir base'in sahibiyse ayni base: iki kez atanmasin
 	for index, owner in owners do
 		if owner == player then
 			data.base = index
@@ -2252,18 +1623,15 @@ local function assignBase(player: Player): number?
 		if owners[index] == nil then
 			owners[index] = player
 			data.base = index
-			-- Base yeni sahibine bos ve beklemesiz devredilir
 			pending[index] = 0
 			collectUntil[index] = 0
 			setSignText(index, player.DisplayName, 0)
 			updateCollectButton(index)
 
-			-- Sahibin acmis oldugu katlar ve slotlar geri gelsin
 			applyFloors(index, data.baseFloors or 1)
 			applySlots(index, unlockedSlots(data))
 			updateSign(index)
 
-			-- Onceki oturumdan kalan yerlesimleri geri koy
 			for _, item in data.inventory do
 				if item.slot and item.revealed and item.name then
 					showInSlot(index, item.slot, item)
@@ -2278,15 +1646,6 @@ local function assignBase(player: Player): number?
 	return nil
 end
 
---[[
-	Base'i serbest birakir.
-
-	Indeks PlayerData'dan DEGIL owners tablosundan okunur. Sebep: PlayerData
-	da PlayerRemoving'e bagli ve once o calisirsa oyuncunun verisi cache'ten
-	silinmis oluyor; o zaman burasi nil alip erken donuyor, base sonsuza dek
-	dolu kaliyor ve birkac giris-cikistan sonra "Bos base kalmadi" cikiyordu.
-	owners tablosu bu scriptin kendi kaydi oldugu icin her zaman dogru.
-]]
 local function releaseBase(player: Player)
 	lastTouch[player] = nil
 
@@ -2307,31 +1666,15 @@ local function releaseBase(player: Player)
 	end
 
 	owners[index] = nil
-	-- Toplanmamis rot sahibiyle birlikte gider
 	pending[index] = nil
 	setSignText(index, nil, 0)
 	updateCollectButton(index)
 
-	-- Base bosaldi: ust katlar ve satin alinmis slotlar tekrar kilitlenir
 	applyFloors(index, 1)
 	applySlots(index, Bases.Upgrade.startingSlots)
 	updateSign(index)
 end
 
-------------------------------------------------------------------
--- YERLESTIRME / GERI ALMA
-------------------------------------------------------------------
---[[
-	BASE GUVENCESI
-
-	Oyuncuya base, veri yuklenince atanir. Canli sunucuda veri gec
-	yuklenirse atama kaciyor, data.base bos kaliyor ve slota koyma HICBIR
-	mesaj vermeden vazgeciyordu ("cik gir yapinca duzeldi" hatasi).
-
-	Artik: veride base yoksa ya da o base bu oyuncuya ait degilse atama
-	burada yeniden denenir. Yine olmazsa oyuncuya yazilir.
-]]
--- Sahipsiz base var mi (yoksa atama denenmez: "No free bases" tekrar tekrar yazilmasin)
 function bosBaseVar(): boolean
 	for index = 1, Bases.Count do
 		if owners[index] == nil then
@@ -2386,22 +1729,15 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 		return
 	end
 
-	-- Prompt disindan (remote) gelen istekte de kilit gecerli
 	if slotIndex > unlockedSlots(data) then
 		Bildirim:FireClient(player, `Slot {slotIndex} is locked.`, Color3.fromRGB(255, 200, 90))
 		return
 	end
 
 	if item.slot then
-		return -- zaten yerlestirilmis
+		return
 	end
 
-	--[[
-		SLOT DOLUYSA TAKAS.
-		Onceden "Bu slot dolu" deyip vazgeciyordu; artik slottaki brainrot
-		cantaya doner, elindeki onun yerine oturur. Boylece bosaltip
-		yeniden koymak icin iki islem yapmak gerekmez.
-	]]
 	local swapped: any = nil
 	for _, other in data.inventory do
 		if other.slot == slotIndex then
@@ -2418,29 +1754,17 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 	item.slot = slotIndex
 	showInSlot(data.base, slotIndex, item)
 
-	-- Koyma ve takas ayni sesi calar
 	playSlotSound(data.base, slotIndex)
 
-	-- Elden cikar, takas edilen cantaya doner: iki degisiklik tek esitlemede
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
 	pushBase(player)
 
-	-- Gorev panosu: base'e yerlestirme sayilir (takas da bir yerlestirmedir)
 	GorevTakip.ilerlet(player, "place", 1)
 
-	-- Ogretici: "brainrotu slota koy" adimini bitirir
 	Ogretici.olay(player, "slotladi")
 
 	local income = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
-	--[[
-		BILDIRIM RENGI KADEMEDEN GELIR.
-
-		Onceden mutasyonlu brainrotta mutasyonun rengi kullaniliyordu:
-		Legendary bir brainrot Galaxy olunca bildirim sari yerine mor
-		cikiyordu. Kademe oyuncunun ilk bakista aradigi bilgi, o yuzden
-		renk her zaman kademenin.
-	]]
 	local color = Rarity.color(item.rarity)
 
 	if swapped then
@@ -2475,7 +1799,6 @@ function removeFromSlot(player: Player, uid: string)
 
 	playSlotSound(data.base, eskiSlot)
 
-	-- Brainrot Tool olarak cantaya doner
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
 	pushBase(player)
@@ -2483,13 +1806,6 @@ function removeFromSlot(player: Player, uid: string)
 	Bildirim:FireClient(player, `{item.name or "Brainrot"} went back to your backpack.`, Color3.fromRGB(200, 210, 225))
 end
 
---[[
-	Base'i envanter verisiyle yeniden esitler.
-
-	Slot modelleri sunucuda ayri tutuldugu icin envanter disaridan
-	degistirildiginde (ornegin admin panelinden temizlendiginde) modeller
-	oldugu yerde kaliyordu. Bu fonksiyon fazlalari siler, eksikleri koyar.
-]]
 local function refreshSlots(player: Player)
 	local data = PlayerData.get(player)
 	if not data or not data.base then
@@ -2498,7 +1814,6 @@ local function refreshSlots(player: Player)
 
 	local baseIndex = data.base
 
-	-- Hangi slotta hangi esya olmali
 	local expected: { [number]: any } = {}
 	for _, item in data.inventory do
 		if item.slot and item.revealed and item.name then
@@ -2513,10 +1828,8 @@ local function refreshSlots(player: Player)
 		local shown = models[slotIndex]
 
 		if not item and shown then
-			-- Envanterde yok ama sahnede duruyor: kaldir
 			clearSlotModel(baseIndex, slotIndex)
 		elseif item and not shown then
-			-- Envanterde var ama sahnede yok: koy
 			showInSlot(baseIndex, slotIndex, item)
 		end
 	end
@@ -2524,7 +1837,6 @@ local function refreshSlots(player: Player)
 	pushBase(player)
 end
 
--- Diger scriptler (admin paneli gibi) envanteri degistirdiginde tetikler
 local refreshEvent = Instance.new("BindableEvent")
 refreshEvent.Name = "BaseYenile"
 refreshEvent.Parent = script
@@ -2544,20 +1856,6 @@ SlottanAl.OnServerEvent:Connect(function(player, uid)
 	removeFromSlot(player, uid)
 end)
 
-------------------------------------------------------------------
--- PASIF GELIR DONGUSU
---
--- Gelir Rot'a yazilmaz, base'de birikir. Oyuncu TOPLA butonuna basana
--- kadar orada bekler.
-------------------------------------------------------------------
---[[
-	DONGU HATAYLA OLMEZ
-
-	Govde pcall icinde: tek bir hata (bozuk bir kayit, silinmis bir model)
-	task.spawn ipligini komple oldururdu. Oldugunde gelir birikmeyi birakir
-	ve BUTUN butonlar son renklerinde -- cogu zaman gri -- donardi. Hata
-	artik Output'a yaziliyor, dongu bir sonraki turda devam ediyor.
-]]
 local function gelirTuru()
 	for _, player in Players:GetPlayers() do
 		local data = PlayerData.get(player)
@@ -2586,7 +1884,6 @@ task.spawn(function()
 	end
 end)
 
--- Tabela ve client sayaci daha seyrek guncellenir
 task.spawn(function()
 	while true do
 		task.wait(3)
@@ -2595,7 +1892,6 @@ task.spawn(function()
 			if data and data.base and owners[data.base] == player then
 				pushBase(player)
 			elseif data then
-				-- Emniyet: atamasi kacmis oyuncu burada base alir
 				data.base = nil
 				if bosBaseVar() and assignBase(player) then
 					pushBase(player)
@@ -2605,14 +1901,7 @@ task.spawn(function()
 	end
 end)
 
-------------------------------------------------------------------
--- OYUNCU BAGLANTILARI
-------------------------------------------------------------------
 local function setupPlayer(player: Player)
-	--[[
-		Veri yuklenene kadar beklenir. Eskiden 10 saniyede vazgeciliyordu:
-		canli sunucuda veri gec gelirse base hic atanmiyordu.
-	]]
 	while player.Parent and not PlayerData.get(player) do
 		task.wait(0.25)
 	end
@@ -2631,15 +1920,6 @@ local function setupPlayer(player: Player)
 	end
 end
 
---[[
-	BASE'E ISINLANMA  (sagdaki ev butonu)
-
-	Oyuncu kendi base'inin ONUNE, TOPLA butonunun biraz ilerisine konur ve
-	yuzu base'e doner. Butonun tam ustune konmaz: basinca para toplanir ve
-	oyuncu bunu isinlanma sanabilir.
-
-	Kazi sirasinda (karakter yerine sabitken) ve flyboard'dayken yapilmaz.
-]]
 local ISINLANMA_BEKLEME = 3
 local ISINLANMA_MESAFE = 7
 local sonIsinlanma: { [Player]: number } = {}

@@ -1,31 +1,3 @@
---[[
-	Ayarlar  (Script)
-	Yeri: ServerScriptService > Ayarlar
-
-	Oyuncunun kisisel ayarlarini saklar ve geri verir:
-
-	  uiScale      -- arayuz olcegi yuzdesi (%50..%150, varsayilan %100)
-	  musicVolume  -- arka plan muzigi ses yuzdesi (%0..%100, varsayilan %100)
-	  musicMuted   -- muzik kapali mi (varsayilan acik)
-	  sfxVolume    -- ses efektleri yuzdesi (%0..%100, varsayilan %100)
-	  sfxMuted     -- ses efektleri kapali mi (varsayilan acik)
-	  shakeOff     -- ekran sarsintisi kapali mi (varsayilan acik); oyuncunun
-	                  "SarsintiKapali" niteligine de yazilir, sarsinti yapan
-	                  istemci kodlari onu okur
-
-	NEDEN SUNUCUDA
-	Roblox'ta istemcinin kalici deposu yok; ayarin oturumlar arasinda
-	kalmasi icin oyuncu verisiyle (PlayerData) birlikte DataStore'a
-	yazilmasi gerekiyor.
-
-	AKIS
-	  1. Oyuncu girer  -> server AyarDurum ile kayitli ayari yollar
-	  2. Client gec yuklendiyse AyarKaydet'i degersiz cagirir (nil),
-	     server yine mevcut ayari yollar. Boylece "istemci hazir olmadan
-	     gonderdim" sorunu olmaz.
-	  3. Oyuncu paneli oynatir -> client AyarKaydet ile yeni degeri yollar
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -38,12 +10,10 @@ local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local AyarDurum = Net.event("AyarDurum")
 local AyarKaydet = Net.event("AyarKaydet")
 
--- Panelin sinirlariyla ayni; istemciye guvenilmez, deger burada da kirpilir
 local OLCEK_MIN = 50
 local OLCEK_MAX = 150
 
 local function ayarlariYolla(player: Player)
-	-- Yuklemeyi Leaderstats baslatir; burasi yalnizca bekler (ikinci yukleme yok)
 	local data = PlayerData.bekle(player)
 	if not data then
 		return
@@ -59,11 +29,6 @@ local function ayarlariYolla(player: Player)
 	})
 end
 
---[[
-	Client'tan gelen ayar. Deger sayi degilse ya da sinirlarin disindaysa
-	yalnizca mevcut ayar geri yollanir -- istemci ne gonderirse gondersin
-	veri bozulmaz.
-]]
 AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 	local data = PlayerData.get(player)
 	if not data then
@@ -99,11 +64,6 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 	ayarlariYolla(player)
 end)
 
---[[
-	Giriste ayari yollar. Client scripti henuz baglanmamis olabilir; bu
-	yuzden birkac kere tekrarlanir. Client kendi hazir oldugunda zaten
-	AyarKaydet ile durum istiyor, iki yol da ayni sonuca cikiyor.
-]]
 local function playerAdded(player: Player)
 	task.spawn(function()
 		for _ = 1, 5 do

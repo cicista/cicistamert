@@ -1,58 +1,10 @@
 --!strict
---[[
-	AFK SANS SISTEMI  --  ayarlar (sunucu + istemci)
-
-	Workspace > CloverAreas icinde alti alan var:
-	    Common > Rare > Epic > Legendary > Mythic   (Rot ile, sirayla)
-	    Secret                                      (yalnizca Robux, 300 R$)
-
-	Her alanin adi kademe adi; kendisi yoncalarin cikacagi ZEMIN parcasi.
-	Icinde "<Kademe>Barricade" (alan kilitliyken girisi kapatir),
-	"<Kademe>Border" ve "Fences" klasoru var. Common'da barikat yok, bedava.
-
-	Oyuncu alanda yonca topladikca SANS PUANI kazanir. Puan kalici; kazi ve
-	olta sans carpanina eklenir (bkz. KaziSistemi > luckFor):
-
-	    carpan = 1 + (MaxCarpan - 1) * puan / MaxPuan
-
-	20.000.000 puan = x20 sans (tavan). Puanin carpana cevrilmesi bilerek
-	oyuncuya gosterilmiyor: yavas artan x1.0003 yerine buyuyen bir sayi
-	gorsun diye.
-
-	YONCA BASINA PUAN
-	Her toplanan yonca alanin sabit puanini verir (puanYonca). Bir yonca
-	ortalama ~4.5 sn surer (3 sn toplama + ~1.5 sn yuruyus). Mythic'te
-	tavana 50 saatte ulasilacak sekilde ayarli:
-
-	    50 saat = 180.000 sn / 4.5 = 40.000 yonca
-	    20.000.000 / 40.000 = 500 puan/yonca
-
-	Alt alanlar belirgin sekilde yavas:
-
-	    Common      25/yonca  ~1000 saat
-	    Rare        60/yonca  ~417 saat
-	    Epic       135/yonca  ~185 saat
-	    Legendary  270/yonca  ~93 saat
-	    Mythic     500/yonca  ~50 saat
-
-	Toplama suresi sunucuda sayildigi icin bir oyuncu en fazla her
-	ToplamaSuresi saniyede bir yonca alabilir.
-]]
 
 local Shovels = require(script.Parent:WaitForChild("Shovels"))
 local Rods = require(script.Parent:WaitForChild("Rods"))
 
 local AfkSans = {}
 
---[[
-	ALAN FIYATLARI kurek / olta fiyatlarina BAGLI: o esyanin fiyati
-	degisirse alanin fiyati da kendiliginden degisir.
-
-	    Rare       Lv6 kurek   (Lollipop Shovel)
-	    Epic       Lv11 kurek  (Frost Shovel)
-	    Legendary  Lv1 olta    (Bamboo Rod)
-	    Mythic     Lv5 olta    (Leviathan Rod)
-]]
 local function kurekFiyati(level: number): number
 	for _, info in Shovels.Info do
 		if info.level == level then
@@ -73,29 +25,13 @@ end
 
 export type Alan = {
 	id: string,
-	-- Leprechaun panelinde gorunen ad
 	displayName: string,
-	-- Toplanan her yoncanin verdigi sans puani
 	puanYonca: number,
-	-- Rot bedeli (Common bedava; Robux alaninda kullanilmaz)
 	fiyat: number,
-	--[[
-		Renk ve yazi rengi hangi KADEMEDEN gelsin (Shared > Rarity kimligi).
-		Bos ise id ile ayni. Secret alani icin gerekli: haritadaki parcanin
-		adi "Secret" ama o kimlik Divine'a ait; ekranda "Secret" gorunen
-		kademenin kimligi "Gizli".
-	]]
 	kademe: string?,
-	--[[
-		Verilirse alan YALNIZCA Robux ile acilir: Shared > RobuxMagaza'daki
-		urunun anahtari. Rot sirasina girmez (Mythic'i beklemez), sahipligi
-		PlayerData > afkOzel'de tutulur. Robux alanlari listenin SONUNDA
-		durmali: sirali alanlarin sahipligi sira numarasiyla bakiliyor.
-	]]
 	robux: string?,
 }
 
--- Mythic alaninin yonca puani; Secret bunun iki kati (Mythic degisirse o da degisir)
 local MYTHIC_PUAN = 500
 
 local alanlar: { Alan } = {
@@ -104,10 +40,6 @@ local alanlar: { Alan } = {
 	{ id = "Epic", displayName = "Epic Clover Field", puanYonca = 135, fiyat = kurekFiyati(11) },
 	{ id = "Legendary", displayName = "Legendary Clover Field", puanYonca = 270, fiyat = oltaFiyati(1) },
 	{ id = "Mythic", displayName = "Mythic Clover Field", puanYonca = MYTHIC_PUAN, fiyat = oltaFiyati(5) },
-	--[[
-		SECRET: yalnizca Robux (300 R$, bkz. Shared > RobuxMagaza "AfkSecretAlan").
-		Mythic'in iki kati puan: tavana ~25 saatte ulasilir.
-	]]
 	{
 		id = "Secret",
 		kademe = "Gizli",
@@ -119,68 +51,37 @@ local alanlar: { Alan } = {
 }
 AfkSans.Alanlar = alanlar
 
--- Tavan: bu kadar puan MaxCarpan kadar sans verir, fazlasi birikmez
 AfkSans.MaxPuan = 20_000_000
 AfkSans.MaxCarpan = 20
 
--- Alanda ayni anda duran yonca sayisi (oyuncu basina)
 AfkSans.YoncaSayisi = 10
--- Iki yonca arasi en az bosluk (kenardan kenara, stud)
 AfkSans.MinAralik = 2
--- Zemin kenarindan birakilan pay (stud)
 AfkSans.KenarPayi = 2
--- Rastgele boyut araligi
 AfkSans.OlcekMin = 0.3
 AfkSans.OlcekMax = 0.75
--- Bir yoncanin toplanma suresi (saniye)
 AfkSans.ToplamaSuresi = 3
--- Toplamaya baslamak icin yoncaya en fazla bu kadar yaklasmak gerek (yonca yaricapina ek)
 AfkSans.Erisim = 3
--- Bar titremesi son bu kadar saniyede baslar
 AfkSans.TitremeSuresi = 1
--- Her toplanan yoncanin verdigi oyuncu XP'si (Level sistemi, bkz. Modules > Seviye)
 AfkSans.YoncaXp = 1
--- Toplama animasyonu (ToplamaSuresi kadar surer; farkliysa hizi ayarlanir)
 AfkSans.ToplamaAnimasyonu = "rbxassetid://112929077414582"
 
---[[
-	OTOMATIK BASLAMA
-	Acik alanda duran oyuncu bu kadar saniye kendisi yurumezse toplama
-	kendiliginden baslar (AUTO'ya basmak gerekmez). Oyuncu STOP'a basarsa
-	alandan cikip girene ya da tekrar AUTO'ya basana kadar baslamaz.
-]]
 AfkSans.OtoBaslamaBekleme = 1
 
---[[
-	AFK YENIDEN BAGLANMA
-
-	Roblox 20 dakika girdi almayan oyuncuyu atiyor; oyun bunu kapatamaz.
-	Alanda bu kadar saniye girdisiz kalan oyuncu atilmadan once AYNI
-	sunucuya yeniden baglanir, ayni noktaya isinlanir ve toplamaya devam
-	eder (bkz. Modules > AfkSans). 20 dakikaya pay birakiliyor.
-]]
 AfkSans.YenidenBaglanSuresi = 18 * 60
--- Ayrilan oyuncunun alan konumu sunucuda bu kadar saniye hatirlanir
 AfkSans.DonusGecerlilik = 10 * 60
--- Teleport verisindeki anahtar (ReplicatedFirst > YuklemeEkrani de bunu okur)
 AfkSans.TeleportVeriAnahtari = "AfkDonus"
 
--- Isimler
 AfkSans.KlasorAdi = "CloverAreas"
 AfkSans.NpcAdi = "Leprechaun"
--- Oyuncu nitelikleri (sunucu yazar, istemci okur)
 AfkSans.PuanNiteligi = "AfkPuan"
 AfkSans.SeviyeNiteligi = "AfkSeviye"
--- Robux ile acilmis alanlarin kimlikleri, virgulle: "Secret"
 AfkSans.OzelNiteligi = "AfkOzelAlanlar"
 
--- Alanin renk kademesi (Rarity kimligi); bkz. Alan.kademe
 function AfkSans.kademe(id: string): string
 	local alan = AfkSans.get(id)
 	return if alan and alan.kademe then alan.kademe else id
 end
 
--- Rot ile sirayla acilan alanlarin sayisi (afkSeviye'nin tavani)
 function AfkSans.siraliSayi(): number
 	local sayi = 0
 	for _, alan in AfkSans.Alanlar do
@@ -191,11 +92,6 @@ function AfkSans.siraliSayi(): number
 	return sayi
 end
 
---[[
-	Oyuncu bu alana sahip mi.
-	  seviye : afkSeviye (sirali alanlarin kacincisina kadar acik)
-	  ozel   : Robux ile acilmis alanlar (id -> true)
-]]
 function AfkSans.sahip(sira: number, seviye: number, ozel: { [string]: boolean }): boolean
 	local alan = AfkSans.Alanlar[sira]
 	if not alan then
@@ -207,7 +103,6 @@ function AfkSans.sahip(sira: number, seviye: number, ozel: { [string]: boolean }
 	return sira <= seviye
 end
 
--- OzelNiteligi'nin yazisini tabloya cevirir (istemci okur)
 function AfkSans.ozelCoz(yazi: any): { [string]: boolean }
 	local ozel: { [string]: boolean } = {}
 	if type(yazi) == "string" then
@@ -232,17 +127,11 @@ function AfkSans.get(id: string): Alan?
 	return if i then AfkSans.Alanlar[i] else nil
 end
 
--- Sans puanini carpana cevirir (1 .. MaxCarpan)
 function AfkSans.carpan(puan: number): number
 	local oran = math.clamp(puan, 0, AfkSans.MaxPuan) / AfkSans.MaxPuan
 	return 1 + (AfkSans.MaxCarpan - 1) * oran
 end
 
---[[
-	Nokta bu alanin ustunde mi. Zemin donuk olabilir, bu yuzden parcanin
-	kendi eksenlerinde bakiliyor. Yukseklik payi: zeminin 1 stud altindan
-	20 stud ustune kadar (ziplayan oyuncu alandan cikmis sayilmasin).
-]]
 function AfkSans.icinde(zemin: BasePart, nokta: Vector3): boolean
 	local yerel = zemin.CFrame:PointToObjectSpace(nokta)
 	local boy = zemin.Size

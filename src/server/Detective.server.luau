@@ -1,28 +1,3 @@
---[[
-	Detective  (Script)
-	Yeri: ServerScriptService > Detective
-
-	Brainrot Detective NPC'si.
-
-	Kazidan cikan brainrot envantere SIMSIYAH gelir: oyuncu sadece rarity'sini
-	ve kondisyonunu gorur, hangi brainrot oldugunu bilmez. Bu NPC'ye teslim
-	edilince inceleme suresi sonunda brainrot'un kimligi ortaya cikar;
-	oyuncu Detective'e donup brainrotlarini TESLIM ALIR.
-
-	Acilan brainrot artik base slotuna konabilir ve saniyelik gelir uretir.
-
-	TOPLU INCELEME
-	  Oyuncu kimligi belirlenmemis BUTUN brainrotlarini tek seferde birakir.
-	  Bekleme suresi hepsinin (Rarity.revealTime) TOPLAMIDIR. Is oyuncu
-	  verisine yazilir (PlayerData.detectiveJob): oyuncu yanindan ayrilabilir,
-	  oyundan cikip girse bile sure islemeye devam eder. Sure dolunca hepsi
-	  birden acilir ama Detective'de bekler. Is surerken yeni teslim alinmaz.
-
-	SECEREK INCELEME
-	  Istemci DetectiveTeslim ile uid listesi yollarsa yalnizca o
-	  brainrotlar birakilir (tek bir tane de olabilir); liste yoksa hepsi.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -40,17 +15,6 @@ local Net = require(Shared:WaitForChild("Net"))
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
---[[
-	OGRETICI ISTEGE BAGLI  --  modul yoksa bu sistem yine calisir.
-
-	Sert bir WaitForChild ile baglanirsa ve modul Studio'ya henuz
-	senkronize olmadiysa script o satirda SONSUZA KADAR bekler; sistemin
-	tamami (GPS'i cantaya koyan kod dahil) hic kurulmaz. Ogretici oyunun
-	yan islevi: yoksa oyun kendi bildigini okumali.
-
-	Bes saniye beklenmesinin sebebi Rojo: dosyalar sirayla geliyor, modul
-	scriptten birkac kare sonra dusebilir.
-]]
 local Ogretici = {
 	olay = function(_player: Player, _olay: string) end,
 	ucKontrol = function(_player: Player) end,
@@ -72,20 +36,13 @@ local DetectiveAc = Net.event("DetectiveAc")
 local DetectiveTeslim = Net.event("DetectiveTeslim")
 local DetectiveSonuc = Net.event("DetectiveSonuc")
 local DetectiveDurum = Net.event("DetectiveDurum")
--- Sol menudeki Detective takip paneli durumu ister
 local DetectiveTakip = Net.event("DetectiveTakip")
 
 local D = Config.Detective
 local rng = Random.new()
 
--- Su an inceleme surecinde olan oyuncular
 local busy: { [Player]: boolean } = {}
 
-------------------------------------------------------------------
--- NPC KURULUMU
-------------------------------------------------------------------
-
--- Workspace'te hazir NPC yoksa basit bir inceleme stanti kurar.
 local function buildStand(): Model
 	local model = Instance.new("Model")
 	model.Name = D.name
@@ -148,7 +105,6 @@ local function findNPC(): Model?
 	return nil
 end
 
--- Panel acma asagida tanimli (toplu inceleme bolumu); prompt ondan once kuruluyor
 local panelAc: (player: Player) -> ()
 
 local function attachPrompt(model: Model)
@@ -179,26 +135,6 @@ local function attachPrompt(model: Model)
 	end)
 end
 
-------------------------------------------------------------------
--- TOPLU INCELEME
-------------------------------------------------------------------
---[[
-	AKIS
-
-	1. TESLIM   Oyuncu brainrotlarini birakir. Brainrotlar envanterden
-	            CIKAR ve isin icinde (detectiveJob.items) durur: hotbar'da
-	            ve envanterde gorunmezler.
-	2. SURE     Sure dolunca hepsinin kimligi acilir (bitti = true), ama
-	            oyuncuya VERILMEZ. Sonuclar sol menudeki Detective
-	            butonundan uzaktan gorulebilir.
-	3. TESLIM ALMA
-	            Oyuncu Detective'e gidip konusunca brainrotlar envantere
-	            geri gelir.
-]]
---[[
-	Sure yazisi. Divine ustu kademeler saatlere ciktigi icin saat de
-	yaziliyor: "60:00" yerine "1:00:00".
-]]
 local function sureYazisi(saniye: number): string
 	local t = math.max(0, math.ceil(saniye))
 	if t >= 3600 then
@@ -207,7 +143,6 @@ local function sureYazisi(saniye: number): string
 	return string.format("%d:%02d", t // 60, t % 60)
 end
 
--- Kimligi belirlenmemis brainrotlar (sure = kademesinin acilma suresi)
 local function bekleyenler(data: any): { any }
 	local out = {}
 	for _, item in data.inventory do
@@ -224,7 +159,6 @@ local function bekleyenler(data: any): { any }
 	return out
 end
 
--- Bitmis isin sonuc satirlari (istemcide kart olarak cizilir)
 local function sonucListesi(is: any): { any }
 	local out = {}
 	for _, item in is.items do
@@ -242,7 +176,6 @@ local function sonucListesi(is: any): { any }
 	return out
 end
 
--- Istemciye giden is ozeti; is yoksa nil
 local function isOzeti(data: any): any?
 	local is = data.detectiveJob
 	if not is then
@@ -261,7 +194,6 @@ local function durumYolla(player: Player, data: any)
 	DetectiveDurum:FireClient(player, isOzeti(data))
 end
 
--- Bitmis isin brainrotlarini envantere geri verir
 local function teslimAl(player: Player, data: any)
 	local is = data.detectiveJob
 	if not is or not is.bitti then
@@ -279,17 +211,10 @@ local function teslimAl(player: Player, data: any)
 	DetectiveSonuc:FireClient(player, sonuclar)
 	durumYolla(player, data)
 
-	--[[
-		OGRETICI: "collect" adimi esya DEDEKTIFTEN ALININCA biter, kimlik
-		acildigi an degil -- oyuncunun bir sonraki adimda onu slota koymasi
-		icin esyanin elinde olmasi gerekiyor. ucCollect adimi da burada
-		kontrol ediliyor: uc tanesi de acildiysa o adim kapanir.
-	]]
 	Ogretici.olay(player, "collectledi")
 	Ogretici.ucKontrol(player)
 
 	if #sonuclar > 0 then
-		-- En degerlisi bildirimde yazar
 		local enIyi = sonuclar[1]
 		for _, sonuc in sonuclar do
 			if sonuc.income > enIyi.income then
@@ -311,14 +236,6 @@ function panelAc(player: Player)
 		return
 	end
 
---[[
-		BITMIS IS KENDILIGINDEN TESLIM EDILMEZ
-
-		Eskiden panel acilir acilmaz brainrotlar cantaya giriyordu; oyuncu
-		ne oldugunu anlamadan pencere kapaniyordu. Artik panelde COLLECT
-		dugmesi cikiyor ve teslim ona BASINCA oluyor (istemci yine
-		DetectiveTeslim yolluyor, asagidaki isleyici teslim ediyor).
-	]]
 	local is = data.detectiveJob
 
 	local liste = bekleyenler(data)
@@ -331,7 +248,6 @@ function panelAc(player: Player)
 	DetectiveAc:FireClient(player, { pending = liste, job = ozet })
 end
 
--- Sure doldu: isteki butun brainrotlarin kimligi acilir (oyuncuya henuz verilmez)
 local function isiBitir(player: Player, data: any)
 	local is = data.detectiveJob
 	if not is or is.bitti then
@@ -342,10 +258,6 @@ local function isiBitir(player: Player, data: any)
 		if item.revealed then
 			continue
 		end
-		--[[
-			Rarity sabit kalir; hangi brainrot oldugu simdi belli olur. Isim
-			KAZILDIGI ADANIN listesinden seciliyor.
-		]]
 		local picked = Brainrots.rollIsland(item.rarity :: any, item.island, rng)
 		item.name = picked.name
 		item.revealed = true
@@ -361,19 +273,6 @@ local function isiBitir(player: Player, data: any)
 	)
 end
 
-------------------------------------------------------------------
--- SUREYI ATLAMA  (Robux)
---
--- Odeme RobuxMagaza'da isleniyor (ProcessReceipt oyunda TEK yerde
--- olabiliyor). Oraya iki kapi aciliyor:
---
---   DedektifBekliyorMu  -- satin alma penceresi acilmadan once sorulur;
---                          bekleyen is yoksa pencere hic acilmaz, yani
---                          oyuncu bos yere odemez
---   DedektifAtla        -- odeme alininca cagrilir, sureyi siler
---
--- BindableFunction cunku ikisinin de CEVABI onemli.
-------------------------------------------------------------------
 local BekliyorMu = Instance.new("BindableFunction")
 BekliyorMu.Name = "DedektifBekliyorMu"
 BekliyorMu.Parent = script
@@ -395,7 +294,6 @@ Atla.OnInvoke = function(player: Player): boolean
 		return false
 	end
 
-	-- Sure bitmis sayiliyor; is normal yolundan tamamlaniyor
 	is.bitis = os.time()
 	isiBitir(player, data)
 	return true
@@ -407,13 +305,6 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 		return
 	end
 
-	--[[
-		YALNIZCA TESLIM AL  --  panelin COLLECT dugmesi
-
-		Istemci "collect" yollarsa bitmis is cantaya verilir ve DURULUR:
-		bekleyen brainrotlar bu tiklamayla yeniden ise girmez, oyuncu
-		istedigini secip IDENTIFY der.
-	]]
 	if secilen == "collect" then
 		local bitmis = isOzeti(data)
 		if bitmis and bitmis.bitti then
@@ -440,7 +331,6 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 
 	local liste = bekleyenler(data)
 
-	-- Secim geldiyse yalnizca secilenler (istemciye guvenilmez: listede olmayan uid atlanir)
 	if type(secilen) == "table" then
 		local istenen: { [string]: boolean } = {}
 		local sayi = 0
@@ -465,7 +355,6 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 		return
 	end
 
-	-- Brainrotlar envanterden cikip isin icine girer
 	local toplam = 0
 	local items = {}
 	for _, bilgi in liste do
@@ -491,7 +380,6 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 	)
 end)
 
--- Suresi dolan isler (oyuncu nerede olursa olsun)
 task.spawn(function()
 	while true do
 		task.wait(1)
@@ -509,10 +397,8 @@ task.spawn(function()
 	end
 end)
 
--- Oyuna donen oyuncu isini gorsun (sol menudeki Detective butonu)
 local function girisDurumu(player: Player)
 	task.spawn(function()
-		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
 		if not PlayerData.bekle(player) then
 			return
 		end
@@ -531,7 +417,6 @@ for _, player in Players:GetPlayers() do
 	girisDurumu(player)
 end
 
--- Sol menudeki takip paneli acilinca guncel durumu ister
 DetectiveTakip.OnServerEvent:Connect(function(player)
 	local data = PlayerData.get(player)
 	if data then
@@ -539,9 +424,6 @@ DetectiveTakip.OnServerEvent:Connect(function(player)
 	end
 end)
 
-------------------------------------------------------------------
--- BASLAT
-------------------------------------------------------------------
 task.spawn(function()
 	local npc = findNPC()
 	if not npc then

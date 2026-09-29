@@ -1,16 +1,3 @@
---[[
-	Admin  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Admin
-
-	Test paneli. Yalnizca sunucu "yetkilisin" derse acilir
-	(Config.Admin.userIds, ya da Studio'da allowInStudio).
-
-	Panel sadece bir arayuz: butun komutlar sunucuda yeniden dogrulanir,
-	yani bu script kurcalansa bile yetkisiz komut calismaz.
-
-	Acilis tusu: Config.Admin.keyCode (varsayilan F2)
-]]
-
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -82,7 +69,6 @@ list.ScrollBarImageColor3 = UI.Colors.panelLight
 list.CanvasSize = UDim2.new()
 list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 list.Parent = panel
--- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 UI.listePayi(list)
 
 local layout = Instance.new("UIListLayout")
@@ -122,15 +108,6 @@ local function actionButton(label: string, command: string, arg: any?, color: Co
 	end)
 end
 
---[[
-	Yan yana dizilen kucuk butonlar (kurek/dedektor/rarity/mutasyon secimi).
-
-	entry.command + entry.arg -> tiklaninca komutu gonderir
-	entry.getArg              -> arg'i TIKLAMA aninda hesaplar (secili mutasyon)
-	entry.onClick             -> komut gondermez, sadece cagrilir (secim yapar)
-
-	Uretilen butonlari dondurur ki secili olan isaretlenebilsin.
-]]
 type ChipEntry = {
 	label: string,
 	command: string?,
@@ -194,9 +171,6 @@ local function chipRow(entries: { ChipEntry }): { TextButton }
 	return chips
 end
 
-------------------------------------------------------------------
--- PANEL ICERIGI
-------------------------------------------------------------------
 local built = false
 
 local function buildPanel(info: any)
@@ -210,7 +184,6 @@ local function buildPanel(info: any)
 	section("HIZLI")
 	actionButton("Butun toollari ver (en ust seviye)", "giveAllTools", nil, UI.Colors.good)
 	actionButton(`Rot ver  (+{Format.short(info.rotGrant or 0)})`, "giveRot", nil, UI.Colors.gold)
-	-- Rot Coin (Rot Coin Shop parasi)
 	for _, miktar in { 10, 100, 1000 } do
 		actionButton(`Rot Coin ver  (+{miktar})`, "giveRotCoins", miktar, Color3.fromRGB(120, 226, 150))
 	end
@@ -221,13 +194,6 @@ local function buildPanel(info: any)
 		UI.Colors.warn
 	)
 
-	--[[
-		SAHTE OYUNCU SAYISI
-
-		Yagmur bildirimi sag ustte 4 kisiden itibaren cikiyor, 3'e dusunce
-		kayboluyor, 6'da geri sayim basliyor. Tek basina test ederken
-		bunlari gormenin tek yolu sunucuya "su kadar kisi var" dedirtmek.
-	]]
 	section("SAHTE OYUNCU SAYISI  --  yagmur bildirimini sina")
 	local oyuncuChips: { any } = {}
 	for _, sayi in { 4, 5, 6 } do
@@ -246,12 +212,10 @@ local function buildPanel(info: any)
 	})
 	chipRow(oyuncuChips)
 
-	-- Her tur icin ayri buton; her tik tek blok verir
 	for _, tier in LuckyBlock.Tiers do
 		actionButton(`{tier.displayName} ver  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end
 	actionButton("Envanterdeki brainrotlarin kimligini ac", "revealAll", nil, UI.Colors.accent)
-	-- Ogreticiyi basa sarar: test icin her seferinde yeni hesap gerekmesin
 	actionButton("Ogreticiyi basa sar (1. adim)", "ogreticiSifirla", nil, Color3.fromRGB(255, 215, 60))
 	actionButton("Ogretici: siradaki adima gec", "ogreticiAtla", nil, Color3.fromRGB(255, 190, 90))
 	actionButton("Ogreticiyi bitir", "ogreticiBitir", nil, Color3.fromRGB(200, 170, 110))
@@ -263,12 +227,7 @@ local function buildPanel(info: any)
 	actionButton("Gizli brainrot raporu (HiddenPart modeli)", "gizliRaporu", nil, UI.Colors.textDim)
 	actionButton("Yabanci script raporu (haritadaki scriptler, Output'a yazar)", "scriptRaporu", nil, UI.Colors.warn)
 
-	--[[
-		KUREK SEVIYESI: 20 seviye tek satira sigmiyor; her ada ayri satir
-		(Main 1-5, Candy 6-10, Snow 11-15, Volcano 16-20).
-	]]
 	section("KUREK SEVIYESI  --  Main / Candy / Snow / Volcano")
-	-- "main" yalnizca isaret: tabloda nil tutulamiyor (dongu onu atlardi)
 	for _, ada in { "main", "sekerkum", "snowkum", "alevkum" } do
 		local shovelChips = {}
 		for _, shovel in Shovels.forIsland(if ada == "main" then nil else ada) do
@@ -359,9 +318,6 @@ local function buildPanel(info: any)
 	end
 	chipRow(rodChips)
 
-	------------------------------------------------------------------
-	-- KAZMA + MADEN
-	------------------------------------------------------------------
 	section("KAZMA VER")
 	local pickaxeChips: { any } = {}
 	for _, ada in Ores.IslandOrder do
@@ -381,7 +337,6 @@ local function buildPanel(info: any)
 	})
 	chipRow(pickaxeChips)
 
-	-- Her ada bir satir: once "uc maden birden", sonra tek tek
 	section("MADEN VER  (+10)")
 	for _, ada in Ores.IslandOrder do
 		local cfg = Ores.Islands[ada]
@@ -404,7 +359,6 @@ local function buildPanel(info: any)
 		chipRow(oreChips)
 	end
 
-	-- Maden kayasini dogurur (kazmak icin adanin kazmasi gerekir)
 	section("MADEN SPAWNLA  --  kazma ile kaz")
 	for _, ada in Ores.IslandOrder do
 		local cfg = Ores.Islands[ada]
@@ -420,26 +374,8 @@ local function buildPanel(info: any)
 		chipRow(spawnChips)
 	end
 
-	--[[
-		MUTASYON butonlari iki is birden yapar:
-
-		1. ELINDE acilmis bir brainrot varsa, o brainrot dogrudan secilen
-		   mutasyonlu haline doner (setMutation).
-		2. Ayni tikla secim de yapilir; asagidaki "BRAINROT VER" ile
-		   uretilen yeni brainrot bu mutasyonla gelir.
-
-		Secili olan kalin konturla belli olur.
-	]]
 	section("MUTASYON  --  ELINDEKI brainrotu cevirir")
 
-	--[[
-		Mutasyon butonlari YALNIZCA ELDEKI brainrotu cevirir.
-
-		Onceden bu butonlar ayni zamanda bir "secim" yapiyordu ve secim
-		yapiskan kaliyordu: bir kez Hacker'a basan oyuncunun sonraki her
-		brainrotu Hacker geliyordu. Artik secim yok -- asagidaki
-		"BRAINROT VER" her zaman rastgele mutasyon cekiyor.
-	]]
 	local mutationChips: { TextButton }
 	local mutationEntries: { any } = {}
 
@@ -449,10 +385,8 @@ local function buildPanel(info: any)
 			label = string.sub(info.displayName, 1, 4),
 			color = info.color,
 			onClick = function(index: number)
-				-- Elde acilmis brainrot varsa onu bu mutasyona cevir
 				AdminKomut:FireServer("setMutation", id)
 
-				-- Kisa bir vurgu: hangi butona basildigi gorunsun
 				local chip = mutationChips[index]
 				local stroke = chip and chip:FindFirstChildOfClass("UIStroke")
 				if stroke then
@@ -469,14 +403,6 @@ local function buildPanel(info: any)
 
 	mutationChips = chipRow(mutationEntries)
 
-
-	--[[
-		ISIK SUZMESI SPAWNLA
-
-		Istenen kademede bir suzme dogurur. Cekilis, sans ve adet siniri
-		yoktur: suzmenin gorunumunu ve o kademedeki kazi zorlugunu istedigin
-		an sinamak icin. Kum yoksa oyuncunun onune konur.
-	]]
 	section("SUZME SPAWNLA  --  kaziyi ve zorlugu test et")
 
 	local beamChips: { any } = {}
@@ -490,7 +416,6 @@ local function buildPanel(info: any)
 	end
 	chipRow(beamChips)
 
-	-- Kademe disi suzme turleri
 	chipRow({
 		{
 			label = "Lucky",
@@ -500,13 +425,6 @@ local function buildPanel(info: any)
 		},
 	})
 
-	--[[
-		GIRDAP SPAWNLA
-
-		Suzmenin deniz karsiligi. Normalde olta + flyboard + sans gerekiyor;
-		buradan dogrudan doguyor. Yakinda su yoksa karaya konur ve sunucu
-		bunu mesajda soyler.
-	]]
 	section("GIRDAP SPAWNLA  --  denizdeki karsiligi")
 
 	local girdapChips: { any } = {}
@@ -526,21 +444,12 @@ local function buildPanel(info: any)
 		table.insert(rarityChips, {
 			label = string.sub(Rarity.get(id).displayName, 1, 4),
 			command = "giveBrainrot",
-			-- Arg tiklama aninda hesaplanir: o an secili mutasyon kullanilir
-			-- Mutasyon her zaman rastgele cekilir (sunucu tarafinda)
 			arg = id,
 			color = Rarity.color(id),
 		})
 	end
 	chipRow(rarityChips)
 
-	--[[
-		KIMLIKSIZ BRAINROT
-
-		Siyah (acilmamis) halde geliyor: kademesinin yumurtasi olarak
-		cantaya giriyor, kimligi Detective'te aciliyor. Yumurta boylarini
-		ve Divine ustu efektleri sinamak icin.
-	]]
 	section("KIMLIKSIZ BRAINROT VER  --  Detective'te acilir")
 	local gizliChips: { any } = {}
 	for _, id in Rarity.Order do
@@ -557,9 +466,6 @@ local function buildPanel(info: any)
 	actionButton("Envanteri temizle", "clearInventory", nil, UI.Colors.bad)
 end
 
-------------------------------------------------------------------
--- YETKI
-------------------------------------------------------------------
 AdminPanelAc.OnClientEvent:Connect(function(info)
 	if type(info) ~= "table" or not info.allowed then
 		allowed = false

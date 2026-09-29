@@ -1,25 +1,4 @@
 --!strict
---[[
-	Hiz  (Script)
-	Yeri: ServerScriptService > Hiz
-
-	Hiz yukseltmesi (Shared > Hiz):
-	  - HizAl ile gelen istegi dogrular, Rot'u duser, seviyeyi arttirir
-	  - oyuncunun yurume hizini uygular (her dogusta da)
-	  - seviyeyi oyuncunun ustune "SpeedLevel" niteligi olarak yazar;
-	    istemci paneli ve bas ustu yazisi buradan okur
-
-	REBIRTH
-	HizRebirth: Speed 101'deki oyuncunun seviyesi sifirlanir, rebirth sayisi
-	artar ve karakterin arkasina iz (Trail) takilir. Iz her dogusta yeniden
-	kurulur; boyu ve rengi rebirth sayisindan gelir (Shared > Hiz).
-
-	FLYBOARD
-	Flyboard binerken taban hizi Humanoid'in "FlyboardTabanHiz"
-	niteliginde tutuyor ve her karede bonusu onun ustune ekliyor. Oyuncu
-	tahtadayken hiz alirsa WalkSpeed degil o nitelik guncellenir; tahta
-	yeni hizi kendisi uygular, inince de o hizda kalinir.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -40,13 +19,11 @@ local HizRebirth = Net.event("HizRebirth")
 
 local IZ_ADI = "HizIzi"
 
--- Admin paneli seviyeyi degistirince hizi yeniden uygulatir
 local hizYenile = Instance.new("BindableEvent")
 hizYenile.Name = "HizYenile"
 hizYenile.Parent = script
 
 local FLYBOARD_TABAN = "FlyboardTabanHiz"
--- Tek istekte en fazla kac yukseltme alinabilir (panelde x1 ve x10 var)
 local TOPLU_EN_FAZLA = 10
 
 local function hiziUygula(player: Player)
@@ -71,7 +48,6 @@ local function hiziUygula(player: Player)
 	end
 end
 
--- Karakterin arkasindaki rebirth izi
 local function iziKur(player: Player)
 	local data = PlayerData.get(player)
 	local character = player.Character
@@ -98,7 +74,6 @@ local function iziKur(player: Player)
 		return
 	end
 
-	-- Govde boyunca dik bir serit: omuzdan kalcaya
 	local ust = Instance.new("Attachment")
 	ust.Name = "HizIziUst"
 	ust.Position = Vector3.new(0, 0.9, 0.4)
@@ -134,7 +109,6 @@ local function oyuncuHazirla(player: Player)
 		Seviye.etiketGuncelle(player)
 	end)
 
-	-- Veri yuklenene kadar bekle
 	task.spawn(function()
 		while player.Parent and not PlayerData.get(player) do
 			task.wait(0.25)
@@ -153,14 +127,6 @@ hizYenile.Event:Connect(function(player: Player)
 	Seviye.etiketGuncelle(player)
 end)
 
---[[
-	ESITLEME DONGUSU
-
-	Hiz seviyesi ya da rebirth sayisi bu script disinda degisirse (admin
-	paneli, ileride baska bir odul) oyuncunun niteligi, yurume hizi, izi ve
-	bas ustu yazisi yarim saniye icinde kendiliginden guncellenir. Admin
-	paneli bu scripti bulamasa bile hiz yine uygulanir.
-]]
 task.spawn(function()
 	while true do
 		task.wait(0.5)

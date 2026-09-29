@@ -1,19 +1,4 @@
 --!strict
---[[
-	OLTA SATICISI  (Script)
-	Yeri: ServerScriptService > Olta
-
-	RodSeller NPC'sinde 5 kademelik olta satilir. Kurallar kurek, dedektor
-	ve flyboardla ayni:
-
-	  - tek olta tasinir, sirayla yukseltilir
-	  - alinan kademeler KALICI: saticidan istenilen zaman geri kusanilir
-	  - satin alma en yuksek kademeye bakar
-
-	Oltanin ne ise yaradigi Shared > Rods icinde: denizde flyboardla
-	gezerken girdap dogurur, kademesi girdaplarin kademesini belirler.
-	Elde tutma isini Flyboard yapiyor (binince verilir, inince alinir).
-]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -33,10 +18,6 @@ local Bildirim = Net.event("Bildirim")
 local RodAc = Net.event("RodAc")
 local RodAl = Net.event("RodAl")
 
-------------------------------------------------------------------
--- PANEL VERISI
-------------------------------------------------------------------
--- Oyuncunun en iyi kureginin seviyesi (ilk oltanin sarti icin)
 local function kurekSeviyesi(data: any): number
 	local info = data and Shovels.Info[data.shovelMax]
 	return if info then info.level else 1
@@ -62,9 +43,7 @@ local function payload(player: Player)
 			color = info.color,
 			owned = enYuksek >= info.level,
 			equipped = kusanilan == info.id,
-			-- Sirayla alinir: yalnizca bir sonraki kademe satin alinabilir
 			next = enYuksek + 1 == info.level,
-			-- Ilk olta: Lv20 kurek sarti karsilanmadiysa yazilir
 			needs = if info.level == 1 and enYuksek < 1 and kurekYetmiyor
 				then `Requires a Lv{Rods.RequiredShovelLevel} shovel`
 				else nil,
@@ -78,9 +57,6 @@ local function payload(player: Player)
 	}
 end
 
-------------------------------------------------------------------
--- SATIN ALMA / KUSANMA
-------------------------------------------------------------------
 RodAl.OnServerEvent:Connect(function(player, id)
 	if type(id) ~= "string" then
 		return
@@ -94,7 +70,6 @@ RodAl.OnServerEvent:Connect(function(player, id)
 
 	local enYuksek = Rods.level(data.rodMax)
 
-	-- Sahip olunan kademe: satin alma degil, ucretsiz kusanma
 	if info.level <= enYuksek then
 		if data.rod == info.id then
 			Bildirim:FireClient(player, `{info.displayName} is already equipped.`, Color3.fromRGB(180, 200, 220))
@@ -105,11 +80,6 @@ RodAl.OnServerEvent:Connect(function(player, id)
 		RodAc:FireClient(player, payload(player))
 		Bildirim:FireClient(player, `{info.displayName} equipped.`, Rarity.color(info.rarity))
 
-		--[[
-			Denizdeyse elindeki olta hemen yenisiyle degissin: equipRod
-			eldekini birakip yeni kademeyi kuruyor.
-		]]
-		-- Yalnizca flyboardla denizdeyse ele gelir; karada olta elde durmaz
 		if player:GetAttribute("Flyboarding") == true then
 			Envanter.removeRod(player)
 			Envanter.equipRod(player)
@@ -149,19 +119,12 @@ RodAl.OnServerEvent:Connect(function(player, id)
 
 	Bildirim:FireClient(player, `{info.displayName} purchased!`, Rarity.color(info.rarity))
 
-	-- Denizdeyse yeni olta hemen ele gelsin; karadayken ele HIC gelmez
 	if player:GetAttribute("Flyboarding") == true then
 		Envanter.removeRod(player)
 		Envanter.equipRod(player)
 	end
 end)
 
-------------------------------------------------------------------
--- NPC
---
--- Ad eslesmesi diger saticilarla ayni sagliktadir: buyuk/kucuk harf ve
--- bosluk gozetmez, Model / Folder / Part kabul eder.
-------------------------------------------------------------------
 local SATICI_ADLARI = { "RodSeller", "OltaSatici", "Rod Seller" }
 
 local function adEsit(a: string, b: string): boolean

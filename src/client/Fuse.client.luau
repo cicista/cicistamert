@@ -1,34 +1,3 @@
---[[
-	Fuse  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Fuse
-
-	1. MAKINE PENCERESI
-	   Makinede E'ye basinca acilir:
-
-	       [ Fuse Machine                         X ]
-	         Bring 3 Brainrots of the same tier
-	         15-25% chance (same names = higher)
-	       [ slot ]      [ slot ]      [ slot ]
-	           \____________ | ____________/
-	                  [ sonuc kutusu ]
-	          If it fails, all 3 brainrots are lost
-	              [ 2 Brainrot Left / FUSE! ]
-
-	   Bos slotun "+" dugmesi secim listesini acar. Dolu slotta brainrotun
-	   resmi, adi, kademesi ve "Return" dugmesi durur. Kurallar ve oranlar
-	   sunucuda (bkz. ServerScriptService > Fuse, Shared > Fuse).
-
-	   Sonuc kutusunda cikacak kademenin YUMURTASI durur (envanterdeki "?"
-	   ile ayni model); arkasinda kademe renginde isik huzmeleri doner, dolu
-	   borulardan kutuya kabarciklar akar.
-
-	2. BIRLESME GOSTERISI
-	   FUSE'a basinca: ruhlar donerek merkeze kapanir ve parlar, cekirdekte
-	   hedef kademenin yumurtasi titrer. Basarida
-	   yeni kademenin renginde patlama ve kazanilan brainrotun adi; basarisizlikta
-	   cekirdek sonup kaybolur.
-]]
-
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -49,7 +18,6 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
--- Istege bagli: yoksa Fuse arayuzu yine kurulur, yalnizca mutasyon yazisi cikmaz
 local MutasyonGosterisi = (function()
 	local modul = script.Parent:WaitForChild("MutasyonGosterisi", 5)
 	local ok, sonuc = pcall(function()
@@ -78,17 +46,9 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-------------------------------------------------------------------
--- RENKLER VE OLCULER
-------------------------------------------------------------------
---[[
-	ANA_W: makinenin kendisi (slotlar, borular, sonuc kutusu, FUSE dugmesi).
-	Pencere sagdan SAG_EN kadar genis: ayrinti kutulari orada durur.
-]]
 local ANA_W = 640
 local SAG_EN = 250
 local W, H = ANA_W + SAG_EN, 548
--- UI.baslikCubugu 62. piksele kadar yer kapliyor
 local BASLIK_BOY = 62
 
 local MOR_A = Color3.fromRGB(150, 60, 230)
@@ -109,19 +69,9 @@ local KUTU_EN, KUTU_BOY = 172, 116
 local KUTU_X = (ANA_W - KUTU_EN) / 2
 local KUTU_Y = 330
 
-------------------------------------------------------------------
--- PENCERE
-------------------------------------------------------------------
 local pencere = UI.panel(screen, UDim2.fromOffset(W, H), "FuseMakinesi")
 pencere.ClipsDescendants = true
 
---[[
-	GORUNUM  --  oyunun diger panelleriyle ayni dil (bkz. UI.baslikCubugu)
-
-	Mor-pembe cilali baslik cubugu, mora calan koyu zemin ve uzerinde soluk
-	capraz desen. Kapatma dugmesi ONCE kuruluyor: baslikCubugu onu cubugun
-	sag ucuna tasiyor.
-]]
 UI.closeButton(pencere).MouseButton1Click:Connect(function()
 	pencere.Visible = false
 end)
@@ -152,13 +102,6 @@ local sansYazi = UI.text({
 	name = "Sans",
 })
 
---[[
-	AYRINTI KUTULARI  (pencerenin sag seridinde, alt alta)
-
-	Sol: basari sansi -- hepsi ayni brainrot %40, degilse %25, su anki sans.
-	Sag: mutasyon aktarimi -- konan her mutasyonlu brainrot kendi
-	mutasyonunu %10 ihtimalle kazanilan brainrota gecirir.
-]]
 local BILGI_BOY = 208
 
 local function bilgiKutusu(y: number, ad: string): TextLabel
@@ -173,7 +116,6 @@ local function bilgiKutusu(y: number, ad: string): TextLabel
 	UI.corner(kutuB, 10)
 	UI.stroke(kutuB, SIYAH, 2)
 
-	-- Ustu mora calan, alti koyu kart; ustte ince mor-pembe serit
 	local zemin = Instance.new("UIGradient")
 	zemin.Rotation = 90
 	zemin.Color = ColorSequence.new(KART:Lerp(MOR_A, 0.25), KART:Lerp(SIYAH, 0.25))
@@ -208,17 +150,8 @@ end
 local sansBilgi = bilgiKutusu(BASLIK_BOY + 14, "SansBilgisi")
 local mutasyonBilgi = bilgiKutusu(BASLIK_BOY + 14 + BILGI_BOY + 14, "MutasyonBilgisi")
 
--- Slot resimleri ve sonuc kutusu siluetinin 3B onizlemeleri
 local onizleme = BrainrotOnizleme.seritPencere(pencere)
 
-------------------------------------------------------------------
--- BORULAR  (slotlardan sonuc kutusuna)
-------------------------------------------------------------------
---[[
-	Dolu borudan sonuc kutusuna kabarciklar akar (bkz. BORU AKISI). yol,
-	borunun orta cizgisindeki kose noktalari: slotun altindan kutunun
-	kenarina.
-]]
 type Boru = { parcalar: { Frame }, kapak: Frame, yol: { Vector2 }, kabarciklar: { Frame }, dolu: boolean }
 local borular: { Boru } = {}
 
@@ -272,7 +205,6 @@ do
 			table.insert(kabarciklar, k)
 		end
 
-		-- Slotun altindaki yesil baglanti kapagi
 		local kapak = Instance.new("Frame")
 		kapak.Position = UDim2.fromOffset(merkezX - 26, ustY - 4)
 		kapak.Size = UDim2.fromOffset(52, 10)
@@ -287,13 +219,6 @@ do
 	end
 end
 
---[[
-	BORU AKISI  --  dolu borularda kabarciklar sonuc kutusuna akar
-
-	Her borunun kabarciklari yol boyunca esit aralikla diziliyor ve hep
-	birlikte kayiyor; basa sarinca en arkadaki onden devam ediyor gibi
-	durur. Yalnizca pencere acikken calisir.
-]]
 local AKIS_HIZI = 0.55
 
 local function yoldaNokta(yol: { Vector2 }, oran: number): Vector2
@@ -328,7 +253,6 @@ RunService.RenderStepped:Connect(function(dt)
 			local oran = (akisZamani + (j - 1) / sayi) % 1
 			local nokta = yoldaNokta(boru.yol, oran)
 			k.Position = UDim2.fromOffset(nokta.X, nokta.Y)
-			-- Uclarda kucuk, ortada dolgun: kabarcik borudan cikip kutuda eriyor
 			local boy = 6 + math.sin(oran * math.pi) * 6
 			k.Size = UDim2.fromOffset(boy, boy)
 			k.Visible = true
@@ -336,13 +260,6 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
-------------------------------------------------------------------
--- SONUC KUTUSU
-------------------------------------------------------------------
---[[
-	Kutunun ARKASINDA yavasca donen isik huzmeleri: cikacak kademenin
-	renginde (bkz. kutuyuBoya). Kutudan once ekleniyor ki altinda kalsin.
-]]
 local kutuHuzme = UI.isikHuzmeleri(pencere, Color3.new(1, 1, 1), {
 	sayi = 8,
 	uzunluk = 300,
@@ -365,19 +282,8 @@ kutu.Parent = pencere
 UI.corner(kutu, 8)
 local kutuKontur = UI.stroke(kutu, SIYAH, 3)
 
--- Kutunun canli zemini; renk degisince yeniden kuruluyor (bkz. kutuyuBoya)
 local kutuZemin: Frame? = nil
 
---[[
-	CIKACAK BRAINROTUN YUMURTASI
-
-	Sonuc kutusunda cikacak kademenin KENDI yumurtasi duruyor (Assets >
-	hiddenBrainrotModel, elde tasinan ve envanterdeki "?" ile ayni model).
-	Eskiden kademe gonderilmedigi icin yedek Gold Ore gorunuyordu.
-
-	Yumurta hafifce zipliyor ve nabiz atiyor. ViewportFrame dondurulemedigi
-	icin sallanma yerine konum + UIScale kullaniliyor.
-]]
 local kutuResim = Instance.new("Frame")
 kutuResim.Name = "Resim"
 kutuResim.AnchorPoint = Vector2.new(0.5, 0)
@@ -400,11 +306,9 @@ TweenService:Create(
 	{ Position = UDim2.new(0.5, 0, 0, -2) }
 ):Play()
 
--- Kutunun onunde sonup yanan kivilcimlar (kademe renginde)
 local kutuPirilti = UI.pariltilar(kutu, Color3.new(1, 1, 1), 7, 6)
 kutuPirilti.Visible = false
 
--- YEDEK: yumurta modeli bulunamazsa buyuk "?" gorunur
 local kutuSoru = UI.text({
 	text = "?",
 	size = UI.Sizes.huge,
@@ -417,7 +321,6 @@ local kutuSoru = UI.text({
 })
 kutuSoru.ZIndex = 5
 
--- Sag ust kosede kucuk "?" rozeti: ne cikacagi yine surpriz
 local soruRozeti = Instance.new("Frame")
 soruRozeti.Name = "Rozet"
 soruRozeti.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -442,11 +345,6 @@ UI.text({
 })
 UI.sallan(soruRozeti, 12, 0.6)
 
---[[
-	Kutuyu cikacak kademenin rengine boyar (renk yoksa bos makine gorunumu).
-	Canli zemin kendi gradyanini kurulurken aldigi icin yeniden kuruluyor;
-	huzme ve kivilcimlarin yalnizca rengi degisiyor.
-]]
 local function kutuyuBoya(renk: Color3?)
 	local eski = kutuZemin
 	if eski then
@@ -498,14 +396,6 @@ local uyari = UI.text({
 	name = "Uyari",
 })
 
-------------------------------------------------------------------
--- ALT DUGME  ("2 Brainrot Left" / "FUSE!")
-------------------------------------------------------------------
---[[
-	Cilali 3B dugme (bkz. UI.dugme3B). Makine dolmadan soluk mor, dolunca
-	altin rengine doner ve nabiz atar. Fare buyutmesi kapali: nabiz kendi
-	UIScale'ini kullaniyor, iki olcek ayni nesnede cakisirdi.
-]]
 local DUGME_BEKLE = Color3.fromRGB(110, 96, 160)
 local DUGME_HAZIR = Color3.fromRGB(255, 190, 40)
 
@@ -544,9 +434,6 @@ fuseDugme.MouseButton1Click:Connect(function()
 	end
 end)
 
-------------------------------------------------------------------
--- SECIM LISTESI  ("+" ile acilir, pencerenin ustune biner)
-------------------------------------------------------------------
 local secim = Instance.new("Frame")
 secim.Name = "Secim"
 secim.Position = UDim2.fromOffset(0, BASLIK_BOY)
@@ -587,7 +474,6 @@ secimListe.CanvasSize = UDim2.new()
 secimListe.AutomaticCanvasSize = Enum.AutomaticSize.Y
 secimListe.ZIndex = 21
 secimListe.Parent = secim
--- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 UI.listePayi(secimListe)
 
 local secimDizilim = Instance.new("UIListLayout")
@@ -597,9 +483,6 @@ secimDizilim.Parent = secimListe
 
 local secimOnizleme = BrainrotOnizleme.pencere(secimListe, secim)
 
-------------------------------------------------------------------
--- DURUM
-------------------------------------------------------------------
 local durum: any = { slots = {}, items = {}, required = Fuse.Required, chance = Fuse.SuccessChance }
 local sonImza = ""
 local nearMachine = false
@@ -613,9 +496,6 @@ local function detayYazisi(entry: any): string
 	return parca
 end
 
-------------------------------------------------------------------
--- SLOT KARTLARI
-------------------------------------------------------------------
 local slotKartlari: { Frame } = {}
 
 local function slotKur(i: number, entry: any?)
@@ -637,10 +517,6 @@ local function slotKur(i: number, entry: any?)
 	local kartKontur = UI.stroke(kart, SIYAH, 3)
 	slotKartlari[i] = kart
 
-	--[[
-		Dolu boru brainrotun kademe renginde parlar ve icinden kabarciklar
-		akar (bkz. BORU AKISI); bos boru koyu kalir.
-	]]
 	local boru = borular[i]
 	local boruRengi = if entry then Rarity.color(entry.rarity):Lerp(BORU_DOLU, 0.55) else BORU_BOS
 	for _, p in boru.parcalar do
@@ -654,7 +530,6 @@ local function slotKur(i: number, entry: any?)
 	if entry then
 		local renk = Rarity.color(entry.rarity)
 
-		-- Kademe renginden koyuya kayan kart, kademe renginde kontur
 		UI.renkliKart(kart, renk)
 		kartKontur.Color = renk
 		kartKontur.Thickness = 3
@@ -701,7 +576,6 @@ local function slotKur(i: number, entry: any?)
 		resim.BackgroundTransparency = 1
 		resim.ZIndex = 5
 		resim.Parent = kart
-		-- Modelin arkasinda kademe renginde nefes alan hale
 		UI.parlama(resim, renk, 96, 5)
 		onizleme.ekle(resim, { name = entry.name, mutation = entry.mutation, revealed = true })
 
@@ -715,7 +589,6 @@ local function slotKur(i: number, entry: any?)
 			FuseCikar:FireServer(entry.uid)
 		end)
 	else
-		-- Bos slot: koyu, mora calan zemin; "+" dugmesi nabiz atar
 		kart.BackgroundColor3 = KART:Lerp(SIYAH, 0.2)
 		kartKontur.Color = MOR_A:Lerp(SIYAH, 0.3)
 		UI.caprazDesen(kart, MOR_B, 4)
@@ -752,9 +625,6 @@ local function slotKur(i: number, entry: any?)
 	end
 end
 
-------------------------------------------------------------------
--- SECIM LISTESINI CIZ
-------------------------------------------------------------------
 local function secimCiz()
 	secimOnizleme.temizle()
 	for _, child in secimListe:GetChildren() do
@@ -787,7 +657,6 @@ local function secimCiz()
 	for index, item in items do
 		local renk = Rarity.color(item.rarity)
 		local yeter = (item.owned or 0) + #(durum.slots or {}) >= (durum.required or Fuse.Required)
-		-- Sunucu konamayacaklari sebebiyle birlikte kilitli yolluyor
 		local kilit = if type(item.locked) == "string" then item.locked else nil
 
 		local satir = Instance.new("TextButton")
@@ -836,7 +705,6 @@ local function secimCiz()
 		})
 		alt.ZIndex = 23
 
-		-- Ayni isimden kac tane var: 3'e yetiyorsa yesil
 		local adet = UI.text({
 			text = if kilit then "LOCKED" else `x{item.owned or 1}`,
 			size = UI.Sizes.heading,
@@ -850,7 +718,6 @@ local function secimCiz()
 		adet.ZIndex = 23
 
 		if kilit then
-			-- Kilitli satir soluk durur ve tiklanmaz
 			satir.BackgroundTransparency = 0.45
 			ad.TextTransparency = 0.35
 			resim.BackgroundTransparency = 0.5
@@ -864,9 +731,6 @@ local function secimCiz()
 	end
 end
 
-------------------------------------------------------------------
--- PENCEREYI CIZ
-------------------------------------------------------------------
 local function pencereCiz()
 	local slots = durum.slots or {}
 	local gerekli = durum.required or Fuse.Required
@@ -880,7 +744,6 @@ local function pencereCiz()
 		sansYazi.Text = `{sanslar.mixed}-{sanslar.same3}% chance  -  same brainrots = higher!`
 	end
 
-	-- Ayrintilar
 	local simdiki = if durum.chance then `<font color="#46D250">{durum.chance}%</font>` else "-"
 	sansBilgi.Text = table.concat({
 		`<font color="#FFD629">SUCCESS CHANCE</font>`,
@@ -913,7 +776,6 @@ local function pencereCiz()
 		slotKur(i, slots[i])
 	end
 
-	-- Sonuc kutusu
 	local sonraki = durum.nextRarity
 	if sonraki then
 		local renk = Rarity.color(sonraki)
@@ -922,10 +784,6 @@ local function pencereCiz()
 		kutuYazi.Text = `{Rarity.displayName(sonraki)} Brainrot`
 		UI.rarityStyle(kutuYazi, sonraki)
 		kutuSoru.Visible = true
-		--[[
-			Cikacak kademenin yumurtasi. rarity VERILMEZSE yedek model (Gold
-			Ore) geliyordu. Model bulunursa "?" yedegi gizlenir.
-		]]
 		onizleme.ekle(kutuResim, { revealed = false, rarity = sonraki }, kutuSoru)
 		uyari.Text = `If it fails, all {gerekli} brainrots are lost`
 	else
@@ -937,7 +795,6 @@ local function pencereCiz()
 		uyari.Text = ""
 	end
 
-	-- Alt dugme
 	makineDolu = sayi >= gerekli
 	local eksik = gerekli - sayi
 
@@ -963,7 +820,6 @@ local function pencereCiz()
 	end
 
 	if secim.Visible then
-		-- Makine doldu: secim listesi kapanir, FUSE sayfasi gorunur
 		if makineDolu then
 			secim.Visible = false
 		else
@@ -972,9 +828,6 @@ local function pencereCiz()
 	end
 end
 
-------------------------------------------------------------------
--- F: makinedeki hepsini geri al
-------------------------------------------------------------------
 local function bindTakeBack()
 	ContextActionService:BindAction(TAKE_BACK, function(_, state)
 		if state == Enum.UserInputState.Begin then
@@ -997,7 +850,6 @@ FuseSecim.OnClientEvent:Connect(function()
 	pencereCiz()
 end)
 
--- Pencere kapaninca secim listesi de kapansin, sahneler bosalsin
 pencere:GetPropertyChangedSignal("Visible"):Connect(function()
 	if not pencere.Visible then
 		secim.Visible = false
@@ -1012,10 +864,6 @@ secim:GetPropertyChangedSignal("Visible"):Connect(function()
 	end
 end)
 
---[[
-	Sunucu menzildeyken 0.4 saniyede bir durum yolluyor. Her pakette bastan
-	cizmek resimleri titretirdi; yalnizca ICERIK degistiyse cizilir.
-]]
 local function imzaOf(data: any): string
 	local parcalar = { tostring(data.name), tostring(data.chance), tostring(data.fusing) }
 	for _, s in data.slots or {} do
@@ -1057,9 +905,6 @@ FuseDurum.OnClientEvent:Connect(function(data)
 	end
 end)
 
-------------------------------------------------------------------
--- 2. BIRLESME GOSTERISI
-------------------------------------------------------------------
 local M = Fuse.Merge
 
 local SOUL_RADIUS = 130
@@ -1067,7 +912,6 @@ local SOUL_SIZE = 38
 
 local mergeRoot = Instance.new("Frame")
 mergeRoot.Name = "BirlesmeGosterisi"
--- Merkezden ankorlu: arayuz olcegi (UIScale) sahneyi kaydirmasin
 mergeRoot.AnchorPoint = Vector2.new(0.5, 0.5)
 mergeRoot.Position = UDim2.fromScale(0.5, 0.5)
 mergeRoot.Size = UDim2.fromScale(1, 1)
@@ -1195,11 +1039,9 @@ local function shockwave(color: Color3)
 	TweenService:Create(edge, info, { Transparency = 1, Thickness = 0 }):Play()
 end
 
--- Kamera sarsintisi: Roblox'un kamera guncellemesinden SONRA uygulanir
 local SHAKE_NAME = "FuseSarsinti"
 local shaking = false
 
--- Settings > Screen Shake kapaliysa sarsinti yok (nitelik Ayarlar'dan gelir)
 local function sarsintiKapali(): boolean
 	return game:GetService("Players").LocalPlayer:GetAttribute("SarsintiKapali") == true
 end
@@ -1232,10 +1074,8 @@ local function shakeCamera(duration: number, strength: number)
 	end)
 end
 
--- Gosteride donen resimler (ruhlar ve sonuc)
 local gosteriOnizleme = BrainrotOnizleme.seritPencere(stage)
 
--- Icinde brainrot resmi olan yuvarlak ruh
 local function resimliRuh(renk: Color3, boy: number, kaynak: any?): Frame
 	local ruh = makeOrb(renk, boy)
 	ruh.BackgroundTransparency = 0.35
@@ -1281,7 +1121,6 @@ local function playMerge(data: any)
 	mergeRoot.Visible = true
 	TweenService:Create(mergeRoot, TweenInfo.new(0.25), { BackgroundTransparency = 0.55 }):Play()
 
-	-- 1. ASAMA: ruhlar donerek merkeze kapanir
 	local souls: { Frame } = {}
 	local kaynaklar = if type(data.sources) == "table" then data.sources else {}
 	for index = 1, soulCount do
@@ -1322,18 +1161,12 @@ local function playMerge(data: any)
 	end
 	mergeSub.Text = ""
 
-	-- 2. ASAMA: parlama
 	local core = makeOrb(Color3.new(1, 1, 1), 24)
 	TweenService:Create(core, TweenInfo.new(M.flashTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = UDim2.fromOffset(120, 120),
 		BackgroundColor3 = toColor,
 	}):Play()
 
-	--[[
-		CEKIRDEKTE HEDEF KADEMENIN YUMURTASI TITRER: pencerenin sonuc
-		kutusundaki yumurtanin aynisi. Parlama bitince kaybolur: basarida
-		yerine brainrot cikar, basarisizlikta cekirdek bos soner.
-	]]
 	local yumurtaKademe = if basari and data.toRarity then data.toRarity else durum.nextRarity
 	local yumurta: Frame? = nil
 	if type(yumurtaKademe) == "string" then
@@ -1346,7 +1179,6 @@ local function playMerge(data: any)
 		y.ZIndex = 3
 		y.Parent = core
 		gosteriOnizleme.ekle(y, { revealed = false, rarity = yumurtaKademe })
-		-- Hizli sagli sollu titreme: catlamak uzere
 		TweenService:Create(
 			y,
 			TweenInfo.new(0.06, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
@@ -1357,14 +1189,12 @@ local function playMerge(data: any)
 
 	task.wait(M.flashTime)
 
-	-- Yumurta catladi: yerini sonuc (ya da hicbir sey) aliyor
 	local eskiYumurta = yumurta
 	if eskiYumurta then
 		gosteriOnizleme.temizle()
 		eskiYumurta:Destroy()
 	end
 
-	-- 3. ASAMA: sonuc
 	if basari then
 		shakeCamera(M.shakeTime, M.shakeStrength)
 		shockwave(toColor)
@@ -1375,7 +1205,6 @@ local function playMerge(data: any)
 			BackgroundTransparency = 0.45,
 		}):Play()
 
-		-- Kazanilan brainrotun resmi cekirdegin icinde belirir
 		if type(data.name) == "string" then
 			local sonuc = Instance.new("Frame")
 			sonuc.Name = "Sonuc"
@@ -1388,7 +1217,6 @@ local function playMerge(data: any)
 			gosteriOnizleme.ekle(sonuc, { name = data.name, mutation = data.mutation, revealed = true })
 		end
 
-		-- Mutasyon ciktiysa ekranda buyuk yaziyla
 		MutasyonGosterisi.goster(data.mutation, data.name)
 
 		mergeTitle.Text = "FUSE SUCCESS!"
@@ -1407,7 +1235,6 @@ local function playMerge(data: any)
 			Mutations.tagIf(mergeSub, data.mutation)
 		end
 	else
-		-- Basarisizlik: cekirdek sonup kuculur, kirmizi yazi
 		shakeCamera(0.3, 0.8)
 		TweenService:Create(core, TweenInfo.new(M.burstTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Size = UDim2.fromOffset(0, 0),
@@ -1434,11 +1261,6 @@ local function playMerge(data: any)
 	mergeRoot.Visible = false
 	merging = false
 
-	--[[
-		Pencere yalnizca BASARILI birlestirmeden sonra geri acilir.
-		Basarisizlikta esyalar yandi; pencerenin kendiliginden acilmasi
-		"bir sey daha mi koyayim" baskisi yaratiyordu.
-	]]
 	if nearMachine and basari then
 		pencere.Visible = true
 		sonImza = ""

@@ -1,17 +1,4 @@
 --!strict
---[[
-	GUNLUK ODUL  --  sunucu tarafi (7 gunluk takvim)
-
-	Takvim, oduller ve kurallar Shared > Rewards'ta. Burasi yalnizca:
-	  - oyuncunun durumunu hesaplayip istemciye gonderir (OdulDurum)
-	  - "al" istegini DOGRULAYIP o gunun odulunu verir (OdulAl)
-
-	Hangi gunun alinacagi ve alinabilir olup olmadigi SUNUCUDA hesaplanir.
-	Istemci yalnizca "almak istiyorum" der; hangi odulu alacagini o
-	belirleyemez.
-
-	Sure os.time ile tutulur: oyundan cikip girmek sayaci sifirlamaz.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,11 +9,6 @@ local Net = require(Shared:WaitForChild("Net"))
 local Rewards = require(Shared:WaitForChild("Rewards"))
 local Format = require(Shared:WaitForChild("Format"))
 
---[[
-	Sureli gecis odulu KALICI SAHIBINE verilemez; o gun eli bos kalmasin
-	diye yerine bu kadar Rot verilir. 1. ve 2. gunun (150K / 3M) arasinda
-	bir deger.
-]]
 local PASS_YERINE_ROT = 1_000_000
 local Passler = require(Shared:WaitForChild("Passler"))
 local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
@@ -42,10 +24,8 @@ local OdulSonuc = Net.event("OdulSonuc")
 
 local Odul = {}
 
--- Ust uste gelen iki "al" istegi ayni odulu iki kez vermesin
 local aliyor: { [Player]: boolean } = {}
 
--- Oyuncunun bu oturuma girdigi an (os.clock); bkz. Rewards.MinSessionSeconds
 local girisZamani: { [Player]: number } = {}
 
 local function durum(player: Player): Rewards.State?
@@ -55,7 +35,6 @@ local function durum(player: Player): Rewards.State?
 	end
 	local d = Rewards.state(data.lastReward or 0, data.rewardDay or 1, os.time())
 
-	-- Oyuna girdikten sonra en az 15 dakika oynamadan alinamaz
 	local oynanan = os.clock() - (girisZamani[player] or os.clock())
 	local kalanOyun = Rewards.MinSessionSeconds - oynanan
 	if kalanOyun > 0 and (d.ready or d.remaining < kalanOyun) then
@@ -78,7 +57,6 @@ function Odul.push(player: Player)
 	})
 end
 
--- O gunun odulunu verir ve oyuncuya ne kazandigini yazar
 local function ver(player: Player, day: number)
 	local odul = Rewards.get(day)
 
@@ -89,44 +67,27 @@ local function ver(player: Player, day: number)
 		Envanter.syncLuckyBlocks(player)
 	end
 
-	--[[
-		Bazi gunlerde ana odulun yaninda SURELI GECIS var (5. gun: 12 saat
-		Teleporter). Kalici sahibi olana verilmez.
-	]]
 	local passYazisi = ""
 	if odul.pass and odul.passSeconds then
 		local info = Passler.get(odul.pass)
 		local ad = if info then info.ad else odul.pass
 
 		if SureliGecis.ver(player, odul.pass, odul.passSeconds) then
-			--[[
-				kind == "pass" gunlerinde (3. gun) gecis ZATEN ana odul;
-				Rewards.label onu yaziyor. Ikinci kez eklersek bildirim
-				"Detective Pass (1 Day) + Detective Pass (24:00:00)" olur.
-			]]
 			if odul.kind ~= "pass" then
 				passYazisi = ` + {ad} ({SosyalOdul.sure(odul.passSeconds)})`
 			end
 		elseif odul.kind == "pass" then
-			--[[
-				GECIS ZATEN KALICI OLARAK ONUN: gunun tek odulu buydu, eli
-				bos kalmasin diye yerine Rot veriliyor. Miktar ROBUX
-				fiyatindan degil, o gunku takvimin komsu gunlerinden:
-				3. gun 1. ile 2. gunun arasinda duruyor.
-			]]
 			local yerine = PASS_YERINE_ROT
 			PlayerData.addRot(player, yerine)
 			passYazisi = ` -- already owned, +{Format.short(yerine)} Rot instead`
 		end
 	end
 
-	-- Bazi gunlerde ana odulun yaninda Rot Coin de var
 	local coin = odul.rotCoins or 0
 	if coin > 0 then
 		PlayerData.addRotCoins(player, coin)
 	end
 
-	-- Ekrandaki Rot/Rot Coin gostergesi ve envanter bayat kalmasin
 	Envanter.push(player)
 
 	local yazi = Rewards.label(day)
@@ -160,11 +121,6 @@ local function al(player: Player)
 
 	aliyor[player] = true
 
-	--[[
-		ONCE KAYIT ILERLER, SONRA ODUL VERILIR.
-		Odul verilirken bir hata cikarsa takvim yine de ilerlemis olur;
-		boylece ayni gunun odulu tekrar tekrar alinamaz. Hata Output'a yazilir.
-	]]
 	data.lastReward = os.time()
 	data.rewardDay = Rewards.nextDay(d.day)
 
@@ -179,9 +135,6 @@ local function al(player: Player)
 	aliyor[player] = nil
 end
 
-------------------------------------------------------------------
--- BAGLANTILAR
-------------------------------------------------------------------
 OdulAc.OnServerEvent:Connect(function(player)
 	Odul.push(player)
 end)
@@ -199,15 +152,10 @@ for _, player in Players:GetPlayers() do
 	girisZamani[player] = os.clock()
 end
 
---[[
-	Oyuncu girince durumu bir kez gonderir; menu butonu odul hazirsa
-	isaret gosterebilsin.
-]]
 Players.PlayerAdded:Connect(function(player)
 	girisZamani[player] = os.clock()
 	task.spawn(function()
 		task.wait(3)
-		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
 		if PlayerData.bekle(player) then
 			Odul.push(player)
 		end

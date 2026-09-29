@@ -1,39 +1,4 @@
 --!strict
---[[
-	Gacha  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Gacha
-
-	Yumurta gachasinin penceresi (bkz. Shared > Gacha, Modules > Gacha).
-	Gacha NPC'sinin promptu acar; diger NPC pencereleriyle ayni kurallar:
-	tek panel, acilis/kapanis animasyonu, sag ustte X, NPC menu sesi.
-
-	    +------------------------------------------------------+
-	    |  PREMIUM SPIN!                                    X  |
-	    |        THE MOST POWERFUL GACHA IN THE GAME           |
-	    |  [Divine] [Cosmic] [Secret] [Infernal] [Abyssal]     |
-	    |    40%      27%      18%       10%        5%         |
-	    |  <<<  (egg) (egg) (egg) | (egg) (egg) (egg)  >>>     |
-	    |                  ABYSSAL EGG!                        |
-	    |               [  OPEN   R$ 500  ]     [ADMIN TEST]   |
-	    +------------------------------------------------------+
-
-	TEMA: mor ve hasmetli
-	  - panelin arkasinda karartma + donen mor/altin isik huzmeleri
-	  - ekranda ve panelin icinde rastgele cakan YILDIRIMLAR (+ panel flasi)
-	  - panelin konturunda donen mor/pembe/altin isik
-	  - panelde yagan mor elmaslar ve sonup yanan pariltilar
-	  - satin alma dugmesinde nabiz, hale ve uzerinden gecen parilti bandi
-	  - sans kartlarinda kademe cerceveleri (KademeEfekti)
-
-	CEVIRME (Lucky Block carkiyla ayni, tek asamali)
-	Sonucu SUNUCU secer (GachaSonuc); burada serit doldurulur ve kazanan
-	KazananSira'da durur. Kazananin hemen yanina bir Abyssal konur (heyecan
-	icin "az kalsin" bolmesi) -- sonucu degistirmez, yalnizca gosteri.
-
-	KAZANINCA: ekran flasi, yildirim yagmuru, konfeti, sarsinti, kocaman
-	yumurta adi. Ust kademelerde (Infernal, Abyssal) hepsi daha buyuk ve
-	"JACKPOT!" yazisi cikar. FuseExplosion + FuseVFX'i sunucu oynatir.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,9 +23,6 @@ local GachaSonuc = Net.event("GachaSonuc")
 local GachaDene = Net.event("GachaDene")
 local RobuxUrunAl = Net.event("RobuxUrunAl")
 
-------------------------------------------------------------------
--- RENKLER
-------------------------------------------------------------------
 local MOR = Color3.fromRGB(150, 60, 255)
 local MOR_ACIK = Color3.fromRGB(205, 130, 255)
 local MOR_KOYU = Color3.fromRGB(34, 10, 58)
@@ -69,12 +31,8 @@ local ALTIN = Color3.fromRGB(255, 214, 70)
 local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
 
--- Bu kademelerde kutlama "JACKPOT" olur
 local JACKPOT: { [string]: boolean } = { Infernal = true, Abyssal = true }
 
-------------------------------------------------------------------
--- EKRANLAR
-------------------------------------------------------------------
 local screen = Instance.new("ScreenGui")
 screen.Name = "GachaArayuzu"
 screen.ResetOnSpawn = false
@@ -82,10 +40,6 @@ screen.IgnoreGuiInset = true
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
---[[
-	Kutlama katmani (flas, konfeti, kocaman yazi) panelin de USTUNDE:
-	panel katmani 20'de, bu 25'te.
-]]
 local efektEkrani = Instance.new("ScreenGui")
 efektEkrani.Name = "GachaEfektleri"
 efektEkrani.ResetOnSpawn = false
@@ -94,17 +48,12 @@ efektEkrani.DisplayOrder = UI.PanelKatmani + 5
 efektEkrani.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 efektEkrani.Parent = playerGui
 
-------------------------------------------------------------------
--- PANEL
-------------------------------------------------------------------
--- Adi NpcMenuSesi'nde de yazili: acilinca ve dugmelerde tiklama sesi
 local panel = UI.panel(screen, UDim2.fromOffset(660, 620), "GachaPenceresi")
 UI.closeButton(panel).MouseButton1Click:Connect(function()
 	panel.Visible = false
 end)
 UI.baslikCubugu(panel, "PREMIUM SPIN!", MOR_ACIK, MOR, nil, MOR_KOYU)
 
--- Konturda donen mor / pembe / altin isik
 local kontur = panel:FindFirstChildOfClass("UIStroke")
 if kontur then
 	kontur.Thickness = 4
@@ -122,13 +71,11 @@ if kontur then
 	TweenService:Create(isik, TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
 end
 
--- Panelin icindeki arka katman: yagan elmaslar, pariltilar, ic yildirimlar
 local icKatman = Instance.new("Frame")
 icKatman.Name = "IcKatman"
 icKatman.Size = UDim2.fromScale(1, 1)
 icKatman.BackgroundTransparency = 1
 icKatman.ClipsDescendants = true
--- 0: panelin dokusunun ustunde, baslik cubugunun ve icerigin altinda
 icKatman.ZIndex = 0
 icKatman.Parent = panel
 UI.corner(icKatman, 14)
@@ -150,7 +97,6 @@ do
 	parilti.Size = UDim2.fromScale(1, 1)
 end
 
--- Panel flasi (yildirim cakinca bir an beyazlasir)
 local panelFlasi = Instance.new("Frame")
 panelFlasi.Name = "Flas"
 panelFlasi.Size = UDim2.fromScale(1, 1)
@@ -161,10 +107,6 @@ panelFlasi.ZIndex = 30
 panelFlasi.Parent = panel
 UI.corner(panelFlasi, 14)
 
-------------------------------------------------------------------
--- BASLIK YAZISI
-------------------------------------------------------------------
--- Ilk bakista en nadir yumurtanin sansi: "5% CHANCE FOR ABYSSAL!"
 local altBaslik = UI.text({
 	text = `{Ayar.yuzde(Ayar.sans("Abyssal"))} CHANCE FOR {string.upper(Rarity.displayName("Abyssal"))}!`,
 	size = UI.Sizes.heading + 2,
@@ -189,9 +131,6 @@ do
 	TweenService:Create(gecis, TweenInfo.new(2.4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Offset = Vector2.new(1, 0) }):Play()
 end
 
-------------------------------------------------------------------
--- SANS KARTLARI
-------------------------------------------------------------------
 local KART_EN = 116
 local KART_BOY = 128
 local KART_ARA = 8
@@ -226,7 +165,6 @@ for i, y in Ayar.Yumurtalar do
 	gecis.Color = ColorSequence.new(BEYAZ, Color3.fromRGB(110, 110, 110))
 	gecis.Parent = kart
 
-	-- Yumurtanin arkasinda nefes alan hale
 	local hale = UI.parlama(kart, renk, 70, 5)
 	hale.Position = UDim2.new(0.5, 0, 0, 44)
 
@@ -242,7 +180,6 @@ for i, y in Ayar.Yumurtalar do
 	})
 	UI.rarityStyle(ad, y.rarity)
 
-	-- Yuzde sans artisiyla degisir (bkz. sanslariCiz; adiyla bulunur)
 	UI.text({
 		name = "Yuzde",
 		text = Ayar.yuzde(y.sans),
@@ -256,7 +193,6 @@ for i, y in Ayar.Yumurtalar do
 		zIndex = 7,
 	})
 
-	-- Degerli kart kendini belli eder (Index ve carkla ayni cerceve)
 	KademeEfekti.tak(kart, cizgi, renk, y.rarity, {
 		aura = "ic",
 		etkin = function()
@@ -264,7 +200,6 @@ for i, y in Ayar.Yumurtalar do
 		end,
 	})
 
-	-- Hafifce yukari asagi suzulur, her kart kendi temposunda
 	local ev = kart.Position
 	TweenService:Create(
 		kart,
@@ -275,11 +210,6 @@ for i, y in Ayar.Yumurtalar do
 	table.insert(kartlar, kart)
 end
 
---[[
-	Kartlardaki yumurta modelleri ILK ACILISTA kurulur: script basladiginda
-	Assets > Eggs daha istemciye inmemis olabiliyor (o zaman Gold Ore'a
-	dusulurdu). Model bulunamazsa sonraki acilista yeniden denenir.
-]]
 local function yumurtalariKur()
 	for _, kart in kartlar do
 		if kart:FindFirstChild("Yumurta") then
@@ -295,27 +225,10 @@ local function yumurtalariKur()
 	end
 end
 
-------------------------------------------------------------------
--- SANS ARTISI CUBUGU (pity; bkz. Shared > Gacha > SANS ARTISI)
-------------------------------------------------------------------
---[[
-	Infernal ya da Abyssal cikmayan her cevirme ikisinin de sansini
-	Ayar.Artis kadar buyutur; biri cikinca sifirlanir. Cubuk bu artisi
-	gosteriyor:
-
-	    JACKPOT BOOST                       +2.5% INFERNAL & ABYSSAL
-	    [#########>                                               ]
-
-	Dolum Infernal renginden Abyssal rengine akan bir gecis; ustunden
-	parilti bandi gecer, ucunda nabiz atan bir kivilcim durur. Artinca
-	cubuk yaylanarak dolar ve ucundan kivilcim sacar; sifirlaninca beyaz
-	bir flasla bosalir. Tavanda (kesin cevirme) "GUARANTEED!" nabiz atar.
-]]
 local INFERNAL = Rarity.color("Infernal")
 local ABYSSAL = Rarity.color("Abyssal")
 local RAY_ZEMIN = Color3.fromRGB(18, 6, 32)
 local CUBUK_EN = 600
--- Kivilcimin dikey konumu (rayin ortasi)
 local UC_Y = 38
 
 local artisKap = Instance.new("Frame")
@@ -359,7 +272,6 @@ local artisBilgi = UI.text({
 	zIndex = 8,
 })
 
--- Ray: koyu, mor konturlu
 local ray = Instance.new("Frame")
 ray.Name = "Ray"
 ray.Position = UDim2.fromOffset(0, 26)
@@ -372,7 +284,6 @@ ray.Parent = artisKap
 UI.corner(ray, 12)
 local rayKontur = UI.stroke(ray, MOR_ACIK, 2)
 
--- Her ceyrekte ince bir cizgi: tavana ne kadar kaldigi gorulsun
 for i = 1, 3 do
 	local cizgi = Instance.new("Frame")
 	cizgi.AnchorPoint = Vector2.new(0.5, 0)
@@ -403,7 +314,6 @@ do
 	})
 	g.Parent = dolum
 
-	-- Dolumun ustunden gecen parilti bandi
 	local bant = Instance.new("Frame")
 	bant.AnchorPoint = Vector2.new(0.5, 0.5)
 	bant.Position = UDim2.fromScale(-0.2, 0.5)
@@ -427,7 +337,6 @@ do
 	):Play()
 end
 
--- Ortadaki yazi: "+2.5%" ya da "GUARANTEED!"
 local artisYazi = UI.text({
 	text = "",
 	size = UI.Sizes.body,
@@ -441,7 +350,6 @@ local artisYazi = UI.text({
 local artisYaziOlcek = Instance.new("UIScale")
 artisYaziOlcek.Parent = artisYazi
 
--- Dolumun ucunda nabiz atan kivilcim (rayin DISINDA: kirpilmasin)
 local uc = Instance.new("Frame")
 uc.Name = "Kivilcim"
 uc.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -462,7 +370,6 @@ do
 	TweenService:Create(uc, TweenInfo.new(1.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 405 }):Play()
 end
 
--- Rayin konturu nabiz atar; dolum arttikca altina doner ve hizlanir
 local konturNabzi: Tween? = nil
 local function konturuAyarla(oran: number)
 	if konturNabzi then
@@ -479,7 +386,6 @@ local function konturuAyarla(oran: number)
 	konturNabzi = nabiz
 end
 
--- Bir noktadan disa sacilan kivilcimlar
 local function kivilcimSac(x: number, renk: Color3, adet: number)
 	for _ = 1, adet do
 		local k = Instance.new("Frame")
@@ -508,10 +414,6 @@ end
 local gosterilenIska = 0
 local tavanNabzi: Tween? = nil
 
---[[
-	Kartlardaki yuzdeleri, ust yaziyi ve cubugu iska sayisina gore cizer.
-	animasyonlu: cubuk yaylanarak dolar/bosalir, kivilcim ya da flas cikar.
-]]
 local function sanslariCiz(iska: number, animasyonlu: boolean?)
 	local maxIska = math.max(Ayar.maxIska(), 1)
 	local n = math.clamp(math.floor(iska), 0, maxIska)
@@ -524,7 +426,6 @@ local function sanslariCiz(iska: number, animasyonlu: boolean?)
 		local yazi = kart:FindFirstChild("Yuzde", true)
 		if yazi and yazi:IsA("TextLabel") then
 			yazi.Text = Ayar.yuzde(sanslar[kart.Name] or 0)
-			-- Artan kademelerin yuzdesi artis varken altin renginde
 			yazi.TextColor3 = if Ayar.ArtanKademeler[kart.Name] and n > 0 then ALTIN else BEYAZ
 		end
 	end
@@ -556,7 +457,6 @@ local function sanslariCiz(iska: number, animasyonlu: boolean?)
 
 	konturuAyarla(oran)
 
-	-- Artis varsa cubuk en az biraz dolu: ilk iskada da kivilcim gorunsun
 	local hedef = UDim2.fromScale(if n > 0 then math.max(oran, 0.03) else 0, 1)
 	local ucX = CUBUK_EN * hedef.X.Scale
 	uc.Visible = n > 0
@@ -568,7 +468,6 @@ local function sanslariCiz(iska: number, animasyonlu: boolean?)
 	end
 
 	if n > onceki then
-		-- ARTTI: yaylanarak dolar, ucundan kivilcim, yazi ziplar, ray parlar
 		local bilgi = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 		TweenService:Create(dolum, bilgi, { Size = hedef }):Play()
 		TweenService:Create(uc, bilgi, { Position = UDim2.fromOffset(ucX, UC_Y) }):Play()
@@ -580,7 +479,6 @@ local function sanslariCiz(iska: number, animasyonlu: boolean?)
 		ray.BackgroundColor3 = MOR_ACIK
 		TweenService:Create(ray, TweenInfo.new(0.5), { BackgroundColor3 = RAY_ZEMIN }):Play()
 	else
-		-- SIFIRLANDI (jackpot): beyaz flas, cubuk bosalir, butun raydan kivilcim
 		ray.BackgroundColor3 = BEYAZ
 		TweenService:Create(ray, TweenInfo.new(0.8), { BackgroundColor3 = RAY_ZEMIN }):Play()
 		TweenService:Create(dolum, TweenInfo.new(0.9, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Size = hedef }):Play()
@@ -592,9 +490,6 @@ local function sanslariCiz(iska: number, animasyonlu: boolean?)
 end
 sanslariCiz(0, false)
 
-------------------------------------------------------------------
--- CARK
-------------------------------------------------------------------
 local reel = Rulet.new(panel, {
 	position = UDim2.new(0.5, 0, 0, 300),
 	width = 616,
@@ -638,9 +533,6 @@ local function bekleSeridi()
 end
 bekleSeridi()
 
-------------------------------------------------------------------
--- SATIN ALMA DUGMESI
-------------------------------------------------------------------
 local dugmeKap = Instance.new("Frame")
 dugmeKap.Name = "SatinAlma"
 dugmeKap.AnchorPoint = Vector2.new(0.5, 0)
@@ -650,7 +542,6 @@ dugmeKap.BackgroundTransparency = 1
 dugmeKap.ZIndex = 8
 dugmeKap.Parent = panel
 
--- Dugmenin arkasinda nefes alan altin hale
 local dugmeHale = UI.parlama(dugmeKap, ALTIN, 190, 7)
 dugmeHale.Position = UDim2.fromScale(0.5, 0.5)
 
@@ -692,7 +583,6 @@ acYazi.LayoutOrder = 1
 local fiyatKutusu = UI.robuxFiyati(dugmeIcerik, Ayar.Fiyat, UI.Sizes.heading, 10)
 fiyatKutusu.LayoutOrder = 2
 
--- Uzerinden gecen parilti bandi
 do
 	local bant = Instance.new("Frame")
 	bant.Name = "Parilti"
@@ -724,28 +614,18 @@ do
 	end)
 end
 
--- Nabiz: dugme hafifce buyuyup kuculur
 do
 	local olcek = Instance.new("UIScale")
 	olcek.Parent = dugmeKap
 	TweenService:Create(olcek, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.06 }):Play()
 end
 
--- Yalnizca adminlere: ucretsiz deneme (yetki sunucuda da denetleniyor)
 local adminDugme = UI.dugme3B(panel, "ADMIN TEST", UDim2.fromOffset(130, 44), UI.Colors.warn)
 adminDugme.AnchorPoint = Vector2.new(1, 0)
 adminDugme.Position = UDim2.new(1, -16, 0, 526)
 adminDugme.ZIndex = 9
 adminDugme.Visible = false
 
-------------------------------------------------------------------
--- YILDIRIM
-------------------------------------------------------------------
---[[
-	Iki nokta arasinda zikzak bir simsek. Kirik cizgi kisa, dondurulmus
-	cercevelerden kuruluyor; beyaz cekirdek + mor kontur. Bir iki kez
-	titreyip soner. Yolun ortasindan kucuk bir dal ayrilabilir.
-]]
 local function simsek(kap: GuiObject, a: Vector2, b: Vector2, renk: Color3, kalinlik: number, z: number, dal: boolean?)
 	local PARCA = 8
 	local fark = b - a
@@ -792,7 +672,6 @@ local function simsek(kap: GuiObject, a: Vector2, b: Vector2, renk: Color3, kali
 		table.insert(parcalar, seg)
 	end
 
-	-- Ortadan kucuk bir dal
 	if dal ~= false and #noktalar > 4 then
 		local kok = noktalar[math.random(3, #noktalar - 2)]
 		local yon = (fark.Unit + dik * (math.random() * 2 - 1) * 1.4).Unit
@@ -800,7 +679,6 @@ local function simsek(kap: GuiObject, a: Vector2, b: Vector2, renk: Color3, kali
 	end
 
 	task.spawn(function()
-		-- Titreme: bir sonup bir yanar
 		for _ = 1, 2 do
 			task.wait(0.05)
 			grup.Visible = false
@@ -820,17 +698,12 @@ local function simsek(kap: GuiObject, a: Vector2, b: Vector2, renk: Color3, kali
 	end)
 end
 
--- Bir yerin bir an parlamasi (panel ya da ekran)
 local function flas(nesne: Frame, renk: Color3, guc: number, sure: number)
 	nesne.BackgroundColor3 = renk
 	nesne.BackgroundTransparency = 1 - guc
 	TweenService:Create(nesne, TweenInfo.new(sure, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
 end
 
---[[
-	EKRAN KATMANI (panelin arkasi): karartma + donen huzmeler + yildirimlar.
-	Lucky Block panelindekiyle ayni yontem; fon ekraninda, panel acikken.
-]]
 local fon = Instance.new("Frame")
 fon.Name = "GachaFon"
 fon.Size = UDim2.fromScale(1, 1)
@@ -883,7 +756,6 @@ fonFlasi.BorderSizePixel = 0
 fonFlasi.ZIndex = 5
 fonFlasi.Parent = fon
 
--- Ekranin tepesinden asagi, panelin iki yanina dusen bir simsek
 local function ekranSimsegi(renk: Color3?)
 	local boy = fon.AbsoluteSize
 	if boy.X < 10 then
@@ -897,7 +769,6 @@ local function ekranSimsegi(renk: Color3?)
 	flas(fonFlasi, MOR_ACIK, 0.25, 0.35)
 end
 
--- Panelin icinde, arka katmanda kucuk bir simsek
 local function panelSimsegi(renk: Color3?)
 	local boy = icKatman.AbsoluteSize
 	if boy.X < 10 then
@@ -919,7 +790,6 @@ panel:GetPropertyChangedSignal("Visible"):Connect(function()
 	end
 end)
 
--- Panel acikken ara ara yildirim cakar
 task.spawn(function()
 	while true do
 		task.wait(1.2 + math.random() * 2.2)
@@ -933,9 +803,6 @@ task.spawn(function()
 	end
 end)
 
-------------------------------------------------------------------
--- KUTLAMA
-------------------------------------------------------------------
 local ekranFlasi = Instance.new("Frame")
 ekranFlasi.Name = "EkranFlasi"
 ekranFlasi.Size = UDim2.fromScale(1, 1)
@@ -945,7 +812,6 @@ ekranFlasi.BorderSizePixel = 0
 ekranFlasi.ZIndex = 1
 ekranFlasi.Parent = efektEkrani
 
--- Ekranin ustunden yagan renkli konfeti
 local function konfeti(renk: Color3, adet: number)
 	local boy = efektEkrani.AbsoluteSize
 	local renkler = { renk, renk:Lerp(BEYAZ, 0.4), ALTIN, PEMBE, MOR_ACIK }
@@ -973,7 +839,6 @@ local function konfeti(renk: Color3, adet: number)
 	end
 end
 
--- Ekranin ortasinda kocaman yazi: buyuyerek gelir, bekler, solar
 local function kocamanYazi(metin: string, rarityId: string?, y: number, boyut: number)
 	local yazi = UI.text({
 		text = metin,
@@ -1007,7 +872,6 @@ local function kutla(rarityId: string, ad: string)
 	local renk = Rarity.color(rarityId)
 	local buyuk = JACKPOT[rarityId] == true
 
-	-- Ekran bir an beyaza, sonra kademe rengine doner ve solar
 	flas(ekranFlasi, BEYAZ, 0.85, 0.25)
 	task.delay(0.12, function()
 		flas(ekranFlasi, renk, 0.55, 0.8)
@@ -1016,7 +880,6 @@ local function kutla(rarityId: string, ad: string)
 	Rulet.kutla(reel, renk)
 	Rulet.shake(panel)
 
-	-- Yildirim yagmuru
 	task.spawn(function()
 		for _ = 1, if buyuk then 10 else 5 do
 			ekranSimsegi(renk:Lerp(BEYAZ, 0.3))
@@ -1029,7 +892,6 @@ local function kutla(rarityId: string, ad: string)
 
 	if buyuk then
 		kocamanYazi("JACKPOT!", nil, 0.16, 72)
-		-- Ikinci dalga
 		task.delay(0.5, function()
 			Rulet.kutla(reel, renk)
 			Rulet.shake(panel)
@@ -1038,7 +900,6 @@ local function kutla(rarityId: string, ad: string)
 	end
 	kocamanYazi(string.upper(ad) .. "!", rarityId, if buyuk then 0.28 else 0.2, 54)
 
-	-- Kazanan kademenin sans karti zipler
 	for _, kart in kartlar do
 		if kart.Name == rarityId then
 			local olcek = kart:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
@@ -1054,9 +915,6 @@ local function kutla(rarityId: string, ad: string)
 	detayYazi.TextColor3 = renk:Lerp(BEYAZ, 0.35)
 end
 
-------------------------------------------------------------------
--- CEVIRME
-------------------------------------------------------------------
 local donuyor = false
 
 local function dugmeleriCiz()
@@ -1065,7 +923,6 @@ local function dugmeleriCiz()
 	fiyatKutusu.Visible = not donuyor
 end
 
--- Seritteki bir kademe, sanslara gore (dolgu icin)
 local dolguZari = Random.new()
 local function rastgeleKademe(): string
 	return Ayar.sec(dolguZari)
@@ -1075,7 +932,6 @@ local function cevir(rarityId: string, ad: string, onceki: number, yeni: number)
 	if donuyor then
 		return
 	end
-	-- Cark donerken bu cevirmenin sanslari; artis cark durunca yansir
 	sanslariCiz(onceki, false)
 	donuyor = true
 	dugmeleriCiz()
@@ -1093,7 +949,6 @@ local function cevir(rarityId: string, ad: string, onceki: number, yeni: number)
 	local cells: { Rulet.Cell } = {}
 	for i = 1, Ayar.BolmeSayisi do
 		local kademe = if i == kazanan then rarityId else rastgeleKademe()
-		-- Kazananin hemen yaninda bir Abyssal: "az kalsin" heyecani
 		if i == kazanan + 1 and rarityId ~= "Abyssal" then
 			kademe = "Abyssal"
 		end
@@ -1107,7 +962,6 @@ local function cevir(rarityId: string, ad: string, onceki: number, yeni: number)
 
 	task.wait(Ayar.GirisSuresi)
 
-	-- Donerken gerilim: arada bir yildirim
 	local acilisSesi = YerelSes.cal("LuckyBlockOpening")
 
 	local basladi = Rulet.run(reel, {
@@ -1117,7 +971,6 @@ local function cevir(rarityId: string, ad: string, onceki: number, yeni: number)
 		onFinish = function()
 			YerelSes.durdur(acilisSesi)
 			kutla(rarityId, ad)
-			-- Iska: cubuk dolar; Infernal/Abyssal: sifirlanir (bir an sonra, kutlamanin ardindan)
 			task.delay(0.4, sanslariCiz, yeni, true)
 			task.delay(1.2, function()
 				donuyor = false
@@ -1142,9 +995,6 @@ local function cevir(rarityId: string, ad: string, onceki: number, yeni: number)
 	end)
 end
 
-------------------------------------------------------------------
--- DUGMELER VE SUNUCU
-------------------------------------------------------------------
 satinDugme.MouseButton1Click:Connect(function()
 	if donuyor then
 		return
@@ -1170,7 +1020,6 @@ GachaAc.OnClientEvent:Connect(function(veri)
 		detayYazi.TextColor3 = UI.Colors.textDim
 	end
 	panel.Visible = true
-	-- Acilista bir simsek: pencere "gurleyerek" gelsin
 	task.delay(0.15, ekranSimsegi)
 end)
 

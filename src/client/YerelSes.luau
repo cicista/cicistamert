@@ -1,20 +1,4 @@
 --!strict
---[[
-	YEREL SES  (ModuleScript, istemci)
-	Yeri: StarterPlayer > StarterPlayerScripts > YerelSes
-
-	Studio'ya elle konmus bir Sound'u ADIYLA bulup yalnizca bu oyuncuya
-	calar. Ses SoundService, Workspace ya da ReplicatedStorage icinde
-	olabilir. Bir KOPYASI calinir: asil ses yerinde kalir, kopya bitince
-	silinir. Ses efektleri ayari (Settings) kopyaya da uygulanir.
-
-	    local ses, sure = YerelSes.cal("Catch")          -- bir kez
-	    local ses = YerelSes.cal("Fishing", true)        -- dongude
-	    YerelSes.durdur(ses)
-
-	'sure' sesin uzunlugu (saniye); ses yuklenmediyse en fazla 2 saniye
-	beklenir, yine bilinmiyorsa 0 doner. Bulunamazsa (nil, 0).
-]]
 
 local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,8 +16,6 @@ function YerelSes.bul(ad: string): Sound?
 		return var
 	end
 
-	-- Ayni adli baska nesneler olabilir (LuckyBlock modelleri gibi): yalnizca Sound sayilir.
-	-- Once birebir ad, yoksa buyuk/kucuk harf farki gozetmeden ("Rodcast" = "RodCast").
 	local kucuk = string.lower(ad)
 	local benzer: Sound? = nil
 	for _, kok in { Workspace :: Instance, SoundService, ReplicatedStorage } do

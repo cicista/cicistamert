@@ -1,25 +1,8 @@
---[[
-	Menuler  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Menuler
-
-	Ekranlar:
-	  ENVANTER (B tusu)   -- kurek, dedektor ve butun brainrotlar
-	  DETECTIVE           -- siyah brainrotu teslim et
-	  SLOT MAKINESI       -- Rot Coin ile skin cevir
-	  MAGAZA              -- kurek ve dedektor yukseltme
-
-	Brainrotlar fiziksel Tool olarak cantada durur. Base slotuna yerlestirme
-	dunyada yapilir: brainrotu eline al, slota yaklas, E bas.
-	Satis ekrani ayri bir scriptte (Satis).
-]]
-
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
--- Friends sekmesindeki "Invite Friends" dugmesi
 local SocialService = game:GetService("SocialService")
--- Rewards > Social: "Like And Favorite" favori penceresi
 local AvatarEditorService = game:GetService("AvatarEditorService")
 
 local player = Players.LocalPlayer
@@ -40,25 +23,9 @@ local Rewards = require(Shared:WaitForChild("Rewards"))
 local RotCoinMagaza = require(Shared:WaitForChild("RotCoinMagaza"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
--- Iki asamali rulet (Lucky Block carki)
 local Rulet = require(script.Parent:WaitForChild("Rulet"))
--- Brainrot kesif defteri (mavi kitap dugmesi)
 local Index = require(script.Parent:WaitForChild("Index"))
--- Liste satirlarindaki brainrot resimleri (Envanter, Detective)
 local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
--- Mutasyon ortaya cikinca ekranda buyuk yazi
---[[
-	ISTEGE BAGLI MODULLER  --  MENUYU KILITLEMEZ
-
-	Asagidaki uc modul (mutasyon gosterisi, muzik, tiklama sesi) scriptin EN
-	BASINDA bekleniyordu. Biri o an Studio'da yoksa (Rojo henuz aktarmamis
-	olabilir) script hata vermeden SONSUZA KADAR bekliyor ve butun arayuz
-	(sol menu, Rot gostergesi, paneller) hic kurulmuyordu.
-
-	Artik her biri en fazla 5 saniye beklenir; bulunamaz ya da yuklenemezse
-	Output'a uyari yazilir ve bos bir yedekle devam edilir -- menu yine
-	kurulur, yalnizca o ozellik calismaz.
-]]
 local function istegeBagli(ad: string, yedek: any): any
 	local modul = script.Parent:WaitForChild(ad, 5)
 	if not modul then
@@ -76,7 +43,6 @@ end
 local MutasyonGosterisi = istegeBagli("MutasyonGosterisi", {
 	goster = function() end,
 })
--- Arka plan muzigi (Happy Shoppers); ses ayari Settings panelinde
 local Muzik = istegeBagli("Muzik", {
 	ayarla = function() end,
 	yuzde = function()
@@ -86,11 +52,9 @@ local Muzik = istegeBagli("Muzik", {
 		return false
 	end,
 })
--- Menu butonlarina tiklama sesi (Cartoon Bubble)
 local ArayuzSesi = istegeBagli("ArayuzSesi", {
 	tikla = function() end,
 })
--- Muzik disindaki butun seslerin ayari (Settings > Sound Effects)
 local SesEfekti = istegeBagli("SesEfekti", {
 	ayarla = function() end,
 	yuzde = function()
@@ -105,7 +69,6 @@ local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 local DetectiveAc = Net.event("DetectiveAc")
 local DetectiveTeslim = Net.event("DetectiveTeslim")
 local DetectiveSonuc = Net.event("DetectiveSonuc")
--- Yeni remote: yoksa menu beklemesin (yalnizca Detective ilerleme gostergesi guncellenmez)
 local DetectiveDurum = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DetectiveDurum", 5) :: RemoteEvent?
 if not DetectiveDurum then
 	warn("[Menuler] DetectiveDurum remote'u yok; Detective ilerlemesi gosterilmeyecek")
@@ -134,14 +97,11 @@ local GorevAl = Net.event("GorevAl")
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "OyunMenuleri"
--- Menu butonlari XP barinin (DisplayOrder 0) ustunde; paneller ortak panel
--- katmaninda ve butonlarin ustunde (bkz. UI.luau > PANEL KATMANI).
 screen.DisplayOrder = 5
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
--- Client tarafinda tutulan son envanter
 local inventory = {
 	rot = 0,
 	rotCoins = 0,
@@ -150,10 +110,6 @@ local inventory = {
 	inventory = {},
 }
 
-
-------------------------------------------------------------------
--- ORTAK
-------------------------------------------------------------------
 local function makeScroll(parent: Instance, position: UDim2, size: UDim2): ScrollingFrame
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Liste"
@@ -166,7 +122,6 @@ local function makeScroll(parent: Instance, position: UDim2, size: UDim2): Scrol
 	scroll.CanvasSize = UDim2.new()
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = parent
-	-- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 	UI.listePayi(scroll)
 
 	local layout = Instance.new("UIListLayout")
@@ -177,12 +132,6 @@ local function makeScroll(parent: Instance, position: UDim2, size: UDim2): Scrol
 	return scroll
 end
 
---[[
-	Listeyi bosaltir.
-	Onceden yalnizca GuiButton ve Frame siliniyordu; UI.text ile uretilen
-	TextLabel.lar kaliyor ve her acilista ust uste birikiyordu
-	("Henuz brainrot yok" satirinin tekrarlamasi bundandi).
-]]
 local function clearRows(scroll: ScrollingFrame)
 	for _, child in scroll:GetChildren() do
 		if child:IsA("GuiObject") then
@@ -191,7 +140,6 @@ local function clearRows(scroll: ScrollingFrame)
 	end
 end
 
--- Brainrot satiri: siyah halde sadece rarity, acilmisken isim + gelir
 local function brainrotRow(
 	parent: Instance,
 	item: any,
@@ -201,16 +149,13 @@ local function brainrotRow(
 	local rarityInfo = Rarity.get(item.rarity)
 	local conditionInfo = Condition.get(item.condition)
 	local mutationInfo = Mutations.get(item.mutation)
-	-- Mutasyon da isim gibi: Detective acana kadar gosterilmez
 	local revealed = item.revealed and item.name
 	local special = revealed and Mutations.isSpecial(item.mutation)
 
 	local row = Instance.new("TextButton")
 	row.Size = UDim2.new(1, -6, 0, 68)
-	-- Kademe renginde canli zemin: soldan saga koyulasir
 	row.BackgroundColor3 = Color3.new(1, 1, 1)
 	row.BorderSizePixel = 0
-	-- Fare etkisi tiklanabilir satirlarda ayrica veriliyor (UI.hover)
 	row.AutoButtonColor = false
 	row.Text = ""
 	row.LayoutOrder = order
@@ -226,16 +171,6 @@ local function brainrotRow(
 	})
 	zemin.Parent = row
 
-	--[[
-		BRAINROT RESMI
-
-		Kare artik brainrotun 3B onizlemesini tasiyor (bkz. BrainrotOnizleme);
-		onizleme kurulana kadar ya da model bulunamazsa eski gorunum kalir.
-		Kare 42'den 50'ye buyutuldu: 42 pikselde model secilmiyordu.
-
-		Zemin kademe renginin koyulastirilmis hali: duz kademe rengi
-		modelin kendi renkleriyle karisip onu bogiyordu.
-	]]
 	local icon = Instance.new("Frame")
 	icon.Size = UDim2.fromOffset(50, 50)
 	icon.Position = UDim2.fromOffset(6, 6)
@@ -248,7 +183,6 @@ local function brainrotRow(
 	UI.corner(icon, 8)
 	UI.stroke(icon, rarityInfo.color, 1)
 
-	-- Simsiyah brainrot: onizleme gelene kadar "?" durur
 	local soru: TextLabel? = nil
 	if not revealed then
 		soru = UI.text({
@@ -271,10 +205,6 @@ local function brainrotRow(
 		}, soru)
 	end
 
-	--[[
-		Isim HER ZAMAN kademe renginde. Epic ve ustunde parilti gradyani,
-		Divine'da sari <-> beyaz parildama devreye girer (UI.rarityStyle).
-	]]
 	UI.rarityStyle(
 		UI.text({
 			text = if revealed then item.name else `??? ({rarityInfo.displayName})`,
@@ -296,21 +226,12 @@ local function brainrotRow(
 	UI.text({
 		text = detail,
 		size = UI.Sizes.small,
-		--[[
-			BOYUT SATIRI HER ZAMAN BOYUT RENGINDE.
-
-			Onceden mutasyonlu brainrotlarda bu satir mutasyon rengine
-			donuyordu; Galaxy bir brainrotun "Regular" yazisi mora kayiyordu.
-			Artik mutasyon boyutun rengini ele geciremez -- boyut renkleri
-			kendi kimliginde kalir, mutasyon zaten ISIMDE gorunuyor.
-		]]
 		color = if revealed then conditionInfo.color else UI.Colors.textDim,
 		frameSize = UDim2.new(1, -186, 0, 20),
 		position = UDim2.fromOffset(68, 32),
 		parent = row,
 	})
 
-	-- Sagda kondisyon rozeti
 	local badge = Instance.new("Frame")
 	badge.Size = UDim2.fromOffset(56, 24)
 	badge.Position = UDim2.new(1, -66, 0, 34)
@@ -330,10 +251,6 @@ local function brainrotRow(
 		parent = badge,
 	})
 
-	--[[
-		NEREDE DURUYOR: base'teyse yesil "ON BASE #3", cantadaysa mavi
-		"BACKPACK" etiketi. Base'dekinin resminin kosesinde de slot numarasi.
-	]]
 	local yerEtiketi = Instance.new("Frame")
 	yerEtiketi.AnchorPoint = Vector2.new(1, 0)
 	yerEtiketi.Position = UDim2.new(1, -10, 0, 6)
@@ -380,39 +297,10 @@ local function brainrotRow(
 	return row
 end
 
-------------------------------------------------------------------
--- ENVANTER
-------------------------------------------------------------------
 local envanter = UI.panel(screen, UDim2.fromOffset(600, 580), "Envanter")
 
---[[
-	ENVANTERIN ZEMINI KAHVERENGI
-
-	Satirlarin arasinda ve listenin altinda kalan bos alan diger panellerle
-	ayni koyu griydi; envanter "cuval" hissi versin diye kahverengi. Uzerine
-	serilen seramik doku (UI.panel > dokuZemini) bu renkle birlikte deri
-	gibi duruyor.
-
-	Renk BURADA degil, asagida baslikCubugu'na parametre olarak veriliyor:
-	o fonksiyon panelin zeminini kendi gradyaniyla yeniden boyuyor ve
-	dogrudan yazilan rengi eziyor.
-]]
 local ENVANTER_ZEMIN = Color3.fromRGB(84, 58, 38)
 
---[[
-	ENVANTER  --  canli, iki bolumlu
-
-	    [ Inventory                               X ]   <- renkli baslik
-	    ( 12 Brainrots ) ( 3 Unidentified ) ( 4/10 On Base )
-	    ON YOUR BASE  4/10
-	      #1 ....  #2 ....  #3 (bos)  ...            <- slot sirasiyla, bos slotlar da
-	    IN YOUR BACKPACK  8 / 20
-	      [ UPGRADE BACKPACK +10          1.00B Rot ]
-	      pahalidan ucuza ...
-
-	Base'deki bir brainrota tiklamak onu cantaya geri alir.
-]]
--- Cilali mavi-mor baslik cubugu (bkz. UI.baslikCubugu)
 UI.baslikCubugu(
 	envanter,
 	"Inventory",
@@ -426,7 +314,6 @@ UI.closeButton(envanter).MouseButton1Click:Connect(function()
 	envanter.Visible = false
 end)
 
--- Ozet cipleri
 local envanterCipler = Instance.new("Frame")
 envanterCipler.Position = UDim2.fromOffset(14, 70)
 envanterCipler.Size = UDim2.new(1, -28, 0, 30)
@@ -448,7 +335,6 @@ local function cip(renk: Color3, sira: number): TextLabel
 	kutu.Parent = envanterCipler
 	UI.corner(kutu, 15)
 	UI.stroke(kutu, Color3.fromRGB(0, 0, 0), 2)
-	-- Ustu parlak, alti koyu: dugme gibi kabarik dursun
 	UI.cubukCilasi(kutu)
 
 	return UI.text({
@@ -469,10 +355,8 @@ local cipBase = cip(Color3.fromRGB(60, 190, 90), 3)
 
 local envanterListe = makeScroll(envanter, UDim2.fromOffset(14, 112), UDim2.new(1, -28, 1, -126))
 
--- Yalnizca ekrandaki satirlara brainrot resmi kurulur (bkz. BrainrotOnizleme)
 local envanterPencere = BrainrotOnizleme.pencere(envanterListe, envanter)
 
--- Renkli bolum basligi
 local function sectionHeader(parent: Instance, text: string, order: number, renk: Color3?)
 	local holder = Instance.new("Frame")
 	holder.Size = UDim2.new(1, -6, 0, 32)
@@ -497,7 +381,6 @@ local function sectionHeader(parent: Instance, text: string, order: number, renk
 	})
 end
 
--- Bos base slotu: numarasi ve nasil doldurulacagi
 local function bosSlotSatiri(parent: Instance, slotNo: number, order: number)
 	local satir = Instance.new("Frame")
 	satir.Size = UDim2.new(1, -6, 0, 40)
@@ -541,11 +424,6 @@ local function bosSlotSatiri(parent: Instance, slotNo: number, order: number)
 end
 
 local function refreshEnvanter()
-	--[[
-		Satirlar silinmeden ONCE resimler havuza aliniyor: bu fonksiyon her
-		EnvanterGuncelle'de calisiyor, yeni satirlar ayni brainrotlari
-		havuzdan hazir alsin, modeller her seferinde yeniden klonlanmasin.
-	]]
 	envanterPencere.temizle()
 	clearRows(envanterListe)
 
@@ -581,26 +459,13 @@ local function refreshEnvanter()
 	cipGizli.Text = `{hidden} Unidentified`
 	cipBase.Text = `{placed}/{slotSayisi} On Base`
 
-	--[[
-		SIRALAMA: pahalidan ucuza. Getiri kademe, boyut ve mutasyonu birlikte
-		hesaba kattigi icin "pahali" olan gercekten en cok kazandirandir.
-	]]
 	local function worth(item: any): number
 		if item.revealed and item.name then
 			return Brainrots.income(item.name, item.condition, item.mutation)
 		end
-		-- Acilmamis: rarity'nin en dusuk uyesi kadar sayilir
 		return Brainrots.minIncome(item.rarity, item.condition)
 	end
 
-	--[[
-		CANTADAKI BRAINROTA TIKLAYINCA ELE ALINIR
-
-		Hotbar'daki gibi: brainrot cantada bir Tool olarak duruyor (nitelik:
-		BrainrotUid). Tiklaninca kusanilir, zaten eldeyse birakilir; envanter
-		kapanir ki oyuncu elindekini gorsun. Base'teki brainrotlar bu yolla
-		alinmaz (onlarin tiklamasi slottan geri alir).
-	]]
 	local function eleAlTikla(row: TextButton, item: any)
 		row.MouseButton1Click:Connect(function()
 			local character = player.Character
@@ -638,18 +503,6 @@ local function refreshEnvanter()
 		UI.hover(row)
 	end
 
-	------------------------------------------------------------------
-	-- CANTA: once acilmislar pahalidan ucuza, sonra acilmamislar
-	--
-	-- USTTE DURUYOR: oyuncunun elindekiler, yani uzerinde islem yapacagi
-	-- sey burasi. Base slotlari oturmus bir duzen, onlara bakmak icin
-	-- asagi inmek yeterli.
-	------------------------------------------------------------------
-	--[[
-		Baslikta DOLULUK yaziyor: "8 / 20". Oyuncu sinirin varligini ve
-		nereye geldigini listenin basinda gorsun.
-	]]
-	-- Modul burada isteniyor: dosya 200 yerel sinirinda, require onbellekli
 	local Canta = require(Shared:WaitForChild("Canta")) :: any
 	local kapasite = tonumber(inventory.inventoryMax) or Canta.Baslangic
 	sectionHeader(
@@ -659,13 +512,6 @@ local function refreshEnvanter()
 		Color3.fromRGB(60, 130, 230)
 	)
 
-	--[[
-		KAPASITE YUKSELTME SATIRI
-
-		Basligin hemen altinda: dolulugu goren oyuncunun bir sonraki
-		hamlesi burasi. Fiyat sunucudan geliyor (Shared > Canta);
-		kapasite doluysa satir "MAX" der ve tiklanmaz.
-	]]
 	do
 		local fiyat = tonumber(inventory.inventoryUpgrade)
 
@@ -740,9 +586,6 @@ local function refreshEnvanter()
 		end
 	end
 
-	------------------------------------------------------------------
-	-- BASE: slot sirasiyla, bos slotlar da  --  LISTENIN ALTINDA
-	------------------------------------------------------------------
 	sectionHeader(
 		envanterListe,
 		`ON YOUR BASE   {placed}/{slotSayisi}`,
@@ -783,7 +626,6 @@ local function toggleEnvanter()
 	end
 end
 
--- B tusu
 ContextActionService:BindAction("EnvanterAc", function(_, state)
 	if state == Enum.UserInputState.Begin then
 		toggleEnvanter()
@@ -791,22 +633,10 @@ ContextActionService:BindAction("EnvanterAc", function(_, state)
 	return Enum.ContextActionResult.Pass
 end, false, Enum.KeyCode.B)
 
-------------------------------------------------------------------
--- ROT GOSTERGESI (sol alt)
---
--- Bakiye artik yalnizca Tab listesinde degil ekranda da duruyor: oyuncu
--- kazi yaparken ya da magazadayken Tab'a basmadan parasini gorebilsin.
--- Para birimleri her yerde SARI (Bases.RotColor ile ayni ton).
-------------------------------------------------------------------
 local rotKutu = Instance.new("Frame")
 rotKutu.Name = "RotGostergesi"
 rotKutu.AnchorPoint = Vector2.new(0, 1)
--- Envanter butonunun hemen ustunde
--- Zemin, cerceve ve ikon yok: ekranda yalnizca beyaz rakam durur
 rotKutu.Position = UDim2.new(0, 16, 1, -16)
--- Ustte Rot (96), hemen altinda ikonlu Rot Coin satiri (44)
--- Satir yukseklikleri: ustte Rot, hemen altinda Rot Coin. IKISI AYNI olcude
--- (ikon, yazi boyu, bosluk) ki gosterge dengeli dursun.
 local ROT_SATIR = 66
 local COIN_SATIR = 66
 rotKutu.Size = UDim2.fromOffset(460, ROT_SATIR + COIN_SATIR)
@@ -814,24 +644,7 @@ rotKutu.BackgroundTransparency = 1
 rotKutu.BorderSizePixel = 0
 rotKutu.Parent = screen
 
---[[
-	PARA SATIRLARI  --  solda ikon, yaninda gradyanli kalin rakam
-
-	Simulator oyunlarindaki para gostergesi gibi: rakam ustten acik
-	tondan alta koyu tona gecen gradyanli, kalin koyu konturlu. Para
-	birimi yazisi yok ("5.6M"), neyin sayildigini ikon soyluyor.
-
-	  Rot       yesil rakam, para destesi ikonu (Icons "rotPara")
-	  Rot Coin  altin rakam, oyunun Rot Coin ikonu (Icons "rotCoin")
-
-	Deger artinca rakam kisa bir "zipla" animasyonu yapar.
-
-	DIKKAT: Bu script Luau'nun 200 ust seviye yerel sinirinda. Buradaki
-	yardimcilar bu yuzden tek tabloda (rotAnim); yeni ust seviye yerel
-	eklemek butun menuyu kirar ("Out of local registers").
-]]
 local rotAnim = {
-	-- satir anahtari -> zipla olcegi ve son deger
 	olcek = {} :: { [string]: UIScale },
 	son = {} :: { [string]: number },
 	satir = nil :: any,
@@ -855,13 +668,11 @@ function rotAnim.satir(
 	ikon.Name = `{ad}Ikon`
 	ikon.BackgroundTransparency = 1
 	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
-	-- Iki satirin ikonlari ayni dikey eksende ortalansin
 	ikon.Position = UDim2.fromOffset(34, y + yukseklik / 2)
 	ikon.Size = UDim2.fromOffset(ikonBoyu, ikonBoyu)
 	ikon.ScaleType = Enum.ScaleType.Fit
 	ikon.Parent = rotKutu
 
-	-- Ikon gelmezse yerinde emoji durur
 	local yedek = UI.text({
 		text = yedekYazi,
 		size = math.floor(ikonBoyu * 0.7),
@@ -880,14 +691,8 @@ function rotAnim.satir(
 		text = "",
 		size = yaziBoyu,
 		font = UI.Fonts.bold,
-		-- Beyaz taban: rengi gradyan veriyor (gradyan yaziyla carpilir)
 		color = Color3.fromRGB(255, 255, 255),
 		align = Enum.TextXAlignment.Left,
-		--[[
-			Oyunun standart konturu kapali; yerine sabit kalinlikta kontur:
-			applyOutline kalinligi yazi boyuyla buyudugu icin buyuk rakamda
-			kontur asiri kalinlasiyordu.
-		]]
 		outline = false,
 		frameSize = UDim2.new(1, -76, 0, yukseklik),
 		position = UDim2.fromOffset(76, y),
@@ -908,7 +713,6 @@ function rotAnim.satir(
 	local kontur = UI.stroke(yazi, konturRengi, konturKalinligi)
 	kontur.LineJoinMode = Enum.LineJoinMode.Round
 
-	-- Yazinin sol kenarindan buyuyen zipla olcegi
 	local olcek = Instance.new("UIScale")
 	olcek.Name = "Zipla"
 	olcek.Parent = yazi
@@ -917,7 +721,6 @@ function rotAnim.satir(
 	return yazi
 end
 
--- Deger artmissa rakami ziplatir, son degeri saklar
 function rotAnim.zipla(ad: string, deger: number)
 	local olcek = rotAnim.olcek[ad]
 	local once = rotAnim.son[ad]
@@ -932,7 +735,6 @@ function rotAnim.zipla(ad: string, deger: number)
 	rotAnim.son[ad] = deger
 end
 
--- ROT: yesil, 48px (ayarlardaki %100'de ekranda 60px)
 local rotYazi = rotAnim.satir(
 	"Rot",
 	0,
@@ -945,7 +747,6 @@ local rotYazi = rotAnim.satir(
 	4
 )
 
--- ROT COIN: altin sarisi, Rot ile ayni boy
 local coinYazi = rotAnim.satir(
 	"RotCoin",
 	ROT_SATIR,
@@ -968,13 +769,6 @@ end
 
 refreshRot(inventory.rot, inventory.rotCoins)
 
---[[
-	ARKADAS BUFFI YAZISI  --  Rot'un hemen ustunde
-
-	Ayni sunucuda Roblox arkadasi varken gorunur: "Friend Boost: +15% Luck".
-	Konumu ve sol menunun ona gore yukari itilmesi solSutunuYerlestir'de;
-	gorunurlugu ArkadasDurum gelince degisir (bkz. FRIENDS bolumu).
-]]
 local arkadasBuff = UI.text({
 	text = "",
 	size = UI.Sizes.label,
@@ -989,10 +783,6 @@ local arkadasBuff = UI.text({
 })
 arkadasBuff.Visible = false
 
---[[
-	SANS IKSIRI YAZISI  --  arkadas buffinin ustunde (o yoksa Rot'un ustunde)
-	Rot Coin magazasindan alinan iksir aktifken gorunur, suresi geri sayar.
-]]
 local iksirBuff = UI.text({
 	text = "",
 	size = UI.Sizes.label,
@@ -1007,11 +797,6 @@ local iksirBuff = UI.text({
 })
 iksirBuff.Visible = false
 
---[[
-	Ayri bir baglanti: gelen veriyi DOGRUDAN okuyor, yukaridaki envanter
-	baglantisinin once calismasina guvenmiyor. Roblox ayni sinyaldeki
-	baglantilarin sirasini garanti etmez.
-]]
 EnvanterGuncelle.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" then
 		return
@@ -1019,19 +804,8 @@ EnvanterGuncelle.OnClientEvent:Connect(function(data)
 	refreshRot(data.rot, data.rotCoins)
 end)
 
-------------------------------------------------------------------
--- DETECTIVE
-------------------------------------------------------------------
 local detective = UI.panel(screen, UDim2.fromOffset(640, 540), "Detective")
 
---[[
-	BRAINROT DETECTIVE PANELI  --  toplu inceleme
-
-	Kimligi belirlenmemis butun brainrotlar buyuk kartlarda gorunur; tek
-	dugmeyle HEPSI birden birakilir. Bekleme hepsinin suresinin toplami;
-	oyuncu yanindan ayrilabilir (sure sunucuda, kayitta isler). Is surerken
-	panel ilerleme cubugunu ve kalan sureyi gosterir.
-]]
 UI.text({
 	text = "Brainrot Detective",
 	size = UI.Sizes.title,
@@ -1058,7 +832,6 @@ end)
 local DETEKTIF_ALT = 100
 
 local detectiveListe = makeScroll(detective, UDim2.fromOffset(14, 80), UDim2.new(1, -28, 1, -(80 + DETEKTIF_ALT + 14)))
--- Kartlar izgarada: liste duzeni yerine izgara
 for _, child in detectiveListe:GetChildren() do
 	if child:IsA("UIListLayout") then
 		child:Destroy()
@@ -1072,7 +845,6 @@ detektifIzgara.Parent = detectiveListe
 
 local detectivePencere = BrainrotOnizleme.pencere(detectiveListe, detective)
 
--- Alt cubuk: ozet / ilerleme + buyuk dugme
 local detektifAlt = Instance.new("Frame")
 detektifAlt.AnchorPoint = Vector2.new(0, 1)
 detektifAlt.Position = UDim2.new(0, 14, 1, -14)
@@ -1124,7 +896,6 @@ local detektifBarYazi = UI.text({
 detektifBarYazi.ZIndex = 3
 
 local detektifDugme = Instance.new("TextButton")
--- Ogretici bu adi arayip etrafina halka ciziyor (bkz. StarterPlayerScripts > Ogretici)
 detektifDugme.Name = "HepsiniTanimla"
 detektifDugme.AnchorPoint = Vector2.new(1, 0.5)
 detektifDugme.Position = UDim2.new(1, -16, 0.5, 0)
@@ -1147,19 +918,6 @@ local detektifDugmeYazi = UI.text({
 	parent = detektifDugme,
 })
 
---[[
-	SUREYI ATLA  --  COLLECT dugmesinin yerinde
-
-	Dedektif calisirken ayni dugme "SKIP" oluyor: bastiginda Robux satin
-	alma penceresi aciliyor, odeme gecince sure siliniyor ve brainrotlar
-	teslim alinmaya hazir oluyor. Is bitince dugme yerini yine COLLECT'e
-	birakiyor.
-
-	Fiyat "99 R$" olarak degil ROBUX IKONU + sayi olarak yaziliyor
-	(bkz. UI.robuxFiyati). Kutu bir kez kuruluyor, durum degistikce
-	yalnizca gorunurlugu degisiyor; ust seviyede yeni degisken acmamak
-	icin de adiyla bulunuyor ("AtlaKutusu").
-]]
 do
 	local kap = Instance.new("Frame")
 	kap.Name = "AtlaKutusu"
@@ -1192,26 +950,18 @@ do
 	yazi.AutomaticSize = Enum.AutomaticSize.X
 	yazi.LayoutOrder = 1
 
-	-- Modul burada isteniyor: dosya 200 yerel sinirinda, require onbellekli
 	local Magaza = require(Shared:WaitForChild("RobuxMagaza")) :: any
 	local fiyat = UI.robuxFiyati(kap, Magaza.AtlaFiyati(), UI.Sizes.label, 3)
-	-- Liste icinde duruyor: kendi ortalamasi yerine sira alsin
 	fiyat.AnchorPoint = Vector2.new(0, 0)
 	fiyat.Position = UDim2.new()
 	fiyat.LayoutOrder = 2
 end
 
--- Durum
 local detektifBekleyen: { any } = {}
--- Secilen kartlar (uid -> true); bossa dugme hepsini birakir
 local detektifSecili: { [string]: boolean } = {}
 local detektifIs: any = nil
 local detektifBitis = 0
 
---[[
-	Kalan sure. Divine ustu kademeler saatlere ciktigi icin saat de
-	yaziliyor: "60:00" yerine "1:00:00".
-]]
 local function detektifSure(saniye: number): string
 	local t = math.max(0, math.ceil(saniye))
 	if t >= 3600 then
@@ -1232,17 +982,12 @@ local function detektifSeciliSayisi(): number
 	return n
 end
 
--- Ileri bildirim: kart tiklamasi dugme yazisini tazeler
 local detektifDurumCiz: () -> ()
 
 local function detektifKarti(item: any, sira: number)
 	local rarityInfo = Rarity.get(item.rarity)
 	local conditionInfo = Condition.get(item.condition)
 
-	--[[
-		Kart bir dugme: tiklayinca SECILIR (altin cerceve + tik). Altindaki
-		kucuk IDENTIFY dugmesi yalnizca bu brainrotu birakir.
-	]]
 	local kart = Instance.new("TextButton")
 	kart.Name = item.uid
 	kart.Text = ""
@@ -1253,7 +998,6 @@ local function detektifKarti(item: any, sira: number)
 	kart.Parent = detectiveListe
 	UI.corner(kart, 12)
 	local kartKontur = UI.stroke(kart, rarityInfo.color, 2)
-	-- Kart artik TextButton: kontur yaziya degil kenara gitsin
 	kartKontur.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 	local tik = UI.text({
@@ -1352,9 +1096,7 @@ local function detektifKarti(item: any, sira: number)
 	})
 end
 
--- Yalnizca cubuk ve dugme yazilari (her saniye)
 function detektifDurumCiz()
-	-- Atla kutusu yalnizca dedektif calisirken gorunur
 	local atlaKutusu = detektifDugme:FindFirstChild("AtlaKutusu")
 	if atlaKutusu and atlaKutusu:IsA("GuiObject") then
 		atlaKutusu.Visible = detektifCalisiyor()
@@ -1367,19 +1109,9 @@ function detektifDurumCiz()
 		detektifDolgu.Size = UDim2.fromScale(math.clamp(1 - kalan / toplam, 0, 1), 1)
 		detektifBarYazi.Text = `{detektifSure(kalan)} left  -  you can leave!`
 		detektifOzet.Text = `Identifying {detektifIs.adet or 0} brainrot(s)...`
-		--[[
-			CALISIRKEN DUGME "SKIP" OLUYOR: oyuncu beklemek istemezse
-			Robux'la sureyi siliyor (bkz. AtlaKutusu).
-		]]
 		detektifDugme.BackgroundColor3 = UI.Colors.gold
 		detektifDugmeYazi.Text = ""
 	elseif detektifIs and detektifIs.bitti then
-		--[[
-			IS BITTI: TESLIM ALMA
-
-			Brainrotlar kendiliginden verilmiyor; oyuncu bu dugmeye basinca
-			cantaya giriyorlar (bkz. ServerScriptService > Detective).
-		]]
 		local adet = tonumber(detektifIs.adet) or 0
 		detektifBar.Visible = true
 		detektifDolgu.Size = UDim2.fromScale(1, 1)
@@ -1393,7 +1125,6 @@ function detektifDurumCiz()
 		for _, item in detektifBekleyen do
 			toplam += tonumber(item.sure) or 0
 		end
-		-- Secim varsa ozet ve dugme yalnizca secilenleri anlatir
 		local secili = detektifSeciliSayisi()
 		local seciliSure = 0
 		for _, item in detektifBekleyen do
@@ -1432,7 +1163,6 @@ local function detektifCiz()
 		table.sort(detektifBekleyen, function(a, b)
 			return (tonumber(a.sure) or 0) > (tonumber(b.sure) or 0)
 		end)
-		-- Artik listede olmayanlarin secimi dusurulur
 		local mevcut: { [string]: boolean } = {}
 		for _, item in detektifBekleyen do
 			mevcut[item.uid] = true
@@ -1451,20 +1181,11 @@ local function detektifCiz()
 end
 
 detektifDugme.MouseButton1Click:Connect(function()
-	--[[
-		DEDEKTIF CALISIYORSA dugme "SKIP": Robux satin alma penceresi
-		aciliyor. Odeme gecince sunucu sureyi siliyor ve is bitmis oluyor
-		(bkz. ServerScriptService > Detective > SUREYI ATLAMA).
-	]]
 	if detektifCalisiyor() then
 		Net.event("RobuxUrunAl"):FireServer("DetectiveSkip")
 		return
 	end
 
-	--[[
-		Is bitmisse dugme YALNIZCA teslim alir: "collect" isteginde sunucu
-		brainrotlari verip durur, bekleyenleri yeniden ise sokmaz.
-	]]
 	if detektifIs and detektifIs.bitti then
 		DetectiveTeslim:FireServer("collect")
 		return
@@ -1499,7 +1220,6 @@ if detektifDurumOlayi then detektifDurumOlayi.OnClientEvent:Connect(function(is)
 	detektifIs = if type(is) == "table" then is else nil
 	detektifBitis = os.clock() + (if detektifIs then tonumber(detektifIs.kalan) or 0 else 0)
 	if detektifIs then
-		-- Birakilanlar artik isin icinde: kart listesi bosalir
 		detektifBekleyen = {}
 	end
 	if detective.Visible then
@@ -1515,7 +1235,6 @@ DetectiveSonuc.OnClientEvent:Connect(function(sonuclar)
 		detektifCiz()
 	end
 
-	-- Mutasyonlu cikanlar ekranda buyuk yaziyla (sirayla)
 	if type(sonuclar) == "table" then
 		for _, sonuc in sonuclar do
 			if type(sonuc) == "table" then
@@ -1525,7 +1244,6 @@ DetectiveSonuc.OnClientEvent:Connect(function(sonuclar)
 	end
 end)
 
--- Geri sayim
 task.spawn(function()
 	while true do
 		task.wait(0.5)
@@ -1535,11 +1253,6 @@ task.spawn(function()
 	end
 end)
 
-------------------------------------------------------------------
--- BASE
-------------------------------------------------------------------
--- Yerlestirme tamamen dunyada yapiliyor: brainrotu eline al, slota E bas.
--- Burada sadece envanter aciksa listeyi tazeliyoruz.
 BaseGuncelle.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" then
 		return
@@ -1549,10 +1262,6 @@ BaseGuncelle.OnClientEvent:Connect(function(data)
 	end
 end)
 
-------------------------------------------------------------------
--- MAGAZA
-------------------------------------------------------------------
--- Iki sutun: solda kurekler, sagda GPS'ler (kaydirmadan hepsi gorunsun)
 local magaza = UI.panel(screen, UDim2.fromOffset(1040, 520), "Magaza")
 
 UI.text({
@@ -1579,14 +1288,8 @@ end)
 
 local magazaKurekler = makeScroll(magaza, UDim2.fromOffset(14, 78), UDim2.new(0.5, -21, 1, -92))
 local magazaGpsler = makeScroll(magaza, UDim2.new(0.5, 7, 0, 78), UDim2.new(0.5, -21, 1, -92))
--- Kurekte "Can dig up to Divine" yazisi icin
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 
---[[
-	Magaza satiri.
-	detail: o toola ozgu ikinci satir (kurekte bar/hiz, gpste sans/menzil)
-	onBuy:  satin alma remote'unu tetikleyen fonksiyon
-]]
 local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order: number, onBuy: () -> (), detail2: string?)
 	local color = Rarity.color(entry.rarity)
 
@@ -1599,14 +1302,12 @@ local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order
 	row.LayoutOrder = order
 	row.Parent = parent
 	UI.corner(row, 10)
-	-- Kusanili olan kademe kendi renginde kalin cerceve alir
 	UI.stroke(
 		row,
 		if entry.equipped or entry.buyable then color else UI.Colors.panelLight,
 		if entry.equipped then 2 else 1
 	)
 
-	-- Sahip olunan ama kusanili OLMAYAN kademe soluk durur
 	if entry.owned and not entry.equipped then
 		row.BackgroundTransparency = 0.4
 	end
@@ -1643,12 +1344,6 @@ local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order
 		satir3.RichText = true
 	end
 
-	--[[
-		DURUM YAZISI
-
-		Sahip olunan kademeler kalici: kusanili olmayanina tiklayinca
-		ucretsiz kusanilir, o yuzden "USE" yazar.
-	]]
 	local statusText, statusColor
 	if entry.equipped then
 		statusText = "EQUIPPED"
@@ -1675,14 +1370,12 @@ local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order
 		parent = row,
 	})
 
-	-- Satin alinabilir ya da kusanilabilir satirlar tiklanabilir
 	if entry.buyable or (entry.owned and not entry.equipped) then
 		row.MouseButton1Click:Connect(onBuy)
 		UI.hover(row)
 	end
 end
 
--- "Can dig up to <Divine>" (kademe kendi renginde)
 local function kazabilir(gearId: string): string?
 	local kademe = KaziMinigame.enYuksekKademe(gearId)
 	if not kademe then
@@ -1702,23 +1395,16 @@ MagazaAc.OnClientEvent:Connect(function(payload)
 
 	local order = 0
 
-	------------------------------------------------------------------
-	-- KUREKLER: minigame kolayligi
-	------------------------------------------------------------------
 	order += 1
 	sectionHeader(magazaKurekler, "SHOVELS  --  easier minigame", order)
 
 	for _, entry in payload.shovels or {} do
 		order += 1
-		-- Ikinci satir yalnizca kazabildigi en yuksek kademe; GPS satirlariyla ayni boy
 		shopRow(magazaKurekler, entry, kazabilir(entry.id) or "", order, function()
 			KurekAl:FireServer(entry.id)
 		end)
 	end
 
-	------------------------------------------------------------------
-	-- DEDEKTORLER: yuksek rarity sansi
-	------------------------------------------------------------------
 	order += 1
 	sectionHeader(magazaGpsler, "DETECTORS  --  better rarity odds", order)
 
@@ -1738,36 +1424,10 @@ MagazaAc.OnClientEvent:Connect(function(payload)
 	magaza.Visible = true
 end)
 
-
-------------------------------------------------------------------
--- LUCKY BLOCK CARKI  --  IKI ASAMALI
---
--- Blok cantada bir Tool olarak duruyor: eline alip tiklayinca sunucu
--- odulu belirliyor ve bu panel acilip donuyor.
---
--- 1. ASAMA  Bolmelerde yalnizca "?" ve KADEME RENGI doner. Cark durunca
---           hangi kademenin ciktigi belli olur (orn. kirmizi = Mythic)
---           ama hangi brainrot oldugu hala bilinmez.
--- 2. ASAMA  Serit yeniden kurulur; bu kez SADECE o kademeden cikabilecek
---           brainrotlar adiyla doner ve odul aciga cikar.
---
--- Cark yalnizca GOSTERIM: iki asamanin da nerede duracagini sunucu daha
--- cark donmeye baslamadan secmis olur.
-------------------------------------------------------------------
---[[
-	GORUNUM
-	  - Cilali baslik cubugu; rengi acilan blogun turune boyanir
-	  - Panelin arkasinda yavasca donen isik huzmeleri + ekran karartmasi
-	  - Parlak kart bolmeler ve kazananda kutlama (bkz. Rulet)
-
-	DIKKAT: bu script 200 ust seviye yerel sinirinda. Asagidaki suslemeler
-	bu yuzden do-blogunda; yeni ust seviye yerel ekleme.
-]]
 local luckyPanel = UI.panel(screen, UDim2.fromOffset(540, 360), "LuckyBlock")
 
 UI.baslikCubugu(luckyPanel, "LUCKY BLOCK", Color3.fromRGB(255, 215, 40), Color3.fromRGB(255, 120, 40), "luckyBlock")
 
--- Hangi turden blok acildi (Lucky Block / Altin / Elmas)
 local luckyTier = UI.text({
 	text = "",
 	size = UI.Sizes.label,
@@ -1779,23 +1439,6 @@ local luckyTier = UI.text({
 	parent = luckyPanel,
 })
 
---[[
-	PANELIN ARKA TEMASI  --  acilan blogun kademesine gore
-
-	Panelin cizgili koyu zemini her blokta ayni duruyordu. Bu katman o
-	zeminin hemen ustune seriliyor ve Store'daki kartlarla AYNI animasyonu
-	oynatiyor (bkz. UI.blokTemasi):
-
-	    Hacker   yesil rakam yagmuru
-	    Diamond  donerek inen buz elmaslari
-	    Golden   suzulen altin damlalari
-
-	Icerigi her acilista yenileniyor (bkz. LuckyBlockSonuc isleyicisi).
-	ZIndex 0: panelin dokusuyla ayni katmanda, carkin ve yazilarin altinda.
-
-	Ust seviyede yeni yerel acilmiyor (200 siniri): katmana sonradan
-	adiyla ulasiliyor.
-]]
 do
 	local kat = Instance.new("Frame")
 	kat.Name = "TemaKatmani"
@@ -1804,13 +1447,6 @@ do
 	kat.ZIndex = 0
 	kat.Parent = luckyPanel
 
-	--[[
-		BASLIK IKONU DAHA ILK KAREDE BLOK OLSUN
-
-		Panel acilinca kademesine gore yenileniyor; burada varsayilan blok
-		takiliyor ki paketin "?" kutusu bir an bile gorunmesin. Ikon
-		cubukta asenkron kuruldugu icin (Icons.bind) birkac kare bekleniyor.
-	]]
 	task.spawn(function()
 		local cubuk = luckyPanel:WaitForChild("Baslik", 10)
 		local ikon = cubuk and cubuk:WaitForChild("Ikon", 10)
@@ -1821,23 +1457,8 @@ do
 	end)
 end
 
---[[
-	KAPATMA TUSU YOK
-
-	Panel kendi kendine kapaniyor: odul belli olduktan KAPANMA_GECIKMESI
-	saniye sonra (bkz. Rulet.run > onFinish). Kapatma tusu vardi ama iki
-	sorunu vardi -- oyuncu carki donerken kapatip odulu hic gormuyordu, ve
-	gorduklen sonra da kapatmak icin ayrica tiklamasi gerekiyordu.
-
-	Panel zaten oyuncunun bir sey yapmadigi bir gosteri; bittiginde
-	cekilmesi dogru olani.
-]]
 local KAPANMA_GECIKMESI = 1.5
 
---[[
-	Kapanmayi bekleyen sayac. Her acilista artiyor: cark donerken oyuncu
-	yeni bir blok acarsa ESKI sayim yeni paneli kapatmasin.
-]]
 local luckyAcilis = 0
 
 local luckyReel = Rulet.new(luckyPanel, {
@@ -1870,14 +1491,6 @@ local luckyDetail = UI.text({
 })
 
 do
-	--[[
-		ISIK HUZMELERI + KARARTMA
-
-		Panelin arkasinda: once ekrani hafifce karartan bir ortu, ustunde
-		merkezden disa uzanan ve yavasca donen isik huzmeleri. Huzmeler
-		panelin ortasindan gecen uzun seritler; kapsayici cerceve dondukce
-		cocuklari da onunla doner. Panel acikken gorunur.
-	]]
 	local karartma = Instance.new("Frame")
 	karartma.Name = "LuckyKarartma"
 	karartma.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1913,7 +1526,6 @@ do
 		huzme.ZIndex = 0
 		huzme.Parent = isik
 
-		-- Ortada parlak, uclara dogru eriyen serit
 		local gecis = Instance.new("UIGradient")
 		gecis.Rotation = 90
 		gecis.Transparency = NumberSequence.new({
@@ -1950,35 +1562,16 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		return
 	end
 
-	-- Yeni acilis: bekleyen eski kapanma sayimi bu paneli kapatmasin
 	luckyAcilis += 1
 
-	--[[
-		ACILIS SESLERI
-		  1. "LuckyBlock" calar; bitene kadar rulet ekrani GELMEZ
-		  2. sunucuya "basladi" denir (odul zamanlamasi buradan sayilir)
-		  3. "LuckyBlockOpening" calar ve rulet doner
-		  4. brainrot gelince sunucu FuseExplosion + FuseVFX oynatir
-	]]
 	local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
 	local _, girisSuresi = YerelSes.cal("LuckyBlock")
 	if girisSuresi > 0 then
 		task.wait(math.min(girisSuresi, 6))
 	end
 	Net.event("LuckyBlockBasladi"):FireServer()
-	-- Iki carkta da calar: 2. cark baslarken ayni ses bastan
 	local acilisSesi = YerelSes.cal("LuckyBlockOpening")
 
-	--[[
-		2. ASAMA bolmeleri.
-		Kademe o asamada zaten belli oldugu icin serit tek renktir; oyuncu
-		"bu kirmizidan hangisi cikacak" diye bekler.
-	]]
-	--[[
-		Her bolmede brainrotun resmi de var (bkz. Rulet > Cell.brainrot).
-		Kazanan bolmede MUTASYONLU model: Gold cikacaksa carkin durdugu
-		bolme de altin gorunsun, oyuncunun eline gecenle ayni olsun.
-	]]
 	local kazananSira = tonumber(data.winnerIndex) or LuckyBlock.Wheel.revealWinnerIndex
 	local kazanan = if type(data.winner) == "table" then data.winner else nil
 	local turMutasyonu = if type(data.tierMutation) == "string" then data.tierMutation else nil
@@ -1988,16 +1581,10 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		table.insert(cells, {
 			text = entry.name,
 			color = Rarity.color(entry.rarity),
-			-- Cercevedeki canli efekt kademeye gore (bkz. Rulet > KADEME EFEKTLERI)
 			rarity = entry.rarity,
 			brainrot = if type(entry.name) == "string"
 				then {
 					name = entry.name,
-					--[[
-						Turun zorunlu mutasyonu varsa (Hacker) BUTUN bolmeler
-						o mutasyonun modeliyle ciziliyor; yoksa yalnizca
-						kazanan bolme oyuncunun eline gececek haliyle.
-					]]
 					mutation = turMutasyonu
 						or (if index == kazananSira and kazanan then kazanan.mutation else nil),
 				}
@@ -2005,12 +1592,6 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		})
 	end
 
-	--[[
-		Zamanlama ve indeksler sunucudan geliyor. Eksik/bozuk bir alan gelirse
-		cark ortasinda hata verip panelin kilitli kalmamasi icin paylasimli
-		ayarlara duseriz -- iki taraf da ayni tabloyu okudugu icin degerler
-		zaten ayni.
-	]]
 	local W = LuckyBlock.Wheel
 
 	local started = Rulet.run(luckyReel, {
@@ -2022,15 +1603,12 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		winner = tonumber(data.winnerIndex) or W.revealWinnerIndex,
 		time = tonumber(data.spinTime) or W.revealSpinTime,
 
-		-- 2. cark baslarken acilis sesi bastan
 		onSecondSpin = function()
 			YerelSes.durdur(acilisSesi)
 			acilisSesi = YerelSes.cal("LuckyBlockOpening")
 		end,
 
-		-- 1. cark durdu: yalnizca kademe aciklanir, brainrot hala gizli
 		onRarity = function(rarityId: string)
-			-- Kademe belli oldu: kucuk bir kutlama, asil patlama brainrotta
 			Rulet.kutla(luckyReel, Rarity.color(rarityId))
 			luckyResult.Text = string.upper(Rarity.displayName(rarityId))
 			UI.rarityStyle(luckyResult, rarityId)
@@ -2038,7 +1616,6 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			luckyDetail.TextColor3 = UI.Colors.textDim
 		end,
 
-		-- 2. cark durdu: odul aciga cikar
 		onFinish = function()
 			local winner = data.winner
 			if type(winner) ~= "table" then
@@ -2046,33 +1623,23 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			end
 
 			Rulet.shake(luckyPanel)
-			-- Halka + yildizlar kazananin kademe renginde
 			Rulet.kutla(luckyReel, Rarity.color(winner.rarity))
 
 			local mutationInfo = Mutations.get(winner.mutation)
 			local special = Mutations.isSpecial(winner.mutation)
 			local conditionInfo = Condition.get(winner.condition)
 
-			-- Isim HER ZAMAN kademe renginde; Epic+ parlar, Divine parildar
 			luckyResult.Text = winner.name
 			UI.rarityStyle(luckyResult, winner.rarity)
 
 			local tag = if special then `  {mutationInfo.displayName} ({mutationInfo.multiplier}x)` else ""
 			luckyDetail.Text = `{Rarity.displayName(winner.rarity)} {conditionInfo.shortName}{tag} ({Format.perSecond(winner.income or 0)})`
-			-- Boyut satiri her zaman boyut renginde; mutasyon rengini ele gecirmez
 			luckyDetail.TextColor3 = conditionInfo.color
 
-			-- Mutasyon ciktiysa ekranda buyuk yaziyla
 			if special then
 				MutasyonGosterisi.goster(winner.mutation, winner.name)
 			end
 
-			--[[
-				ODUL GORULDU, PANEL CEKILIYOR
-
-				Sayac karsilastirmasi sart: oyuncu bu gecikme dolmadan
-				baska bir blok acarsa bu sayim YENI paneli kapatirdi.
-			]]
 			local buAcilis = luckyAcilis
 			task.delay(KAPANMA_GECIKMESI, function()
 				if luckyAcilis == buAcilis and luckyPanel.Visible then
@@ -2089,21 +1656,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	luckyTier.Text = if type(data.tierName) == "string" then string.upper(data.tierName) else ""
 	luckyTier.TextColor3 = if typeof(data.tierColor) == "Color3" then data.tierColor else UI.Colors.textDim
 
-	--[[
-		ARKA TEMA ACILAN BLOGA GORE
-
-		Tur kimligi sunucudan geliyor; eski bir sunucu kimlik yollamazsa
-		gorunen addan bulunuyor. Normal blokta animasyon yok: zemin eskisi
-		gibi duz kalir.
-	]]
 	do
-		--[[
-			ACILAN BLOGUN KIMLIGI
-
-			Sunucudan geliyor; eski bir sunucu kimlik yollamazsa gorunen
-			addan bulunuyor, o da tutmazsa varsayilan blok kullaniliyor --
-			baslikta her halukarda gercek bir blok doner, "?" kutusu degil.
-		]]
 		local turId = if type(data.tier) == "string" then data.tier else nil
 		if not turId and type(data.tierName) == "string" then
 			for _, aday in LuckyBlock.Tiers do
@@ -2116,12 +1669,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 
 		local kat = luckyPanel:FindFirstChild("TemaKatmani")
 		if kat and kat:IsA("GuiObject") then
-			-- Onceki acilisin animasyonu temizlenir
 			kat:ClearAllChildren()
-			--[[
-				Panelin kose yaricapiyla ayni (bkz. UI.panel). Renk, arka
-				plan resmi olmayan kademelerde canli levhanin rengi olur.
-			]]
 			UI.blokTemasi(
 				kat,
 				turId,
@@ -2131,23 +1679,12 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			)
 		end
 
-		--[[
-			BASLIKTAKI IKON DA ACILAN BLOK
-
-			Baslik cubugunda paketin "?" tahta kutusu duruyordu; hangi blogu
-			actigini soylemiyordu. Artik orada blogun kendi modeli doner.
-		]]
 		local cubuk = luckyPanel:FindFirstChild("Baslik")
 		local ikon = cubuk and cubuk:FindFirstChild("Ikon")
 		if ikon and ikon:IsA("ImageLabel") then
 			local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
 			LuckyOnizleme.ikonaKoy(ikon, turId or LuckyBlock.Default)
 
-			--[[
-				Baslik yazisi ikonun sagindan baslar. Normalde bunu Icons.bind
-				yapiyor; paket ikonu hic bulunamazsa yazi solda kalip modelin
-				ustune biniyordu.
-			]]
 			local yazi = cubuk and cubuk:FindFirstChild("Yazi")
 			if yazi and yazi:IsA("TextLabel") then
 				yazi.Position = UDim2.fromOffset(62, 0)
@@ -2155,10 +1692,6 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 		end
 	end
 
-	--[[
-		TURUN RENGI: baslik cubugu, isik huzmeleri ve rulet cercevesi acilan
-		blogun renginde (Lucky sari, Golden turuncu, Diamond mavi).
-	]]
 	do
 		local turRengi: Color3 = if typeof(data.tierColor) == "Color3" then data.tierColor else Rarity.LuckyBlock.colorA
 		local cubuk = luckyPanel:FindFirstChild("Baslik")
@@ -2184,61 +1717,16 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	luckyPanel.Visible = true
 end)
 
-
-------------------------------------------------------------------
--- BLOK YAGMURU BILGISI (ekranin sag ustu, oyuncu listesinin altinda)
---
--- Yagmur iki sarta bagli: sunucuda 6 kisi olacak VE son yagmurun
--- uzerinden 1 saat gecmis olacak (bkz. Shared > LuckyBlock > Event).
--- Sunucu dolunca 5 dakikalik geri sayim basliyor.
---
---     LUCKY BLOCK RAIN
---     4 / 6 PLAYERS
---     2 more to start      (ya da DROPPING IN 4:37 / next in 42:10)
---     [ INVITE FRIENDS ]
---
--- Kutu 4 KISIDEN ITIBAREN gorunuyor (Event.bildirimOyuncu); altina
--- dusunce kayboluyor.
---
--- Sunucu durumu iki saniyede bir yolluyor, arada client kendi icinde
--- sayiyor: yazi her saniye ilerler ama sunucuyla arasi acilmaz.
-------------------------------------------------------------------
 local sayacKutu = Instance.new("Frame")
 sayacKutu.Name = "LuckyYagmurBilgisi"
---[[
-	SAG UST: Roblox'un oyuncu listesinin ALTINDA.
-
-	Liste ekranin sag ustunde duruyor ve yuksekligi oyuncu sayisiyla
-	degisiyor; Roblox onun yerini scripte sormuyor. 210 piksel dolu bir
-	sunucunun listesini rahatca gecen bir pay -- listeyle cakismasin diye
-	buradan asagi baslatiliyor.
-
-	Altinda da oyunun kendi ARKADAS DAVET dugmesi duruyor (asagida): kutu
-	"iki kisi daha lazim" derken davet dugmesi hemen elinin altinda olsun.
-]]
 sayacKutu.AnchorPoint = Vector2.new(1, 0)
 sayacKutu.Position = UDim2.new(1, -16, 0, 210)
 sayacKutu.Size = UDim2.fromOffset(250, 108)
--- Kutu degil: bildirimler gibi bu da yalnizca yazi. Cerceve ve zemin yok,
--- okunurlugu yazilarin kendi siyah konturu sagliyor
 sayacKutu.BackgroundTransparency = 1
 sayacKutu.BorderSizePixel = 0
--- Oyuncu sayisi esige varana kadar kapali (bkz. tazeleGorunurluk)
 sayacKutu.Visible = false
 sayacKutu.Parent = screen
 
---[[
-	KUTU KUCULTULDU  --  tek sayidan
-
-	Ilk hali ekranin sag ustunde fazla yer kapliyordu. Kucultme tek tek
-	yazi boyu ve dugme olcusu degistirilerek degil, kabin tamamina konan
-	bir UIScale ile yapiliyor: icindeki her sey (basliklar, sayac, davet
-	dugmesi) AYNI oranda kuculuyor, yani aralarindaki denge bozulmuyor --
-	dugme yazidan daha buyuk kalmiyor.
-
-	AnchorPoint sag ust kosede oldugu icin kutu o koseye dogru buzusuyor,
-	kenardan uzaklasmiyor.
-]]
 do
 	local olcek = Instance.new("UIScale")
 	olcek.Scale = 0.7
@@ -2255,7 +1743,6 @@ UI.text({
 	parent = sayacKutu,
 })
 
--- Buyuk satir: kac kisi var / kac gerekiyor
 local sayacYazi = UI.text({
 	text = "0 / 6 PLAYERS",
 	size = UI.Sizes.heading,
@@ -2265,7 +1752,6 @@ local sayacYazi = UI.text({
 	parent = sayacKutu,
 })
 
--- Alt satir: bekleme suresi ya da "2 more to start"
 UI.text({
 	text = "",
 	size = UI.Sizes.small,
@@ -2277,23 +1763,7 @@ UI.text({
 	name = "Durum",
 })
 
---[[
-	ARKADAS DAVET DUGMESI  --  kutunun hemen altinda
-
-	Kutu "2 more to start" derken oyuncunun yapabilecegi tek sey arkadas
-	cagirmak; dugme de tam orada duruyor. Roblox'un KENDI davet penceresini
-	aciyor (SocialService), yani davet listesi ve gonderimi Roblox'ta.
-
-	Servis ve izin denetimi tiklama aninda yapiliyor: ust seviyede yeni
-	degisken acilmiyor (bu dosya 200 yerel sinirinda) ve oyun acilirken
-	gereksiz bir ag cagrisi yapilmiyor.
-]]
 do
-	--[[
-		Dugme kutunun TAMAMINI kaplamiyor: ustundeki "5 / 6 PLAYERS"
-		yazisindan genis durunca kutunun icinde fazla iri gorunuyordu.
-		Biraz dar ve ortalanmis.
-	]]
 	local davet = Instance.new("TextButton")
 	davet.Name = "Davet"
 	davet.AnchorPoint = Vector2.new(0.5, 0)
@@ -2321,11 +1791,6 @@ do
 
 	davet.Activated:Connect(function()
 		local social = game:GetService("SocialService")
-		--[[
-			Izin denetimi pcall icinde: Studio'da ve bazi platformlarda
-			CanSendGameInviteAsync hata veriyor. Hata alinca yine de
-			deneniyor -- en kotusu Roblox pencereyi acmaz.
-		]]
 		local ok, izin = pcall(function()
 			return social:CanSendGameInviteAsync(player)
 		end)
@@ -2338,7 +1803,6 @@ do
 	end)
 end
 
--- 3725 -> "1:02:05", 125 -> "02:05"
 local function sureMetni(seconds: number): string
 	local total = math.max(0, math.floor(seconds))
 	local hours = math.floor(total / 3600)
@@ -2351,53 +1815,21 @@ local function sureMetni(seconds: number): string
 	return string.format("%02d:%02d", minutes, secs)
 end
 
---[[
-	KUTUYU CIZ
-
-	Oyuncu sayisi, bekleme ve sayim sunucudan geliyor. Sayilar nitelik
-	olarak kutunun ustunde duruyor: bu dosya 200 yerel sinirinda, ust
-	seviyede yeni degisken acilmiyor.
-
-	    LUCKY BLOCK RAIN
-	    4 / 6 PLAYERS
-	    2 more to start        (ya da DROPPING IN 4:37 / next in 42:10)
-	    [ INVITE FRIENDS ]
-]]
 local function tazeleGorunurluk()
 	local oyuncu = sayacKutu:GetAttribute("Oyuncu") or 0
 	local gereken = sayacKutu:GetAttribute("Gereken") or LuckyBlock.Event.gerekenOyuncu
 	local esik = sayacKutu:GetAttribute("Esik") or LuckyBlock.Event.bildirimOyuncu
 	local durum = sayacKutu:FindFirstChild("Durum")
 
-	--[[
-		SURELER SON PAKETTEN HESAPLANIYOR, AYRICA AZALTILMIYOR
-
-		Once istemci kendi kopyasini her saniye bir azaltiyordu; sunucu da
-		iki saniyede bir kendi sayisini yolluyordu. Iki ayri saat oldugu
-		icin sayilar birbirini tutmuyor ve her yayinda ileri geri
-		ziplayarak duzeliyordu (10 -> 11 -> 9 ...).
-
-		Artik tek kaynak sunucunun yolladigi deger: uzerinden GECEN SURE
-		cikarilarak gosteriliyor. Iki yayin arasinda da duzgun ilerliyor,
-		yayin gelince de ziplamiyor -- cunku ayni seyi olcuyorlar.
-	]]
 	local gecen = os.clock() - (sayacKutu:GetAttribute("Zaman") or os.clock())
 	local hamSayim = sayacKutu:GetAttribute("Sayim") or -1
 	local sayim = if hamSayim >= 0 then math.max(0, hamSayim - gecen) else -1
 	local bekleme = math.max(0, (sayacKutu:GetAttribute("Bekleme") or 0) - gecen)
 
-	--[[
-		ESIGIN ALTINDA HIC GORUNMEZ
-
-		Iki kisilik bir sunucuda "2/6" yazisi umut vermiyor, yalnizca yer
-		kapliyor. Sayim BASLADIYSA esik aranmiyor: biri cikip sayi duse bile
-		yagmur iptal olmuyor, kutu da ortadan kaybolmamali.
-	]]
 	sayacKutu.Visible = LuckyBlock.Event.enabled and (oyuncu >= esik or sayim >= 0)
 
 	local yeterli = oyuncu >= gereken
 	sayacYazi.Text = `{oyuncu} / {gereken} PLAYERS`
-	-- Sayi dolunca yesil: oyuncu tek bakista "tamam" desin
 	sayacYazi.TextColor3 = if yeterli then Color3.fromRGB(120, 255, 150) else UI.Colors.text
 
 	if not (durum and durum:IsA("TextLabel")) then
@@ -2405,11 +1837,9 @@ local function tazeleGorunurluk()
 	end
 
 	if sayim >= 0 then
-		-- Sayim basladi: bloklar dusmek uzere (5 dakika -> "4:37")
 		durum.Text = `DROPPING IN {sureMetni(sayim)}`
 		durum.TextColor3 = Rarity.LuckyBlock.colorA
 	elseif bekleme > 0 then
-		-- Bir onceki yagmurdan sonraki bekleme
 		durum.Text = `next in {sureMetni(bekleme)}`
 		durum.TextColor3 = UI.Colors.textDim
 	elseif yeterli then
@@ -2422,17 +1852,6 @@ local function tazeleGorunurluk()
 end
 
 EtkinlikSayaci.OnClientEvent:Connect(function(veri)
-	--[[
-		Sunucu artik tablo yolluyor; eski surumden duz sayi gelirse o da
-		bekleme suresi sayilir (sunucu ve istemci ayri guncellenebilir).
-	]]
-	--[[
-		Degerler KUSURATLI saklaniyor (floor yok): gosterirken zaten
-		yuvarlaniyor, ama arada yuvarlarsak her pakette yarim saniyelik
-		bir sicrama olurdu.
-
-		"Zaman" paketin geldigi an; aradaki sure ondan olculuyor.
-	]]
 	if type(veri) == "table" then
 		sayacKutu:SetAttribute("Oyuncu", math.floor(tonumber(veri.oyuncu) or 0))
 		sayacKutu:SetAttribute("Gereken", math.floor(tonumber(veri.gereken) or LuckyBlock.Event.gerekenOyuncu))
@@ -2448,11 +1867,6 @@ EtkinlikSayaci.OnClientEvent:Connect(function(veri)
 	tazeleGorunurluk()
 end)
 
---[[
-	Ekrani sik tazeliyoruz ama hicbir sey AZALTMIYORUZ: sayilar son
-	paketten hesaplaniyor (bkz. tazeleGorunurluk). Yarim saniye, saniyenin
-	dondugu ani kacirmamak icin yeterli.
-]]
 task.spawn(function()
 	while true do
 		task.wait(0.5)
@@ -2460,35 +1874,11 @@ task.spawn(function()
 	end
 end)
 
-
-------------------------------------------------------------------
--- SOL MENU CUBUGU
---
--- Para gostergesinin ustunde yukari dogru dizilen ikon butonlari.
--- Calisan sistemler panelini acar; henuz yazilmamis olanlar "yakinda"
--- der. Boylece duzen simdiden yerinde olur, sistem geldiginde sadece
--- tiklama islevi baglanir.
-------------------------------------------------------------------
---[[
-	Butonlar IKI sutuna bolundu: hepsi tek sutunda dizilince ekranin ustunden
-	tasiyordu. Oyun ici sistemler solda (para gostergesinin ustunde), sosyal
-	olanlar sagda.
-]]
--- Odul paneli dosyanin sonunda kuruluyor; buton ondan once dizildigi
--- icin acma fonksiyonu once bildirilip sonra atanir
 local odulPaneliniAc: () -> ()
--- Friends sekmesi de dosyanin sonunda kuruluyor
 local arkadasPaneliniAc: () -> ()
--- Ayarlar paneli de dosyanin sonunda kuruluyor; ayni sebeple once bildirilir
 local ayarPaneliniAc: () -> ()
--- Gorev panosu da oyle
 local gorevPaneliniAc: () -> ()
--- Rot Coin magazasi da dosyanin sonunda kuruluyor
 local rotCoinMagazaAc: () -> ()
---[[
-	Isinlayici ve hiz panelleri de dosyanin sonunda kuruluyor. Ayri yerel
-	yerine tek tablo: Luau ust seviyede en fazla 200 yerel kabul ediyor.
-]]
 local ekMenu = {
 	isinlayiciAc = function() end,
 	hizAc = function() end,
@@ -2497,14 +1887,6 @@ local ekMenu = {
 
 local MENU_BOYU = 52
 
---[[
-	KABARTMA PAYI
-
-	Butonun altinda birakilan 3B kenar. Hem buton yuksekligine hem izgara
-	hucre boyuna girdigi icin menuSutunu.dan ONCE tanimli olmali -- asagida
-	tanimliyken menuSutunu icinde global (nil) olarak cozuluyor ve sutun
-	kurulurken "52 + nil" hatasi veriyordu.
-]]
 local LIP = 5
 
 local function menuSutunu(name: string, sagda: boolean): Frame
@@ -2512,15 +1894,10 @@ local function menuSutunu(name: string, sagda: boolean): Frame
 	sutun.Name = name
 	sutun.AnchorPoint = Vector2.new(if sagda then 1 else 0, 1)
 
-	--[[
-		Sol taraf 2x2 izgara: dik dizilince ekranin ustune tirmaniyordu.
-		Sag taraf tek sutun olarak kaliyor.
-	]]
 	if sagda then
 		sutun.Position = UDim2.new(1, -16, 1, -16)
 		sutun.Size = UDim2.fromOffset(MENU_BOYU, 0)
 	else
-		-- Para gostergesinin hemen ustu
 		sutun.Position = UDim2.new(0, 16, 1, -64)
 		sutun.Size = UDim2.fromOffset(MENU_BOYU * 2 + 14, 0)
 	end
@@ -2550,16 +1927,6 @@ end
 local solSutun = menuSutunu("SolMenu", false)
 local sagSutun = menuSutunu("SagMenu", true)
 
---[[
-	SOL SUTUNUN YUKSEKLIGI OLCEGE BAGLI
-
-	Sutun para gostergesinin hemen ustunde durur. UIScale bir nesnenin
-	BOYUTUNU carpar ama KENDI konum ofsetini carpmaz; yani arayuz olcegi
-	buyudugunde para kutusu uzuyor, sutunun sabit ofseti ise yerinde
-	kaliyor ve ikisi ust uste biniyordu.
-
-	Bu yuzden konum her olcek degisiminde yeniden hesaplaniyor.
-]]
 local SUTUN_BOSLUK = 40
 
 local function solSutunuYerlestir()
@@ -2567,24 +1934,13 @@ local function solSutunuYerlestir()
 	local paraYuksekligi = rotKutu.Size.Y.Offset * carpan
 	local altBosluk = -rotKutu.Position.Y.Offset
 
-	--[[
-		Arkadas buffi yazisi Rot kutusunun hemen ustunde. Gorunurken sol
-		menu onun yuksekligi kadar daha yukari itilir: yazi butonlarin
-		altinda kalmasin.
-	]]
 	arkadasBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi))
 	local buffYuksekligi = if arkadasBuff.Visible then arkadasBuff.Size.Y.Offset * carpan else 0
 
-	-- Sans iksiri yazisi arkadas buffinin ustunde; gorunurken menu onun kadar da yukari
 	iksirBuff.Position = UDim2.new(0, 20, 1, -(altBosluk + paraYuksekligi + buffYuksekligi))
 	if iksirBuff.Visible then
 		buffYuksekligi += iksirBuff.Size.Y.Offset * carpan
 	end
-
-	--[[
-		Blok yagmuru bilgisi artik SAG USTTE (oyuncu listesinin altinda),
-		bu yigina girmiyor.
-	]]
 
 	solSutun.Position = UDim2.new(0, 16, 1, -(altBosluk + paraYuksekligi + buffYuksekligi + SUTUN_BOSLUK))
 end
@@ -2594,57 +1950,17 @@ UI.onScaleChanged(solSutunuYerlestir)
 
 local menuSirasi = 0
 
---[[
-	MENU BUTONU  --  cizgi film tarzi
-
-	Referans oyunlardaki gorunum iki katmandan olusuyor:
-	  1. Dis govde  : koyu ton, altta 5px'lik kabartma kenar birakir
-	  2. Yuz        : asil renk; ustunde ikon durur
-
-	Uzerinde kalin SIYAH kontur var; butun cizgi film arayuzlerin ortak
-	ozelligi bu. Basilinca yuz asagi iner, gercekten basiliyormus gibi olur.
-]]
-
--- amount > 0 aydinlatir, < 0 karartir
 local function tonla(color: Color3, amount: number): Color3
 	local h, sat, v = color:ToHSV()
 	return Color3.fromHSV(h, math.clamp(sat - amount * 0.1, 0, 1), math.clamp(v + amount, 0, 1))
 end
 
---[[
-	PARILTI  --  yumusak
-
-	Iki ince dokunus; ikisi de rengin ustunu beyazla ORTMEZ:
-
-	1. IC GECIS
-	   Yuzun KENDI arka planina uygulanan dikey gradient: ust kenar oldugu
-	   gibi, alt kenar bir tik koyu. Ayri bir katman olmadigi icin renk
-	   solmuyor, sadece hafif bir derinlik veriyor.
-
-	2. SUZULEN ISIK
-	   Genis, kenarlari eriyen beyaz bir bant sik araliklarla yuzun
-	   uzerinden gecer. Ortasi bile yari saydam, yani parlama sert bir
-	   flash degil ama gozden de kacmiyor.
-
-	   Bant dondurulmus bir Frame degil, UIGradient'in kayan seffaflik
-	   bandi: ClipsDescendants dondurulmus alt nesneleri kirpmadigi icin
-	   Frame olsaydi butonun yuvarlak kosesinden tasardi.
-
-	Ilk surumde ust yariyi kaplayan yari saydam beyaz bir kutu vardi;
-	renkleri soldurup butonu ortadan ikiye bolen sert bir cizgi birakiyordu.
-
-	Ikon ZIndex 5'te, yani isigin ustunde kaliyor.
-]]
-local PARILTI_SURE = 0.75 -- bandin bir gecis suresi
-local PARILTI_ARA = 2 -- iki gecis arasi bekleme
+local PARILTI_SURE = 0.75
+local PARILTI_ARA = 2
 
 local function pariltiKatmani(yuz: Frame, sira: number): Frame
 	local icGecis = Instance.new("UIGradient")
 	icGecis.Rotation = 90
-	--[[
-		Ustteki beyaz "rengi aynen birak" demek (gradient rengi carpar),
-		alttaki gri ise onu %15 karartir. Yani ton hep butonun kendi rengi.
-	]]
 	icGecis.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(217, 217, 217)),
@@ -2658,13 +1974,10 @@ local function pariltiKatmani(yuz: Frame, sira: number): Frame
 	isik.Size = UDim2.fromScale(1, 1)
 	isik.ZIndex = 3
 	isik.Parent = yuz
-	-- Yuzle AYNI kose yaricapi: ClipsDescendants koseyi kesmedigi icin
-	-- bandin ucu buton kosesinin disinda kare bir cikinti birakiyordu
 	UI.corner(isik, 10)
 
 	local isikGecis = Instance.new("UIGradient")
 	isikGecis.Rotation = 20
-	-- Kenarlarda tamamen seffaf, ortasinda yari saydam: yumusak ama gorunur
 	isikGecis.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
 		NumberSequenceKeypoint.new(0.3, 1),
@@ -2676,7 +1989,6 @@ local function pariltiKatmani(yuz: Frame, sira: number): Frame
 	isikGecis.Parent = isik
 
 	task.spawn(function()
-		-- Butonlar sirayla parlasin; hepsi ayni anda olursa goz yorar
 		task.wait(sira * 0.22)
 
 		while isik.Parent do
@@ -2709,15 +2021,6 @@ local function menuButonu(
 
 	local buton = Instance.new("ImageButton")
 	buton.Name = isim
-	--[[
-		BUTON KARE DEGIL, KAREDEN LIP KADAR UZUN.
-
-		Yuz (renkli katman) butonun icinde 4px kenar birakir ve altta LIP
-		kadar kabartma payi vardir. Buton tam kare olsaydi yuz 44x39 kalir,
-		ikon o dikdortgene sigdirilirken hem kuculur hem butonun ortasindan
-		yukarida durur -- ikonlar "yamuk" gorunuyordu.
-		Butonu LIP kadar uzatinca yuz TAM KARE oluyor.
-	]]
 	buton.Size = UDim2.fromOffset(MENU_BOYU, MENU_BOYU + LIP)
 	buton.BackgroundColor3 = tonla(renk, -0.32)
 	buton.BorderSizePixel = 0
@@ -2726,40 +2029,29 @@ local function menuButonu(
 	buton.LayoutOrder = menuSirasi
 	buton.Parent = sutun
 	UI.corner(buton, 14)
-	-- Kalin siyah kontur oyunun imzasi; menu butonlari da ona uyar
 	UI.stroke(buton, Color3.fromRGB(0, 0, 0), 2)
 
 	local yuz = Instance.new("Frame")
 	yuz.Name = "Yuz"
 	yuz.Size = UDim2.new(1, -8, 1, -8 - LIP)
-	--[[
-		Yuz butonun MERKEZINDEN tutuluyor. Boylece fare etkisi onu
-		buyuturken dort yana esit acilir; (0,0) ile tutulsaydi yalnizca
-		saga ve asagi tasardi. Kabartma payi merkezi LIP/2 kadar yukari
-		kaydiriyor -- ust kenarda 4px, altta 4+LIP px bosluk kalir.
-	]]
 	yuz.AnchorPoint = Vector2.new(0.5, 0.5)
 	yuz.Position = UDim2.new(0.5, 0, 0.5, -LIP / 2)
 	yuz.BackgroundColor3 = renk
 	yuz.BorderSizePixel = 0
-	-- Ikon yuvarlatilmis kosenin disina tasmasin
 	yuz.ClipsDescendants = true
 	yuz.Parent = buton
 	UI.corner(yuz, 10)
 
-	-- Yumusak ic gecis + ara ara suzulen isik; ikon bunlarin ustunde kalir
 	local parilti = pariltiKatmani(yuz, menuSirasi)
 
 	local ikon = Instance.new("ImageLabel")
 	ikon.Name = "Ikon"
 	ikon.BackgroundTransparency = 1
-	-- Yuzun tam ortasi; ScaleType.Fit en-boy oranini korur
 	ikon.AnchorPoint = Vector2.new(0.5, 0.5)
 	ikon.Size = UDim2.new(1, -8, 1, -8)
 	ikon.Position = UDim2.fromScale(0.5, 0.5)
 	ikon.ScaleType = Enum.ScaleType.Fit
 	ikon.Visible = false
-	-- Desen (2) ve parlaklik (3) katmanlarinin ustunde
 	ikon.ZIndex = 5
 	ikon.Parent = yuz
 
@@ -2778,11 +2070,6 @@ local function menuButonu(
 			ikon.Visible = true
 			yedek.Visible = false
 
-			--[[
-				IKON SABITLENIR: bir kez gelen resim bir daha degismez.
-				Teleporter butonunda iki farkli resim arasinda gidip gelme
-				vardi; artik ilk gelen resim kalir.
-			]]
 			local sabit = ikon.Image
 			if sabit ~= "" then
 				ikon:GetPropertyChangedSignal("Image"):Connect(function()
@@ -2809,20 +2096,13 @@ local function menuButonu(
 			bas(false)
 		end)
 		buton.MouseButton1Click:Connect(function()
-			-- Tiklama sesi (sol menu ve Settings butonu)
 			ArayuzSesi.tikla()
 			onClick()
 		end)
 
-		-- Aydinlanma + buyume yalnizca CALISAN butonlarda
 		UI.hover(buton, yuz, yuz)
 	else
-		--[[
-			Islevi olmayan buton KILITLI gorunur: soluk ve uzerinde asma kilit.
-			Basinca hicbir sey olmamasi yerine neden olmadigi bellidir.
-		]]
 		yuz.BackgroundTransparency = 0.35
-		-- Kilitli buton parlamaz; sonuk durmasi kilidin bir parcasi
 		parilti.Visible = false
 		ikon.ImageTransparency = 0.5
 		yedek.TextTransparency = 0.5
@@ -2833,7 +2113,6 @@ local function menuButonu(
 			rozet.Name = "Kilit"
 			rozet.BackgroundTransparency = 1
 			rozet.Size = UDim2.fromOffset(18, 18)
-			-- Kabartma payinin ustunde kalsin, butonun alt kenarina yapismasin
 			rozet.Position = UDim2.new(1, -20, 1, -20 - LIP)
 			rozet.ScaleType = Enum.ScaleType.Fit
 			rozet.Image = kilit
@@ -2845,61 +2124,27 @@ local function menuButonu(
 	return buton
 end
 
---[[
-	HER BUTONUN KENDI RENGI
-
-	Hicbir renk iki butonda tekrar etmiyor: oyuncu ikona bakmadan da
-	hangi butona bastigini renkten cikarabilsin diye. Tonlar UI.Colors
-	paletiyle ayni doygunlukta tutuldu, aksi halde menu alacali duruyor.
-]]
 local MenuRenk = {
-	inventory = Color3.fromRGB(90, 180, 255), -- mavi
-	rotcoin = Color3.fromRGB(120, 226, 150), -- yesil (eski Pets butonunun rengi)
-	quests = Color3.fromRGB(255, 150, 70), -- turuncu
-	rewards = Color3.fromRGB(255, 214, 41), -- altin
-	index = Color3.fromRGB(186, 120, 255), -- mor
-	friends = Color3.fromRGB(255, 120, 190), -- pembe
-	settings = Color3.fromRGB(90, 220, 210), -- turkuaz
-	speed = Color3.fromRGB(110, 230, 255), -- buz mavisi
-	teleporter = Color3.fromRGB(150, 120, 255), -- lila
-	home = Color3.fromRGB(120, 220, 110), -- cimen yesili
-	detective = Color3.fromRGB(150, 150, 165), -- gri (ilerledikce yesile dolar)
+	inventory = Color3.fromRGB(90, 180, 255),
+	rotcoin = Color3.fromRGB(120, 226, 150),
+	quests = Color3.fromRGB(255, 150, 70),
+	rewards = Color3.fromRGB(255, 214, 41),
+	index = Color3.fromRGB(186, 120, 255),
+	friends = Color3.fromRGB(255, 120, 190),
+	settings = Color3.fromRGB(90, 220, 210),
+	speed = Color3.fromRGB(110, 230, 255),
+	teleporter = Color3.fromRGB(150, 120, 255),
+	home = Color3.fromRGB(120, 220, 110),
+	detective = Color3.fromRGB(150, 150, 165),
 }
 
--- Sagdaki ev butonu: sunucu dogrular ve base'in onune isinlar
 local BaseyeIsinlan = Net.event("BaseyeIsinlan")
 
-
---[[
-	=====================================================================
-	BILDIRIM NOKTALARI
-	=====================================================================
-
-	Sol menu butonunun -- ve Rewards panelindeki sekmenin -- sag ust
-	kosesindeki kirmizi nokta: "burada alinacak bir sey var". Oyuncu menuyu
-	hic acmadan gorur, acinca da hangi sekmede oldugunu bulur.
-
-	HEPSI TEK TABLODA. Bu script ust seviye yerel sinirina yakin (bkz.
-	tools/check.luau uyarisi), her nokta icin ayri bir yerel acilmiyor.
-
-	Anahtarlar:
-	  "quests" / "rewards"  sol menu butonlari
-	  "sekme_<id>"          Rewards panelindeki Playtime / Daily / Social
-
-	Noktalari kuran yer menu butonlarinin ve sekmelerin kuruldugu yer;
-	durumu besleyen yer sunucudan durum gelen her olay isleyicisi.
-]]
 local Bildirim = {
-	-- Nokta nesnesini acip kapatan fonksiyonlar (bkz. UI.bildirimNoktasi)
 	noktalar = {} :: { [string]: (acik: boolean) -> () },
-	-- Rewards sekmelerinin son durumu; menu butonu bunlarin toplami
 	odulSekmeleri = {} :: { [string]: boolean },
 }
 
---[[
-	Noktayi acar/kapatir. Nokta henuz kurulmamissa sessizce gecer: sunucudan
-	durum, arayuz kurulmadan once gelebiliyor.
-]]
 function Bildirim.ayarla(anahtar: string, acik: boolean)
 	local nokta = Bildirim.noktalar[anahtar]
 	if nokta then
@@ -2907,10 +2152,6 @@ function Bildirim.ayarla(anahtar: string, acik: boolean)
 	end
 end
 
---[[
-	Bir Rewards sekmesinin durumunu yazar ve menu butonunu tazeler: sekmelerden
-	HERHANGI birinde alinacak bir sey varsa Rewards butonu da yanar.
-]]
 function Bildirim.odulSekmesi(id: string, acik: boolean)
 	Bildirim.odulSekmeleri[id] = acik
 	Bildirim.ayarla(`sekme_{id}`, acik)
@@ -2925,13 +2166,10 @@ function Bildirim.odulSekmesi(id: string, acik: boolean)
 	Bildirim.ayarla("rewards", herhangi)
 end
 
--- SOL: oyunun kendi sistemleri
 menuButonu(solSutun, "inventory", "Inventory", MenuRenk.inventory, toggleEnvanter)
--- Pet sistemi iptal edildi; yerinde Rot Coin magazasi
 menuButonu(solSutun, "rotCoin", "Rot Coin Shop", MenuRenk.rotcoin, function()
 	rotCoinMagazaAc()
 end)
--- Quests ve Rewards toplanacak bir sey olunca kirmizi nokta tasir
 Bildirim.noktalar.quests = UI.bildirimNoktasi(
 	menuButonu(solSutun, "quests", "Quests", MenuRenk.quests, function()
 		gorevPaneliniAc()
@@ -2943,7 +2181,6 @@ Bildirim.noktalar.rewards = UI.bildirimNoktasi(
 	end)
 )
 menuButonu(solSutun, "index", "Index", MenuRenk.index, function()
-	-- Ikinci tiklama kapatir
 	if Index.acikMi() then
 		Index.kapat()
 	else
@@ -2953,20 +2190,13 @@ end)
 menuButonu(solSutun, "friends", "Friends", MenuRenk.friends, function()
 	arkadasPaneliniAc()
 end)
--- Hiz yukseltmesi (ayakkabi); pakette ikon yoksa emoji
 menuButonu(solSutun, "speed", "Speed", MenuRenk.speed, function()
 	ekMenu.hizAc()
 end, "\u{1F45F}")
--- Detective takibi: buton alttan yesile dolar, is bitince parlar
 menuButonu(solSutun, "detective", "Detective", MenuRenk.detective, function()
 	ekMenu.detektifAc()
 end)
 
---[[
-	SAG: yukaridan asagi Teleporter, base'e don, Settings.
-	Sutun alttan dizildigi icin once eklenen ustte durur.
-	Isimler onemli: MadenSayaci "Teleporter" butonunun ustune oturuyor.
-]]
 menuButonu(sagSutun, "teleporter", "Teleporter", MenuRenk.teleporter, function()
 	ekMenu.isinlayiciAc()
 end)
@@ -2977,28 +2207,11 @@ menuButonu(sagSutun, "settings", "Settings", MenuRenk.settings, function()
 	ayarPaneliniAc()
 end)
 
-
-------------------------------------------------------------------
--- GUNLUK ODUL PANELI  --  7 gunluk takvim
---
--- Kartlar bir kez kuruluyor; sunucudan gelen durumla (hangi gun, alinabilir
--- mi, kalan sure) yalnizca dugme yazilari ve renkleri degisiyor. Oduller ve
--- dogrulama SUNUCUDA (bkz. Modules > Odul, Shared > Rewards); "Claim"
--- yalnizca istek gonderir.
---
---   gecmis gun     karartilmis, "Claimed"
---   bugun (hazir)  yesil "Claim", dugme nabiz atar
---   bugun (bekle)  turuncu, kalan sure (sa:dk:sn)
---   gelecek gun    sari, "2 Days" gibi
-------------------------------------------------------------------
 local ODUL_KART = 150
 local ODUL_BOSLUK = 10
--- Baslik (ust) + sekme dugmeleri (58..100) ve altinda sayfa icerigi
 local ODUL_UST = 112
--- 7. gun karti daha genis ve iki satir boyu
 local ODUL_BUYUK_EN = ODUL_KART + 20
 
--- Kart zeminleri (canli takvim gorunumu); 7. gunun zemini gokkusagi
 local ODUL_RENK: { [number]: Color3 } = {
 	[1] = Color3.fromRGB(40, 170, 255),
 	[2] = Color3.fromRGB(255, 160, 30),
@@ -3009,7 +2222,6 @@ local ODUL_RENK: { [number]: Color3 } = {
 	[7] = Color3.fromRGB(255, 255, 255),
 }
 
--- Gecis odullerinin ikonu (bkz. Shared > Icons > Map)
 local ODUL_PASS_IKON: { [string]: string } = {
 	AutoClicker = "autoClicker",
 	Teleporter = "teleporter",
@@ -3039,13 +2251,6 @@ UI.closeButton(odulPanel).MouseButton1Click:Connect(function()
 	odulPanel.Visible = false
 end)
 
---[[
-	SEKMELER  --  Playtime / Daily / Social Rewards
-
-	Her sekmenin kendi sayfasi var (panel boyunda seffaf bir Frame). Daily
-	sayfasi eski 7 gunluk takvimin aynisi; kartlar ona kuruluyor. Panel
-	acilinca son secilen sekme kalir, ilk acilista Daily.
-]]
 local odulSayfalari: { [string]: Frame } = {}
 local odulSekmeDugmeleri: { [string]: TextButton } = {}
 
@@ -3108,7 +2313,6 @@ do
 		})
 
 		odulSekmeDugmeleri[sekme.id] = dugme
-		-- Sekmenin kendi kirmizi noktasi: hangi sayfada alinacak sey var
 		Bildirim.noktalar[`sekme_{sekme.id}`] = UI.bildirimNoktasi(dugme)
 		dugme.MouseButton1Click:Connect(function()
 			odulSekmeSec(sekme.id)
@@ -3128,7 +2332,6 @@ type OdulKart = {
 
 local odulKartlari: { [number]: OdulKart } = {}
 
--- Sunucudan gelen son durum
 local odulGun = 1
 local odulHazir = false
 local odulKalan = 0
@@ -3147,20 +2350,9 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	UI.corner(kart, 10)
 	UI.stroke(kart, Color3.fromRGB(0, 0, 0), 3)
 
-	--[[
-		SON GUNUN ZEMINI = Rot Coin Shop'taki Hacker Mutation Scroll zemini.
-		Siyah levha + uzerinden akan yesil rakamlar; ikisi de orada ne
-		degerdeyse burada da o (bkz. rcCiz > sayiYagmuru). Gokkusagi gecisi
-		yerine bu geldi: en buyuk odul yine ayriksi duruyor ama artik
-		magazadaki Hacker temasiyla ayni dili konusuyor.
-	]]
 	if buyuk then
 		UI.corner(UI.sayiYagmuru(kart, UI.HackerYesil, 18, 1, 1.8, 0.32), 10)
 	else
-		--[[
-			ZEMIN GECISI. Normal kartlar ustten asagi hafifce koyulasiyor:
-			duz renk yerine parlak kart hissi.
-		]]
 		local gecis = Instance.new("UIGradient")
 		gecis.Rotation = 90
 		gecis.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 175, 175))
@@ -3183,7 +2375,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 
 	local odul = Rewards.get(gun)
 
-	-- Ana odulun yaninda Rot Coin varsa basligin altinda sari yazi: "+1 Rot Coin"
 	local coinVar = (odul.rotCoins or 0) > 0
 	if coinVar then
 		local coinYazisi = UI.text({
@@ -3201,18 +2392,9 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		UI.stroke(coinYazisi, Color3.fromRGB(0, 0, 0), 2)
 	end
 
-	-- Rot Coin yazisi olan kartta gorsel biraz kucuk ve asagida: yaziyla cakismasin
 	local ikonBoy = if buyuk then 120 elseif coinVar then 48 else 62
 	local ikonKonum = UDim2.new(0.5, 0, 0.5, if coinVar then 0 else -10)
 
-	--[[
-		LUCKY BLOCK GUNLERI: "?" kutusu ikonu yerine blogun KENDI modeli
-		doner -- oyuncu Hacker gununde Hacker blogunu goruyor.
-
-		Modul burada isteniyor (ust seviyede degil): dosya 200 yerel
-		sinirinin dibinde, ustte yeni local acmak arayuzu komple kirar.
-		require zaten onbellekli, tekrari bedava.
-	]]
 	local modelKondu = false
 	if odul.kind == "luckyblock" then
 		local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
@@ -3225,7 +2407,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		yuva.BackgroundTransparency = 1
 		yuva.Parent = kart
 
-		-- Blogun arkasinda turun renginde yumusak parlama (viewport isik cizmiyor)
 		UI.parlama(yuva, Rewards.color(gun), math.floor(ikonBoy * 1.3), 2)
 
 		modelKondu = LuckyOnizleme.ekle(yuva, odul.tier, 4)
@@ -3234,7 +2415,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		end
 	end
 
-	-- Model yoksa eski ikon: Rot icin para, Lucky Block icin paketteki blok
 	if not modelKondu then
 		local ikon = Instance.new("ImageLabel")
 		ikon.Name = "Ikon"
@@ -3244,11 +2424,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		ikon.BackgroundTransparency = 1
 		ikon.ScaleType = Enum.ScaleType.Fit
 		ikon.Parent = kart
-		--[[
-			GECIS GUNLERI (kind = "pass", 3. gun Detective Pass) eskiden
-			"luckyBlock" dalina dusup "?" kutusu gosteriyordu; artik gecisin
-			kendi ikonu geliyor (Assets > Icons > Detective).
-		]]
 		Icons.bind(
 			ikon,
 			if odul.kind == "rot"
@@ -3257,18 +2432,11 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 				else "luckyBlock"
 		)
 
-		-- Blok ikonu turun renginde hafifce boyanir: en pahali blok ucuzundan ayrilsin
 		if odul.kind == "luckyblock" then
 			ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(Rewards.color(gun), 0.35)
 		end
 	end
 
-	--[[
-		ODUL YAZISI IKI SATIRA SIGAR
-
-		"Detective Pass (1 Day)" tek satira sigmiyor ve sonu kesiliyordu --
-		tam da SURENIN yazdigi yer. Sarma acik, kutu iki satir boyunda.
-	]]
 	UI.text({
 		text = Rewards.label(gun),
 		size = UI.Sizes.small,
@@ -3281,18 +2449,7 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		wrapped = true,
 	})
 
-	--[[
-		YANINDA VERILEN SURELI GECIS  (5. gun: 12 saat Teleporter)
-
-		Ana odul Lucky Block oldugu icin gecis hicbir yerde gorunmuyordu;
-		oyuncu ancak odulu alinca bildirimde fark ediyordu. Artik kartta
-		kendi satiri var -- Rot Coin satiriyla ayni mantik.
-	]]
 	if odul.pass and odul.passSeconds and odul.kind ~= "pass" then
-		--[[
-			Modul burada isteniyor (ust seviyede degil): dosya 200 yerel
-			sinirinin dibinde. require onbellekli, tekrari bedava.
-		]]
 		local Passler = require(Shared:WaitForChild("Passler")) :: any
 		local bilgi = Passler.get(odul.pass)
 		local gecisYazi = UI.text({
@@ -3310,7 +2467,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 		UI.stroke(gecisYazi, Color3.fromRGB(0, 0, 0), 2)
 	end
 
-	-- Alt dugme cubugu: durum yazisi + (yalnizca bugun hazirken) tiklanir
 	local cubuk = Instance.new("Frame")
 	cubuk.Name = "Dugme"
 	cubuk.AnchorPoint = Vector2.new(0.5, 1)
@@ -3322,7 +2478,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	UI.corner(cubuk, 8)
 	UI.stroke(cubuk, Color3.fromRGB(0, 0, 0), 2)
 
-	-- Nabiz bu olcekte; kartin kendi olcegi kutlamaya ayrildi, ikisi karismasin
 	local cubukOlcek = Instance.new("UIScale")
 	cubukOlcek.Parent = cubuk
 
@@ -3344,13 +2499,11 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	tikla.Text = ""
 	tikla.Parent = cubuk
 	tikla.MouseButton1Click:Connect(function()
-		-- Yalnizca istek: gun ve odul sunucuda belirleniyor
 		if gun == odulGun and odulHazir then
 			OdulAl:FireServer()
 		end
 	end)
 
-	-- Alinmis gunun karartmasi
 	local karartma = Instance.new("Frame")
 	karartma.Name = "Karartma"
 	karartma.Size = UDim2.fromScale(1, 1)
@@ -3372,7 +2525,6 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	}
 end
 
--- Gun 1-6: 3 sutun x 2 satir; son gun sagda iki satir boyunda
 for gun = 1, #Rewards.Days - 1 do
 	local sutun = (gun - 1) % 3
 	local satir = (gun - 1) // 3
@@ -3417,10 +2569,6 @@ local function odulCiz()
 	end
 end
 
---[[
-	NABIZ: alinabilir gunun dugmesi hafifce buyuyup kuculur.
-	Durum her degistiginde eski nabiz durdurulup yenisi kuruluyor.
-]]
 local odulNabiz: Tween? = nil
 local odulNabizOlcek: UIScale? = nil
 
@@ -3468,11 +2616,9 @@ OdulDurum.OnClientEvent:Connect(function(data)
 
 	odulCiz()
 	nabizGuncelle()
-	-- Gunluk odul alinabilir durumdaysa Daily sekmesinde ve menu butonunda nokta
 	Bildirim.odulSekmesi("daily", odulHazir)
 end)
 
--- Odulu alinan kart kisaca buyuyup yerine oturur
 OdulSonuc.OnClientEvent:Connect(function(data)
 	local gun = if type(data) == "table" then tonumber(data.day) else nil
 	local kart = if gun then odulKartlari[gun] else nil
@@ -3491,10 +2637,6 @@ OdulSonuc.OnClientEvent:Connect(function(data)
 	end)
 end)
 
---[[
-	GERI SAYIM istemcide de ilerliyor. Sifira inince sunucudan taze durum
-	isteniyor: "Claim" gercekten acildi mi, sunucu karar versin.
-]]
 task.spawn(function()
 	while true do
 		task.wait(1)
@@ -3510,20 +2652,6 @@ task.spawn(function()
 	end
 end)
 
-------------------------------------------------------------------
--- REWARDS > PLAYTIME ve SOCIAL REWARDS SAYFALARI
---
--- Ayarlar Shared > SosyalOdul, dogrulama ServerScriptService > SosyalOdul.
--- Durumu degisen dugmeler UI.button ile kurulmuyor: UI.hover ilk uzerine
--- gelmede rengi hafizaya aliyor ve Claim -> Claimed renk degisimini geri
--- ceviriyordu. Asagidaki dugmeler hover'siz.
-------------------------------------------------------------------
---
--- BEKLEME MENUYU KILITLEMESIN: yeni modul (Shared > SosyalOdul) ve remote'lar
--- WaitForChild ile aliniyor. Scriptin basinda beklenseydi, biri Studio'da
--- henuz yokken butun sol menu ve paneller hic kurulmuyordu. Bu bolum kendi
--- is parcaciginda kuruluyor; eksik olursa yalnizca bu iki sekme bos kalir.
-------------------------------------------------------------------
 local EkOdulAc: RemoteEvent? = nil
 
 function odulPaneliniAc()
@@ -3586,14 +2714,9 @@ task.spawn(function()
 		return f
 	end
 
-	-- Sunucudan gelen son durum
 	local ekDurum: any = nil
-	-- Oturumun istemcideki baslangici: sure her saniye burada ilerliyor
 	local ptBaslangic = os.clock()
 
-	------------------------------------------------------------------
-	-- PLAYTIME
-	------------------------------------------------------------------
 	local ptSayfa = odulSayfalari.playtime
 
 	UI.text({
@@ -3661,7 +2784,6 @@ task.spawn(function()
 				parent = kart,
 			})
 
-			-- Lucky Block odulunde donen blok modeli (bkz. Daily kartlari)
 			local blokKondu = false
 			if odul.kind == "luckyblock" then
 				local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
@@ -3693,13 +2815,6 @@ task.spawn(function()
 				Icons.bind(ikon, SosyalOdul.ikon(odul))
 			end
 
-			--[[
-				IKI SATIRA SIGAR
-
-				"Auto Clicker 15 min" tek satira sigmiyor ve sonu "..." ile
-				kesiliyordu: odulun SURESI tam da kesilen yerde kaliyordu.
-				Sarma acik ve kutu iki satir boyunda.
-			]]
 			UI.text({
 				text = SosyalOdul.etiket(odul),
 				size = UI.Sizes.small,
@@ -3723,14 +2838,6 @@ task.spawn(function()
 		end
 	end
 
-	--[[
-		Suresi dolmus ama henuz alinmamis bir Playtime odulu var mi.
-
-		PANEL KAPALIYKEN DE BILINMELI: nokta oyuncuyu panele cagiran sey,
-		panel acilana kadar bekleseydi hic gorunmezdi. Bu yuzden asagidaki
-		sayac her saniye bunu hesapliyor, cizimi ise yalnizca sayfa acikken
-		yapiyor.
-	]]
 	local function playtimeHazirMi(): boolean
 		local gecen = os.clock() - ptBaslangic
 		for i, odul in SosyalOdul.Playtime do
@@ -3764,14 +2871,10 @@ task.spawn(function()
 		end
 	end
 
-	------------------------------------------------------------------
-	-- SOCIAL REWARDS
-	------------------------------------------------------------------
 	local soSayfa = odulSayfalari.social
 	local KART_EN = (ODUL_W - 30) / 2
 	local KART_BOY = 176
 
-	-- Grup karti
 	local grupKart = kutu(soSayfa, UDim2.fromOffset(10, ODUL_UST), UDim2.fromOffset(KART_EN, KART_BOY), ALTIN)
 
 	local grupBaslik = UI.text({
@@ -3816,7 +2919,6 @@ task.spawn(function()
 		EkOdulAl:FireServer("group")
 	end)
 
-	-- Like + Favorite karti
 	local likeKart = kutu(
 		soSayfa,
 		UDim2.fromOffset(20 + KART_EN, ODUL_UST),
@@ -3866,14 +2968,12 @@ task.spawn(function()
 		if ekDurum and ekDurum.like and ekDurum.like.claimed then
 			return
 		end
-		-- Roblox'un favori penceresi; begeni dogrulanamadigi icin odul bir kez verilir
 		pcall(function()
 			AvatarEditorService:PromptSetFavorite(game.PlaceId, Enum.AvatarItemType.Asset, true)
 		end)
 		EkOdulAl:FireServer("like")
 	end)
 
-	-- Kod kutusu
 	local KOD_Y = ODUL_UST + KART_BOY + 10
 	local kodKart = kutu(
 		soSayfa,
@@ -3985,11 +3085,6 @@ task.spawn(function()
 			likeYazi.Text = "Claim"
 		end
 
-		--[[
-			Grup ve like odulleri bir kereliktir: alinmamis biri varsa nokta
-			yanar ve oyuncu alana kadar yanik kalir. Grup kimligi 0 iken odul
-			"Coming Soon" demektir, sayilmaz.
-		]]
 		local grupAlinabilir = SosyalOdul.GroupId ~= 0 and not (grup and grup.claimed)
 		Bildirim.odulSekmesi("social", grupAlinabilir or not (like and like.claimed))
 	end
@@ -4009,10 +3104,6 @@ task.spawn(function()
 	Bildirim.odulSekmesi("playtime", playtimeHazirMi())
 	socialCiz()
 
-	--[[
-		Playtime geri sayimi. Cizim yalnizca sayfa acikken yapilir ama
-		BILDIRIM her saniye tazelenir: oyuncuyu panele cagiran sey o.
-	]]
 	task.spawn(function()
 		while true do
 			task.wait(1)
@@ -4023,23 +3114,13 @@ task.spawn(function()
 		end
 	end)
 
-	-- Artik hazir: panel acilinca durum istenir; acik ise hemen iste
 	EkOdulAc = ekAc
 	if odulPanel.Visible then
 		ekAc:FireServer()
 	end
 end)
 
-
--- FRIENDS SEKMESI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
 do
-	------------------------------------------------------------------
-	-- FRIENDS SEKMESI  --  arkadas buffi
-	--
-	-- Ayni sunucuda Roblox arkadasi olan oyuncu kazida +%15 sans alir. Bonus
-	-- sunucuda hesaplanir (bkz. Modules > Arkadaslar); burasi yalnizca
-	-- gosterir: buffun durumu, sunucudaki arkadaslar ve davet dugmesi.
-	------------------------------------------------------------------
 	local arkadasPanel = UI.panel(screen, UDim2.fromOffset(440, 440), "Arkadaslar")
 
 	UI.text({
@@ -4073,7 +3154,6 @@ do
 	davetButon.AnchorPoint = Vector2.new(0.5, 1)
 	davetButon.Position = UDim2.new(0.5, 0, 1, -16)
 
-	-- Sunucudan gelen son durum
 	local arkadasSayisi = 0
 	local arkadasYuzde = 15
 	local arkadasListesi: { any } = {}
@@ -4122,7 +3202,6 @@ do
 			avatar.Parent = satir
 			UI.corner(avatar, 22)
 
-			-- Avatar resmi web'den gelir ve bekletir: listeyi tutmasin
 			local userId = tonumber(arkadas.userId)
 			if userId then
 				task.spawn(function()
@@ -4179,7 +3258,6 @@ do
 		arkadasYuzde = tonumber(data.yuzde) or arkadasYuzde
 		arkadasListesi = if type(data.arkadaslar) == "table" then data.arkadaslar else {}
 
-		-- Rot'un ustundeki buff yazisi
 		arkadasBuff.Text = `Friend Boost: +{arkadasYuzde}% Luck`
 		arkadasBuff.Visible = arkadasSayisi > 0
 		solSutunuYerlestir()
@@ -4189,11 +3267,6 @@ do
 		end
 	end)
 
-	--[[
-		DAVET
-		Roblox'un kendi davet penceresi. Studio'da ve davete izin vermeyen
-		hesaplarda acilamaz; o durumda panel sebebini yazar.
-	]]
 	davetButon.MouseButton1Click:Connect(function()
 		local oyuncu = Players.LocalPlayer
 		local ok, izin = pcall(function()
@@ -4219,27 +3292,9 @@ do
 	end
 end
 
-
--- ROTCOIN MAGAZASI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
 do
-	------------------------------------------------------------------
-	-- ROTCOIN MAGAZASI  (sol menude eski Pets butonunun yeri)
-	--
-	-- Urunler ve fiyatlar Shared > RotCoinMagaza'da; satin alma sunucuda
-	-- dogrulanir. Panel yalnizca listeyi cizer ve id yollar.
-	------------------------------------------------------------------
 	local RC_SARI = Color3.fromRGB(255, 215, 40)
-	--[[
-		Lucky Block satirlarinda ikon yerine blogun kendi modeli gosteriliyor.
-		Require BLOK ICINDE: ust seviye 195 yerelle sinira yakin (bkz. dosya
-		basindaki not ve tools/check.luau).
-	]]
 	local Assets = require(Shared:WaitForChild("Assets"))
-	--[[
-		Parsomen (scroll) modelleri. Bu require KAYIPTI: satir dongusu scroll
-		urunune gelince "attempt to index nil with 'model'" hatasi veriyor ve
-		ondan SONRAKI urunler (sans iksirleri) hic cizilmiyordu.
-	]]
 	local Scrolls = require(Shared:WaitForChild("Scrolls"))
 
 	local rcPanel = UI.panel(screen, UDim2.fromOffset(520, 540), "RotCoinMagaza")
@@ -4270,15 +3325,6 @@ do
 		parent = rcPanel,
 	})
 
-	--[[
-		LISTE BIR CanvasGroup ICINDE
-
-		Satirlardaki ikonlar UI.sallan ile DONDURULUYOR; Roblox dondurulmus
-		nesneyi ScrollingFrame'in kirpmasiyla kesmiyor. Kaydirinca yonca ve
-		Lucky Block gorselleri listenin disina tasiyordu (Store'da ayni sorun
-		ayni yolla cozuldu). CanvasGroup once kendi yuzeyine ciziyor ve o
-		yuzeyi kendi sinirinda kesiyor.
-	]]
 	local rcListeKabi = Instance.new("CanvasGroup")
 	rcListeKabi.Name = "ListeKabi"
 	rcListeKabi.Position = UDim2.fromOffset(14, 126)
@@ -4289,10 +3335,8 @@ do
 
 	local rcListe = makeScroll(rcListeKabi, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1))
 
-	-- Sunucudan gelen son durum
 	local rcBakiye = inventory.rotCoins or 0
 	local iksirCarpan = 1
-	-- Iksirin bitecegi an (os.clock); istemci kendi sayar, sunucu her alista duzeltir
 	local iksirBitis = 0
 
 	local function iksirKalan(): number
@@ -4319,23 +3363,10 @@ do
 		end
 	end
 
-	--[[
-		CANLI KART ZEMINI  --  kristal dokusu + kayan isik
-
-		Satir urunun renginde PARLAK bir levha: ustu acik, alti koyu; uzerine
-		capraz kristal yuzeyleri ve butun satiri sagdan sola tarayan genis
-		bir isik bandi biniyor. Ikisi de surekli hareket ettigi icin kart
-		canli duruyor.
-
-		Bandi DONDURMUYORUZ: dondurulmus nesneyi ClipsDescendants kirpmiyor
-		(bkz. UI.luau notlari), bant kartin disina tasardi. Egik gorunumu
-		UIGradient'in acisi veriyor.
-	]]
 	local function canliZemin(kart: Frame, renk: Color3)
 		kart.BackgroundColor3 = Color3.new(1, 1, 1)
 		kart.ClipsDescendants = true
 
-		-- Ustu acik, alti koyu: madeni levha hissi
 		local zemin = Instance.new("UIGradient")
 		zemin.Rotation = 90
 		zemin.Color = ColorSequence.new({
@@ -4345,7 +3376,6 @@ do
 		})
 		zemin.Parent = kart
 
-		-- Kristal yuzeyleri: iki capraz serit katmani, agir agir kayiyor
 		for i, aci in { 26, -26 } do
 			local doku = UI.stripeLayer(kart, Color3.new(1, 1, 1), aci, 4, if i == 1 then 0.88 else 0.92)
 			doku.ZIndex = 2
@@ -4362,7 +3392,6 @@ do
 			end
 		end
 
-		-- Satiri tarayan genis isik bandi
 		local isik = Instance.new("Frame")
 		isik.Name = "Tarama"
 		isik.Size = UDim2.fromScale(1, 1)
@@ -4390,31 +3419,12 @@ do
 		):Play()
 	end
 
-	--[[
-		KART RESIMLERI  (Assets > Icons)
-
-		Satir zeminleri ve buton resmi Studio'ya elle konuyor; kod once
-		onlari arar, bulamazsa yukaridaki canliZemin cizimine duser.
-
-		  rc_bg_normal / rc_bg_golden / rc_bg_diamond   Lucky Block zeminleri
-		  rc_bg_<urun id>                               tek bir urune ozel zemin
-		  rc_bg                                         kalan urunlerin zemini
-		  rc_button / rc_button_pasif                   fiyat dugmesi (alinabilir / alinamaz)
-
-		Ad kuralsiz: buyuk/kucuk harf, bosluk ve alt cizge farki onemsiz.
-	]]
 	local function kartResmi(urun: any): string?
 		local adaylar: { string } = {}
 		if urun.kind == "luckyblock" and urun.tier then
 			table.insert(adaylar, `rc_bg_{string.lower(urun.tier)}`)
 		end
 		table.insert(adaylar, `rc_bg_{string.lower(urun.id)}`)
-		--[[
-			GENEL "rc_bg" BILEREK EN SONDA VE TUR BASINA:
-			iksir/parsomen satirlari Lucky Block zeminine (turkuaz kristal)
-			dusunce magaza tek tip ve yanlis gorunuyordu. Once turune ozel
-			resim aranir; hicbiri yoksa satir KENDI renginde cizilir.
-		]]
 		table.insert(adaylar, `rc_bg_{string.lower(urun.kind)}`)
 
 		for _, ad in adaylar do
@@ -4426,31 +3436,9 @@ do
 		return nil
 	end
 
-	--[[
-		RESIMLI ZEMIN  --  akan doku + tarayan isik
-
-		Resim satirdan GENIS kuruluyor ve icinde saga sola suzuluyor; satir
-		kirptigi icin disari tasmiyor. Boylece kristal yuzey donuk bir
-		fotograf gibi durmuyor, akiyor. Ustunden ayrica genis bir isik bandi
-		geciyor.
-
-		faz: her satir farkli anda baslasin diye gecikme (sira numarasi).
-	]]
 	local function resimliZemin(kart: Frame, resim: string, faz: number)
 		kart.BackgroundTransparency = 1
 
-		--[[
-			ZEMIN BIR CANVASGROUP ICINDE.
-
-			Eskiden resim dogrudan karta konuyor, tasan kismi da kartin
-			ClipsDescendants'i kirpiyordu. Ama ClipsDescendants DIKDORTGEN
-			kirpiyor: kartin yuvarlak kosesinde resim keskin kaliyor,
-			pencereye oturmamis duruyordu.
-
-			CanvasGroup once kendi yuzeyine ciziyor, UICorner o yuzeye
-			uygulaniyor -- kirpma da yuvarlak oluyor. (Ayni cozum Store
-			kartlarinin arka planinda da var, bkz. UI.yumusakResim.)
-		]]
 		local kap = Instance.new("CanvasGroup")
 		kap.Name = "ZeminKabi"
 		kap.Size = UDim2.fromScale(1, 1)
@@ -4464,7 +3452,6 @@ do
 		zemin.Name = "Zemin"
 		zemin.AnchorPoint = Vector2.new(0.5, 0.5)
 		zemin.Position = UDim2.fromScale(0.44, 0.5)
-		-- Satirdan genis: kayarken kenarda bosluk acilmasin
 		zemin.Size = UDim2.fromScale(1.3, 1.16)
 		zemin.BackgroundTransparency = 1
 		zemin.Image = resim
@@ -4472,7 +3459,6 @@ do
 		zemin.ZIndex = 1
 		zemin.Parent = kap
 
-		-- Doku ileri geri akar (her satir kendi gecikmesiyle)
 		TweenService:Create(
 			zemin,
 			TweenInfo.new(5.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, faz * 0.5),
@@ -4506,25 +3492,13 @@ do
 		):Play()
 	end
 
-	--[[
-		DONEN LUCKY BLOCK ONIZLEMESI  --  Store'daki ile ayni
-
-		Blok tam karsidan degil ucte-dortluk acidan duruyor ve UI.sallan'in
-		ritminde kendi ekseninde salliniyor. Hepsi TEK RenderStepped'te
-		donuyor; panel kapaliyken dongu ilk satirda cikiyor.
-
-		ViewportFrame parcacik/isin/isik CIZMEZ (Roblox siniri); blogun
-		etrafindaki parlamayi UI.parlama veriyor.
-	]]
 	local RC_BAKIS = Vector3.new(0, 0, -1)
 	local RC_DURUS = CFrame.Angles(0, math.rad(28), 0) * CFrame.Angles(math.rad(-16), 0, 0)
 	local RC_CERCEVE = 0.78
 	local RC_ISIK = Color3.fromRGB(255, 255, 255)
 
-	-- Sallanan onizlemeler (satirlar yeniden cizilince listeden dusuyorlar)
 	local rcOnizlemeler: { { model: Model, merkez: Vector3, taban: CFrame } } = {}
 
-	-- Kadraj yalnizca GORUNUR parcalardan: gorunmez tutamaklar blogu kucultmesin
 	local function rcGorunenKutu(model: Model): (Vector3?, Vector3?)
 		local enAz: Vector3? = nil
 		local enCok: Vector3? = nil
@@ -4550,17 +3524,12 @@ do
 		return (enAz + enCok) / 2, enCok - enAz
 	end
 
-	--[[
-		Madalyonun icine blogun donen 3B onizlemesini kurar.
-		Model bulunamazsa false doner; cagiran taraf ikona duser.
-	]]
 	local function rcLuckyOnizleme(kutu: GuiObject, tier: any): boolean
 		local model = Assets.luckyBlockModel(tier.modelName or tier.displayName, tier.order)
 		if not model then
 			return false
 		end
 
-		-- Onizlemede script ve ses calismasin; efektler dursun (zaten cizilmiyorlar)
 		for _, nesne in model:GetDescendants() do
 			if nesne:IsA("BaseScript") or nesne:IsA("Sound") then
 				nesne:Destroy()
@@ -4596,19 +3565,16 @@ do
 		return true
 	end
 
-	-- RunService ust seviyede yerel degil (200 yerel siniri): servis burada alinir
 	game:GetService("RunService").RenderStepped:Connect(function()
 		if not rcPanel.Visible then
 			return
 		end
 
-		-- UI.sallan ile ayni ritim: tam donem sallanma suresinin iki kati
 		local aci = math.rad(UI.SallanmaAci) * math.sin(os.clock() * math.pi / UI.SallanmaSuresi)
 
 		for i = #rcOnizlemeler, 1, -1 do
 			local kayit = rcOnizlemeler[i]
 			if not kayit.model.Parent then
-				-- Satir yeniden cizildi: kayit listeden duser
 				rcOnizlemeler[i] = rcOnizlemeler[#rcOnizlemeler]
 				rcOnizlemeler[#rcOnizlemeler] = nil
 				continue
@@ -4638,14 +3604,6 @@ do
 			satir.LayoutOrder = sira
 			satir.Parent = rcListe
 			UI.corner(satir, 12)
-			--[[
-				Zemin: Assets > Icons icinde resim varsa O, yoksa renkli
-				canli levha cizimi (bkz. kartResmi / canliZemin).
-			]]
-			--[[
-				HACKER SCROLL: zemin SIYAH. Yesil zeminde yesil rakam yagmuru
-				kayboluyordu; siyahta Matrix gibi okunuyor.
-			]]
 			local zeminRenk = if urun.scroll == "HackerMutation"
 				then UI.HackerZemin
 				else urun.color
@@ -4663,38 +3621,20 @@ do
 			ikon.Position = UDim2.fromOffset(10, 10)
 			ikon.Size = UDim2.fromOffset(64, 64)
 			ikon.ZIndex = 5
-			-- Ikon koyu yuvarlak bir rozetin icinde: renkli zeminde kaybolmasin
 			ikon.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 			ikon.BackgroundTransparency = 0.55
 			ikon.ScaleType = Enum.ScaleType.Fit
 			ikon.Parent = satir
 			UI.corner(ikon, 32)
-			-- Koyu madalyonun kenari: zeminde kaybolmasin
 			UI.stroke(ikon, Color3.fromRGB(0, 0, 0), 2)
-			-- Store'la ayni ritimde sallanir; donmez, urunun yuzu ekranda kalir
 			UI.sallan(ikon)
-			--[[
-				SCROLL'DA IKON YERINE MODEL
-
-				Parsomenin ikonu yok; onun yerine kendi Tool modeli kucuk bir
-				ViewportFrame'de gosteriliyor (hotbarda gorunenle ayni sey).
-				Model bulunamazsa Output'a yazilir ve ikona dusulur.
-			]]
 			local modelKondu = false
 
-			--[[
-				LUCKY BLOCK'TA DA IKON YERINE MODEL
-
-				Paketteki "?" kutusu yerine blogun KENDI modeli gosteriliyor
-				(Assets > LuckyBlocks); oyuncu satin alacagi blogu birebir
-				goruyor. Model bulunamazsa eski ikona dusulur.
-			]]
 			if urun.kind == "luckyblock" and urun.tier then
 				local tur = LuckyBlock.get(urun.tier)
 				modelKondu = tur ~= nil and rcLuckyOnizleme(ikon, tur)
 
 				if modelKondu then
-					-- Blogun arkasinda kendi renginde yumusak parlama
 					UI.parlama(satir, urun.color, 74, 4).Position =
 						UDim2.fromOffset(ikon.Position.X.Offset + 32, 42)
 				else
@@ -4705,10 +3645,6 @@ do
 				end
 			end
 
-			--[[
-				HACKER TEMASI: Store'daki Hacker Lucky Block kartinin aynisi --
-				satirin uzerinden asagi akan yesil rakamlar.
-			]]
 			if urun.kind == "scroll" and urun.scroll == "HackerMutation" then
 				UI.corner(UI.sayiYagmuru(satir, UI.HackerYesil, 18, 2, 1.8, 0.32), 12)
 			end
@@ -4732,14 +3668,6 @@ do
 			end
 
 			if not modelKondu then
-				--[[
-					IKON YOKSA BOS DAIRE KALMASIN
-
-					Paketteki sans iksiri ikonlari (luck2 / luck3) bazi
-					paketlerde yok; madalyon bombos duruyordu. Ikon gelene
-					kadar yerinde urunun kisa etiketi durur: iksirde carpan
-					("x1.5"), digerlerinde adin ilk harfi.
-				]]
 				local kisa = if urun.kind == "potion" and urun.multiplier
 					then RotCoinMagaza.carpanYazisi(urun.multiplier)
 					else string.upper(string.sub(urun.name, 1, 1))
@@ -4761,7 +3689,6 @@ do
 					end
 				end)
 
-				-- Renk tonu yalnizca IKONA; model kendi rengiyle kalir
 				if urun.tint then
 					ikon.ImageColor3 = Color3.new(1, 1, 1):Lerp(urun.color, 0.35)
 				end
@@ -4789,17 +3716,6 @@ do
 				zIndex = 5,
 			})
 
-			--[[
-				FIYAT DUGMESI
-
-				Para yetiyorsa yesil, yetmiyorsa gri. Yazinin sagindaki
-				kucuk madeni para (Icons "rotCoin") fiyatin neyle odendigini
-				bir bakista soyluyor.
-			]]
-			--[[
-				Dugme resmi varsa (rc_button / rc_button_pasif) o kullanilir;
-				yoksa oyunun 3B cizim dugmesi.
-			]]
 			local butonResmi = if yeter
 				then (Icons.assetTam("rc_button") or Icons.asset("rc_button"))
 				else (Icons.assetTam("rc_button_pasif") or Icons.asset("rc_button_pasif"))
@@ -4848,7 +3764,6 @@ do
 			buton.ZIndex = 5
 
 			if butonYazi then
-				-- Yazi solda, para ikonuna yer birakir
 				butonYazi.Size = UDim2.new(1, -34, 1, 0)
 				butonYazi.Position = UDim2.fromOffset(2, 0)
 			end
@@ -4879,7 +3794,6 @@ do
 		end
 	end
 
-	-- Bakiye degisince (odul, satin alma) acik panel tazelensin
 	EnvanterGuncelle.OnClientEvent:Connect(function(data)
 		if type(data) ~= "table" or type(data.rotCoins) ~= "number" then
 			return
@@ -4899,7 +3813,6 @@ do
 		iksirYazilariniGuncelle()
 	end)
 
-	-- Geri sayim: saniyede bir yazilar guncellenir, sure bitince yazi kalkar
 	task.spawn(function()
 		while true do
 			task.wait(1)
@@ -4910,23 +3823,7 @@ do
 	RotCoinMagazaAc:FireServer()
 end
 
--- AYARLAR PANELI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
 do
-	------------------------------------------------------------------
-	-- AYARLAR PANELI  (Settings)
-	--
-	-- Panelin butun metinleri INGILIZCE -- oyuncunun gordugu her yer oyle.
-	--
-	-- Iki ayar var:
-	--   ARAYUZ OLCEGI  -- UI modulu uyguluyor (UI.setScale butun ScreenGui'lere
-	--                     UIScale koyar)
-	--   MUZIK          -- arka plan muziginin sesi ve ac/kapat (bkz. Muzik modulu)
-	--   SES EFEKTLERI  -- muzik disindaki butun sesler (bkz. SesEfekti modulu)
-	-- Burasi yalnizca paneli cizer ve secilen degerleri sunucuya kaydeder.
-	--
-	-- Deger sunucuda PlayerData icinde durur (uiScale), boylece oyuncu
-	-- cikip girince ayari yerinde kalir.
-	------------------------------------------------------------------
 	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 560), "Ayarlar")
 
 	UI.text({
@@ -4961,7 +3858,6 @@ do
 		parent = ayarPanel,
 	})
 
-	-- Buyutme/kucultme ikilisi ve aralarindaki yuzde yazisi
 	local kucultButon = UI.button(ayarPanel, "-", UDim2.fromOffset(62, 52), UI.Colors.panelLight)
 	kucultButon.Name = "Kucult"
 	kucultButon.Position = UDim2.fromOffset(18, 116)
@@ -4981,7 +3877,6 @@ do
 	buyutButon.Name = "Buyut"
 	buyutButon.Position = UDim2.fromOffset(350, 116)
 
-	-- "+" ve "-" isaretleri govde yazisi boyunda kucuk kaliyordu
 	local function isaretiBuyut(buton: TextButton)
 		local etiket = buton:FindFirstChild("Label")
 		if etiket and etiket:IsA("TextLabel") then
@@ -5006,9 +3901,6 @@ do
 		parent = ayarPanel,
 	})
 
-	------------------------------------------------------------------
-	-- MUZIK: ses seviyesi (-/+) ve ac/kapat
-	------------------------------------------------------------------
 	UI.text({
 		text = "MUSIC",
 		size = UI.Sizes.small,
@@ -5021,12 +3913,6 @@ do
 
 	local MUZIK_ADIM = 10
 
-	--[[
-		SES SATIRI: [-] yuzde [+] [ON/OFF]
-
-		Muzik ve ses efektleri ayni duzende, alt alta. Ac/kapat dugmesinin
-		rengi durumla degisir: UI.hover kullanilmaz (rengi geri cevirirdi).
-	]]
 	local function sesSatiri(ad: string, y: number)
 		local kis = UI.button(ayarPanel, "-", UDim2.fromOffset(52, 52), UI.Colors.panelLight)
 		kis.Name = `{ad}Kis`
@@ -5088,10 +3974,6 @@ do
 
 	local efektKisButon, efektYazi, efektAcButon, efektDugme, efektDugmeYazi = sesSatiri("Efekt", 396)
 
-	--[[
-		EKRAN SARSINTISI: tek ac/kapat. Deger oyuncunun "SarsintiKapali"
-		niteliginde durur; kazi, Fuse ve Lucky Block sarsintilari onu okur.
-	]]
 	UI.text({
 		text = "SCREEN SHAKE",
 		size = UI.Sizes.small,
@@ -5134,13 +4016,6 @@ do
 	end
 	player:GetAttributeChangedSignal("SarsintiKapali"):Connect(sarsintiCiz)
 
-	--[[
-		SUNUCUYA KAYIT
-
-		Butona her basista remote atilmasin diye son degisiklikten 0.4 saniye
-		sonra TEK sefer gonderilir. Oyuncu ard arda bassa bile sunucuya tek
-		istek gider.
-	]]
 	local ayarKaydiBekliyor = false
 
 	local function ayarKaydiniPlanla()
@@ -5201,7 +4076,6 @@ do
 	end
 
 	local function efektSesDegistir(fark: number)
-		-- Ses degistirmek kapali efektleri de acar
 		SesEfekti.ayarla(SesEfekti.yuzde() + fark, false)
 		efektCiz()
 		ayarKaydiniPlanla()
@@ -5216,7 +4090,6 @@ do
 	end)
 
 	sarsintiDugme.MouseButton1Click:Connect(function()
-		-- Hemen etkili olsun; sunucu kaydedip ayni degeri geri yazar
 		player:SetAttribute("SarsintiKapali", not sarsintiKapaliMi())
 		sarsintiCiz()
 		ayarKaydiniPlanla()
@@ -5229,7 +4102,6 @@ do
 	end)
 
 	local function muzikSesDegistir(fark: number)
-		-- Ses degistirmek kapali muzigi de acar
 		Muzik.ayarla(Muzik.yuzde() + fark, false)
 		muzikCiz()
 		ayarKaydiniPlanla()
@@ -5249,11 +4121,6 @@ do
 		ayarKaydiniPlanla()
 	end)
 
-	--[[
-		Sunucudan gelen kayitli ayar. Hem oyuncu girdiginde hem de her
-		kaydetmeden sonra geliyor; ikisinde de yazi ile olcek ayni degere
-		oturur.
-	]]
 	AyarDurum.OnClientEvent:Connect(function(data)
 		if type(data) ~= "table" then
 			return
@@ -5281,32 +4148,13 @@ do
 	function ayarPaneliniAc()
 		ayarPanel.Visible = not ayarPanel.Visible
 
-		--[[
-			Panel acilirken sunucudaki degeri tazeler. AyarKaydet gecerli bir
-			deger tasimadiginda sunucu yalnizca mevcut ayari geri yollar
-			(bkz. ServerScriptService > Ayarlar).
-		]]
 		if ayarPanel.Visible then
 			AyarKaydet:FireServer(nil)
 		end
 	end
 end
 
-
--- GOREV PANOSU: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
 do
-	------------------------------------------------------------------
-	-- GOREV PANOSU  (Quests)
-	--
-	-- Pano herkeste ayni ve YARIM SAATTE BIR yenilenir (bkz. Shared >
-	-- Gorevler). Burasi yalnizca gosterir: gorevleri, ilerlemeyi ve
-	-- yenilenmeye kalan sureyi sunucu yolluyor.
-	--
-	-- SAYAC ISTEMCIDE ISLER
-	-- Sunucu her saniye paket gondermesin diye kalan sure bir kez gelir ve
-	-- burada geri sayilir. Sifira inince yeni pano istenir; sunucu da dilim
-	-- degisince kendiliginden yolladigi icin iki taraf ayni yerde bulusur.
-	------------------------------------------------------------------
 	local gorevPanel = UI.panel(screen, UDim2.fromOffset(540, 500), "Gorevler")
 
 	UI.baslikCubugu(gorevPanel, "Quests", Color3.fromRGB(255, 170, 50), Color3.fromRGB(255, 90, 110), "quests")
@@ -5327,25 +4175,21 @@ do
 
 	local gorevListe = makeScroll(gorevPanel, UDim2.fromOffset(14, 100), UDim2.new(1, -28, 1, -114))
 
-	-- Sunucudan gelen son pano
 	local gorevVerisi: { remaining: number, quests: { any } } = { remaining = 0, quests = {} }
 	local gorevKalan = 0
 
 	local function gorevSatiri(parent: Instance, quest: any, order: number)
 		local bitti = quest.done == true
-		-- Hedef doldu ama odul henuz alinmadi: satirda Collect dugmesi belirir
 		local hazir = quest.ready == true
 		local renk = quest.color or UI.Colors.accent
 
 		local row = Instance.new("Frame")
 		row.Name = quest.id
-		-- Collect dugmesi cikacaksa satir uzar: dugme XP yazisinin ALTINA oturur
 		row.Size = UDim2.new(1, -6, 0, if hazir then 100 else 84)
 		row.BorderSizePixel = 0
 		row.LayoutOrder = order
 		row.Parent = parent
 		UI.corner(row, 12)
-		-- Odulun renginde kart; hazir gorev altin, biten yesil kalin cerceve alir
 		local kontur = UI.renkliKart(row, renk)
 		if hazir then
 			kontur.Color = UI.Colors.gold
@@ -5359,13 +4203,11 @@ do
 			text = quest.text,
 			size = UI.Sizes.body,
 			font = UI.Fonts.bold,
-			-- Odul yazisiyla arasinda nefes payi kalsin diye dar tutuldu
 			frameSize = UDim2.new(1, -190, 0, 24),
 			position = UDim2.fromOffset(14, 10),
 			parent = row,
 		})
 
-		-- Odul her zaman brainrot; rengi odulun kademesinden gelir
 		UI.text({
 			text = quest.reward,
 			size = UI.Sizes.small,
@@ -5377,7 +4219,6 @@ do
 			parent = row,
 		})
 
-		-- Odulun XP'si, brainrot yazisinin hemen altinda
 		if type(quest.xp) == "number" and quest.xp > 0 then
 			UI.text({
 				text = `+{quest.xp} XP`,
@@ -5404,7 +4245,6 @@ do
 		local oluk = Instance.new("Frame")
 		oluk.Name = "Cubuk"
 		oluk.Position = UDim2.fromOffset(14, 62)
-		-- Collect dugmesi cikacaksa cubuk kisalir, dugmenin altina girmesin
 		oluk.Size = if hazir then UDim2.new(1, -132, 0, 12) else UDim2.new(1, -28, 0, 12)
 		oluk.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
 		oluk.BorderSizePixel = 0
@@ -5424,22 +4264,9 @@ do
 			UI.cubukCilasi(dolgu)
 		end
 
-		--[[
-			COLLECT
-
-			Odul kendiliginden verilmiyor: hedef dolunca satirda bu dugme cikar.
-			Cubugun sagindaki bosluga oturur, yazilarla ic ice girmez.
-
-			Basilinca panel kapanir; patlama sunucudan gelir, boylece efekt
-			arayuzun arkasinda kalmaz.
-		]]
 		if hazir then
 			local topla = UI.dugme3B(row, "Collect", UDim2.fromOffset(106, 36), UI.Colors.gold)
 			topla.AnchorPoint = Vector2.new(1, 0)
-			--[[
-				Cubugun sagi, XP yazisinin (36..56) ALTI: 58..94. Eskiden 44'te
-				basliyordu ve "+10 XP" yazisinin ustune biniyordu.
-			]]
 			topla.Position = UDim2.new(1, -12, 0, 58)
 
 			topla.MouseButton1Click:Connect(function()
@@ -5473,10 +4300,6 @@ do
 		gorevSayacYazi.Text = `New Quests In {sureMetni(gorevKalan)}`
 	end
 
-	--[[
-		Hedefi dolmus ama odulu alinmamis gorev var mi. Panelin acilmasini
-		beklemez: nokta oyuncuyu panele cagiran sey.
-	]]
 	local function gorevHazirMi(): boolean
 		for _, quest in gorevVerisi.quests do
 			if quest.ready == true then
@@ -5496,7 +4319,6 @@ do
 		gorevSayaciYaz()
 		Bildirim.ayarla("quests", gorevHazirMi())
 
-		-- Panel kapaliyken cizmeye gerek yok; acilirken zaten cizilecek
 		if gorevPanel.Visible then
 			gorevleriCiz()
 		end
@@ -5522,18 +4344,14 @@ do
 					gorevSayaciYaz()
 				end
 			elseif gorevPanel.Visible then
-				-- Sure doldu: yeni panoyu iste (sunucu da kendiliginden yollar)
 				GorevAc:FireServer()
 			end
 		end
 	end)
 
-	-- Output'ta bu satir gorunuyorsa butun menu ve paneller kuruldu
 	print("[Menuler] arayuz kuruldu")
 end
 
-
--- ISINLAYICI + HIZ PANELLERI: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
 do
 	local Config = require(Shared:WaitForChild("OyunConfig"))
 	local Passler = require(Shared:WaitForChild("Passler"))
@@ -5542,17 +4360,8 @@ do
 	local IsinlayiciGit = Net.event("IsinlayiciGit")
 	local HizAl = Net.event("HizAl")
 	local HizRebirth = Net.event("HizRebirth")
-	-- Para birimi sarisi (Shared > Bases.RotColor ile ayni)
 	local ROT_SARI = Color3.fromRGB(255, 214, 41)
 
-	------------------------------------------------------------------
-	-- ISINLAYICI  (sagdaki Teleporter butonu)
-	--
-	-- Acilmis butun adalar tek tusla. Teleporter gecisi (Robux) gerekir;
-	-- gecis yoksa panelin ustunde satin alma dugmesi durur ve ada
-	-- dugmeleri de satin alma penceresini acar. Adalar kaptandan acilir;
-	-- burada yalnizca acik olanlara gidilir.
-	------------------------------------------------------------------
 	local TP_MOR = Color3.fromRGB(150, 120, 255)
 
 	local tpPanel = UI.panel(screen, UDim2.fromOffset(480, 470), "Isinlayici")
@@ -5600,7 +4409,6 @@ do
 
 		local sira = 0
 
-		-- Gecis yoksa en ustte satin alma satiri
 		if not sahip then
 			sira += 1
 			local satir = Instance.new("Frame")
@@ -5623,11 +4431,6 @@ do
 				parent = satir,
 			})
 
-			--[[
-				Fiyat "R$" yazisi degil ROBUX IKONU + sayi (bkz.
-				UI.robuxFiyati). Dugmenin kendi yazisi bos birakiliyor,
-				ikon ve sayi onun ortasina konuyor.
-			]]
 			local al = UI.button(satir, "", UDim2.fromOffset(150, 42), UI.Colors.good)
 			al.AnchorPoint = Vector2.new(1, 0.5)
 			al.Position = UDim2.new(1, -10, 0.5, 0)
@@ -5708,13 +4511,6 @@ do
 		end
 	end
 
-	--[[
-		BUTON GECIS ALINANA KADAR GRI
-
-		Yuzun ustune gri bir ortu konur (ikonun altinda); ikon da grilesir.
-		Yuzun kendi rengine dokunulmuyor: fare efekti o rengi hafizada
-		tutuyor, degistirilse alindiktan sonra gri geri donerdi.
-	]]
 	local tpButon = sagSutun:FindFirstChild("Teleporter")
 	local tpYuz = tpButon and tpButon:FindFirstChild("Yuz")
 	local tpOrtu: Frame? = nil
@@ -5752,7 +4548,6 @@ do
 	end
 	tpButonCiz()
 
-	-- Gecis alininca buton renklenir, acik panel tazelenir
 	do
 		local pass = Passler.get("Teleporter")
 		if pass then
@@ -5767,30 +4562,17 @@ do
 
 	EnvanterGuncelle.OnClientEvent:Connect(function(data)
 		if type(data) == "table" and tpPanel.Visible then
-			-- Menuler'in kendi dinleyicisi 'inventory'yi ayni karede guncelliyor
 			task.defer(tpCiz)
 		end
 	end)
 end
 
-
---[[
-	HIZ PANELI: kendi blogunda. Isinlayiciyla ayni bloktayken ikisinin
-	yerelleri toplanip 200 yerel sinirini asiyordu (bkz. tools/check.luau).
-]]
 do
 	local Hiz = require(Shared:WaitForChild("Hiz"))
 	local HizAl = Net.event("HizAl")
 	local HizRebirth = Net.event("HizRebirth")
-	-- Para birimi sarisi (Shared > Bases.RotColor ile ayni)
 	local ROT_SARI = Color3.fromRGB(255, 214, 41)
 
-	------------------------------------------------------------------
-	-- HIZ  (soldaki ayakkabi butonu)
-	--
-	-- 100 yukseltme; her biri Rot ister ve fiyati katlanarak artar
-	-- (bkz. Shared > Hiz). Seviye sunucudan oyuncu niteligiyle gelir.
-	------------------------------------------------------------------
 	local hzPanel = UI.panel(screen, UDim2.fromOffset(440, 460), "Hiz")
 
 	UI.baslikCubugu(hzPanel, "Speed", Color3.fromRGB(110, 230, 255), Color3.fromRGB(60, 120, 255), "speed")
@@ -5820,7 +4602,6 @@ do
 		parent = hzPanel,
 	})
 
-	-- Ilerleme cubugu: alinan / 100
 	local hzOluk = Instance.new("Frame")
 	hzOluk.Name = "Cubuk"
 	hzOluk.Position = UDim2.fromOffset(18, 160)
@@ -5860,10 +4641,6 @@ do
 		parent = hzPanel,
 	})
 
-	--[[
-		Iki dugme: +1 ve +10. Para yetiyorsa yesil, yetmiyorsa gri 3B dugme
-		(UI.dugme3BRenk; fare etkisi her seferinde guncel rengi okur).
-	]]
 	local HZ_YESIL = Color3.fromRGB(70, 205, 85)
 
 	local function hzDugmesi(x: number, adet: number)
@@ -5916,10 +4693,6 @@ do
 	local hzBir = hzDugmesi(0, 1)
 	local hzOn = hzDugmesi(0.5, 10)
 
-	--[[
-		REBIRTH: Speed 101'de acilir. Hiz basa doner, arkadaki iz uzar ve
-		bir sonraki hiz rengine gecer (Shared > Hiz). Kirmizidan sonra biter.
-	]]
 	local hzRebirth, hzRebirthYuz = UI.dugme3B(hzPanel, nil, UDim2.new(1, -36, 0, 58), UI.KapaliRenk)
 	hzRebirth.Name = "Rebirth"
 	hzRebirth.Position = UDim2.fromOffset(18, 322)
@@ -5980,7 +4753,6 @@ do
 			hzRebirthYazi.TextColor3 = Hiz.rebirthRengi(rebirth) or UI.Colors.text
 		elseif alinan >= Hiz.Max then
 			hzRebirthYazi.Text = `REBIRTH  ({rebirth + 1}/{Hiz.MaxRebirth})`
-			-- Rebirth hazir: gozden kacmasin diye mor
 			UI.dugme3BRenk(hzRebirth, Color3.fromRGB(190, 90, 255))
 			hzRebirthYazi.TextColor3 = Color3.new(1, 1, 1)
 		else
@@ -6015,19 +4787,7 @@ do
 	end)
 end
 
-
--- DETECTIVE TAKIP: yerelleri kendi blogunda (Luau ust seviyede en fazla 200 yerel kabul ediyor)
 do
-	------------------------------------------------------------------
-	-- DETECTIVE TAKIBI  (sol menudeki 8. buton)
-	--
-	-- Yalnizca IZLEME: buradan brainrot verilmez, alinmaz. Detective'e
-	-- birakilan brainrotlarin kalan suresi ve is bitince hangi
-	-- brainrotlarin ciktigi gorulur. Teslim almak icin Detective'e gidilir.
-	--
-	-- BUTONUN KENDISI BAR: is surerken yuzu alttan yukari yesile dolar;
-	-- is bitince parlar (kontur altin renkte nabiz atar).
-	------------------------------------------------------------------
 	local DetectiveTakip = Net.event("DetectiveTakip")
 	local DetectiveDurumOlayi = Net.event("DetectiveDurum")
 
@@ -6104,7 +4864,6 @@ do
 		return math.clamp(1 - takipKalan() / toplam, 0, 1)
 	end
 
-	-- Liste yalnizca durum degisince yeniden kurulur
 	local function takipListeCiz()
 		takipPencere.temizle()
 		clearRows(takipListe)
@@ -6180,9 +4939,6 @@ do
 		end
 	end
 
-	------------------------------------------------------------------
-	-- BUTON: dolum + parlama
-	------------------------------------------------------------------
 	local takipButon = solSutun:FindFirstChild("Detective")
 	local takipYuz = takipButon and takipButon:FindFirstChild("Yuz")
 	local butonDolum: Frame? = nil
@@ -6195,10 +4951,8 @@ do
 		dolum.Size = UDim2.fromScale(1, 0)
 		dolum.BackgroundColor3 = DOLUM_YESIL
 		dolum.BorderSizePixel = 0
-		-- Parlama bandinin (3) altinda, ikonun (5) altinda
 		dolum.ZIndex = 2
 		dolum.Parent = takipYuz
-		-- Butonun yuzuyle ayni kose yuvarlakligi
 		UI.corner(dolum, 10)
 		butonDolum = dolum
 	end
@@ -6216,7 +4970,6 @@ do
 		local kontur = butonKontur
 		if kontur then
 			if takipIs and takipIs.bitti then
-				-- Is bitti: altin kontur nabiz atar
 				local nabiz = (math.sin(os.clock() * 5) + 1) / 2
 				kontur.Color = Color3.fromRGB(255, 215, 40):Lerp(Color3.new(1, 1, 1), nabiz * 0.6)
 				kontur.Thickness = 2 + nabiz * 2.5
@@ -6242,7 +4995,6 @@ do
 		butonCiz()
 	end)
 
-	-- Dolum ve nabiz her karede, yazilar yarim saniyede bir
 	local sonYazi = 0
 	game:GetService("RunService").RenderStepped:Connect(function()
 		if not takipIs then

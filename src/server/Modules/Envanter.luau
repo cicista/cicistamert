@@ -1,18 +1,4 @@
 --!strict
---[[
-	Envanter senkronizasyonu.
-
-	PlayerData.inventory tek dogruluk kaynagidir; bu modul Backpack'i ona
-	gore esitler. Her brainrot FIZIKSEL bir Tool olarak cantada durur:
-
-	  - slota yerlestirilmemis her brainrot -> cantada bir Tool
-	  - slota konulan brainrot          -> Tool silinir, base'te model belirir
-	  - Detective bir brainrotu acinca  -> Tool yeniden uretilir (siyah -> normal)
-
-	Kurek ve GPS de burada garanti altina alinir:
-	  - Kurek her zaman tek tanedir
-	  - GPS her zaman cantadadir (kumda otomatik ELE GELMEZ, oyuncu kendi kusanir)
-]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -25,11 +11,8 @@ local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Tools = require(script.Parent:WaitForChild("Tools"))
 local Scrolls = require(Shared:WaitForChild("Scrolls"))
--- Tool adet niteligi (hotbar rozeti) icin
 local Assets = require(Shared:WaitForChild("Assets"))
--- Canta kapasitesi ve yukseltme fiyati
 local Canta = require(Shared:WaitForChild("Canta"))
--- Yukseltme bildiriminde fiyat yazisi
 local Format = require(Shared:WaitForChild("Format"))
 local Olta = require(script.Parent:WaitForChild("Olta"))
 
@@ -37,31 +20,15 @@ local EnvanterGuncelle = Net.event("EnvanterGuncelle")
 
 local Envanter = {}
 
--- Envanter durumunu client'a yollar (HUD + envanter ekrani bunu kullanir)
 function Envanter.push(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
 		return
 	end
 
-	--[[
-		INDEX KAYDI BURADA TUTULUYOR
-
-		Brainrotun kimligi BES ayri yerde aciliyor (Detective, Fuse, Lucky
-		Block, gunluk odul, admin paneli). Bes cagri yerine tek bir yere
-		yazmanin sebebi: her acilis sonunda envanter istemciye
-		senkronlanmak ZORUNDA -- oyuncu esyanin adini baska turlu
-		ogrenemez. Yani burasi butun acilis yollarinin ortak bogazi ve
-		ileride altinci bir yol eklenirse onu da kendiliginden yakalar.
-
-		Yan fayda: guncellemeden once oynayanlarin elindeki acilmis
-		brainrotlar ilk senkronda Index'e islenir, eski oyuncular sifir
-		Index'le baslamaz.
-	]]
 	for _, item in data.inventory do
 		if item.revealed and item.name then
 			PlayerData.discover(player, item.name)
-			-- Gold / Diamond / Galaxy Index'te ayrica isaretlenir
 			if item.mutation then
 				PlayerData.discoverMutation(player, item.name, item.mutation)
 			end
@@ -72,58 +39,23 @@ function Envanter.push(player: Player)
 		rot = data.rot,
 		rotCoins = data.rotCoins,
 		luckyBlocks = data.luckyBlocks,
-		-- Mutasyon scroll sayaclari (envanter ekrani ve Rot Coin magazasi)
 		scrolls = data.scrolls,
 		shovel = data.shovel,
-		-- Envanter ekrani dedektor satirini bundan ciziyor; eksik olursa
-		-- oyuncu Divine tasisa bile ekranda Basic gorunur
 		detector = data.detector,
 		inventory = data.inventory,
-		-- Madenler ve kazmalar (ada saticilari ve ileride envanter ekrani)
 		ores = data.ores,
 		pickaxes = data.pickaxes,
-		-- Envanter ekrani base bolumunu 1..acik slot sayisi kadar ciziyor
 		baseSlots = data.baseSlots,
-		-- Canta kapasitesi ve siradaki yukseltmenin bedeli (bkz. Shared > Canta)
 		inventoryMax = PlayerData.cantaKapasitesi(player),
 		inventoryUpgrade = Canta.fiyat(PlayerData.cantaKapasitesi(player)),
-		-- Isinlayici menusu acik adalari bundan ciziyor
 		islands = data.islands,
 	})
 end
 
-------------------------------------------------------------------
--- KUREK VE GPS  --  CANTAYA HIC GIRMEZLER
---
--- Ikisi de artik envanterde durmuyor; duruma gore DOGRUDAN ELE
--- veriliyor ve isi bitince siliniyor:
---
---     kumun uzerine bas   -> GPS elde belirir ve orada kalir
---     suzmeye tikla       -> yerini kurek alir, kazi biter, GPS geri gelir
---     kumdan cik          -> ikisi de kaybolur
---
--- Kimin ne zaman elinde olacagina KaziSistemi karar veriyor; burasi
--- yalnizca "su an sunu tut" emrini uyguluyor.
---
--- Tool'u dogrudan Character'a parent etmek Roblox'ta KUSANMAK demektir;
--- Humanoid:EquipTool cantada olmayi sart kostugu icin bu yol secildi.
-------------------------------------------------------------------
-
---[[
-	Tool SU AN ELDE MI?
-	Cantayi saymaz -- zaten oraya hic konmuyorlar.
-]]
 local function held(player: Player, toolName: string): Tool?
 	return Tools.equipped(player, toolName)
 end
 
---[[
-	Elde ne varsa indirir.
-
-	Oyuncu brainrot tasirken bir suzmeye tiklarsa kurek onun yerine gecmeli;
-	iki tool ayni anda kusanilamaz. Humanoid:UnequipTools brainrotu cantaya
-	geri koyar -- yeri zaten orasi.
-]]
 local function clearHands(player: Player)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -132,23 +64,16 @@ local function clearHands(player: Player)
 	end
 end
 
--- Adi verilen tool'u hem elden hem cantadan siler
 function Envanter.unequip(player: Player, toolName: string)
 	Tools.remove(player, toolName)
 end
 
--- Kurek ve GPS'in ikisini birden kaldirir (kumdan cikinca)
 function Envanter.unequipTools(player: Player)
 	Tools.remove(player, Tools.ShovelName)
 	Tools.remove(player, Tools.GPSName)
 	Tools.remove(player, Tools.PickaxeName)
 end
 
---[[
-	Kuregi ELINE verir; GPS varsa onun yerini alir.
-	Zaten eldeyse hicbir sey yapmaz -- yoksa her cagride tool yeniden
-	uretilir ve tutma animasyonu bastan baslardi.
-]]
 function Envanter.equipShovel(player: Player)
 	local data = PlayerData.get(player)
 	local character = player.Character
@@ -167,10 +92,6 @@ function Envanter.equipShovel(player: Player)
 	Tools.buildShovel(data.shovel).Parent = character
 end
 
---[[
-	KAZMAYI ELINE verir (maden kazisi). Kurekle ayni kural: zaten eldeyse
-	yeniden uretilmez.
-]]
 function Envanter.equipPickaxe(player: Player, pickaxeId: string)
 	local character = player.Character
 	if not character then
@@ -189,13 +110,6 @@ function Envanter.equipPickaxe(player: Player, pickaxeId: string)
 	Tools.buildPickaxe(pickaxeId).Parent = character
 end
 
---[[
-	GPS'i ELINE verir; kurek varsa onun yerini alir.
-
-	Oyuncu tool'u indirmeye calisirsa Roblox onu cantaya atar; bu durumda
-	elde bulunamaz ve buraya tekrar gelinir -- yani GPS kumdayken elde
-	kalmaya devam eder.
-]]
 function Envanter.equipGPS(player: Player)
 	local data = PlayerData.get(player)
 	local character = player.Character
@@ -214,15 +128,6 @@ function Envanter.equipGPS(player: Player)
 	Tools.buildGPS(data.detector).Parent = character
 end
 
---[[
-	OLTAYI ELE VERIR  (flyboardla denize girince)
-
-	Olta bir Tool DEGIL: hotbarda yer kaplamasin ve elden birakilamasin
-	diye dogrudan sag ele kaynaklanir (bkz. Modules > Olta). Kurek ve GPS
-	yine de elden birakilir ki denizde tek sey dursun.
-
-	Oltasi olmayan oyuncuda hicbir sey olmaz.
-]]
 function Envanter.equipRod(player: Player)
 	local data = PlayerData.get(player)
 	local character = player.Character
@@ -241,22 +146,14 @@ function Envanter.equipRod(player: Player)
 
 	local model = Olta.build(data.rod)
 	if not Olta.attach(character, model) then
-		-- Karakter hazir degilse (el parcasi yok) sessizce vazgec
 		model:Destroy()
 	end
 end
 
--- Oltayi ve atilmis misinayi tamamen kaldirir (flyboarddan inince)
 function Envanter.removeRod(player: Player)
 	Olta.remove(player.Character)
 end
 
---[[
-	ELDEKI kuregi tazeler (seviye ya da skin degistiginde).
-
-	Elde kurek yoksa hicbir sey yapmaz: tool zaten yokken uretmenin
-	anlami yok, bir dahaki kaziya girdiginde yenisi kurulur.
-]]
 function Envanter.giveShovel(player: Player)
 	if not held(player, Tools.ShovelName) then
 		return
@@ -266,7 +163,6 @@ function Envanter.giveShovel(player: Player)
 	Envanter.equipShovel(player)
 end
 
--- ELDEKI GPS'i tazeler (seviye ya da skin degistiginde)
 function Envanter.giveGPS(player: Player)
 	if not held(player, Tools.GPSName) then
 		return
@@ -276,10 +172,6 @@ function Envanter.giveGPS(player: Player)
 	Envanter.equipGPS(player)
 end
 
---[[
-	Lucky Block: elde kac tane varsa tek bir Tool olarak durur, adinda adedi
-	yazar. Hic kalmayinca Tool silinir.
-]]
 function Envanter.syncLuckyBlocks(player: Player)
 	local data = PlayerData.get(player)
 	local backpack = player:FindFirstChildOfClass("Backpack")
@@ -287,10 +179,6 @@ function Envanter.syncLuckyBlocks(player: Player)
 		return
 	end
 
-	--[[
-		Her TUR icin ayri bir Tool. Mevcut Tool'lar aranirken ISIM kullanilamaz
-		(adinda adet yaziyor, her acilista degisiyor); tur niteligine bakiliyor.
-	]]
 	local existing: { [string]: Tool } = {}
 
 	for _, place in { backpack :: Instance, player.Character } do
@@ -298,7 +186,6 @@ function Envanter.syncLuckyBlocks(player: Player)
 			for _, item in place:GetChildren() do
 				if item:IsA("Tool") and item:GetAttribute("LuckyBlock") then
 					local tierId = item:GetAttribute("LuckyTier")
-					-- Tursuz (eski surumden kalma) ya da tekrar eden Tool'lar silinir
 					if type(tierId) ~= "string" or existing[tierId] then
 						item:Destroy()
 					else
@@ -320,11 +207,6 @@ function Envanter.syncLuckyBlocks(player: Player)
 			continue
 		end
 
-		--[[
-			Tool zaten varsa YENIDEN URETILMEZ, sadece adi guncellenir.
-			Yeniden uretilseydi oyuncu blogu elinde tutarken her acilista Tool
-			elinden duser, her blok icin tekrar kusanmasi gerekirdi.
-		]]
 		if tool then
 			tool.Name = Tools.luckyBlockLabel(tier.id, count)
 			tool:SetAttribute(Assets.CountAttribute, count)
@@ -334,13 +216,6 @@ function Envanter.syncLuckyBlocks(player: Player)
 	end
 end
 
---[[
-	Scroll'lari cantayla esitler (bkz. Shared > Scrolls).
-
-	syncLuckyBlocks ile ayni duzen: her tur icin TEK Tool, adinda adet
-	yaziyor. Tool yeniden uretilmiyor, yalnizca adi guncelleniyor -- yoksa
-	oyuncu scroll'u elinde tutarken her esitlemede elinden duserdi.
-]]
 function Envanter.syncScrolls(player: Player)
 	local data = PlayerData.get(player)
 	local backpack = player:FindFirstChildOfClass("Backpack")
@@ -355,7 +230,6 @@ function Envanter.syncScrolls(player: Player)
 				if item:IsA("Tool") then
 					local id = item:GetAttribute(Scrolls.Nitelik)
 					if type(id) == "string" then
-						-- Tekrar eden Tool'lar silinir
 						if mevcut[id] then
 							item:Destroy()
 						else
@@ -390,26 +264,6 @@ function Envanter.syncScrolls(player: Player)
 	end
 end
 
---[[
-	Cantayi envanter verisiyle esitler.
-	Slotta olmayan her brainrot icin bir Tool bulunur; fazlaliklar silinir.
-]]
---[[
-	Sirt cantasini (hotbar) siralar: once KIMLIGI ACILMIS brainrotlar
-	PAHALIDAN UCUZA, sonra acilmamislar.
-
-	NEDEN IKI ADIM
-	Roblox'un canta arayuzu Tool'lari eklenme sirasina gore dizer. Onceki
-	surum her Tool'u ayni karede cikarip hemen geri koyuyordu; bu ya hic
-	istemciye gitmiyor ya da Tool bosalttigi kendi yerine geri oturuyordu --
-	sira hic degismiyordu. Artik:
-	    1. siralanacak Tool'lar gorunmez bir BEKLEME klasorune alinir
-	       (oyuncunun altinda "CantaSirasi"; syncBrainrots onu da tarar,
-	       yoksa Tool'lari kayip sanip kopyasini uretirdi)
-	    2. kisa bir bekleme sonra istenen sirayla cantaya geri konur
-	Zaten siraliysa hicbir seye dokunulmaz (her senkronda titremesin).
-	ELDE TUTULAN tool'a dokunulmaz (o Character'in altindadir).
-]]
 local PARK_ADI = "CantaSirasi"
 local siralaniyor: { [Player]: boolean } = {}
 
@@ -434,7 +288,6 @@ local function reorderBackpack(player: Player, backpack: Instance)
 		return
 	end
 
-	-- uid -> (acilmis mi, saniyelik getiri)
 	local acik: { [string]: boolean } = {}
 	local worth: { [string]: number } = {}
 	for _, entry in data.inventory do
@@ -446,11 +299,6 @@ local function reorderBackpack(player: Player, backpack: Instance)
 		end
 	end
 
-	--[[
-		SIRALAMAYA SCROLL'LAR DA GIRIYOR ve hepsinin ONUNDE duruyorlar:
-		scroll kullanilacak bir sey, brainrot ise birikiyor. Oyuncu base'e
-		gidince ilk tusta scroll elinde olsun (bkz. Shared > Scrolls).
-	]]
 	local mevcut: { Tool } = {}
 	for _, tool in backpack:GetChildren() do
 		if tool:IsA("Tool") and (tool:GetAttribute("BrainrotUid") or tool:GetAttribute(Scrolls.Nitelik)) then
@@ -467,16 +315,13 @@ local function reorderBackpack(player: Player, backpack: Instance)
 
 	local istenen = table.clone(mevcut)
 	table.sort(istenen, function(a, b)
-		-- 1) Scroll'lar en basta
 		if scrollMu(a) ~= scrollMu(b) then
 			return scrollMu(a)
 		end
-		-- Iki scroll arasinda sira onemsiz; adlarina gore sabit dursunlar
 		if scrollMu(a) then
 			return a.Name < b.Name
 		end
 
-		-- 2) Kimligi acilmis brainrotlar, sonra 3) pahalidan ucuza
 		local ua = a:GetAttribute("BrainrotUid") :: string
 		local ub = b:GetAttribute("BrainrotUid") :: string
 		if (acik[ua] == true) ~= (acik[ub] == true) then
@@ -520,7 +365,6 @@ function Envanter.syncBrainrots(player: Player)
 		return
 	end
 
-	-- Karakter yeni oluyorsa Backpack bir an gecikebilir; kisa sure bekle
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	if not backpack then
 		backpack = player:WaitForChild("Backpack", 5) :: Backpack?
@@ -530,9 +374,7 @@ function Envanter.syncBrainrots(player: Player)
 		return
 	end
 
-	-- Cantada/elde bulunan brainrot tool'lari
 	local present: { [string]: Tool } = {}
-	-- Siralama sirasinda bekleme klasorundeki Tool'lar da sayilir (bkz. reorderBackpack)
 	local places = { backpack :: Instance, player.Character, player:FindFirstChild(PARK_ADI) }
 
 	for _, place in places do
@@ -548,18 +390,8 @@ function Envanter.syncBrainrots(player: Player)
 		end
 	end
 
-	-- Envanterde olup cantada olmayanlari uret, durumu degisenleri yenile
 	local expected: { [string]: boolean } = {}
 
-	-- Tek bir brainrot'un uretimi patlarsa digerleri etkilenmesin
-	--[[
-		Tek bir brainrot'un uretimi patlarsa digerleri etkilenmesin.
-
-		DIKKAT: pcall hatayi yutar; brainrot envanter VERISINDE kalir ama
-		cantada gorunmez. "Envantere geliyor ama cantaya gelmiyor" seklindeki
-		her sikayette once Output'taki bu uyariya bakilmali -- brainrot'un
-		adi ve gercek hata mesaji orada yaziyor.
-	]]
 	local function spawnTool(entry: any)
 		local ok, err = pcall(function()
 			Tools.buildBrainrot(entry).Parent = backpack
@@ -574,14 +406,13 @@ function Envanter.syncBrainrots(player: Player)
 
 	for _, entry in data.inventory do
 		if entry.slot then
-			continue -- base'te duruyor, cantada olmamali
+			continue
 		end
 
 		expected[entry.uid] = true
 		local existing = present[entry.uid]
 
 		if existing then
-			-- Siyahtan normale gectiyse tool'u yeniden uret
 			local wasRevealed = existing:GetAttribute("Revealed") == true
 			if wasRevealed ~= (entry.revealed == true) then
 				existing:Destroy()
@@ -592,24 +423,15 @@ function Envanter.syncBrainrots(player: Player)
 		end
 	end
 
-	-- Envanterde olmayan (satilmis / slota konmus) tool'lari temizle
 	for uid, tool in present do
 		if not expected[uid] then
 			tool:Destroy()
 		end
 	end
 
-	-- Canta pahalidan ucuza dizilir
 	reorderBackpack(player, backpack)
 end
 
---[[
-	Karakter dogdugunda / veri degistiginde cagrilir.
-
-	Kurek ve GPS BURADA VERILMEZ: ikisi de cantaya girmiyor, duruma gore
-	dogrudan ele veriliyor (bkz. KaziSistemi > otomatik ekipman dongusu).
-	Burasi yalnizca cantada durmasi gereken seylerle ilgilenir.
-]]
 function Envanter.refresh(player: Player)
 	Envanter.syncBrainrots(player)
 	Envanter.syncLuckyBlocks(player)
@@ -617,16 +439,6 @@ function Envanter.refresh(player: Player)
 	Envanter.push(player)
 end
 
-------------------------------------------------------------------
--- CANTA KAPASITESI YUKSELTME
---
--- Envanter panelindeki dugme bu olayi yolluyor. Fiyat ve sinirlar
--- Shared > Canta'da; burasi yalnizca odemeyi alip kapasiteyi buyutuyor.
---
--- BAGLANTI task.spawn ICINDE: Net.event remote'u beklerken bu modulun
--- yuklenmesi durmasin -- Envanter neredeyse butun sunucu betikleri
--- tarafindan require ediliyor, burada takilmak oyunu acmazdi.
-------------------------------------------------------------------
 task.spawn(function()
 	local CantaYukselt = Net.event("CantaYukselt")
 	local Bildirim = Net.event("Bildirim")
@@ -662,7 +474,6 @@ task.spawn(function()
 			return
 		end
 
-		-- Odeme yukseltme BASARILI olduktan sonra: basarisizsa para gitmesin
 		PlayerData.addRot(player, -fiyat)
 		Envanter.push(player)
 

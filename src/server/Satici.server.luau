@@ -1,22 +1,3 @@
---[[
-	Satici  (Script)
-	Yeri: ServerScriptService > Satici
-
-	Brainrot alicisi NPC.
-
-	  E -> ELINDEKI brainrotu satar
-	  F -> envanterdeki (slota konmamis) BUTUN brainrotlari satar
-
-	Satis degeri = brainrot'un saniyelik getirisi * Config.Seller.valueMultiplier
-	Yani gelir uretmeye devam etmesini istemedigin brainrotu pesin Rot'a cevirirsin.
-
-	Acilmis brainrot   -> kendi getirisi * valueMultiplier (25x)
-	Acilmamis brainrot -> rarity.sindeki en dusuk getirili uyenin degeri *
-	                      unknownMultiplier (20x) -- riskli oldugu icin dusuk
-
-	Base slotundaki brainrotlar satilmaz -- once slottan almak gerekir.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -44,18 +25,6 @@ local TumunuSat = Net.event("TumunuSat")
 
 local S = Config.Seller
 
-------------------------------------------------------------------
--- DEGER HESABI
-------------------------------------------------------------------
-
---[[
-	Bir brainrot.un pesin satis degeri.
-
-	Acilmis  -> kendi saniyelik getirisi * valueMultiplier
-	Acilmamis -> rarity.sindeki EN DUSUK gelirli brainrotun getirisi *
-	             unknownMultiplier. Icinden ne cikacagi bilinmedigi icin
-	             en kotu ihtimal esas alinir; kondisyon zaten bellidir.
-]]
 local function valueOf(item: any): number
 	if item.revealed and item.name then
 		return math.floor(Brainrots.income(item.name, item.condition, item.mutation) * S.valueMultiplier)
@@ -64,7 +33,6 @@ local function valueOf(item: any): number
 	return math.floor(Brainrots.minIncome(item.rarity, item.condition) * S.unknownMultiplier)
 end
 
--- Satilabilir esyalar: slota konmamis her brainrot (acilmis ya da degil)
 local function sellableItems(player: Player): ({ any }, number)
 	local data = PlayerData.get(player)
 	if not data then
@@ -83,9 +51,6 @@ local function sellableItems(player: Player): ({ any }, number)
 	return list, total
 end
 
-------------------------------------------------------------------
--- NPC KURULUMU
-------------------------------------------------------------------
 local function buildStand(): Model
 	local model = Instance.new("Model")
 	model.Name = S.name
@@ -163,12 +128,6 @@ local function npcPosition(): Vector3?
 	return if anchor and anchor:IsA("BasePart") then anchor.Position else nil
 end
 
-------------------------------------------------------------------
--- SATIS
-------------------------------------------------------------------
-
--- Panel tazeleme asagida kuruluyor; satis islemleri ondan once yazildigi
--- icin once bildiriliyor
 local pushStatus: (player: Player, open: boolean?) -> ()
 
 local function sellItem(player: Player, uid: string): boolean
@@ -198,7 +157,6 @@ local function sellItem(player: Player, uid: string): boolean
 	return true
 end
 
--- Oyuncu NPC'nin menzilinde mi
 local function inRange(player: Player): boolean
 	local position = npcPosition()
 	local char = player.Character
@@ -211,13 +169,6 @@ local function inRange(player: Player): boolean
 	return (root.Position - position).Magnitude <= S.range
 end
 
---[[
-	SATIS ISTEGI
-
-	Artik uid ile geliyor: oyuncu satici penceresinde hangi brainrotu
-	sectiyse o satiliyor. Elde tutma sarti kalkti; uid gelmezse (eski
-	kisayol) elindeki satilir.
-]]
 BrainrotSat.OnServerEvent:Connect(function(player, uid)
 	if not inRange(player) then
 		return
@@ -236,7 +187,6 @@ BrainrotSat.OnServerEvent:Connect(function(player, uid)
 	end
 
 	if sellItem(player, hedef) then
-		-- Liste hemen tazelensin, satilan satir kalmasin
 		pushStatus(player)
 	end
 end)
@@ -261,10 +211,8 @@ TumunuSat.OnServerEvent:Connect(function(player)
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
 
-	-- Toplu satista gorev ilerlemesi de toplu islenir
 	GorevTakip.ilerlet(player, "sell", count)
 
-	-- Pencere hemen bosalsin
 	pushStatus(player)
 
 	Bildirim:FireClient(
@@ -273,22 +221,8 @@ TumunuSat.OnServerEvent:Connect(function(player)
 		Bases.RotColor
 	)
 end)
-------------------------------------------------------------------
--- PROXIMITY PROMPT
---
--- Diger NPC'lerdeki gibi E'ye BASILI TUTUNCA acilir; yanina gidince
--- kendiliginden acilmaz. Panel acildiktan sonra kisa E tekli satis,
--- F ise envanterin tamamini satar (prompt HoldDuration'u sayesinde
--- kisa basis promptu tetiklemez).
-------------------------------------------------------------------
 local panelOpen: { [Player]: boolean } = {}
 
---[[
-	Arayuzde gosterilecek satilabilir esya listesi.
-
-	Oyuncu artik brainrotu ELINDE TUTMAK ZORUNDA DEGIL: satici penceresinden
-	teker teker seciyor. Liste bu yuzden fiyatiyla birlikte gidiyor.
-]]
 local function liste(player: Player): { any }
 	local items = select(1, sellableItems(player))
 	local out = {}
@@ -307,18 +241,15 @@ local function liste(player: Player): { any }
 	return out
 end
 
--- Guncel fiyatlari paneli acik olan oyuncuya gonderir
 function pushStatus(player: Player, open: boolean?)
 	local items, total = sellableItems(player)
 
 	SaticiDurum:FireClient(player, {
 		near = true,
-		-- Yalnizca prompt tetiklendiginde true: pencereyi acar
 		open = open == true,
 		totalCount = #items,
 		totalValue = total,
 		multiplier = S.valueMultiplier,
-		-- Panelden tek tek secmek icin: satilabilir her brainrot
 		items = liste(player),
 	})
 end
@@ -360,13 +291,6 @@ local function attachPrompt()
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.Parent = anchor
 
-	--[[
-		Prompt DOGRUDAN PENCEREYI ACAR.
-
-		Eskiden ekranin altinda "E ile elindekini sat" seridi cikiyordu;
-		artik satis penceresi aciliyor ve tekli satis da toplu satis da
-		orada. Pakete konan open bayragi istemciye "pencereyi ac" diyor.
-	]]
 	prompt.Triggered:Connect(function(player)
 		panelOpen[player] = true
 		pushStatus(player, true)
@@ -375,11 +299,6 @@ end
 
 task.spawn(attachPrompt)
 
---[[
-	Paneli acik olan oyuncularin fiyatlarini tazeler ve menzilden
-	cikanlarin panelini kapatir. Paneli KAPALI olanlara hicbir sey
-	gonderilmez -- yanindan gecmek paneli acmaz.
-]]
 task.spawn(function()
 	while true do
 		task.wait(0.4)

@@ -1,15 +1,3 @@
---[[
-	RotCoinMagaza  (Script)
-	Yeri: ServerScriptService > RotCoinMagaza
-
-	Rot Coin magazasinin sunucu tarafi. Urunler ve fiyatlar Shared >
-	RotCoinMagaza'da. Burasi:
-	  - satin almayi DOGRULAR (bakiye, iksir kurallari) ve urunu verir
-	  - aktif sans iksirinin durumunu istemciye yollar (Rot'un ustundeki yazi)
-
-	Istemci yalnizca urun id'si yollar; fiyati ve ne verilecegini o belirleyemez.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,7 +17,6 @@ local MagazaDurum = Net.event("RotCoinMagazaDurum")
 local SARI = Color3.fromRGB(255, 215, 40)
 local KIRMIZI = Color3.fromRGB(255, 120, 120)
 
--- Ust uste gelen iki istek ayni Rot Coin'i iki kez harcamasin
 local aliyor: { [Player]: boolean } = {}
 
 local function durumGonder(player: Player)
@@ -38,7 +25,6 @@ local function durumGonder(player: Player)
 		return
 	end
 
-	-- luckBonus suresi dolmussa kaydi da temizler
 	local carpan = PlayerData.luckBonus(player)
 	MagazaDurum:FireClient(player, {
 		carpan = carpan,
@@ -46,9 +32,6 @@ local function durumGonder(player: Player)
 	})
 end
 
---[[
-	Sans iksiri. Verilemiyorsa (false, sebep) doner; o zaman Rot Coin dusmez.
-]]
 local function iksirVer(player: Player, data: any, urun: RotCoinMagaza.Urun): (boolean, string?)
 	local carpan = urun.multiplier or 1
 	local sure = urun.seconds or 0
@@ -56,7 +39,6 @@ local function iksirVer(player: Player, data: any, urun: RotCoinMagaza.Urun): (b
 
 	if aktif > 1 then
 		if math.abs(aktif - carpan) < 0.001 then
-			-- Ayni iksir: sure uzar
 			local kalan = data.luckUntil - os.time()
 			if kalan + sure > RotCoinMagaza.MaxPotionSeconds then
 				return false, `You can stack at most {RotCoinMagaza.sureYazisi(RotCoinMagaza.MaxPotionSeconds)} of this potion.`
@@ -68,7 +50,6 @@ local function iksirVer(player: Player, data: any, urun: RotCoinMagaza.Urun): (b
 		end
 	end
 
-	-- Iksir yok ya da daha gucluye geciliyor
 	PlayerData.grantLuck(player, carpan, sure)
 	return true, nil
 end
@@ -111,7 +92,6 @@ local function satinAl(player: Player, id: string)
 		Bildirim:FireClient(player, sebep or "Purchase failed.", KIRMIZI)
 	end
 
-	-- Ekrandaki Rot Coin bakiyesi ve iksir yazisi bayat kalmasin
 	Envanter.push(player)
 	durumGonder(player)
 
@@ -128,11 +108,9 @@ MagazaAc.OnServerEvent:Connect(function(player)
 	durumGonder(player)
 end)
 
--- Girince aktif iksir (oyundan cikmadan once alinmis) Rot'un ustunde gorunsun
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(function()
 		task.wait(3)
-		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
 		if PlayerData.bekle(player) then
 			durumGonder(player)
 		end

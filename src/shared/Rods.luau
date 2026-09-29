@@ -1,30 +1,4 @@
 --!strict
---[[
-	OLTA (Fishing Rod) seviyeleri.
-
-	DENIZIN KUREGI VE GPS'I BIR ARADA.
-
-	Karada iki ayri esya var: GPS suzmeyi bulur, kurek minigame'i belirler.
-	Denizde ikisini de OLTA yapar:
-
-	  luck        -> yuksek rarity girdap cikma sansini carpar   (GPS isi)
-	  scanRadius  -> etrafta girdap aranan yaricap               (GPS isi)
-	  spawnChance -> her taramada girdap cikma yuzdesi           (GPS isi)
-	  maxWhirls   -> ayni anda kac girdap durabilir              (GPS isi)
-
-	  digSpeed / barSize / barAcceleration / progressRate / drainRate
-	              -> yakalama minigame'inin kolayligi
-
-	Minigame Stardew Valley'nin balik oyunu (bkz. Shared > DigMinigame).
-	Olta orada Stardew'in "balikcilik seviyesi" yerine gecer: bar boyu
-	0.17 (Stardew'in acemisi, 96 px) ile 0.31 (ustasi, 176 px) arasi,
-	ilerleme / gerileme Stardew'in +0.12 / -0.18'inden baslayip iyi oltada
-	geri kacis yavaslar. Degerleri degistirince tools/zorluk.luau ile
-	olcup oraya da yaz.
-
-	Kurek ve dedektorde oldugu gibi tek olta tasinir, sirayla yukseltilir;
-	alinan kademeler kalici, saticidan istenilen zaman geri kusanilir.
-]]
 
 local Rods = {}
 
@@ -36,33 +10,18 @@ export type RodInfo = {
 	level: number,
 	rarity: string,
 	price: number,
-	-- Yuksek rarity girdaplarin agirlik carpani (1 = etkisiz)
 	luck: number,
-	-- Girdaplarin dogdugu ve istemciye gonderildigi yaricap (stud).
-	-- Girdaplar birbirinden cok uzak durdugu icin bu sayi genis olmali:
-	-- yaricapin disinda dogan girdap istemciye hic gitmez, gorunmez olur.
 	scanRadius: number,
 	spawnChance: number,
 	maxWhirls: number,
-	-- Minigame oncesi hazirlik suresi carpani (dusuk = hizli)
 	digSpeed: number,
-	-- Minigame: oyuncunun kontrol ettigi yesil barin yuksekligi
 	barSize: number,
-	-- Minigame: bar ivmesi; yuksek olan kontrolu kolaylastirir
 	barAcceleration: number,
-	-- Minigame: hedef bar icindeyken ilerleme hizi
 	progressRate: number,
-	-- Minigame: hedef bar disindayken gerileme hizi
 	drainRate: number,
 	color: Color3,
 }
 
---[[
-	ILK OLTANIN SARTI
-
-	Deniz adalarin devami: ilk olta ancak son ada kuregi (Lv20) alininca
-	satin alinabilir. Sonraki oltalarda sart yok (zaten sirayla alinir).
-]]
 Rods.RequiredShovelLevel = 20
 
 Rods.Order = { "Bamboo", "Steel", "Carbon", "Abyssal", "Leviathan" } :: { RodId }
@@ -159,52 +118,18 @@ Rods.Info = {
 	},
 } :: { [RodId]: RodInfo }
 
---[[
-	ELDEKI OLTA
-
-	Tool DEGIL: hotbarda gorunmesin ve elden birakilamasin diye parcalar
-	dogrudan sag ele kaynaklanan bir Model olarak duruyor. Asagidaki ad hem
-	o modelin adi hem de "elinde olta var mi" kontrolunun anahtari.
-]]
 Rods.ToolName = "Fishing Rod"
 
--- Misinanin ucundaki nokta; kanca cizgisi buraya baglanir
 Rods.TipName = "OltaUcu"
 
--- Atilan misinayi tutan gorunmez parcanin adi
 Rods.LineName = "OltaMisinasi"
 
---[[
-	SAVURMA ZAMANLAMASI
-
-	Girdaba tiklayinca minigame ANINDA acilmaz: once olta savrulur.
-	Uc sayi var, hepsi ayni 1.25 saniyenin icinde gecer:
-
-	  0.00  tiklandi, savurma animasyonu basladi -- misina gorunmez
-	  0.75  CastRelease  -- savurma one geldi, MISINA BIRAKILDI
-	  1.25  CastFlight bitti -- samandira girdabin ortasina dustu
-	  1.25  CastTime -- minigame penceresi acilir
-
-	CastTime elle yazilmaz, CastRelease + CastFlight olarak hesaplanir:
-	pencere her zaman misinanin suya dustugu anda acilir. Savurma
-	animasyonunun suresini degistirirsen YALNIZCA CastRelease'i guncelle,
-	gerisi kendiliginden uyar.
-
-	Kum kazisindan farkli: orada bekleme suresini kurek belirliyor
-	(Config.Dig.prepareTime * digSpeed), denizde ise animasyon belirliyor,
-	yani olta kademesi bu sureyi degistirmez.
-]]
-
--- Misinanin birakildigi an: savurma animasyonunun (RodCast, 1.733 sn) 0.75. saniyesi
 Rods.CastRelease = 0.75
 
--- Misinanin havada gecirdigi sure: oltanin ucundan girdabin ortasina
 Rods.CastFlight = 0.5
 
--- Misina ve ucundaki samandiranin neon rengi
 Rods.LineColor = Color3.fromRGB(60, 255, 230)
 
--- Tiklamayla minigame penceresinin acilmasi arasindaki toplam sure
 Rods.CastTime = Rods.CastRelease + Rods.CastFlight
 
 function Rods.get(id: string?): RodInfo?
@@ -218,7 +143,6 @@ function Rods.exists(id: string?): boolean
 	return Rods.get(id) ~= nil
 end
 
--- Kademe sirasi; oltasi olmayan icin 0
 function Rods.level(id: string?): number
 	local info = Rods.get(id)
 	return if info then info.level else 0

@@ -1,61 +1,15 @@
 --!strict
---[[
-	=====================================================================
-	KABARTMA BUTON  --  cizgi film / simulator arayuz stili
-	=====================================================================
-
-	Referans: populer simulator oyunlarindaki "RETRY" tarzi buton.
-	3D kabartma, canli dikey gradyan, kalin siyah cerceve, ic doku ve
-	basma animasyonu.
-
-	KULLANIM
-
-	    local Kabartma = require(script.Parent.Kabartma)
-
-	    local buton = Kabartma.new({
-	        parent = ekran,
-	        size = UDim2.fromOffset(240, 70),
-	        position = UDim2.fromScale(0.5, 0.5),
-	        anchor = Vector2.new(0.5, 0.5),
-	        color = Color3.fromRGB(255, 178, 40),
-	        text = "RETRY",
-	        onClick = function()
-	            print("basildi")
-	        end,
-	    })
-
-	    -- Sonradan degistirmek icin:
-	    buton.setText("TEKRAR")
-	    buton.setColor(Color3.fromRGB(90, 200, 120))
-
-	DONEN TABLO
-	    root      dis govde (ImageButton)  -- konumlandirma bunun uzerinden
-	    face      yuz (Frame)              -- ustune ekleyecegin her sey buraya
-	    setText / setColor / setEnabled
-
-	BAGIMSIZ CALISIR
-	Hicbir sey require etmez; StarterGui icine LocalScript olarak da
-	yapistirabilirsin (o durumda asagidaki ORNEK bolumunu acik birak).
-]]
 
 local TweenService = game:GetService("TweenService")
 
 local Kabartma = {}
 
-------------------------------------------------------------------
--- AYARLAR
-------------------------------------------------------------------
 local AYAR = {
-	-- Alt kabartmanin yuksekligi (3D derinlik)
 	lip = 6,
-	-- Yuzun kenardan iceri girme miktari
 	inset = 4,
-	-- Kose yuvarlakligi (oranli: buton boyutuna gore olceklenir)
 	corner = UDim.new(0.2, 0),
-	-- Dis cerceve
 	strokeThickness = 5,
 	strokeColor = Color3.fromRGB(0, 0, 0),
-	-- Animasyon
 	hoverScale = 1.05,
 	pressScale = 0.95,
 	tweenTime = 0.12,
@@ -63,54 +17,11 @@ local AYAR = {
 
 local TWEEN = TweenInfo.new(AYAR.tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-------------------------------------------------------------------
--- RENK YARDIMCISI
-------------------------------------------------------------------
-
--- amount > 0 aydinlatir, < 0 karartir
 local function shade(color: Color3, amount: number): Color3
 	local h, s, v = color:ToHSV()
 	return Color3.fromHSV(h, math.clamp(s - amount * 0.1, 0, 1), math.clamp(v + amount, 0, 1))
 end
 
-------------------------------------------------------------------
--- DOKU (grid / capraz desen)
-------------------------------------------------------------------
-
---[[
-	HAZIR DESEN GORSELI KULLANMAK ISTERSEN
-
-	Roblox'ta tekrarlayan desen icin ImageLabel'i DOSEME (Tile) modunda
-	kullanirsin. Kendi desen gorselini yukleyip id'sini yazman yeterli:
-
-	    local desen = Instance.new("ImageLabel")
-	    desen.Size = UDim2.fromScale(1, 1)
-	    desen.BackgroundTransparency = 1
-	    desen.Image = "rbxassetid://SENIN_DESEN_IDN"
-	    desen.ScaleType = Enum.ScaleType.Tile
-	    -- Tek bir karonun boyutu; kucultursen desen siklasir
-	    desen.TileSize = UDim2.fromOffset(24, 24)
-	    -- 0 = tam gorunur, 1 = gorunmez. 0.85 civari dokuyu belli eder
-	    desen.ImageTransparency = 0.85
-	    -- Desenin rengi butonun renginden gelsin istiyorsan:
-	    desen.ImageColor3 = Color3.fromRGB(255, 255, 255)
-	    desen.ZIndex = 2
-	    desen.Parent = face
-
-	Desen gorseli 45 derecelik ince cizgilerden olusan, kenarlari birbirine
-	uyan (seamless) kare bir PNG olmali; yoksa karolarin birlesim yerleri
-	belli olur.
-
-	ASAGIDAKI KOD GORSEL GEREKTIRMEZ: ayni dokuyu gradyanla uretir.
-]]
-
---[[
-	Tek yonlu serit katmani.
-
-	NEDEN GRADYAN: desen dondurulmus Frame'lerle yapilinca Roblox'ta
-	ClipsDescendants onlari KIRPMIYOR ve desen butonun disina tasiyor.
-	UIGradient'in saydamlik dizisi her zaman kendi cercevesinde kalir.
-]]
 local function seritKatmani(parent: GuiObject, rotation: number, count: number, alpha: number)
 	local layer = Instance.new("Frame")
 	layer.Name = "Desen"
@@ -147,10 +58,6 @@ local function seritKatmani(parent: GuiObject, rotation: number, count: number, 
 	gradient.Parent = layer
 end
 
-------------------------------------------------------------------
--- BUTON
-------------------------------------------------------------------
-
 export type Options = {
 	parent: Instance,
 	size: UDim2?,
@@ -166,9 +73,6 @@ export type Options = {
 function Kabartma.new(options: Options)
 	local color = options.color or Color3.fromRGB(255, 178, 40)
 
-	--------------------------------------------------------------
-	-- 1) DIS GOVDE  --  ayni zamanda alt kabartma (koyu ton)
-	--------------------------------------------------------------
 	local root = Instance.new("ImageButton")
 	root.Name = "KabartmaButon"
 	root.Size = options.size or UDim2.fromOffset(220, 68)
@@ -185,9 +89,6 @@ function Kabartma.new(options: Options)
 	rootCorner.CornerRadius = AYAR.corner
 	rootCorner.Parent = root
 
-	--------------------------------------------------------------
-	-- 2) DIS CERCEVE  --  kalin siyah kontur
-	--------------------------------------------------------------
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Thickness = AYAR.strokeThickness
@@ -195,27 +96,16 @@ function Kabartma.new(options: Options)
 	stroke.LineJoinMode = Enum.LineJoinMode.Round
 	stroke.Parent = root
 
-	--------------------------------------------------------------
-	-- 3) OLCEKLEME  --  hover/tiklama animasyonu icin
-	--
-	-- Size yerine UIScale kullaniliyor: buton bir UIListLayout ya da
-	-- UIGridLayout icindeyse Size'i degistirmek diziyi bozar, UIScale
-	-- ise yalnizca cizimi olcekler.
-	--------------------------------------------------------------
 	local scale = Instance.new("UIScale")
 	scale.Scale = 1
 	scale.Parent = root
 
-	--------------------------------------------------------------
-	-- 4) YUZ  --  asil renk, alt kabartmayi acikta birakir
-	--------------------------------------------------------------
 	local face = Instance.new("Frame")
 	face.Name = "Yuz"
 	face.Size = UDim2.new(1, -AYAR.inset * 2, 1, -AYAR.inset * 2 - AYAR.lip)
 	face.Position = UDim2.fromOffset(AYAR.inset, AYAR.inset)
 	face.BackgroundColor3 = color
 	face.BorderSizePixel = 0
-	-- Desen ve parlaklik kenardan tasmasin
 	face.ClipsDescendants = true
 	face.ZIndex = 1
 	face.Parent = root
@@ -224,9 +114,6 @@ function Kabartma.new(options: Options)
 	faceCorner.CornerRadius = AYAR.corner
 	faceCorner.Parent = face
 
-	--------------------------------------------------------------
-	-- 5) DIKEY GRADYAN  --  ustu parlak, alti koyu
-	--------------------------------------------------------------
 	local gradient = Instance.new("UIGradient")
 	gradient.Name = "Gradyan"
 	gradient.Rotation = 90
@@ -237,15 +124,9 @@ function Kabartma.new(options: Options)
 	})
 	gradient.Parent = face
 
-	--------------------------------------------------------------
-	-- 6) DOKU  --  iki capraz serit katmani = elmas izgara
-	--------------------------------------------------------------
 	seritKatmani(face, 32, 5, 0.86)
 	seritKatmani(face, -32, 5, 0.9)
 
-	--------------------------------------------------------------
-	-- 7) UST PARLAKLIK  --  cam yansimasi
-	--------------------------------------------------------------
 	local gloss = Instance.new("Frame")
 	gloss.Name = "Parlaklik"
 	gloss.Size = UDim2.new(1, 0, 0.5, 0)
@@ -266,9 +147,6 @@ function Kabartma.new(options: Options)
 	})
 	glossGradient.Parent = gloss
 
-	--------------------------------------------------------------
-	-- 8) IC GOLGE  --  alt kenarda karartma, derinlik hissi
-	--------------------------------------------------------------
 	local innerShadow = Instance.new("Frame")
 	innerShadow.Name = "IcGolge"
 	innerShadow.Size = UDim2.new(1, 0, 0.4, 0)
@@ -286,9 +164,6 @@ function Kabartma.new(options: Options)
 	})
 	shadowGradient.Parent = innerShadow
 
-	--------------------------------------------------------------
-	-- 9) YAZI
-	--------------------------------------------------------------
 	local label = Instance.new("TextLabel")
 	label.Name = "Yazi"
 	label.Size = UDim2.fromScale(1, 1)
@@ -314,9 +189,6 @@ function Kabartma.new(options: Options)
 	labelPadding.PaddingBottom = UDim.new(0, 6)
 	labelPadding.Parent = label
 
-	--------------------------------------------------------------
-	-- 10) ANIMASYON  --  hover buyur, tiklayinca coker
-	--------------------------------------------------------------
 	local basili = false
 	local uzerinde = false
 
@@ -359,9 +231,6 @@ function Kabartma.new(options: Options)
 		root.MouseButton1Click:Connect(options.onClick)
 	end
 
-	--------------------------------------------------------------
-	-- DISARIYA ACILAN ARAYUZ
-	--------------------------------------------------------------
 	return {
 		root = root,
 		face = face,
@@ -371,10 +240,6 @@ function Kabartma.new(options: Options)
 			label.Text = text
 		end,
 
-		--[[
-			Rengi degistirir; gradyan ve alt kabartma da birlikte guncellenir,
-			boylece tek satirla butonun tum tonlamasi degisir.
-		]]
 		setColor = function(newColor: Color3)
 			face.BackgroundColor3 = newColor
 			root.BackgroundColor3 = shade(newColor, -0.34)
@@ -385,7 +250,6 @@ function Kabartma.new(options: Options)
 			})
 		end,
 
-		-- Kilitli gorunum: soluklasir ve tiklanamaz
 		setEnabled = function(enabled: boolean)
 			root.Active = enabled
 			root.AutoButtonColor = false

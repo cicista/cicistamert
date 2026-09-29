@@ -1,28 +1,3 @@
---[[
-	AdaSaticilari  (Script)
-	Yeri: ServerScriptService > AdaSaticilari
-
-	Candy, Snow ve Volcano adalarindaki iki NPC:
-
-	  KUREK SATICISI   CandyShovelSeller / FrostyShovelSeller / PhoenixShovelSeller
-	      Adanin 5 kuregini satar. Bedel Rot + adanin UC madeninin her
-	      birinden 2 / 3 / 5 / 7 / 10 tane (bkz. Shared > Shovels).
-
-	  KAZMA SATICISI   CandySeller / FrostySeller / PhoenixSeller
-	      Adanin kazmasini satar (Candy / Frosty / Phoenix Pickaxe) ve
-	      madenler arasi TAKAS yapar: diger iki madenden birer tane verilir,
-	      istenen madenden bir tane alinir.
-
-	NPC ARANMASI
-	Ad eslesmesi diger saticilarla ayni: buyuk/kucuk harf ve bosluk
-	gozetmez, Model / Folder / Part kabul eder. Haritada bulunamazsa adanin
-	spawn noktasinin yanina basit bir tezgah kurulur ve Output'a yazilir --
-	boylece NPC eklenmeden de test edilebilir.
-
-	Satin alma ve takas istekleri NPC'nin YANINDA yapilmali; uzaktan gelen
-	istek sessizce yok sayilir.
-]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -38,14 +13,6 @@ local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 
---[[
-	KaziSistemi'ndeki kurek yenileme tetigi (eldeki kurek yenisiyle degissin).
-
-	Script basinda WaitForChild ile BEKLENMIYOR: KaziSistemi gecikir ya da
-	hata verirse bu script de orada takili kalir ve hicbir NPC'ye prompt
-	takilmazdi. Satin alma aninda aranir; yoksa kurek bir sonraki kazida
-	zaten yenisiyle gelir.
-]]
 local function kurekYenile(player: Player)
 	local kazi = script.Parent:FindFirstChild("KaziSistemi")
 	local tetik = kazi and kazi:FindFirstChild("KurekYenile")
@@ -61,19 +28,14 @@ local KazmaAc = Net.event("KazmaAc")
 local KazmaAl = Net.event("KazmaAl")
 local MadenTakas = Net.event("MadenTakas")
 
--- Prompt mesafesi; istek kontrolunde tezgah boyu kadar pay birakilir
 local PROMPT_MESAFE = 12
 local ISTEK_MESAFE = 24
 
 local UYARI = Color3.fromRGB(255, 200, 90)
 local HATA = Color3.fromRGB(255, 90, 90)
 
--- "sekerkum|kurek" / "sekerkum|kazma" -> NPC'nin tutunma parcasi
 local anchors: { [string]: BasePart } = {}
 
-------------------------------------------------------------------
--- NPC BULMA / YEDEK TEZGAH
-------------------------------------------------------------------
 local function adEsit(a: string, b: string): boolean
 	return string.lower((string.gsub(a, "%s", ""))) == string.lower((string.gsub(b, "%s", "")))
 end
@@ -168,7 +130,6 @@ local function standKur(ad: string, baslik: string, cfg: Ores.IslandOres, kayma:
 	return tezgah
 end
 
--- Oyuncu bu NPC'nin yaninda mi
 local function yakinda(player: Player, anahtar: string): boolean
 	local anchor = anchors[anahtar]
 	local char = player.Character
@@ -179,9 +140,6 @@ local function yakinda(player: Player, anahtar: string): boolean
 	return (root.Position - anchor.Position).Magnitude <= ISTEK_MESAFE
 end
 
-------------------------------------------------------------------
--- PANEL VERISI
-------------------------------------------------------------------
 local function madenListesi(data: any, cfg: Ores.IslandOres)
 	local liste = {}
 	for _, id in cfg.ores do
@@ -216,7 +174,6 @@ local function kurekPayload(player: Player, ada: string)
 			color = info.color,
 			owned = info.level <= enYuksek,
 			equipped = data.shovel == info.id,
-			-- Sirayla alinir: yalnizca bir sonraki seviye
 			buyable = info.level == enYuksek + 1,
 		})
 	end
@@ -256,9 +213,6 @@ local function kazmaPayload(player: Player, ada: string)
 	}
 end
 
-------------------------------------------------------------------
--- KUREK SATIN ALMA / KUSANMA
-------------------------------------------------------------------
 AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 	if type(shovelId) ~= "string" then
 		return
@@ -282,7 +236,6 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 
 	local enYuksek = Shovels.get(data.shovelMax)
 
-	-- Sahip olunan seviye: ucretsiz kusanma
 	if info.level <= enYuksek.level then
 		if data.shovel == info.id then
 			Bildirim:FireClient(player, `{info.displayName} is already equipped.`, Color3.fromRGB(180, 200, 220))
@@ -302,10 +255,6 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 		return
 	end
 
-	--[[
-		EKSIKLER TEK BILDIRIMDE: hangi madenden kac tane ve ne kadar Rot
-		eksik oldugu birlikte yazar ("Missing: 1.2B Rot, 3 Amethyst, 1 Opal").
-	]]
 	local bedel = info.oreCost or 0
 	local eksikler: { string } = {}
 	if data.rot < info.price then
@@ -338,9 +287,6 @@ AdaKurekAl.OnServerEvent:Connect(function(player, shovelId)
 	Bildirim:FireClient(player, `{info.displayName} purchased!`, info.color)
 end)
 
-------------------------------------------------------------------
--- KAZMA SATIN ALMA
-------------------------------------------------------------------
 KazmaAl.OnServerEvent:Connect(function(player, pickaxeId)
 	if type(pickaxeId) ~= "string" then
 		return
@@ -378,11 +324,6 @@ KazmaAl.OnServerEvent:Connect(function(player, pickaxeId)
 	Bildirim:FireClient(player, `{kazma.displayName} purchased! Click on ores to mine them.`, kazma.color)
 end)
 
-------------------------------------------------------------------
--- MADEN TAKASI
---
--- Diger iki madenden TradeCost'ar tane verilir, istenen madenden 1 alinir.
-------------------------------------------------------------------
 MadenTakas.OnServerEvent:Connect(function(player, oreId)
 	if type(oreId) ~= "string" then
 		return
@@ -436,9 +377,6 @@ MadenTakas.OnServerEvent:Connect(function(player, oreId)
 	Bildirim:FireClient(player, `Traded for 1 {maden.displayName} (x{adet})`, maden.color)
 end)
 
-------------------------------------------------------------------
--- PROMPTLAR
-------------------------------------------------------------------
 local function promptTak(anchor: BasePart, ad: string, nesne: string, tetik: (Player) -> ())
 	local eski = anchor:FindFirstChild(ad)
 	if eski then
@@ -458,20 +396,6 @@ local function promptTak(anchor: BasePart, ad: string, nesne: string, tetik: (Pl
 	prompt.Triggered:Connect(tetik)
 end
 
---[[
-	NPC BAGLAMA
-
-	NPC'ler TEK SEFERDE aranmiyor. Model sunucu acildiktan sonra gelebilir
-	(Rojo senkronu, akis/streaming, elle eklenen model); tek arama onu
-	kacirir ve prompt hic takilmazdi. Bu yuzden:
-
-	  1. acilista bir kez aranir
-	  2. Workspace'e bu adla bir sey eklenince yeniden aranir
-	  3. YEDEK_BEKLEME saniye sonra hala yoksa spawn yanina yedek tezgah
-	     kurulur; gercek NPC sonradan gelirse tezgah silinip ona gecilir
-
-	Her baglanti Output'a yazilir: "[AdaSatici] CandySeller baglandi: ..."
-]]
 local YEDEK_BEKLEME = 8
 
 type Satici = {
@@ -497,7 +421,6 @@ local function bagla(s: Satici, anchor: BasePart)
 	print(`[AdaSatici] {s.npcAdi} baglandi: {anchor:GetFullName()}`)
 end
 
--- Gercek NPC'yi arar; bulursa yedek tezgahi kaldirip ona baglar
 local function saticiBul(s: Satici): boolean
 	local anchor = findAnchor(s.npcAdi)
 	if not anchor then
@@ -560,7 +483,6 @@ local function kur()
 		saticiBul(s)
 	end
 
-	-- Sonradan eklenen NPC: model icerigi yuklensin diye kisa bir bekleme
 	Workspace.DescendantAdded:Connect(function(node)
 		local s = adlar[normal(node.Name)]
 		if s then
@@ -576,7 +498,6 @@ local function kur()
 		end
 
 		local cfg = Ores.island(s.ada) :: Ores.IslandOres
-		-- Yedegin adi farkli: arama ona takilip gercek NPC sanmasin
 		local tezgah = standKur(`{s.npcAdi}_Yedek`, s.baslik, cfg, s.kayma)
 		if tezgah then
 			warn(`[AdaSatici] '{s.npcAdi}' haritada bulunamadi -- {cfg.name} spawn yanina yedek tezgah kuruldu`)

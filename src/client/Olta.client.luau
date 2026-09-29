@@ -1,14 +1,3 @@
---[[
-	Olta  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Olta
-
-	RodSeller NPC'sine basinca acilan satici paneli: 5 kademe, fiyatlari,
-	sans carpanlari.
-
-	Kurek ve dedektorde oldugu gibi sirayla alinir; ALINAN kademeler kalici
-	kalir ve tiklayinca ucretsiz geri kusanilir (EQUIPPED / USE).
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -67,7 +56,6 @@ liste.ScrollBarImageColor3 = UI.Colors.panelLight
 liste.CanvasSize = UDim2.new()
 liste.AutomaticCanvasSize = Enum.AutomaticSize.Y
 liste.Parent = panel
--- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 UI.listePayi(liste)
 
 local listeDizilim = Instance.new("UIListLayout")
@@ -88,7 +76,6 @@ local function satirCiz(entry: any, order: number)
 	UI.corner(row, 10)
 	UI.stroke(row, renk, if entry.equipped then 2 else 1)
 
-	-- Sahip olunan ama kusanili olmayan kademe soluk durur
 	if entry.owned and not entry.equipped then
 		row.BackgroundTransparency = 0.4
 	end
@@ -140,7 +127,6 @@ local function satirCiz(entry: any, order: number)
 		return
 	end
 
-	-- Sahip olunan kademe ucretsiz kusanilir, siradaki satin alinir
 	local etiket = if entry.owned then "Use" else `{Format.short(entry.price)} Rot`
 	local buton = UI.button(
 		row,

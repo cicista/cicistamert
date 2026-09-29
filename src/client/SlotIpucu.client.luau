@@ -1,20 +1,4 @@
 --!strict
---[[
-	SlotIpucu  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > SlotIpucu
-
-	Base'deki slot promptunun uzerinde yazan fiili ELDEKINE gore degistirir:
-
-	    scroll tutuluyorsa    Mutate
-	    brainrot tutuluyorsa  Place
-	    eli bossa             Slot   (sunucunun koydugu varsayilan)
-
-	NEDEN ISTEMCIDE
-	Prompt'u sunucu kuruyor ama "o an kimin elinde ne var" sorusunun cevabi
-	oyuncuya ozel. Metin burada degistirilince yalnizca o oyuncunun
-	ekraninda degisiyor; sunucuda degistirilseydi herkesin gordugu yazi
-	son yaklasan oyuncuya gore oynardi.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,7 +9,6 @@ local player = Players.LocalPlayer
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Scrolls = require(Shared:WaitForChild("Scrolls"))
 
--- Sunucunun slot promptuna verdigi ad (bkz. BaseSistemi > buildSlotPrompt)
 local PROMPT_ADI = "SlotPrompt"
 
 local function elindeki(): string
@@ -56,10 +39,6 @@ local function bagla(node: Instance)
 	end
 	baglandi[node] = true
 
-	--[[
-		PromptShown her gorunmede tetikleniyor, yani oyuncu slota her
-		yaklastiginda metin o anki eline gore yeniden yaziliyor.
-	]]
 	node.PromptShown:Connect(function()
 		node.ActionText = elindeki()
 	end)

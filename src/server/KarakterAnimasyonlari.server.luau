@@ -1,19 +1,3 @@
---[[
-	KarakterAnimasyonlari  (Script)
-	Yeri: ServerScriptService > KarakterAnimasyonlari
-
-	KARAKTER DURURKEN OYNAYAN ANIMASYON (idle)
-
-	Roblox her karaktere "Animate" adli bir script koyar; karakter
-	hicbir sey yapmiyorken onun icindeki "idle" animasyonlarini oynatir.
-	Burasi karakter dogunca o animasyonlarin kimligini oyunun kendi idle
-	animasyonuyla degistirir (Shared > Assets > Animations > idle).
-
-	Animate degisikligi dinledigi icin yeni animasyon aninda devreye girer.
-	Kazi, brainrot tasima gibi eylem animasyonlari idle'dan ONCELIKLI oldugu
-	icin bunlar etkilenmez; yalnizca karakter bosta dururken gorunur.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -33,7 +17,6 @@ local function idleUygula(character: Model)
 		return
 	end
 
-	-- R15'te Animation1 ve Animation2 var (rastgele secilir); ikisi de ayni olur
 	for _, child in idle:GetChildren() do
 		if child:IsA("Animation") then
 			child.AnimationId = id

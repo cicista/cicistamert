@@ -1,24 +1,8 @@
---[[
-	HataIletici  (Script)  --  YALNIZCA STUDIO
-	Yeri: ServerScriptService > HataIletici
-
-	Sunucudaki hata ve uyarilari oyunculara yollar; istemcideki HataEkrani
-	onlari ekranin sag altinda gosterir (Output acmadan gorulsun diye).
-	Gecmis mesajlar da oyuncu girince bir kez yollanir.
-
-	Yayinlanan oyunda (Studio disinda) hicbir sey yapmaz.
-]]
-
 local LogService = game:GetService("LogService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
---[[
-	KAPALI: ekip hata kutusunu Studio'da da gormek istemiyor. Hatalar yine
-	Output penceresinde. Tekrar acmak icin ACIK = true yap (HataEkrani ve
-	HataIletici ikisinde de).
-]]
 local ACIK = false
 if not ACIK then
 	return

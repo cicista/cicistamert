@@ -1,20 +1,4 @@
 --!strict
---[[
-	LEVEL SISTEMI  --  sunucu tarafi
-
-	Ayarlar (XP miktarlari, gereken XP, oduller) Shared > Seviye'de.
-
-	KULLANIM
-	  Seviye.xpVer(player, Seviye.XP.ore)
-	  Seviye.xpVer(player, Seviye.rarityXp("Epic"))
-	  Seviye.carpan(player)   -- kazi sansina carpilan kalici level bonusu
-
-	XP yalnizca sunucuda verilir; istemci sadece gosterir (SeviyeDurum,
-	SeviyeAtladi). Leaderstats'taki Level sutunu da veriden okunur.
-
-	Leaderstats bu modulu Net.init()'ten SONRA require eder: karakter
-	gelince bas ustu yazisini kuran baglantilar ancak o zaman kurulur.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,13 +21,9 @@ local ETIKET_ADI = "SeviyeEtiketi"
 
 local Seviye = {}
 
--- Diger scriptler ayarlara ayrica require yazmadan ulassin
 Seviye.XP = SeviyeAyar.XP
 Seviye.rarityXp = SeviyeAyar.rarityXp
 
-------------------------------------------------------------------
--- BAS USTU YAZISI  ("Lv. 12", altinda daha kucuk "Speed 57")
-------------------------------------------------------------------
 local ETIKET_EN = 140
 local LEVEL_BOY = 30
 local HIZ_BOY = 20
@@ -61,8 +41,6 @@ local function etiketGuncelle(player: Player)
 		local yeni = Instance.new("BillboardGui")
 		yeni.Name = ETIKET_ADI
 		yeni.Size = UDim2.fromOffset(ETIKET_EN, LEVEL_BOY + HIZ_BOY)
-		-- Roblox'un kendi isim yazisinin biraz ustunde; hiz satiri eklenince
-		-- kutu asagi uzadigi icin merkez biraz yukari alindi
 		yeni.StudsOffset = Vector3.new(0, 2.8, 0)
 		yeni.MaxDistance = 90
 		yeni.LightInfluence = 0
@@ -82,7 +60,6 @@ local function etiketGuncelle(player: Player)
 		kontur.Thickness = 2
 		kontur.Parent = yazi
 
-		-- Hiz seviyesi: levelin altinda, ondan kucuk; rengi seviyeyle isinir
 		local hizYazi = Instance.new("TextLabel")
 		hizYazi.Name = "Hiz"
 		hizYazi.Position = UDim2.fromOffset(0, LEVEL_BOY - 2)
@@ -113,12 +90,8 @@ local function etiketGuncelle(player: Player)
 	end
 end
 
--- Hiz yukseltmesi de bas ustu yazisini tazeler (bkz. ServerScriptService > Hiz)
 Seviye.etiketGuncelle = etiketGuncelle
 
-------------------------------------------------------------------
--- DURUM
-------------------------------------------------------------------
 function Seviye.push(player: Player, gained: number?)
 	local data = PlayerData.get(player)
 	if not data then
@@ -134,16 +107,11 @@ function Seviye.push(player: Player, gained: number?)
 	})
 end
 
--- Kazi sansina carpilan kalici level bonusu
 function Seviye.carpan(player: Player): number
 	local data = PlayerData.get(player)
 	return if data then SeviyeAyar.sansCarpani(data.level) else 1
 end
 
---[[
-	XP verir; yetiyorsa (birden fazla da olabilir) level atlatir ve odulleri
-	verir. Max levelde XP birikmez.
-]]
 function Seviye.xpVer(player: Player, amount: number)
 	local data = PlayerData.get(player)
 	local miktar = math.floor(amount or 0)
@@ -168,7 +136,6 @@ function Seviye.xpVer(player: Player, amount: number)
 
 	if atlanan > 0 then
 		PlayerData.addRotCoins(player, coin)
-		-- Ekrandaki Rot Coin bakiyesi bayat kalmasin
 		Envanter.push(player)
 		etiketGuncelle(player)
 
@@ -188,9 +155,6 @@ function Seviye.xpVer(player: Player, amount: number)
 	Seviye.push(player, miktar)
 end
 
-------------------------------------------------------------------
--- BAGLANTILAR
-------------------------------------------------------------------
 local function oyuncuHazirla(player: Player)
 	player.CharacterAdded:Connect(function(character)
 		character:WaitForChild("Head", 10)
@@ -200,10 +164,8 @@ local function oyuncuHazirla(player: Player)
 		task.spawn(etiketGuncelle, player)
 	end
 
-	-- Veri yuklenince bar ve bas ustu yazisi gorunsun
 	task.spawn(function()
 		task.wait(3)
-		-- Veri gec gelebilir (oturum cakismasi); gelene kadar bekle
 		if PlayerData.bekle(player) then
 			etiketGuncelle(player)
 			Seviye.push(player)

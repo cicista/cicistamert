@@ -1,26 +1,4 @@
 --!strict
---[[
-	RobuxMagaza  (Script)
-	Yeri: ServerScriptService > RobuxMagaza
-
-	Sag ustteki STORE magazasinin sunucu tarafi. Urunler ve fiyatlar
-	Shared > RobuxMagaza'da; Game Pass'ler Passler scriptinde satilir.
-
-	SATIN ALMA AKISI
-	  1. Istemci RobuxUrunAl ile urunun ANAHTARINI yollar
-	  2. Burasi Roblox'un satin alma penceresini acar
-	  3. Oyuncu odeyince Roblox ProcessReceipt'i cagirir; urun burada verilir
-
-	ProcessReceipt OYUNDA TEK YERDE atanabilir (sonra atanan oncekini
-	ezer). Baska bir Developer Product eklenirse o da buradan verilmeli.
-
-	AYNI FIS IKI KEZ VERILMEZ
-	Roblox fisi, PurchaseGranted donene kadar tekrar tekrar yollar (sunucu
-	degisse bile). Bu yuzden fis kimligi urunle AYNI ANDA oyuncunun kaydina
-	yazilir ve kayit DataStore'a ulasmadan PurchaseGranted donulmez.
-	Kayit basarisizsa NotProcessedYet donulur: Roblox sonra tekrar dener,
-	fis zaten kayitli oldugu icin urun ikinci kez verilmez.
-]]
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -33,21 +11,17 @@ local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
--- Yumurta gachasi (bkz. Modules > Gacha)
 local Gacha = require(Modules:WaitForChild("Gacha"))
--- Robux ile acilan yonca alani (bkz. Modules > AfkSans)
 local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local Canta = require(Shared:WaitForChild("Canta"))
 
 local Bildirim = Net.event("Bildirim")
 local RobuxUrunAl = Net.event("RobuxUrunAl")
--- Sans takviyesi alininca Rot'un ustundeki iksir yazisi guncellensin
 local SansDurum = Net.event("RotCoinMagazaDurum")
 
 local YESIL = Color3.fromRGB(140, 230, 160)
 local SARI = Color3.fromRGB(255, 200, 90)
 
--- Ayni oyuncu dugmeye ust uste basarsa pencere tekrar tekrar acilmasin
 local PENCERE_ARASI = 1
 local sonPencere: { [Player]: number } = {}
 
@@ -63,11 +37,6 @@ local function sansDurumuGonder(player: Player)
 	})
 end
 
---[[
-	Sans takviyesi. Parasi odendigi icin HICBIR durumda reddedilmez:
-	  - ayni ya da daha guclu takviye aktifse: sure uzar
-	  - daha zayif takviye (Rot Coin iksiri) aktifse: yerini alir
-]]
 local function sansVer(player: Player, data: any, carpan: number, saniye: number)
 	local aktif = PlayerData.luckBonus(player)
 	if aktif >= carpan - 0.001 then
@@ -77,16 +46,6 @@ local function sansVer(player: Player, data: any, carpan: number, saniye: number
 	end
 end
 
---[[
-	DEDEKTIF KAPILARI
-
-	Inceleme suresini atlama urunu burada odeniyor ama isi Detective
-	betigi yapiyor. Iki BindableFunction'la konusuluyor (bkz.
-	ServerScriptService > Detective > SUREYI ATLAMA).
-
-	Tembel aliniyor: betikler ayni anda yukleniyor, ust seviyede
-	WaitForChild ile beklemek bu betigi kilitleyebilirdi.
-]]
 local function dedektifKapisi(ad: string): BindableFunction?
 	local betik = script.Parent:FindFirstChild("Detective")
 	local kapi = betik and betik:FindFirstChild(ad)
@@ -103,7 +62,6 @@ local function dedektifBekliyor(player: Player): boolean
 	return kapi ~= nil and kapi:Invoke(player) == true
 end
 
--- Urunu verir. Yalnizca kayittaki veriyi degistirir; bekleme yapmaz.
 local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 	if urun.tur == "luckyblock" and urun.tier then
 		PlayerData.addLuckyBlocks(player, urun.tier, urun.adet or 1)
@@ -112,15 +70,6 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 	elseif urun.tur == "rotcoin" then
 		PlayerData.addRotCoins(player, urun.rotCoin or 0)
 	elseif urun.tur == "detectiveSkip" then
-		--[[
-			Dedektifin suresini siler. Isi Detective betigi yapiyor; burasi
-			yalnizca odemeyi isleyen yer (ProcessReceipt oyunda TEK yerde
-			olabiliyor, bkz. dosya basi).
-
-			Bekleyen is yoksa false doner. Fis yine de kabul ediliyor --
-			ProcessReceipt'ten para iadesi yok; onun yerine pencere
-			ACILMADAN once bekleyen is var mi diye bakiliyor (asagida).
-		]]
 		if not dedektifAtla(player) then
 			Bildirim:FireClient(
 				player,
@@ -131,19 +80,13 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 	elseif urun.tur == "afkAlan" and urun.alan then
 		AfkSans.robuxlaAc(player, urun.alan)
 	elseif urun.tur == "gacha" then
-		-- Yumurta kayda hemen yazilir, carki ve patlamayi Gacha modulu oynatir
 		Gacha.ver(player)
 	else
 		error(`bilinmeyen urun turu: {urun.tur}`)
 	end
 end
 
--- Urun verildikten sonra ekrandakiler (canta, bakiye, iksir yazisi) tazelenir
 local function ekraniTazele(player: Player, urun: RobuxMagaza.Urun)
-	--[[
-		Gacha: yumurta cark DURUNCA gorunmeli; envanteri Gacha modulu
-		tazeliyor (simdi tazelenirse cark donerken cantada belirirdi).
-	]]
 	if urun.tur == "gacha" then
 		return
 	end
@@ -158,16 +101,9 @@ end
 local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 	local player = Players:GetPlayerByUserId(fis.PlayerId)
 	if not player then
-		-- Oyuncu cikmis: bir sonraki girisinde (hangi sunucu olursa) verilir
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	--[[
-		Veri henuz yukleniyor olabilir (sunucu degisiminde 40 sn'yi gecebilir).
-		Hemen NotProcessedYet donulse Roblox fisi bir sonraki girise kadar
-		tekrar denemeyebilirdi. bekle, veri gelince ya da oyuncu cikinca /
-		atilinca doner.
-	]]
 	local data = PlayerData.bekle(player)
 	if not data then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -175,7 +111,6 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 
 	local fisId = tostring(fis.PurchaseId)
 
-	-- Daha once verilmis: yalnizca kaydin DataStore'a ulastigindan emin ol
 	if data.purchases[fisId] then
 		return if PlayerData.fisKaydedildi(player, fisId)
 			then Enum.ProductPurchaseDecision.PurchaseGranted
@@ -188,19 +123,15 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	-- Fis ve urun ayni anda yazilir (arada bekleme yok)
 	data.purchases[fisId] = os.time()
 	local ok, hata = pcall(urunVer, player, data, urun)
 	if not ok then
-		-- Hicbir sey verilmediyse fis geri alinir, Roblox tekrar dener
 		data.purchases[fisId] = nil
 		warn(`[RobuxMagaza] {urun.anahtar} verilemedi ({player.Name}): {hata}`)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	-- Ekran hatasi satin almayi bozmasin
 	pcall(ekraniTazele, player, urun)
-	-- Gacha kendi sonucunu cark durunca soyluyor; simdi "tesekkurler" yeter
 	Bildirim:FireClient(
 		player,
 		if urun.tur == "gacha" then "Thank you! Premium Spin is spinning..." else `Thank you! You got {urun.ad}!`,
@@ -208,7 +139,6 @@ local function fisIsle(fis: any): Enum.ProductPurchaseDecision
 	)
 
 	if not PlayerData.fisKaydedildi(player, fisId) then
-		-- Urun ve fis bellekte; kayit sonra (otomatik ya da cikista) gider
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	return Enum.ProductPurchaseDecision.PurchaseGranted
@@ -239,22 +169,11 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 	end
 	sonPencere[player] = simdi
 
-	--[[
-		ATLANACAK BIR SEY YOKSA PENCERE ACILMAZ
-
-		ProcessReceipt'ten para iadesi yok: pencere acilip oyuncu oderse
-		odeme gecer. Bu yuzden denetim odemeden ONCE burada yapiliyor.
-	]]
 	if urun.tur == "detectiveSkip" and not dedektifBekliyor(player) then
 		Bildirim:FireClient(player, "The Detective is not working on anything.", SARI)
 		return
 	end
 
-	--[[
-		GACHA: CANTA DOLUYSA PENCERE ACILMAZ
-		Yumurta dolu cantaya da girer (para geri verilemez), ama oyuncu
-		bunu bilerek almasin: once yer acsin.
-	]]
 	if urun.tur == "gacha" then
 		local data = PlayerData.get(player)
 		if data and PlayerData.cantaSayisi(player) >= Canta.duzelt(data.inventoryMax) then
@@ -263,7 +182,6 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 		end
 	end
 
-	-- Zaten acik yonca alani ikinci kez satilmaz
 	if urun.tur == "afkAlan" and urun.alan and AfkSans.robuxAlaniAcik(player, urun.alan) then
 		Bildirim:FireClient(player, `{urun.ad} is already unlocked.`, Color3.fromRGB(180, 200, 220))
 		return

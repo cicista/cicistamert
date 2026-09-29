@@ -1,37 +1,4 @@
 --!strict
---[[
-	20 kademeli kurek sistemi.
-
-	    Lv 1-5    Main Island     Shopkeeper            yalnizca Rot
-	    Lv 6-10   Candy Island    CandyShovelSeller     Rot + Amethyst, Opal, Morganite
-	    Lv 11-15  Snow Island     FrostyShovelSeller    Rot + Sapphire, Lapis, Quartz
-	    Lv 16-20  Volcano Island  PhoenixShovelSeller   Rot + Ruby, Obsidian, Basalt
-
-	Ada kureklerinde adanin UC madeninin HER BIRINDEN istenen adet, kuregin
-	adadaki sirasina gore (bkz. OreCosts):
-
-	    1. kurek 0   2. kurek 3   3. kurek 5   4. kurek 7   5. kurek 9
-
-	Adanin ilk kuregi maden ISTEMEZ: oyuncu adaya yeni gelmistir, maden
-	toplamaya henuz baslamamistir.
-
-	KAZI GUCU
-	Kazi zorlugu "rarity.order - kurek gucu" farkindan gelir (bkz. Shared >
-	KaziMinigame). Guc ilk bes kurekte seviyenin kendisi; ada kureklerinde
-	her 5 seviye BIR kademe ekler:
-
-	    Lv5   guc 5   Divine ZOR
-	    Lv10  guc 6   Cosmic ZOR
-	    Lv15  guc 7   Secret ZOR
-	    Lv20  guc 8   Infernal ZOR
-
-	Aradaki seviyeler oranli ilerler: Lv7'nin gucu 5.4 -- Divine normal ile
-	zor arasinda, Cosmic ise ancak Lv10'da alinabilir hale gelir.
-
-	Kurek iki seyi daha belirler:
-	  digSpeed  -- kazi hazirlik suresi carpani (dusuk = hizli)
-	  bar*      -- denizdeki bar oyununun ortak yuzu (bkz. DigMinigame)
-]]
 
 local Shovels = {}
 
@@ -43,24 +10,16 @@ export type ShovelInfo = {
 	level: number,
 	rarity: string,
 	price: number,
-	-- Kazi hazirlik suresi carpani; 1.0 = taban, dusuk olan daha hizli kazar
 	digSpeed: number,
-	-- Minigame: oyuncunun kontrol ettigi yesil barin ekran yuksekligine orani
 	barSize: number,
-	-- Minigame: bar ivmesi; yuksek olan bari daha tepkisel/kolay kontrol edilir yapar
 	barAcceleration: number,
-	-- Minigame: hedef bar icindeyken ilerleme hizi (saniyede oran)
 	progressRate: number,
-	-- Minigame: hedef bar disindayken gerileme hizi (saniyede oran)
 	drainRate: number,
 	color: Color3,
-	-- Ada kuregi ise satildigi ada (Brainrots.IslandOrder kimligi); ana adada nil
 	island: string?,
-	-- Ada kuregi ise adanin her madeninden istenen adet
 	oreCost: number?,
 }
 
--- Ada kureklerinin maden bedeli: adadaki sirasina gore (1..5)
 Shovels.OreCosts = { 0, 3, 5, 7, 9 }
 
 Shovels.Order = { "Wooden", "Iron", "Golden", "Diamond", "Celestial" } :: { ShovelId }
@@ -137,15 +96,6 @@ Shovels.Info = {
 	},
 } :: { [ShovelId]: ShovelInfo }
 
---[[
-	ADA KUREGI EKLER
-
-	Kimliklerin sonunda "Shovel" var: DigMinigame.gear once kurek, sonra
-	olta tablosuna bakiyor; bir olta ile ayni kimlik denizde yanlis ekipmani
-	secerdi.
-
-	rarity yalnizca arayuz rengi icin: kuregin ACTIGI kademe.
-]]
 local function adaKuregi(id: string, displayName: string, level: number, island: string, rarity: string, price: number, color: Color3)
 	local ilerleme = level - 5
 	local sira = ((level - 6) % 5) + 1
@@ -168,21 +118,18 @@ local function adaKuregi(id: string, displayName: string, level: number, island:
 	table.insert(Shovels.Order, id)
 end
 
--- CANDY ISLAND  (Lv 6-10) -- Lv10 Cosmic'i zor alir
 adaKuregi("LollipopShovel", "Lollipop Shovel", 6, "sekerkum", "Cosmic", 3_500_000_000, Color3.fromRGB(255, 150, 210))
 adaKuregi("GummyShovel", "Gummy Shovel", 7, "sekerkum", "Cosmic", 4_500_000_000, Color3.fromRGB(255, 130, 200))
 adaKuregi("CandyCaneShovel", "Candy Cane Shovel", 8, "sekerkum", "Cosmic", 5_500_000_000, Color3.fromRGB(255, 110, 170))
 adaKuregi("CaramelShovel", "Caramel Shovel", 9, "sekerkum", "Cosmic", 7_000_000_000, Color3.fromRGB(240, 120, 190))
 adaKuregi("SugarCrystalShovel", "Sugar Crystal Shovel", 10, "sekerkum", "Cosmic", 8_000_000_000, Color3.fromRGB(255, 90, 200))
 
--- SNOW ISLAND  (Lv 11-15) -- Lv15 Secret'i zor alir  --  50B .. 100B
 adaKuregi("FrostShovel", "Frost Shovel", 11, "snowkum", "Gizli", 50_000_000_000, Color3.fromRGB(170, 230, 255))
 adaKuregi("GlacierShovel", "Glacier Shovel", 12, "snowkum", "Gizli", 62_000_000_000, Color3.fromRGB(140, 215, 255))
 adaKuregi("BlizzardShovel", "Blizzard Shovel", 13, "snowkum", "Gizli", 75_000_000_000, Color3.fromRGB(120, 200, 250))
 adaKuregi("PermafrostShovel", "Permafrost Shovel", 14, "snowkum", "Gizli", 87_000_000_000, Color3.fromRGB(100, 185, 245))
 adaKuregi("AuroraShovel", "Aurora Shovel", 15, "snowkum", "Gizli", 100_000_000_000, Color3.fromRGB(110, 240, 230))
 
--- VOLCANO ISLAND  (Lv 16-20) -- Lv20 Infernal'i zor alir  --  500B .. 1T
 adaKuregi("EmberShovel", "Ember Shovel", 16, "alevkum", "Infernal", 500_000_000_000, Color3.fromRGB(255, 170, 70))
 adaKuregi("MagmaShovel", "Magma Shovel", 17, "alevkum", "Infernal", 620_000_000_000, Color3.fromRGB(255, 145, 50))
 adaKuregi("BlazeShovel", "Blaze Shovel", 18, "alevkum", "Infernal", 750_000_000_000, Color3.fromRGB(255, 120, 40))
@@ -208,11 +155,6 @@ function Shovels.next(id: ShovelId): ShovelInfo?
 	return nil
 end
 
---[[
-	KAZI GUCU  (bkz. baslik)
-
-	Ilk bes seviyede seviyenin kendisi, sonrasinda her 5 seviye 1 kademe.
-]]
 function Shovels.power(level: number): number
 	if level <= 5 then
 		return level
@@ -220,7 +162,6 @@ function Shovels.power(level: number): number
 	return 5 + (level - 5) / 5
 end
 
--- Bir adanin kurekleri seviyeye gore; island nil ise ana adanin kurekleri
 function Shovels.forIsland(island: string?): { ShovelInfo }
 	local out = {}
 	for _, id in Shovels.Order do

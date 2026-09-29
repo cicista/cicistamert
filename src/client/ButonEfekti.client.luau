@@ -1,40 +1,15 @@
 --!strict
---[[
-	ButonEfekti  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > ButonEfekti
-
-	BUTUN BUTONLARA FARE EFEKTI
-
-	Sol menu butonlari ve kapatma dugmeleri fare ustune gelince hafifce
-	buyuyor (UI.hover). Fuse makinesi, Rewards, Friends, Detective gibi
-	panellerin dugmelerinde bu yoktu. Bu script oyuncunun ekranindaki HER
-	dugmeyi -- sonradan eklenenler dahil -- izler ve ayni kucuk buyume /
-	basinca kuculme efektini verir.
-
-	ATLANANLAR
-	  - Zaten kendi buyume efekti olanlar (icinde "FareOlcegi" UIScale var)
-	  - Kendi UIScale'i olanlar (baska bir sistem olcekliyor)
-	  - Buyuk satirlar ve kartlar: listede buyuyunce komsularinin ustune
-	    tasarlardi (bkz. EN_BUYUK)
-	  - "EfektYok" niteligi konmus dugmeler
-
-	Uygunluk dugmeye ILK DOKUNULDUGUNDA olculur: kuruldugu anda boyutu
-	henuz hesaplanmamis olabiliyor.
-]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- UI.hover ile ayni degerler
 local SURE = 0.12
 local BUYUME = 1.06
 local BASMA = 0.96
 
--- Bundan genis dugmeler (satirlar, genis seritler) buyutulmez
 local EN_BUYUK = 460
--- Kaydirma listesindeki bundan genis dugmeler (liste satirlari) buyutulmez
 local LISTEDE_EN_BUYUK = 250
 
 local OLCEK_ADI = "ButonEfektOlcek"
@@ -58,7 +33,6 @@ local function uygunMu(buton: GuiButton): boolean
 		return false
 	end
 
-	-- Kendi efekti olan (UI.hover pop) ya da baska olcekleyicisi olan dugme
 	for _, d in buton:GetDescendants() do
 		if d:IsA("UIScale") and d.Name ~= OLCEK_ADI then
 			return false
@@ -92,7 +66,6 @@ local function olcek(buton: GuiButton): UIScale
 end
 
 local function oynat(buton: GuiButton, hedef: number)
-	-- Buyumeye baslamadan once uygunluk; kuculurken zaten olcegi varsa geri doner
 	local var = buton:FindFirstChild(OLCEK_ADI)
 	if not var then
 		if hedef == 1 or not uygunMu(buton) then
@@ -125,7 +98,6 @@ local function bagla(node: Instance)
 	buton.MouseButton1Up:Connect(function()
 		oynat(buton, if ustunde then BUYUME else 1)
 	end)
-	-- Gizlenen dugme buyumus halde kalmasin
 	buton:GetPropertyChangedSignal("Visible"):Connect(function()
 		ustunde = false
 		local var = buton:FindFirstChild(OLCEK_ADI)

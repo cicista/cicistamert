@@ -1,17 +1,3 @@
---[[
-	Arayuz  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Arayuz
-
-	Ana arayuz: ada secim menusu ve ekran bildirimleri.
-	Rot gostergesi yok -- bakiye Roblox.un kendi oyuncu listesinde ve
-	envanter ekraninda gorunur.
-
-	Bildirim yazilari ("Burada kazamazsin", "Brainrot kacti" gibi) eskiden
-	TextScaled + kalin TextStroke kullaniyordu ve bulanik goruluyordu.
-	Artik hepsi UI modulunden geciyor: sabit TextSize, ince kontur, modern
-	FontFace. Bkz. StarterPlayerScripts > UI.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -22,7 +8,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
--- Ada ipucu: parasi yeten oyuncuya o adanin satiri kirmizi gosterilir
 local Ogretici = require(Shared:WaitForChild("Ogretici"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -37,9 +22,6 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-------------------------------------------------------------------
--- ADA MENUSU
-------------------------------------------------------------------
 local menu = UI.panel(screen, UDim2.fromOffset(460, 420), "AdaMenusu")
 
 UI.text({
@@ -66,7 +48,6 @@ list.ScrollBarImageColor3 = UI.Colors.panelLight
 list.CanvasSize = UDim2.new()
 list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 list.Parent = menu
--- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 UI.listePayi(list)
 
 local listLayout = Instance.new("UIListLayout")
@@ -81,13 +62,6 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 		end
 	end
 
-	--[[
-		ADA IPUCU
-
-		Sunucu "parasi yetti" dediginde (bkz. Modules > Ogretici) o adanin
-		satiri KIRMIZI cerceveyle ve kirmizi fiyat yazisiyla gosterilir;
-		yeni oyuncu hangisini secmesi gerektigini sasirmasin.
-	]]
 	local IP = Ogretici.AdaIpucu
 	local ipucuAcik = player:GetAttribute(IP.nitelik) == true
 
@@ -99,7 +73,6 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 		button.Size = UDim2.new(1, -6, 0, 76)
 		button.BackgroundColor3 = UI.Colors.panelLight
 		button.BorderSizePixel = 0
-		-- Fare etkisi yalnizca acik adalarda veriliyor (asagida UI.hover)
 		button.AutoButtonColor = false
 		button.Text = ""
 		button.LayoutOrder = island.index
@@ -107,7 +80,6 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 		UI.corner(button, 10)
 		local cerceve = UI.stroke(button, color, if ipucuSatiri then 3 else 1)
 
-		-- Ipucu satiri nabiz atar: gozden kacmasin
 		if ipucuSatiri then
 			TweenService:Create(
 				cerceve,
@@ -135,11 +107,6 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 			parent = button,
 		})
 
-		--[[
-			Adalar sirayla acilir: sirasi gelmemis olanin ne oldugu gizlidir.
-			"home" satiri yalnizca baska bir adadaki kaptanda cikar ve
-			baslangic adasina bedava donus sunar.
-		]]
 		local statusText, statusColor
 		if island.state == "home" then
 			statusText = "FREE"
@@ -181,9 +148,6 @@ AdaMenusuAc.OnClientEvent:Connect(function(islands)
 	menu.Visible = true
 end)
 
-------------------------------------------------------------------
--- BILDIRIMLER
-------------------------------------------------------------------
 local toastHolder = Instance.new("Frame")
 toastHolder.Name = "Bildirimler"
 toastHolder.AnchorPoint = Vector2.new(0.5, 0)
@@ -197,18 +161,6 @@ toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 toastLayout.Parent = toastHolder
 
---[[
-	BILDIRIMLER SAYACIN ALTINDA BASLAR
-
-	Ekranin ust ortasinda iki sey var: Menuler'deki LUCKY BLOCK RAIN sayaci
-	ve bu bildirimler. Ikisi de ayni noktadan basladigi icin sayac aciksa
-	yazilar ust uste biniyordu.
-
-	UIScale nesnenin BOYUTUNU carpar ama konum ofsetini carpmaz; arayuz
-	olcegi buyudugunde sayac uzayip bildirimlerin uzerine gelirdi. Bu yuzden
-	konum her olcek degisiminde yeniden hesaplaniyor.
-]]
--- Sayacin kapladigi yukseklik (Menuler: 6px bosluk + 54px yazi alani)
 local SAYAC_ALANI = 60
 
 local function toastYerlestir()
@@ -221,14 +173,6 @@ UI.onScaleChanged(toastYerlestir)
 
 local toastOrder = 0
 
---[[
-	Bildirim ARTIK KUTU DEGIL, sadece yazi.
-
-	Once koyu zeminli, yuvarlak koseli, renkli konturlu bir popup cikiyordu;
-	ekranin ustunde fazla yer kapliyordu. Simdi yalnizca yazinin kendisi var.
-	Okunurlugu yazinin siyah konturu sagliyor (UI.text bunu kendisi ekler),
-	bu yuzden acik zeminde de kayboluyor degil.
-]]
 Bildirim.OnClientEvent:Connect(function(text, color)
 	toastOrder += 1
 
@@ -238,7 +182,6 @@ Bildirim.OnClientEvent:Connect(function(text, color)
 		font = UI.Fonts.bold,
 		color = color or UI.Colors.text,
 		align = Enum.TextXAlignment.Center,
-		-- Genislik yaziya gore; yukseklik satir araligini verir
 		frameSize = UDim2.fromOffset(0, 30),
 		parent = toastHolder,
 	})
@@ -253,8 +196,6 @@ Bildirim.OnClientEvent:Connect(function(text, color)
 
 		local sure = TweenInfo.new(0.35)
 
-		-- Yazinin siyah konturu da birlikte solmali, yoksa harfler
-		-- kaybolurken kenarlari havada kaliyor
 		local kontur = yazi:FindFirstChildOfClass("UIStroke")
 		if kontur then
 			TweenService:Create(kontur, sure, { Transparency = 1 }):Play()

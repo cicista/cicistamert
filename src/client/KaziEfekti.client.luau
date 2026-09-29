@@ -1,25 +1,3 @@
---[[
-	KaziEfekti  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > KaziEfekti
-
-	KAZI ANIMASYONLARINA GRI PARCACIK
-
-	    kurek animasyonu  -> 0.25. saniyede kuregin ucundan KUM fiskirir
-	    kazma animasyonu  -> 0.15. saniyede kazmanin ucunda TAS kirilir
-
-	Animasyonlar dongude oynadigi icin parcacik HER TURDA o anda cikar.
-
-	NASIL
-	Her karede butun karakterlerin oynayan animasyonlarina bakilir; kazi
-	animasyonu (Shared > Assets > Animations: shovelDig / pickaxeDig) varsa
-	zamaninin ayarlanan saniyeyi GECTIGI kare yakalanir ve aletin ucunda
-	parcacik patlatilir. Diger oyuncularin animasyonlari da her istemciye
-	geldigi icin herkes herkesin efektini gorur.
-
-	Aletin ucu: Handle'a EN UZAK parca (kurek bicaginin / kazma kafasinin
-	ucu). Zaman ve parcacik ayarlari: Shared > Assets > DigEffects
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -31,7 +9,6 @@ local E = Assets.DigEffects
 
 local NOKTA_ADI = "KaziEfektNoktasi"
 
--- "rbxassetid://123" -> "123": id karsilastirmasi yazim farkindan etkilenmesin
 local function idNumarasi(id: string?): string?
 	if type(id) ~= "string" then
 		return nil
@@ -39,7 +16,6 @@ local function idNumarasi(id: string?): string?
 	return string.match(id, "%d+")
 end
 
--- animasyon numarasi -> efekt ayari (E.shovel / E.pickaxe)
 local ayarlar: { [string]: any } = {}
 for _, tur in { "shovel", "pickaxe" } do
 	local cfg = E[tur]
@@ -49,7 +25,6 @@ for _, tur in { "shovel", "pickaxe" } do
 	end
 end
 
--- Her animasyonun bir onceki karedeki zamani (zayif tablo: biten iz kendiliginden silinir)
 local sonZaman: { [AnimationTrack]: number } = setmetatable({}, { __mode = "k" }) :: any
 
 local function eldekiArac(character: Model): Tool?
@@ -61,7 +36,6 @@ local function eldekiArac(character: Model): Tool?
 	return nil
 end
 
--- Aletin ucu: Handle'a en uzak parcanin merkezi
 local function ucNoktasi(arac: Tool): Vector3?
 	local handle = arac:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then
@@ -83,7 +57,6 @@ local function ucNoktasi(arac: Tool): Vector3?
 	return nokta
 end
 
--- Kapali bir yayici kurar; yalnizca Emit ile patlar
 local function yayiciKur(
 	ad: string,
 	parent: Instance,
@@ -115,17 +88,13 @@ local function yayiciKur(
 	pe.Rotation = NumberRange.new(0, 360)
 	pe.RotSpeed = NumberRange.new(-200, 200)
 	pe.LightEmission = isik
-	-- Isik etkisi dusuk: golgede de gorunsun (kivilcim hic etkilenmez)
 	pe.LightInfluence = if isik > 0 then 0 else 0.3
-	-- Zeminin/aletin icinde kaybolmasin
 	pe.ZOffset = 1
-	-- Parcaciklar alete yapismaz, cikti yerde kalir
 	pe.LockedToPart = false
 	pe.Parent = parent
 	return pe
 end
 
--- Aletin Handle'inda bir kez kurulan nokta + iki yayici: toz ve kivilcim
 local function yayici(arac: Tool): (Attachment?, ParticleEmitter?, ParticleEmitter?)
 	local handle = arac:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then
@@ -175,7 +144,6 @@ local function patlat(character: Model, cfg: any)
 		return
 	end
 
-	-- Dunya eksenleriyle: yayilma yonu (Top) her zaman YUKARI
 	nokta.WorldCFrame = CFrame.new(uc)
 
 	if toz then
@@ -213,11 +181,6 @@ RunService.RenderStepped:Connect(function()
 
 			if once then
 				local an = cfg.particleTime
-				--[[
-					O ani bu karede GECTI MI. Animasyon dongude: zaman basa
-					sardiysa (simdi < once) turun sonu ya da yeni turun basi
-					arasinda gecmis olabilir.
-				]]
 				local gecti = if simdi >= once then (once < an and simdi >= an) else (once < an or simdi >= an)
 				if gecti then
 					patlat(character, cfg)

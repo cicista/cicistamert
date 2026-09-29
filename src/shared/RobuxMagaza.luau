@@ -1,34 +1,4 @@
 --!strict
---[[
-	ROBUX MAGAZASI  --  urunler ve fiyatlar
-
-	Sag ustteki STORE butonu bu magazayi acar. Icinde YALNIZCA Robux ile
-	alinan seyler var:
-	  - Developer Product'lar (tekrar tekrar alinabilir): Lucky Block
-	    paketleri, sans takviyesi, Rot Coin paketleri
-	  - Game Pass'ler: Shared > Passler'daki gecisler (Auto Clicker,
-	    Teleporter). Onlarin fiyati ve id'si Passler'da, burada degil.
-
-	Satin alma SUNUCUDA verilir (ServerScriptService > RobuxMagaza,
-	ProcessReceipt). Istemci yalnizca urunun anahtarini yollar.
-
-	--------------------------------------------------------------
-	URUNU BAGLAMAK  (her urun icin bir kez)
-
-	  1. create.roblox.com > deneyim > Monetization > Developer Products
-	     > Create a Developer Product
-	  2. Fiyatini asagidaki 'fiyat' ile ayni yap (fiyat yalnizca arayuzde
-	     yazar; oyuncudan kesilen tutari Roblox belirler)
-	  3. Urunun ID'sini asagidaki 'id' alanina yaz
-
-	id = 0 iken urun SATILMAZ: dugme gorunur, basinca "Coming soon!" der.
-
-	--------------------------------------------------------------
-	TEST
-
-	ID girildikten sonra Studio'da satin alma penceresi "test purchase"
-	olarak acilir, Robux kesilmez. Urun gercekten verilir.
-]]
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Gacha = require(script.Parent.Gacha)
@@ -36,28 +6,18 @@ local Gacha = require(script.Parent.Gacha)
 local RobuxMagaza = {}
 
 export type Urun = {
-	-- Kodun kullandigi kalici anahtar (degistirme: alinmis urunleri eslestiriyor)
 	anahtar: string,
-	-- Developer Product ID'si (0 = henuz satista degil)
 	id: number,
-	-- Arayuzde yazan Robux fiyati
 	fiyat: number,
-	-- Ustu cizili eski fiyat (indirim gostermek icin, istege bagli)
 	eskiFiyat: number?,
-	-- Dugmenin altinda yazan kisa ad: "x3", "+35"
 	etiket: string,
-	-- Bildirimde yazan tam ad
 	ad: string,
-	tur: string, -- "luckyblock" | "luck" | "rotcoin" | "detectiveSkip" | "gacha" | "afkAlan"
-	-- luckyblock
+	tur: string,
 	tier: string?,
 	adet: number?,
-	-- luck
 	carpan: number?,
 	saniye: number?,
-	-- rotcoin
 	rotCoin: number?,
-	-- afkAlan: acilan yonca alaninin kimligi (Shared > AfkSans)
 	alan: string?,
 }
 
@@ -65,13 +25,10 @@ export type Kart = {
 	id: string,
 	baslik: string,
 	altBaslik: string,
-	-- Kosede egik duran serit ("NEW!", "BEST!"); nil = yok
 	serit: string?,
 	ikon: string,
-	-- Kartin zemin renkleri (soldan saga gradyan)
 	renkA: Color3,
 	renkB: Color3,
-	-- Lucky Block kartinda sans oranlari gosterilir
 	tier: string?,
 	urunler: { Urun },
 }
@@ -89,17 +46,7 @@ local DIAMOND = tierBul("Diamond")
 local GOLDEN = tierBul("Golden")
 local HACKER = tierBul("Hacker")
 
---[[
-	KARTLAR  --  magazada yukaridan asagi bu sirayla durur
-]]
 RobuxMagaza.Kartlar = {
-	--[[
-		HACKER  --  yalnizca burada satiliyor, kazidan cikmiyor.
-
-		Paket buyudukce birim fiyat DUSUYOR: tanesi 250, x3'te 230, x5'te
-		210 Robux. eskiFiyat alani ustu cizili yaziliyor, oyuncu indirimi
-		gorsun. Tekli satista indirim olmadigi icin eskiFiyat da yok.
-	]]
 	{
 		id = "HackerBlock",
 		baslik = if HACKER then HACKER.displayName else "Hacker Lucky Block",
@@ -175,23 +122,9 @@ RobuxMagaza.Kartlar = {
 	},
 } :: { Kart }
 
--- Magazada gosterilen Game Pass'ler (Shared > Passler adlari), bu sirayla
 RobuxMagaza.Gecisler = { "AutoClicker", "Teleporter", "DetectivePass" }
 
---[[
-	MAGAZADA GORUNMEYEN URUNLER
-
-	Store'un kartlarinda cikmayan ama satin alinabilen urunler. Kendi
-	ekranlarinda satiliyorlar; magazada da gorunmeleri kalabalik yapardi.
-
-	ProcessReceipt tek yerde (bkz. ServerScriptService > RobuxMagaza), o
-	yuzden bunlar da ayni listeye giriyor: fis geldiginde ID'den bulunuyor.
-]]
 RobuxMagaza.GizliUrunler = {
-	--[[
-		Dedektifin inceleme suresini siler. Detective ekranindaki COLLECT
-		dugmesinin yerinde duruyor; is bitince yerini yine COLLECT aliyor.
-	]]
 	{
 		anahtar = "DetectiveSkip",
 		id = 0,
@@ -201,10 +134,6 @@ RobuxMagaza.GizliUrunler = {
 		tur = "detectiveSkip",
 	},
 
-	--[[
-		Yumurta gachasi: Gacha NPC'sinin penceresindeki satin alma dugmesi.
-		Oyundaki en pahali gacha; bkz. Shared > Gacha.
-	]]
 	{
 		anahtar = Gacha.UrunAnahtari,
 		id = 0,
@@ -214,10 +143,6 @@ RobuxMagaza.GizliUrunler = {
 		tur = "gacha",
 	},
 
-	--[[
-		Secret yonca alani: yalnizca Robux ile, Leprechaun panelinden.
-		Anahtar Shared > AfkSans > Alanlar'daki robux alaniyla ayni olmali.
-	]]
 	{
 		anahtar = "AfkSecretAlan",
 		id = 0,
@@ -255,7 +180,6 @@ function RobuxMagaza.get(anahtar: string): Urun?
 	return anahtarla[anahtar]
 end
 
--- Developer Product ID'sine karsilik gelen urun (ProcessReceipt icin)
 function RobuxMagaza.idIle(id: number): Urun?
 	return idile[id]
 end
@@ -264,7 +188,6 @@ function RobuxMagaza.satista(urun: Urun): boolean
 	return urun.id > 0
 end
 
--- Dedektif suresini atlamanin Robux fiyati (arayuz bunu yaziyor)
 function RobuxMagaza.AtlaFiyati(): number
 	local urun = anahtarla["DetectiveSkip"]
 	return if urun then urun.fiyat else 0

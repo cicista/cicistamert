@@ -1,54 +1,4 @@
 --!strict
---[[
-	AfkSans  (ModuleScript)
-	Yeri: ServerScriptService > Modules > AfkSans
-
-	AFK sans sistemi: yonca alanlari, yonca toplama, sans puani ve
-	Leprechaun'daki alan yukseltmesi. Ayarlar Shared > AfkSans'ta.
-
-	  AfkSans.baslat()        ServerScriptService > AfkSans cagirir (bir kez)
-	  AfkSans.carpan(player)  sans puaninin carpani; KaziSistemi > luckFor
-	                          ve deniz sansi bununla carpilir
-
-	YONCALAR OYUNCUYA OZEL
-	Her oyuncunun her alanda kendi YoncaSayisi yoncasi var. Konumlari
-	sunucu seciyor ve istemciye yolluyor; modelleri istemci ciziyor. Ayni
-	alanda duran iki oyuncu birbirinin yoncasini kapmaz.
-
-	TOPLAMA
-	  1. istemci yoncaya yaklasinca YoncaTopla(id) yollar
-	  2. sunucu oyuncunun alanda ve yoncanin yaninda oldugunu dogrular
-	  3. ToplamaSuresi sonra yine yanindaysa puan verilir, yonca silinip
-	     yerine yenisi dogar ve YoncaSonuc ile istemciye bildirilir
-
-	Her yonca alanin sabit puanini verir (Shared > AfkSans > puanYonca).
-	Toplama suresi sunucuda sayildigi icin en fazla ToplamaSuresi'nde bir
-	yonca alinabilir.
-
-	Sunucudaki karakter konumu istemcininkinin biraz gerisinden gelir;
-	kosarak yaklasan oyuncu sunucuda henuz uzakta gorunur. Mesafe kontrolu
-	bu yuzden ERISIM_PAYI kadar genis tutuluyor, yoksa istek reddedilir ve
-	istemci baska yoncaya kosup durur.
-
-	LEPRECHAUN
-	Haritada bu adla birden fazla NPC olabilir; hepsine prompt takilir,
-	satin alma herhangi birinin yaninda yapilabilir.
-
-	BARIKATLAR
-	Sunucuda barikat hep kati. Alani acan oyuncunun istemcisi barikati
-	kendi tarafinda gecilebilir yapiyor (karakter fizigi istemcide). Kilitli
-	alana bir sekilde giren oyuncuya yonca verilmez.
-
-	AFK YENIDEN BAGLANMA
-	Roblox 20 dk girdisiz kalan oyuncuyu atiyor. Alandaki oyuncunun
-	istemcisi YenidenBaglanSuresi dolunca AfkYenidenBaglan yollar; sunucu
-	oyuncuyu AYNI sunucuya teleport eder (olmazsa herhangi bir sunucuya).
-	Ayrilan her oyuncunun alan konumu DonusGecerlilik boyunca hatirlanir:
-	ayni sunucuya donen oyuncu (bu yolla ya da atilip kendisi girerek)
-	ayni noktaya isinlanir ve istemci toplamaya kendiliginden baslar.
-	Baska sunucuya dusen oyuncu teleport verisindeki alanin ortasina
-	konur. Alan kilitliyse hicbir sey yapilmaz.
-]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -64,7 +14,6 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
--- Her yonca oyuncu XP'si de verir (Level sistemi)
 local Seviye = require(script.Parent:WaitForChild("Seviye"))
 
 local AfkSans = {}
@@ -83,7 +32,6 @@ type Toplama = {
 }
 
 type Durum = {
-	-- Ustunde durulan ACIK alan (kilitli alan nil sayilir)
 	alan: string?,
 	yoncalar: { [string]: { [number]: Yonca } },
 	sayac: number,
@@ -93,27 +41,20 @@ type Durum = {
 local durumlar: { [Player]: Durum } = {}
 local rng = Random.new()
 
--- Leprechaun'larin tutunma parcalari; satin alma herhangi birinin yaninda yapilir
 local npcParcalari: { [BasePart]: boolean } = {}
 local PROMPT_MESAFE = 12
 local ISTEK_MESAFE = 24
--- Alan kontrol araligi (saniye)
 local TARAMA = 0.4
--- Sunucu dogrulamasinda gecikme payi (stud); bkz. ust aciklama
 local ERISIM_PAYI = 6
 
 local HATA = Color3.fromRGB(255, 90, 90)
 local UYARI = Color3.fromRGB(255, 200, 90)
 
-------------------------------------------------------------------
--- CARPAN
-------------------------------------------------------------------
 function AfkSans.carpan(player: Player): number
 	local data = PlayerData.get(player)
 	return if data then Ayar.carpan(data.afkPuan) else 1
 end
 
--- Oyuncu bu siradaki alana sahip mi (Rot sirasi ya da Robux)
 local function sahipMi(data: any, sira: number): boolean
 	return Ayar.sahip(sira, data.afkSeviye, data.afkOzel)
 end
@@ -125,7 +66,6 @@ local function nitelikleriYaz(player: Player)
 	end
 	player:SetAttribute(Ayar.PuanNiteligi, math.floor(data.afkPuan))
 	player:SetAttribute(Ayar.SeviyeNiteligi, data.afkSeviye)
-	-- Robux alanlari: istemci barikati buna gore acar
 	local ozel = {}
 	for id in data.afkOzel do
 		table.insert(ozel, id)
@@ -134,9 +74,6 @@ local function nitelikleriYaz(player: Player)
 	player:SetAttribute(Ayar.OzelNiteligi, table.concat(ozel, ","))
 end
 
-------------------------------------------------------------------
--- ALANLAR
-------------------------------------------------------------------
 local function zemin(id: string): BasePart?
 	local klasor = Workspace:FindFirstChild(Ayar.KlasorAdi)
 	local node = klasor and klasor:FindFirstChild(id)
@@ -149,7 +86,6 @@ local function kok(player: Player): BasePart?
 	return if root and root:IsA("BasePart") then root else nil
 end
 
--- Oyuncunun ustunde durdugu alan ve o alanin acik olup olmadigi
 local function alanBul(player: Player): (string?, boolean)
 	local root = kok(player)
 	local data = PlayerData.get(player)
@@ -166,11 +102,6 @@ local function alanBul(player: Player): (string?, boolean)
 	return nil, false
 end
 
---[[
-	Yonca modelinin yaricapi (olcek 1'de). Yoncalar arasi bosluk ve toplama
-	mesafesi buna gore hesaplaniyor. Model yoksa istemcinin yedek yoncasinin
-	boyu (1 stud).
-]]
 local yaricaplar: { [string]: number } = {}
 
 local function tabanYaricap(id: string): number
@@ -191,12 +122,6 @@ local function tabanYaricap(id: string): number
 	return r :: number
 end
 
---[[
-	Yoncanin cikamayacagi yerler: zeminin altindaki parcalar (Fences vb.).
-	Border ve Barricade HARIC: ikisi de butun alani iceren buyuk kutular;
-	engel sayilsalar hicbir yonca cikamazdi. Barikat acilan oyuncuda zaten
-	gorunmez ve gecilebilir.
-]]
 local function engelDegil(node: Instance): boolean
 	local ad = string.lower(node.Name)
 	return string.find(ad, "border", 1, true) ~= nil or string.find(ad, "barricade", 1, true) ~= nil
@@ -209,7 +134,6 @@ local function engeller(z: BasePart): { Instance }
 			continue
 		end
 
-		-- Barikat Model olabilir: parcasinin adi degil, atasinin adi tutar
 		local atla = false
 		local ata: Instance? = node
 		while ata and ata ~= z do
@@ -247,7 +171,6 @@ local function yeniYonca(durum: Durum, alanId: string, z: BasePart): Yonca?
 		local nokta = z.CFrame * CFrame.new(rng:NextNumber(-yariX, yariX), boy.Y / 2, rng:NextNumber(-yariZ, yariZ))
 		local pos = nokta.Position
 
-		-- Son denemelerde bosluk sarti gevsiyor: alan kalabaliksa yine de dolsun
 		local aralik = if deneme > 30 then 0 else Ayar.MinAralik
 		local uygun = true
 		for _, diger in mevcut do
@@ -310,13 +233,6 @@ local function paket(alanId: string, yonca: Yonca)
 	}
 end
 
---[[
-	BUTUN ALANLARIN YONCALARI HEP GORUNUR
-
-	Oyuncu hazir olunca her alan doldurulur ve hepsinin listesi yollanir;
-	kilitli alanlarin yoncalari da gorunur (oyuncuyu acmaya ozendirir).
-	Toplama yalnizca ustunde durulan ACIK alanda yapilir.
-]]
 local function hepsiniYolla(player: Player, durum: Durum)
 	local YoncaListesi = Net.event("YoncaListesi")
 	for _, alan in Ayar.Alanlar do
@@ -343,9 +259,6 @@ local function tara()
 	end
 end
 
-------------------------------------------------------------------
--- TOPLAMA
-------------------------------------------------------------------
 local function yaninda(player: Player, yonca: Yonca, pay: number): boolean
 	local root = kok(player)
 	if not root then
@@ -376,12 +289,10 @@ local function bitir(player: Player, durum: Durum, is: Toplama)
 	data.afkPuan = math.min(Ayar.MaxPuan, data.afkPuan + alan.puanYonca)
 	local kazanc = data.afkPuan - once
 	nitelikleriYaz(player)
-	-- Her yonca oyuncu XP'si de verir (Level sistemi)
 	Seviye.xpVer(player, Ayar.YoncaXp)
 
 	yoncalar[is.id] = nil
 	local z = zemin(is.alan)
-	-- Yeni yonca kurulurken hata olsa bile istemci cevapsiz kalmasin (bar takili kalirdi)
 	local yeni: Yonca? = nil
 	if z then
 		local ok, sonuc = pcall(yeniYonca, durum, is.alan, z)
@@ -401,7 +312,6 @@ local function toplaIstegi(player: Player, id: any)
 		return
 	end
 
-	-- nil: oyuncu yoncadan uzaklasti, toplama birakiliyor
 	if id == nil then
 		durum.toplama = nil
 		return
@@ -415,7 +325,6 @@ local function toplaIstegi(player: Player, id: any)
 	local yoncalar = alanId and durum.yoncalar[alanId]
 	local yonca = yoncalar and yoncalar[id]
 	if not alanId or not yonca or not yaninda(player, yonca, ERISIM_PAYI) then
-		-- Yonca sunucuda hic yoksa (5. deger true) istemci onu sahneden de siler
 		local yok = true
 		for _, liste in durum.yoncalar do
 			if liste[id] then
@@ -437,9 +346,6 @@ local function toplaIstegi(player: Player, id: any)
 	task.delay(Ayar.ToplamaSuresi, bitir, player, durum, is)
 end
 
-------------------------------------------------------------------
--- LEPRECHAUN (alan yukseltmesi)
-------------------------------------------------------------------
 local function panelVerisi(player: Player)
 	local data = PlayerData.get(player)
 	if not data then
@@ -454,9 +360,7 @@ local function panelVerisi(player: Player)
 			puanYonca = alan.puanYonca,
 			fiyat = alan.fiyat,
 			owned = sahipMi(data, i),
-			-- Robux alani sirayi beklemez; Rot alani yalnizca siradaki
 			buyable = if alan.robux then not sahipMi(data, i) else i == data.afkSeviye + 1,
-			-- Doluysa dugme Robux ile satin alir (Shared > RobuxMagaza anahtari)
 			robux = alan.robux,
 			kademe = Ayar.kademe(alan.id),
 		})
@@ -496,7 +400,6 @@ local function satinAl(player: Player, alanId: any)
 	local alan = Ayar.Alanlar[sira]
 	local Bildirim = Net.event("Bildirim")
 
-	-- Robux alani Rot ile alinamaz: istemci RobuxUrunAl yollar (bkz. AfkSans.robuxlaAc)
 	if alan.robux then
 		return
 	end
@@ -525,12 +428,6 @@ local function satinAl(player: Player, alanId: any)
 	Bildirim:FireClient(player, `{alan.displayName} unlocked! The barricade is gone.`, Rarity.color(Ayar.kademe(alan.id)))
 end
 
---[[
-	ROBUX ALANI  --  RobuxMagaza'nin ProcessReceipt'i cagirir (bkz.
-	RobuxMagaza.server > urunVer). BEKLEMEZ, yalnizca kaydi degistirir.
-	Zaten acik alana ikinci fis gelirse bir sey yapmaz (pencere acilmadan
-	once RobuxMagaza bunu ayrica denetliyor).
-]]
 function AfkSans.robuxlaAc(player: Player, alanId: string)
 	local alan = Ayar.get(alanId)
 	local data = PlayerData.get(player)
@@ -544,7 +441,6 @@ function AfkSans.robuxlaAc(player: Player, alanId: string)
 	data.afkOzel[alanId] = true
 	nitelikleriYaz(player)
 
-	-- Leprechaun paneli aciksa tazelensin
 	local veri = panelVerisi(player)
 	if veri then
 		Net.event("LeprechaunAc"):FireClient(player, veri)
@@ -556,7 +452,6 @@ function AfkSans.robuxlaAc(player: Player, alanId: string)
 	)
 end
 
--- Bu Robux alani zaten acik mi (satin alma penceresi acilmadan once)
 function AfkSans.robuxAlaniAcik(player: Player, alanId: string): boolean
 	local data = PlayerData.get(player)
 	return data ~= nil and data.afkOzel[alanId] == true
@@ -578,12 +473,10 @@ local function tutunmaParcasi(node: Instance): BasePart?
 	return node:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- Bu adla butun NPC'lere prompt takar; zaten takiliysa atlar. Kac tane bagli oldugunu dondurur
 local function npcBagla(): number
 	local hedef = string.lower(Ayar.NpcAdi)
 	local sayi = 0
 
-	-- Silinmis NPC'ler listeden cikar
 	for parca in npcParcalari do
 		if not parca.Parent then
 			npcParcalari[parca] = nil
@@ -626,14 +519,9 @@ local function npcBagla(): number
 	return sayi
 end
 
-------------------------------------------------------------------
--- AFK YENIDEN BAGLANMA (bkz. ust aciklama)
-------------------------------------------------------------------
 type Donus = { alan: string, pos: Vector3?, zaman: number }
 
--- UserId -> ayrildigi andaki alan ve konum (yalnizca bu sunucuda)
 local donusler: { [number]: Donus } = {}
--- Teleportu baslatilmis oyuncular (ikinci istek yok sayilir)
 local baglananlar: { [Player]: boolean } = {}
 
 local function donusuHatirla(player: Player)
@@ -654,7 +542,6 @@ local function teleportEt(player: Player, ayniSunucu: boolean): boolean
 	if ayniSunucu then
 		secenek.ServerInstanceId = game.JobId
 	end
-	-- Yalnizca alan adi gidiyor; konumu donulen sunucu kendisi seciyor
 	local durum = durumlar[player]
 	local alan = donusler[player.UserId] and donusler[player.UserId].alan or (durum and durum.alan)
 	secenek:SetTeleportData({ [Ayar.TeleportVeriAnahtari] = alan or true })
@@ -670,8 +557,6 @@ end
 
 local function yenidenBaglan(player: Player)
 	local durum = durumlar[player]
-	-- Yalnizca acik bir alanda duran oyuncu; istemcinin "AFK'yim" demesi yeterli
-	-- cunku bu istek yalnizca oyuncunun KENDISINI teleport ediyor
 	if not durum or not durum.alan or baglananlar[player] then
 		return
 	end
@@ -683,7 +568,6 @@ local function yenidenBaglan(player: Player)
 	end
 end
 
--- Teleport baslayip sonra patlarsa (sunucu dolu vb.) herhangi bir sunucuya
 local function teleportPatladi(player: Player, _sonuc: Enum.TeleportResult, mesaj: string, _yer: number, secenek: TeleportOptions?)
 	if not baglananlar[player] or not player.Parent then
 		return
@@ -695,7 +579,6 @@ local function teleportPatladi(player: Player, _sonuc: Enum.TeleportResult, mesa
 	baglananlar[player] = nil
 end
 
--- Donulecek alan ve konum: once bu sunucunun hafizasi, yoksa teleport verisi
 local function donusBul(player: Player): (string?, Vector3?)
 	local kayit = donusler[player.UserId]
 	donusler[player.UserId] = nil
@@ -725,7 +608,6 @@ local function afkSpotunaDon(player: Player)
 	local sira = Ayar.sira(alanId)
 	local data = PlayerData.get(player)
 	local z = zemin(alanId)
-	-- Kilitli (ya da artik olmayan) alana isinlanilmaz
 	if not sira or not data or not sahipMi(data, sira) or not z then
 		return
 	end
@@ -739,16 +621,12 @@ local function afkSpotunaDon(player: Player)
 		return
 	end
 
-	-- Kayitli konum HumanoidRootPart'inki; alanin disinda kaldiysa zeminin ortasi
 	local hedef = if pos and Ayar.icinde(z, pos)
 		then pos + Vector3.new(0, 0.5, 0)
 		else (z.CFrame * CFrame.new(0, z.Size.Y / 2 + 3.5, 0)).Position
 	char:PivotTo(CFrame.new(hedef))
 end
 
-------------------------------------------------------------------
--- BASLAT
-------------------------------------------------------------------
 local function oyuncuHazirla(player: Player)
 	if not PlayerData.bekle(player) or not player.Parent then
 		return
@@ -766,7 +644,6 @@ local function oyuncuHazirla(player: Player)
 	afkSpotunaDon(player)
 end
 
--- Istemci script'i sonradan baslarsa (ya da yeniden yuklenirse) listeleri yeniden ister
 local sonIstek: { [Player]: number } = {}
 local ISTEK_ARALIGI = 2
 
@@ -801,11 +678,6 @@ function AfkSans.baslat()
 			end
 		end
 
-		--[[
-			CITLER GECILEBILIR: Fences icindeki her parca carpismaz yapilir
-			(sunucuda, herkes icin). Sonradan eklenen cit parcalari da.
-			Yoncalar yine citlerin ustunde cikmaz (bkz. engeller).
-		]]
 		local function citMi(node: Instance): boolean
 			local ata: Instance? = node
 			while ata and ata ~= klasor do
@@ -838,14 +710,12 @@ function AfkSans.baslat()
 		task.spawn(oyuncuHazirla, player)
 	end
 	Players.PlayerRemoving:Connect(function(player)
-		-- Atilan ya da cikan oyuncu ayni sunucuya donerse ayni noktaya konur
 		donusuHatirla(player)
 		durumlar[player] = nil
 		sonIstek[player] = nil
 		baglananlar[player] = nil
 	end)
 
-	-- Eski donus kayitlari birikmesin
 	task.spawn(function()
 		while true do
 			task.wait(60)
@@ -858,7 +728,6 @@ function AfkSans.baslat()
 		end
 	end)
 
-	-- NPC sonradan gelebilir (Rojo, akis, elle ekleme): eklenince yeniden baglanir
 	if npcBagla() == 0 then
 		warn(`[AfkSans] '{Ayar.NpcAdi}' haritada bulunamadi; eklenince baglanacak`)
 	end

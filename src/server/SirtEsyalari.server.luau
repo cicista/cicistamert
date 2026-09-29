@@ -1,27 +1,3 @@
---[[
-	SirtEsyalari  (Script)
-	Yeri: ServerScriptService > SirtEsyalari
-
-	Oyuncunun SAHIP OLDUGU esyalar govdesinde gorunur -- diger oyunculara
-	hangi kurekle gezdigini gostermek icin:
-
-	    SIRTTA KUREK  -- kusandigi kurek, 45 derece capraz
-	    SIRTTA KAZMA  -- sahip oldugu en iyi kazma, kuregin diger caprazinda (X)
-	    BELDE GPS     -- kusandigi dedektor, 20 derece egik, 0.8 boyunda
-
-	NE ZAMAN GIZLENIR
-	    kurek -- ELDEYKEN (kazi sirasinda kurek ele gelir)
-	    kazma -- ELDEYKEN (madende kazma ele gelir)
-	    GPS   -- ELDEYKEN ya da oyuncu KESIFTEYKEN (kumun ustunde arama,
-	             kazi, denizde olta). Yani kumdan cikinca bele geri doner.
-	    ikisi -- flyboardla DENIZDEYKEN
-
-	Modeller elde tutulan esyanin AYNISI (Tools.buildShovel / buildGPS);
-	kurek yukseltilince ya da dedektor degisince govdedeki de yenilenir.
-
-	Konum, aci ve boyut: Shared > Assets > BodyItems
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -35,10 +11,8 @@ local Tools = require(Modules:WaitForChild("Tools"))
 
 local AYAR = Assets.BodyItems
 
--- KaziSistemi'nin "su an kesifte" niteligi (kumda GPS, kazi, denizde olta)
 local KESIF_NITELIGI = "KesifKisiti"
 
--- Flyboard.server'in "tahtada, denizde" niteligi: ikisi birden gizlenir
 local FLYBOARD_NITELIGI = "Flyboarding"
 
 local KUREK_ADI = "SirtKuregi"
@@ -47,11 +21,8 @@ local KAZMA_ADI = "SirtKazmasi"
 
 type Esya = {
 	model: Model?,
-	-- Modelin kuruldugu esya kimligi; degisince yeniden kurulur
 	id: string?,
-	-- Kurulamayan kimlik: her turda tekrar denenip Output'u doldurmasin
 	hataliId: string?,
-	-- Kuruldugu andaki govde parcasi boyu; degisirse (avatar olcegi gec yuklendi) yeniden kurulur
 	parcaBoyu: Vector3?,
 }
 
@@ -65,9 +36,6 @@ type Durum = {
 
 local durumlar: { [Player]: Durum } = {}
 
-------------------------------------------------------------------
--- MODEL
-------------------------------------------------------------------
 local function govdeParcasi(character: Model, adlar: { string }): BasePart?
 	for _, ad in adlar do
 		local parca = character:FindFirstChild(ad)
@@ -78,11 +46,6 @@ local function govdeParcasi(character: Model, adlar: { string }): BasePart?
 	return nil
 end
 
---[[
-	Elde tutulan Tool'u govdeye takilacak bir Model'e cevirir. Tool olarak
-	kalsaydi Roblox onu ele almaya calisir, cantaya da girerdi.
-	Handle (tutus noktasi) modelin ana parcasi olur.
-]]
 local function toolModele(tool: Tool, ad: string): Model?
 	local handle = tool:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then
@@ -113,11 +76,6 @@ local function toolModele(tool: Tool, ad: string): Model?
 	return model
 end
 
---[[
-	Isik ve efektler: ayar.lights = false ise kaldirilir. Cepteki GPS'in
-	seviye parlamasi (PointLight / Highlight) ve modelin gomulu efektleri
-	belde durmadan isik saciyordu.
-]]
 local EFEKT_SINIFLARI = { "Light", "Highlight", "ParticleEmitter", "Beam", "Trail", "Sparkles", "Fire", "Smoke" }
 
 local function efektleriKaldir(model: Model)
@@ -131,19 +89,11 @@ local function efektleriKaldir(model: Model)
 	end
 end
 
--- Modeli govde parcasina kaynaklar (ayar: Assets.BodyItems.shovel / gps)
 local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
 	if ayar.lights == false then
 		efektleriKaldir(model)
 	end
 
-	--[[
-		GOVDE BOYUNA GORE ORAN
-
-		Assets.BodyItems.reference doluysa bu oyuncunun govde parcasi
-		referansa bolunur. Konum eksen eksen bu oranla, esya boyu da uc
-		eksenin ortalamasiyla carpilir. Referans yoksa oran 1.
-	]]
 	local referans = if AYAR.reference then AYAR.reference[parca.Name] else nil
 	local boyOrani = Vector3.one
 	if typeof(referans) == "Vector3" and referans.X > 0 and referans.Y > 0 and referans.Z > 0 then
@@ -157,7 +107,6 @@ local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
 		end)
 	end
 
-	-- R6'da tek govde parcasi var (Torso); konum ona gore ayri
 	local konum = if parca.Name == "Torso" then (ayar.positionR6 or ayar.position) else ayar.position
 	konum = (konum or Vector3.zero) * boyOrani
 	local r = ayar.rotation or Vector3.zero
@@ -168,23 +117,12 @@ local function govdeyeTak(model: Model, parca: BasePart, ayar: any)
 	weld.Part1 = model.PrimaryPart
 	weld.C0 = CFrame.new(konum or Vector3.zero) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z))
 
-	--[[
-		anchor = "center": govdeye tutus noktasi (Handle) degil MODELIN ORTASI
-		oturur. Kureklerin sap boylari farkli oldugu icin Handle her modelde
-		baska yerde kaliyor ve bazilari sirtta daha yukarida duruyordu.
-	]]
 	if ayar.anchor == "center" then
 		local kutu = model:GetBoundingBox()
 		local ofset = model.PrimaryPart.CFrame:PointToObjectSpace(kutu.Position)
 		weld.C1 = CFrame.new(ofset)
 	end
 
-	--[[
-		spin: esya KENDI SAPI etrafinda doner (derece), capraz acisi bozulmaz.
-		Handle'in Y ekseni sap boyunca uzanir; C1'e eklenen Y donusu modeli
-		ortasindan, sap ekseninde cevirir. Kazmanin kafasi sirta paralel
-		yatsin (kurek gibi) diye kullaniliyor.
-	]]
 	if ayar.spin then
 		weld.C1 = weld.C1 * CFrame.Angles(0, math.rad(ayar.spin), 0)
 	end
@@ -199,10 +137,6 @@ local function esyayiSil(esya: Esya)
 	esya.id = nil
 end
 
---[[
-	Esyanin modeli istenen kimlikle kurulu mu; degilse yeniden kurar.
-	Parca (govde) henuz yoksa bir sonraki turda tekrar denenir.
-]]
 local function kur(esya: Esya, character: Model, id: string?, parcaAdlari: { string }, kurucu: (string) -> Tool, ad: string, ayar: any)
 	local parca = govdeParcasi(character, parcaAdlari)
 	local boyAyni = parca == nil or esya.parcaBoyu == nil or (esya.parcaBoyu - parca.Size).Magnitude < 0.01
@@ -239,7 +173,6 @@ local function kur(esya: Esya, character: Model, id: string?, parcaAdlari: { str
 	esya.hataliId = nil
 end
 
--- Gorunmesi gerekiyorsa karaktere, gerekmiyorsa hicbir yere (model saklanir)
 local function goster(esya: Esya, character: Model, gorunur: boolean)
 	local model = esya.model
 	if not model then
@@ -251,14 +184,6 @@ local function goster(esya: Esya, character: Model, gorunur: boolean)
 	end
 end
 
-------------------------------------------------------------------
--- DURUM
-------------------------------------------------------------------
---[[
-	Sahip olunan EN IYI kazma: adalar sondan (en ileri ada) basa taranir,
-	ilk sahip olunan kazma doner. Kayitta { [kazmaId] = true } olarak durur
-	(bkz. PlayerData.pickaxes).
-]]
 local function enIyiKazma(data: any): string?
 	local sahip = data.pickaxes
 	if type(sahip) ~= "table" then
@@ -274,7 +199,6 @@ local function enIyiKazma(data: any): string?
 	return nil
 end
 
--- Elde bu nitelige sahip bir Tool var mi (ShovelId / DetectorId)
 local function eldeMi(character: Model, nitelik: string): boolean
 	for _, child in character:GetChildren() do
 		if child:IsA("Tool") and child:GetAttribute(nitelik) ~= nil then
@@ -308,11 +232,6 @@ local function durumAl(player: Player, character: Model): Durum
 
 	temizle(player)
 
-	--[[
-		REFERANS RAPORU: Assets.BodyItems.reference bos ise govde boylari
-		Output'a yapistirilacak sekilde yazilir. Avatar olcegi gec yuklendigi
-		icin birkac saniye beklenir.
-	]]
 	if not AYAR.reference then
 		task.delay(3, function()
 			if not character.Parent then
@@ -339,7 +258,6 @@ local function durumAl(player: Player, character: Model): Durum
 	}
 	durumlar[player] = yeni
 
-	-- Esya ele alinip birakilinca beklemeden tepki ver
 	local function tetikle()
 		task.defer(guncelle, player)
 	end
@@ -365,30 +283,19 @@ function guncelle(player: Player)
 
 	local durum = durumAl(player, character)
 
-	-- Flyboardla denizdeyken ikisi de gorunmez
 	local denizde = player:GetAttribute(FLYBOARD_NITELIGI) == true
 
-	-- SIRTTA KUREK: elde degilse gorunur
 	kur(durum.kurek, character, data.shovel, { "UpperTorso", "Torso" }, Tools.buildShovel, KUREK_ADI, AYAR.shovel)
 	goster(durum.kurek, character, not denizde and not eldeMi(character, "ShovelId"))
 
-	-- SIRTTA KAZMA (kuregin diger caprazi): elde degilse gorunur
 	kur(durum.kazma, character, enIyiKazma(data), { "UpperTorso", "Torso" }, Tools.buildPickaxe, KAZMA_ADI, AYAR.pickaxe)
 	goster(durum.kazma, character, not denizde and not eldeMi(character, "PickaxeId"))
 
-	-- BELDE GPS: elde degilse VE kesifte degilse gorunur
 	kur(durum.gps, character, data.detector, { "LowerTorso", "Torso" }, Tools.buildGPS, GPS_ADI, AYAR.gps)
 	local kesifte = player:GetAttribute(KESIF_NITELIGI) == true
 	goster(durum.gps, character, not denizde and not kesifte and not eldeMi(character, "DetectorId"))
 end
 
-------------------------------------------------------------------
--- DONGU
---
--- Anlik tepkiler karakter/nitelik sinyallerinden geliyor; bu dongu
--- yalnizca kurek yukseltme ve dedektor degisimi gibi veri degisikliklerini
--- yakalar.
-------------------------------------------------------------------
 task.spawn(function()
 	while true do
 		task.wait(0.5)

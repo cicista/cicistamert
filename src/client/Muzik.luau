@@ -1,32 +1,4 @@
 --!strict
---[[
-	ARKA PLAN MUZIGI  (ModuleScript, istemci)
-	Yeri: StarterPlayer > StarterPlayerScripts > Muzik
-
-	CALMA LISTESI
-
-	Workspace > Musics klasorundeki butun sarkilar bir liste olusturuyor.
-	Oyuncu girince liste KARISTIRILIYOR ve bastan calmaya basliyor; bir
-	sarki bitince siradaki geliyor, liste bitince yeniden karistirilip
-	basa donuyor.
-
-	Yani her oyuncu baska bir sarkiyla giriyor ve tek bir parca surekli
-	tekrar etmiyor. Tek sarki varsa o dongude calar (eski davranis).
-
-	YENI SARKI EKLEMEK
-	Klasore atmak yeterli; burada hicbir sey yazilmiyor.
-
-	NASIL CALAR
-	  Calan sarkinin bir KOPYASI bu oyuncunun SoundService'ine konuyor;
-	  klasordeki asil sesler bu oyuncuda susturuluyor. Boylece:
-	    - sunucuda da caliyorsa iki kez duyulmaz
-	    - bir parcanin icindeyse (konumlu ses) her yerden ayni duyulur
-	    - ses ayari yalnizca bu oyuncuyu etkiler
-
-	AYAR  (Ayarlar panelinden, kayitli; bkz. Menuler > AYARLAR)
-	    Muzik.ayarla(yuzde, kapali)   -- yuzde 0..100, kapali true/false
-	Sarkinin kendi Volume degeri %100 sayilir.
-]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -34,45 +6,23 @@ local Workspace = game:GetService("Workspace")
 
 local Muzik = {}
 
---[[
-	Sarkilarin durdugu klasorun adi. Buyuk/kucuk harf ve bosluk farki
-	onemsiz ("musics", "Musics", "MUSIC" hepsi olur).
-]]
 Muzik.KlasorAdi = "Musics"
 
---[[
-	Klasor bulunamazsa aranacak TEK sarki. Eski kurulumlarda sarki
-	klasorsuz, tek basina duruyordu; o kurulumlar da calismaya devam etsin.
-]]
 Muzik.SesAdi = "Happy Shoppers"
 
 local KOPYA_ADI = "ArkaPlanMuzigi"
 
---[[
-	Bir sarki bittikten sonra digerine gecerken birakilan sessizlik.
-	Sifir olsaydi parcalar birbirine yapisik duyuluyordu.
-]]
 local ARA = 1.5
 
 local yuzde = 100
 local kapali = false
 local calan: Sound? = nil
--- Calan sarkinin KENDI seviyesi (%100 karsiligi)
 local tabanSes = 0.5
 
 local function sadeAd(ad: string): string
 	return string.lower((string.gsub(ad, "[%s_%-]", "")))
 end
 
-------------------------------------------------------------------
--- SARKILARI BUL
-------------------------------------------------------------------
---[[
-	Once Musics klasoru, yoksa tek sarki.
-
-	Klasor Workspace'te aranir ama SoundService ve ReplicatedStorage'a da
-	bakilir: nereye konulursa konulsun bulunsun.
-]]
 local function sarkilariBul(): { Sound }
 	local koklar = { Workspace :: Instance, SoundService, ReplicatedStorage }
 	local hedef = sadeAd(Muzik.KlasorAdi)
@@ -90,11 +40,6 @@ local function sarkilariBul(): { Sound }
 					end
 				end
 				if #liste > 0 then
-					--[[
-						Klasordeki sira Studio'daki sira; karistirma
-						asagida yapiliyor ama once ADA gore siralaniyor ki
-						her oyuncuda ayni listeden baslansin.
-					]]
 					table.sort(liste, function(a, b)
 						return a.Name < b.Name
 					end)
@@ -104,7 +49,6 @@ local function sarkilariBul(): { Sound }
 		end
 	end
 
-	-- Klasor yok: eski davranis, tek sarki adiyla aranir
 	for _, kok in koklar do
 		for _, node in kok:GetDescendants() do
 			if node:IsA("Sound") and node.Name == Muzik.SesAdi then
@@ -116,9 +60,6 @@ local function sarkilariBul(): { Sound }
 	return {}
 end
 
-------------------------------------------------------------------
--- SES SEVIYESI
-------------------------------------------------------------------
 local function uygula()
 	local ses = calan
 	if ses and ses.Parent then
@@ -144,20 +85,10 @@ function Muzik.kapali(): boolean
 	return kapali
 end
 
--- Su an calan sarkinin adi (arayuz gostermek isterse diye)
 function Muzik.simdikiSarki(): string?
 	return if calan then calan:GetAttribute("SarkiAdi") :: string? else nil
 end
 
-------------------------------------------------------------------
--- CALMA LISTESI
-------------------------------------------------------------------
---[[
-	Listeyi karistirir (Fisher-Yates).
-
-	`sonAd` verilirse karistirmadan sonra listenin BASINA o sarki
-	gelmiyor: liste basa dondugunde ayni parca ust uste iki kez calmasin.
-]]
 local function karistir(liste: { Sound }, sonAd: string?): { Sound }
 	local sira = table.clone(liste)
 	local rng = Random.new()
@@ -174,14 +105,6 @@ local function karistir(liste: { Sound }, sonAd: string?): { Sound }
 	return sira
 end
 
---[[
-	Bir sarkiyi calar ve BITENE KADAR bekler.
-
-	Ended olayi tek basina yeterli degil: ses yuklenemezse ya da baska bir
-	sebeple hic calmaya baslamazsa o olay hic gelmiyor ve muzik orada
-	oluyordu. Bu yuzden sarkinin uzunlugu kadar bir ust sinir da var;
-	uzunluk bilinmiyorsa kisa bir bekleyisle gecilip siradakine geciliyor.
-]]
 local function cal(kaynak: Sound)
 	local kopya = kaynak:Clone()
 	kopya.Name = KOPYA_ADI
@@ -195,7 +118,6 @@ local function cal(kaynak: Sound)
 
 	kopya:Play()
 
-	-- Uzunluk yuklenmemis olabilir: kisa bir sure beklenir
 	if kopya.TimeLength <= 0 then
 		local bitis = os.clock() + 5
 		while kopya.TimeLength <= 0 and os.clock() < bitis and kopya.Parent do
@@ -204,11 +126,6 @@ local function cal(kaynak: Sound)
 	end
 
 	if kopya.TimeLength > 0 then
-		--[[
-			Ended'i bekleyen bir iplik ve zaman asimi yaris halinde:
-			hangisi once gelirse sarki bitmis sayiliyor. Ust sinir birkac
-			saniye fazla, cunku Ended cogu zaman tam zamaninda geliyor.
-		]]
 		local bitti = false
 		local bag: RBXScriptConnection? = nil
 		bag = kopya.Ended:Connect(function()
@@ -224,7 +141,6 @@ local function cal(kaynak: Sound)
 			bag:Disconnect()
 		end
 	else
-		-- Uzunluk hic gelmedi: sarki bozuk olabilir, siradakine gec
 		warn(`[Muzik] "{kaynak.Name}" yuklenemedi, siradaki sarkiya geciliyor`)
 		task.wait(1)
 	end
@@ -235,11 +151,7 @@ local function cal(kaynak: Sound)
 	kopya:Destroy()
 end
 
-------------------------------------------------------------------
--- BASLAT
-------------------------------------------------------------------
 task.spawn(function()
-	-- Sesler Studio'ya gec yuklenebilir: bir dakika boyunca aranir
 	local sarkilar: { Sound } = {}
 	for _ = 1, 60 do
 		sarkilar = sarkilariBul()
@@ -257,12 +169,6 @@ task.spawn(function()
 		return
 	end
 
-	--[[
-		KLASORDEKI ASIL SESLER SUSAR
-
-		Biri Studio'da "Playing" birakilmissa ya da sunucu calistiriyorsa
-		kopyayla ust uste binerdi. Bu yalnizca BU oyuncuyu etkiliyor.
-	]]
 	for _, ses in sarkilar do
 		ses.Volume = 0
 		ses.Playing = false
@@ -273,11 +179,6 @@ task.spawn(function()
 	local sonAd: string? = nil
 
 	while true do
-		--[[
-			HER TURDA YENIDEN KARISTIRILIYOR: liste hep ayni sirada
-			calsaydi ikinci turda oyuncu sirayi ezberlerdi. Ilk tur da
-			karisik, yani her oyuncu baska bir sarkiyla basliyor.
-		]]
 		for _, kaynak in karistir(sarkilar, sonAd) do
 			if kaynak.Parent then
 				cal(kaynak)
@@ -286,7 +187,6 @@ task.spawn(function()
 			end
 		end
 
-		-- Tek sarki varsa liste bitmez gibi davranir; yine de nefes payi
 		if #sarkilar == 1 then
 			task.wait(ARA)
 		end

@@ -1,23 +1,3 @@
---[[
-	Satis  (LocalScript)
-	Yeri: StarterPlayer > StarterPlayerScripts > Satis
-
-	Brainrot saticisinin ekran tarafi.
-
-	NPC'ye E ile basinca SATIS PENCERESI acilir:
-	    - envanterdeki satilabilir her brainrot fiyatiyla listelenir,
-	      tiklayinca o brainrot satilir
-	    - altta "Sell All" dugmesi hepsini birden satar
-
-	ONAY: satis hemen yapilmaz; "Sell X for Y Rot?" sorusu cikar (Yes / No).
-	"Don't ask again for 5 minutes" isaretlenirse o sure boyunca soru
-	sorulmadan satilir.
-
-	Brainrotu ELDE TUTMAK yok; eskiden ekranin altinda "E ile elindekini
-	sat / F ile hepsini sat" seridi vardi, o kalkti. Fiyatlar oyuncuya ozel
-	oldugu icin liste sunucudan geliyor ve her satistan sonra tazeleniyor.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -41,9 +21,6 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-------------------------------------------------------------------
--- PENCERE
-------------------------------------------------------------------
 local satilabilir: { any } = {}
 
 local pencere = UI.panel(screen, UDim2.fromOffset(480, 470), "SaticiPenceresi")
@@ -70,7 +47,6 @@ UI.closeButton(pencere).MouseButton1Click:Connect(function()
 	pencere.Visible = false
 end)
 
--- Liste ile "Sell All" dugmesi arasinda pay birakilir
 local liste = Instance.new("ScrollingFrame")
 liste.Name = "Liste"
 liste.Position = UDim2.fromOffset(14, 82)
@@ -82,7 +58,6 @@ liste.ScrollBarImageColor3 = UI.Colors.panelLight
 liste.CanvasSize = UDim2.new()
 liste.AutomaticCanvasSize = Enum.AutomaticSize.Y
 liste.Parent = pencere
--- Satir konturlari sol kenarda kirpilmasin (bkz. UI.listePayi)
 UI.listePayi(liste)
 
 local listeDizilim = Instance.new("UIListLayout")
@@ -95,10 +70,6 @@ hepsiButon.AnchorPoint = Vector2.new(0.5, 1)
 hepsiButon.Position = UDim2.new(0.5, 0, 1, -18)
 local hepsiYazi = hepsiButon:FindFirstChild("Label") :: TextLabel
 
-------------------------------------------------------------------
--- ONAY PENCERESI
-------------------------------------------------------------------
--- "Bir daha sorma" isaretlenince bu kadar saniye soru sorulmaz
 local SORMA_SURESI = 5 * 60
 local sormaBitis = 0
 
@@ -108,7 +79,6 @@ onay.Size = UDim2.fromScale(1, 1)
 onay.BackgroundColor3 = Color3.new(0, 0, 0)
 onay.BackgroundTransparency = 0.35
 onay.BorderSizePixel = 0
--- Arkadaki satirlara tiklanmasin
 onay.Active = true
 onay.Visible = false
 onay.ZIndex = 20
@@ -150,7 +120,6 @@ local onayYazi = UI.text({
 onayYazi.ZIndex = 22
 onayYazi.RichText = true
 
--- Isaret kutusu: "5 dakika sorma"
 local isaret = Instance.new("TextButton")
 isaret.Name = "Sorma"
 isaret.Position = UDim2.fromOffset(24, 108)
@@ -218,7 +187,6 @@ end
 
 local bekleyenIs: (() -> ())? = nil
 
--- RichText icine giden adlar: & < > isaretleri yaziyi bozmasin
 local function kacis(metin: string): string
 	return (metin:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
 end
@@ -241,7 +209,6 @@ end)
 
 hayir.MouseButton1Click:Connect(onayKapat)
 
--- Satistan once sorar; 5 dakikalik izin varsa dogrudan yapar
 local function onayla(metin: string, is: () -> ())
 	if os.clock() < sormaBitis then
 		is()
@@ -294,7 +261,6 @@ local function listeyiCiz()
 
 	for index, item in satilabilir do
 		local renk = Rarity.color(item.rarity)
-		-- Kimligi belirlenmemis brainrotun adi yok, yalnizca kademesi bilinir
 		local ad = item.name or `Unidentified {Rarity.displayName(item.rarity)}`
 
 		local row = Instance.new("TextButton")
@@ -340,8 +306,6 @@ local function listeyiCiz()
 		})
 
 		row.MouseButton1Click:Connect(function()
-			-- Sunucu satisi yapar ve listeyi tazeler; satilan satir bir
-			-- sonraki pakette kendiliginden kaybolur
 			onayla(
 				`Sell <b>{kacis(ad)}</b> for <font color="#FFD629">{Format.short(item.value)} Rot</font>?`,
 				function()
@@ -354,12 +318,8 @@ local function listeyiCiz()
 	end
 end
 
-------------------------------------------------------------------
--- SUNUCU PAKETI
-------------------------------------------------------------------
 SaticiDurum.OnClientEvent:Connect(function(data)
 	if type(data) ~= "table" or not data.near then
-		-- Saticidan uzaklasinca pencere kapanir
 		pencere.Visible = false
 		return
 	end
@@ -377,7 +337,6 @@ SaticiDurum.OnClientEvent:Connect(function(data)
 	end
 	hepsiButon.Active = #satilabilir > 0
 
-	-- Prompt tetiklendiginde acilir; sonraki tazelemeler pencereyi acmaz
 	if data.open then
 		pencere.Visible = true
 	end

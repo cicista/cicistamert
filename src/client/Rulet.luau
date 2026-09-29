@@ -1,44 +1,4 @@
 --!strict
---[[
-	IKI ASAMALI RULET  --  ortak cizim modulu
-
-	Lucky Block carki bunu kullanir; iki asamali cark mekanigi tek yerde duruyor.
-
-	AKIS
-	  1. ASAMA  Bolmelerde yalnizca "?" ve KADEME RENGI vardir. Ne cikacagi
-	            belli degildir; rulet durunca sadece kademe ortaya cikar
-	            (orn. kirmizi bolmede durdu -> Mythic).
-	  2. ASAMA  Serit yeniden kurulur; bu kez bolmelerde SADECE o kademeden
-	            cikabilecek adaylar (brainrot ya da skin) ADIYLA yazar.
-	            Rulet durunca odul aciga cikar.
-
-	Kazanan bolmenin nerede duracagi CAGIRAN TARAFTAN gelir -- yani sunucunun
-	sectigi sonuctan. Rulet hicbir sey secmez, sadece gosterir.
-
-	GORUNUM (cocuklara hitap eden, canli)
-	  - Bolmeler kademe renginde parlak kartlar (ustu acik, alti koyu + cila)
-	  - Ortada ust ve altta elmas isaretciler, ince parlayan cizgi
-	  - Seridin iki ucunda karanliga solma: bolmeler ortaya dogru belirir
-	  - Kazanan bolmede Rulet.kutla: genisleyen halka + etrafa yildizlar
-	  - DEGERLI BOLMELER KENDINI BELLI EDER (bkz. KademeEfekti modulu):
-	    kademe yukseldikce cerceve nabiz atar, isik doner, aura parlar,
-	    en ustte gokkusagi ve kivilcimlar. Nadir bir bolme onunden gecerken
-	    oyuncu heyecanlansin.
-
-	KULLANIM
-	    local reel = Rulet.new(panel, { position = ..., width = 408, height = 96 })
-	    Rulet.run(reel, {
-	        rarityCells = { "Epic", "Mythic", ... },   -- 1. asama
-	        rarityWinner = 36,
-	        rarityTime = 4,
-	        pause = 0.7,
-	        cells = { { text = "Tralalero", color = ... }, ... },  -- 2. asama
-	        winner = 24,
-	        time = 4,
-	        onRarity = function(rarityId) ... end,   -- 1. cark durunca
-	        onFinish = function() ... end,           -- 2. cark durunca
-	    })
-]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -50,23 +10,14 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
--- 2. asama bolmelerinde brainrot resmi (bkz. BrainrotOnizleme.seritPencere)
 local BrainrotOnizleme = require(script.Parent:WaitForChild("BrainrotOnizleme"))
--- Degerli bolmelerin canli cercevesi (Index de ayni modulu kullanir)
 local KademeEfekti = require(script.Parent:WaitForChild("KademeEfekti"))
--- 1. cark durunca calan patlama sesi
 local YerelSes = require(script.Parent:WaitForChild("YerelSes"))
 
---[[
-	1. CARK DURUNCA calan ses. Kademe belli oldugu an bir "patlama" gelsin
-	diye: ikinci cark donmeye baslamadan once vurgu. Ikinci carkin sonundaki
-	FuseExplosion'i sunucu caliyor (bkz. Modules > Patlama).
-]]
 local DURUS_SESI = "FuseExplosion"
 
 local Rulet = {}
 
--- 1. asama bolmeleri dar (icinde sadece "?" var), 2. asama genis (isim yazar)
 local RARITY_CELL_WIDTH = 84
 local NAME_CELL_WIDTH = 132
 local CELL_GAP = 6
@@ -74,18 +25,8 @@ local CELL_GAP = 6
 export type Cell = {
 	text: string,
 	color: Color3,
-	--[[
-		Verilirse 2. asama bolmesinde brainrotun 3B resmi ustte, adi altta
-		durur. Verilmezse bolme eskisi gibi yalnizca yazi (skin, coin...).
-		1. asamada ("?" bolmeleri) hic kullanilmaz: kademe gizli kalmali.
-	]]
 	brainrot: { name: string, mutation: string? }?,
-	-- Bolmenin kademesi: cercevedeki canli efekt buna gore secilir
 	rarity: string?,
-	--[[
-		Verilirse bolmede o kademenin YUMURTASI (kimliksiz brainrot modeli)
-		durur; yazi altta. Gacha carki boyle cizilir.
-	]]
 	yumurta: string?,
 }
 
@@ -93,24 +34,15 @@ export type Reel = {
 	frame: Frame,
 	strip: Frame,
 	marker: Frame,
-	-- Ust ve alttaki elmas isaretciler (tint ile boyanir)
 	oklar: { Frame },
 	stroke: UIStroke,
 	width: number,
 	height: number,
-	-- Serit su an hangi bolme genisligiyle kurulu
 	cellWidth: number,
 	busy: boolean,
-	-- Seritteki brainrot resimleri; yalnizca cercevenin icinden gecenlere kurulur
 	onizleme: BrainrotOnizleme.Pencere,
 }
 
---[[
-	rarityCells nil ise 1. ASAMA ATLANIR ve dogrudan odul serdi doner.
-
-	Kademesi onceden belli olan bir cark icin: kademeyi bir kez daha
-	cevirmek oyuncuyu bildigi bir seyi beklemeye zorlardi.
-]]
 export type Plan = {
 	rarityCells: { string }?,
 	rarityWinner: number?,
@@ -119,9 +51,7 @@ export type Plan = {
 	cells: { Cell },
 	winner: number,
 	time: number,
-	-- Yalnizca iki asamali cevirimde cagrilir
 	onRarity: ((rarityId: string) -> ())?,
-	-- 2. cark donmeye baslarken (ses tekrarlamak icin)
 	onSecondSpin: (() -> ())?,
 	onFinish: (() -> ())?,
 }
@@ -134,9 +64,6 @@ export type Options = {
 	name: string?,
 }
 
-------------------------------------------------------------------
--- KURULUM
-------------------------------------------------------------------
 function Rulet.new(parent: Instance, options: Options?): Reel
 	local o = options or {}
 	local width = o.width or 408
@@ -154,7 +81,6 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 	frame.Parent = parent
 	UI.corner(frame, 12)
 
-	-- Zemin: ortasi hafif aydinlik, ust ve alt kenari koyu (derinlik)
 	local zemin = Instance.new("UIGradient")
 	zemin.Rotation = 90
 	zemin.Color = ColorSequence.new({
@@ -166,12 +92,6 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 
 	local stroke = UI.stroke(frame, color, 3)
 
-	--[[
-		KENARLARDA SOLMA
-
-		Seridin iki ucu karanliga eriyor: bolmeler kenardan kesik kesik
-		girmek yerine ortaya dogru belirip kayboluyor.
-	]]
 	for taraf = 0, 1 do
 		local solma = Instance.new("Frame")
 		solma.Name = if taraf == 0 then "SolSolma" else "SagSolma"
@@ -190,7 +110,6 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 		gecis.Parent = solma
 	end
 
-	-- Kayan serit: konumu her zaman sol kenardan olculur
 	local strip = Instance.new("Frame")
 	strip.Name = "Serit"
 	strip.AnchorPoint = Vector2.new(0, 0.5)
@@ -199,7 +118,6 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 	strip.BackgroundTransparency = 1
 	strip.Parent = frame
 
-	-- Ortadaki isaretci: bolmeler bunun hizasinda durur
 	local marker = Instance.new("Frame")
 	marker.Name = "Isaretci"
 	marker.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -211,15 +129,6 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 	marker.ZIndex = 6
 	marker.Parent = frame
 
-	--[[
-		ELMAS ISARETCILER
-
-		Ust ve alt kenarin ortasinda 45 derece dondurulmus kareler. Donmus
-		nesne ClipsDescendants ile kirpilmadigi icin cercevenin disina da
-		tasiyor -- burada istenen tam olarak bu: kenara oturmus bir mucevher.
-		Bu yuzden rulet cercevesinin UST nesnesine konuyorlar (cercevenin
-		icinde kalsalar yine gorunurler ama kenar cizgisinin altinda kalirlar).
-	]]
 	local oklar: { Frame } = {}
 	for yon = 0, 1 do
 		local ok = Instance.new("Frame")
@@ -234,7 +143,6 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 		UI.corner(ok, 4)
 		UI.stroke(ok, Color3.fromRGB(0, 0, 0), 2)
 
-		-- Cerceveyle birlikte konumlanir (cerceve AnchorPoint 0.5, 0)
 		local function yerlestir()
 			local p = frame.Position
 			ok.Position = UDim2.new(p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset + (if yon == 0 then 0 else height))
@@ -259,21 +167,12 @@ function Rulet.new(parent: Instance, options: Options?): Reel
 	}
 end
 
-------------------------------------------------------------------
--- SERIT
-------------------------------------------------------------------
-
---[[
-	Bir bolmenin serit icindeki hedef konumu.
-	Bolmenin MERKEZI isaretcinin (pencerenin ortasi) hizasina gelmeli.
-]]
 local function offsetFor(reel: Reel, index: number): number
 	local center = (index - 1) * reel.cellWidth + reel.cellWidth / 2
 	return -(center - reel.width / 2)
 end
 
 local function clearStrip(reel: Reel)
-	-- Resimler bolmelerle birlikte silinmesin: havuza donsunlar
 	reel.onizleme.temizle()
 
 	for _, child in reel.strip:GetChildren() do
@@ -281,7 +180,6 @@ local function clearStrip(reel: Reel)
 	end
 end
 
--- Degerli bolmelerin canli cercevesi (bkz. KademeEfekti)
 local function efektTak(strip: Frame, cell: Frame, color: Color3, rarityId: string?)
 	local cizgi = cell:FindFirstChildOfClass("UIStroke")
 	if cizgi then
@@ -289,12 +187,6 @@ local function efektTak(strip: Frame, cell: Frame, color: Color3, rarityId: stri
 	end
 end
 
---[[
-	Seridi verilen bolmelerle kurar.
-
-	showText false ise bolmede yalnizca buyuk bir "?" durur ve renk disinda
-	hicbir ipucu verilmez -- 1. asama boyle cizilir.
-]]
 local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showText: boolean)
 	clearStrip(reel)
 
@@ -306,18 +198,12 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 		local cell = Instance.new("Frame")
 		cell.Name = `Bolme{index}`
 		cell.AnchorPoint = Vector2.new(0, 0.5)
-		-- Y olcegi 0.5: kutucuk seridin dikey ortasina oturur
 		cell.Position = UDim2.new(0, (index - 1) * cellWidth + CELL_GAP, 0.5, 0)
 		cell.Size = UDim2.fromOffset(cellWidth - CELL_GAP * 2, reel.height - 22)
 		cell.BorderSizePixel = 0
 		cell.Parent = reel.strip
 		UI.corner(cell, 10)
 
-		--[[
-			PARLAK KART: kademe renginde; ustu acik, alti koyu, ustte cam
-			parlakligi. Kontur rengin acik tonu -- koyu zeminde kart
-			kenarindan parliyormus gibi durur.
-		]]
 		cell.BackgroundColor3 = entry.color
 		local kartGecis = Instance.new("UIGradient")
 		kartGecis.Rotation = 90
@@ -333,19 +219,12 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 		parlak.Size = UDim2.new(1, 0, 0.42, 0)
 		UI.corner(parlak, 10)
 
-		-- Degerli bolme cercevesiyle kendini belli eder
 		efektTak(reel.strip, cell, entry.color, entry.rarity)
 
 		local resim = if showText then entry.brainrot else nil
 		local yumurta = if showText then entry.yumurta else nil
 
 		if resim or yumurta then
-			--[[
-				BRAINROT BOLMESI: ustte resmi, altta adi.
-
-				Resim cercevesi bolmeye ORANLA bagli: kazanan bolme vurgulanip
-				buyurken resim de onunla buyuyor.
-			]]
 			local yuva = Instance.new("Frame")
 			yuva.Name = "Resim"
 			yuva.BackgroundTransparency = 1
@@ -356,11 +235,9 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 			if resim then
 				reel.onizleme.ekle(yuva, { name = resim.name, mutation = resim.mutation, revealed = true })
 			else
-				-- Kimliksiz: kademenin yumurta modeli (bkz. Assets.hiddenBrainrotModel)
 				reel.onizleme.ekle(yuva, { revealed = false, rarity = yumurta })
 			end
 
-			-- Isim beyaz + siyah kontur: renkli kartin ustunde okunur
 			local ad = UI.text({
 				text = entry.text,
 				size = UI.Sizes.tiny,
@@ -373,10 +250,8 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 				name = "Isaret",
 				zIndex = 5,
 			})
-			-- Uzun adlar tek satirda kalsin, bolmeden tasmasin
 			ad.TextTruncate = Enum.TextTruncate.AtEnd
 		else
-			-- "?" kocaman ve beyaz: kartin rengi kademeyi zaten soyluyor
 			UI.text({
 				text = if showText then entry.text else "?",
 				size = if showText then UI.Sizes.small else UI.Sizes.huge + 8,
@@ -394,11 +269,6 @@ local function buildStrip(reel: Reel, cells: { Cell }, cellWidth: number, showTe
 	end
 end
 
-------------------------------------------------------------------
--- HAREKET
-------------------------------------------------------------------
-
--- Seridi kazanan bolmeye kaydirir ve durana kadar bekler.
 local function slideTo(reel: Reel, index: number, duration: number)
 	local tween = TweenService:Create(
 		reel.strip,
@@ -409,10 +279,6 @@ local function slideTo(reel: Reel, index: number, duration: number)
 	tween.Completed:Wait()
 end
 
---[[
-	Kazanan bolmeyi vurgular: kisa bir buyume-kuculme ve kalin kontur.
-	mark verilirse bolmedeki yazi da onunla degistirilir.
-]]
 local function highlight(reel: Reel, index: number, color: Color3, mark: string?)
 	local cell = reel.strip:FindFirstChild(`Bolme{index}`)
 	if not cell or not cell:IsA("Frame") then
@@ -429,7 +295,6 @@ local function highlight(reel: Reel, index: number, color: Color3, mark: string?
 	if stroke then
 		stroke.Thickness = 5
 		stroke.Transparency = 0
-		-- Donen isigi olan cercevede taban beyaz kalmali (gecis carpar)
 		stroke.Color = if stroke:FindFirstChildOfClass("UIGradient")
 			then Color3.new(1, 1, 1)
 			else color:Lerp(Color3.new(1, 1, 1), 0.6)
@@ -447,7 +312,6 @@ local function highlight(reel: Reel, index: number, color: Color3, mark: string?
 	end)
 end
 
--- Ruletin cercevesini ve isaretcisini bir renge boyar
 function Rulet.tint(reel: Reel, color: Color3)
 	reel.stroke.Color = color
 	reel.marker.BackgroundColor3 = color
@@ -456,15 +320,6 @@ function Rulet.tint(reel: Reel, color: Color3)
 	end
 end
 
---[[
-	KUTLAMA  --  kazanan aciga cikinca
-
-	Rulet cercevesinin ortasindan:
-	  - kademe renginde bir halka genisleyip solar
-	  - etrafa donerek yildizlar sacilir
-	Hepsi cercevenin UST nesnesinde (panel): cerceve kirptigi icin
-	icinde olsalar kenardan kesilirlerdi.
-]]
 function Rulet.kutla(reel: Reel, color: Color3)
 	local panel = reel.frame.Parent
 	if not panel then
@@ -475,7 +330,6 @@ function Rulet.kutla(reel: Reel, color: Color3)
 	local merkez = UDim2.new(p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset + reel.height / 2)
 	local parlak = color:Lerp(Color3.new(1, 1, 1), 0.35)
 
-	-- Genisleyen halka
 	local halka = Instance.new("Frame")
 	halka.Name = "KutlamaHalkasi"
 	halka.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -495,7 +349,6 @@ function Rulet.kutla(reel: Reel, color: Color3)
 	end)
 	solma:Play()
 
-	-- Yildizlar: donmus kareler, dairesel olarak disa ucar ve solar
 	local adet = 16
 	for i = 1, adet do
 		local aci = (i / adet) * math.pi * 2 + math.random() * 0.3
@@ -528,11 +381,6 @@ function Rulet.kutla(reel: Reel, color: Color3)
 	end
 end
 
---[[
-	Ruleti BEKLEME haline alir: verilen kademelerden "?" bolmeler kurulur ve
-	serit hareketsiz durur. Panel ilk acildiginda seridin bos gorunmemesi
-	icin. Rulet donuyorsa hicbir sey yapmaz.
-]]
 function Rulet.reset(reel: Reel, rarities: { string })
 	if reel.busy then
 		return
@@ -546,8 +394,6 @@ function Rulet.reset(reel: Reel, rarities: { string })
 	buildStrip(reel, cells, RARITY_CELL_WIDTH, false)
 end
 
--- Paneli kisaca titretir (kazanma hissi)
--- Settings > Screen Shake kapaliysa sarsinti yok (nitelik Ayarlar'dan gelir)
 local function sarsintiKapali(): boolean
 	return game:GetService("Players").LocalPlayer:GetAttribute("SarsintiKapali") == true
 end
@@ -566,26 +412,6 @@ function Rulet.shake(frame: GuiObject)
 	end)
 end
 
-------------------------------------------------------------------
--- IKI ASAMALI CEVIRIM
-------------------------------------------------------------------
-
---[[
-	Ruleti bastan sona oynatir.
-
-	Cagiran taraf hicbir zamanlama yapmaz: burada beklenir, asama bitince
-	onRarity / onFinish cagrilir. Kendi thread'inde calisir, cagirani
-	bloklamaz.
-
-	Rulet zaten donuyorsa false doner ve hicbir sey yapmaz. Cagiran taraf
-	buna bakip arayuzunu kilitlemeli: yoksa baslamayan bir cevirim yuzunden
-	buton sonsuza dek kapali kalabilir.
-]]
---[[
-	CARK SESI (bkz. LuckyBlock.Wheel.spinSounds)
-	Bulunan ses saklanir; bulunamazsa her cevirmede yeniden aranir
-	(ses Studio'ya sonradan konmus olabilir).
-]]
 local carkSesi: Sound? = nil
 
 local function carkSesiBul(): Sound?
@@ -638,10 +464,6 @@ function Rulet.run(reel: Reel, plan: Plan): boolean
 	task.spawn(function()
 		local fallbackColor = UI.Colors.text
 
-		------------------------------------------------------------------
-		-- 1. ASAMA: kademe -- yalnizca "?" ve renk
-		-- (rarityCells verilmemisse bu asama tamamen atlanir)
-		------------------------------------------------------------------
 		local stageOne = plan.rarityCells
 
 		if stageOne then
@@ -670,9 +492,6 @@ function Rulet.run(reel: Reel, plan: Plan): boolean
 			task.wait(plan.pause or 0.7)
 		end
 
-		------------------------------------------------------------------
-		-- 2. ASAMA: o kademeden cikabilecekler, adiyla
-		------------------------------------------------------------------
 		buildStrip(reel, plan.cells, NAME_CELL_WIDTH, true)
 		carkSesiCal()
 		if plan.onSecondSpin then

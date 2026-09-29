@@ -1,15 +1,4 @@
 --!strict
---[[
-	Brainrot GPS (dedektor) seviyeleri.
-
-	Kurek minigame'i kolaylastirir; dedektor ise NE CIKACAGINI etkiler:
-	  luck        -> yuksek rarity suzme cikma sansini carpar (Rarity.rollBeam)
-	  scanRadius  -> etrafta suzme aranan yaricap
-	  spawnChance -> her taramada suzme cikma yuzdesi
-	  maxBeams    -> ayni anda kac suzme durabilir
-
-	Kurekte oldugu gibi tek dedektor tasinir: yenisi alininca eskisi silinir.
-]]
 
 local Detectors = {}
 
@@ -21,7 +10,6 @@ export type DetectorInfo = {
 	level: number,
 	rarity: string,
 	price: number,
-	-- Yuksek rarity suzmelerin agirlik carpani (1 = etkisiz)
 	luck: number,
 	scanRadius: number,
 	spawnChance: number,
