@@ -2,6 +2,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -158,6 +159,119 @@ kaziIkon.Image = KUREK_IKONU
 kaziIkon.Rotation = IKON_ACI
 kaziIkon.ZIndex = 8
 kaziIkon.Parent = kaziKatman
+
+local CERCEVE_KONUM = kaziCerceve.Position
+local EFEKT_ALTIN = Color3.fromRGB(255, 214, 60)
+local TOPRAK_RENKLERI = {
+	Color3.fromRGB(150, 108, 64),
+	Color3.fromRGB(112, 78, 44),
+	Color3.fromRGB(214, 184, 132),
+	Color3.fromRGB(236, 206, 150),
+}
+
+kaziDolgu.ClipsDescendants = true
+
+local dolguBandi = Instance.new("Frame")
+dolguBandi.Name = "Parilti"
+dolguBandi.AnchorPoint = Vector2.new(0, 0.5)
+dolguBandi.Position = UDim2.new(0, 0, 1.2, 0)
+dolguBandi.Size = UDim2.new(1, 0, 0, 46)
+dolguBandi.BackgroundColor3 = Color3.new(1, 1, 1)
+dolguBandi.BackgroundTransparency = 0.55
+dolguBandi.BorderSizePixel = 0
+dolguBandi.ZIndex = 5
+dolguBandi.Parent = kaziDolgu
+do
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	gecis.Parent = dolguBandi
+	TweenService:Create(
+		dolguBandi,
+		TweenInfo.new(1.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Position = UDim2.new(0, 0, -0.2, 0) }
+	):Play()
+end
+
+local dolguUst = Instance.new("Frame")
+dolguUst.Name = "UstKenar"
+dolguUst.Size = UDim2.new(1, 0, 0, 5)
+dolguUst.BackgroundColor3 = Color3.new(1, 1, 1)
+dolguUst.BackgroundTransparency = 0.15
+dolguUst.BorderSizePixel = 0
+dolguUst.ZIndex = 5
+dolguUst.Parent = kaziDolgu
+
+local aura = Instance.new("Frame")
+aura.Name = "Aura"
+aura.AnchorPoint = Vector2.new(0.5, 0.5)
+aura.Position = UDim2.fromScale(0.5, 0.5)
+aura.Size = UDim2.new(1, 10, 1, 10)
+aura.BackgroundTransparency = 1
+aura.ZIndex = 7
+aura.Parent = kaziKatman
+UI.corner(aura, 10)
+local auraCizgi = UI.stroke(aura, UI.Colors.good, 5)
+auraCizgi.Transparency = 0.4
+TweenService:Create(
+	auraCizgi,
+	TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{ Thickness = 9, Transparency = 0.8 }
+):Play()
+
+local yuzdeYazi = UI.text({
+	text = "",
+	size = UI.Sizes.heading,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	anchor = Vector2.new(0.5, 1),
+	position = UDim2.new(0.5, 0, 0, -12),
+	frameSize = UDim2.fromOffset(120, 30),
+	parent = kaziKatman,
+	name = "Yuzde",
+	zIndex = 9,
+})
+local yuzdeOlcek = Instance.new("UIScale")
+yuzdeOlcek.Parent = yuzdeYazi
+
+local komboYazi = UI.text({
+	text = "",
+	size = UI.Sizes.huge,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Right,
+	anchor = Vector2.new(1, 0.5),
+	position = UDim2.new(0, -16, 0.45, 0),
+	frameSize = UDim2.fromOffset(220, 50),
+	parent = kaziKatman,
+	name = "Kombo",
+	zIndex = 9,
+})
+komboYazi.Visible = false
+local komboOlcek = Instance.new("UIScale")
+komboOlcek.Parent = komboYazi
+
+local sonucYazi = UI.text({
+	text = "",
+	size = UI.Sizes.huge,
+	font = UI.Fonts.bold,
+	color = EFEKT_ALTIN,
+	align = Enum.TextXAlignment.Center,
+	anchor = Vector2.new(0.5, 1),
+	position = UDim2.new(0.5, 0, 0, -48),
+	frameSize = UDim2.fromOffset(300, 56),
+	parent = kaziKatman,
+	name = "Sonuc",
+	zIndex = 10,
+})
+sonucYazi.Visible = false
+local sonucOlcek = Instance.new("UIScale")
+sonucOlcek.Parent = sonucYazi
 
 local otoKutu = Instance.new("Frame")
 otoKutu.Name = "OtoTiklayici"
@@ -339,6 +453,227 @@ local function sarsintiyiCoz()
 	kaziIkon.Rotation = ikonAci
 end
 local kaziRenk = UI.Colors.good
+
+type Parcacik = {
+	f: Frame,
+	vx: number,
+	vy: number,
+	yercekimi: number,
+	omur: number,
+	sure: number,
+	donus: number,
+	saydam: number,
+}
+
+local efekt = {
+	parcaciklar = {} :: { Parcacik },
+	ilerleme = 0.5,
+	kombo = 0,
+	sonTik = 0,
+	esik = 0,
+	kabarcik = 0,
+	oyunNo = 0,
+}
+
+local function parcacikAt(x: number, y: number, renk: Color3, boy: number, vx: number, vy: number, omur: number, yercekimi: number, yuvarlak: boolean?, saydam: number?)
+	if #efekt.parcaciklar >= 140 then
+		return
+	end
+	local f = Instance.new("Frame")
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromOffset(x, y)
+	f.Size = UDim2.fromOffset(boy, boy)
+	f.Rotation = rng:NextNumber(0, 360)
+	f.BackgroundColor3 = renk
+	f.BackgroundTransparency = saydam or 0
+	f.BorderSizePixel = 0
+	f.ZIndex = 9
+	f.Parent = kaziKatman
+	UI.corner(f, if yuvarlak then 1000 else 2)
+	table.insert(efekt.parcaciklar, {
+		f = f,
+		vx = vx,
+		vy = vy,
+		yercekimi = yercekimi,
+		omur = omur,
+		sure = 0,
+		donus = rng:NextNumber(-360, 360),
+		saydam = saydam or 0,
+	})
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	local liste = efekt.parcaciklar
+	for i = #liste, 1, -1 do
+		local p = liste[i]
+		p.sure += dt
+		local oran = p.sure / p.omur
+		if oran >= 1 or not p.f.Parent then
+			p.f:Destroy()
+			table.remove(liste, i)
+			continue
+		end
+		p.vy += p.yercekimi * dt
+		local konum = p.f.Position
+		p.f.Position = UDim2.fromOffset(konum.X.Offset + p.vx * dt, konum.Y.Offset + p.vy * dt)
+		p.f.Rotation += p.donus * dt
+		p.f.BackgroundTransparency = p.saydam + (1 - p.saydam) * oran * oran
+	end
+
+	if komboYazi.Visible and os.clock() - efekt.sonTik > 0.6 then
+		komboYazi.TextTransparency = math.min(1, komboYazi.TextTransparency + dt * 4)
+		if komboYazi.TextTransparency >= 1 then
+			komboYazi.Visible = false
+			efekt.kombo = 0
+		end
+	end
+end)
+
+local function ikonNoktasi(): (number, number)
+	return kaziCerceve.Size.X.Offset / 2, (1 - efekt.ilerleme) * KAZI_BOY
+end
+
+local function patlat(x: number, y: number, sayi: number, renkler: { Color3 }, hiz: number, yukari: number, omur: number)
+	for _ = 1, sayi do
+		local yon = if rng:NextNumber() < 0.5 then -1 else 1
+		parcacikAt(
+			x + rng:NextNumber(-6, 6),
+			y + rng:NextNumber(-6, 6),
+			renkler[rng:NextInteger(1, #renkler)],
+			rng:NextNumber(5, 11),
+			yon * rng:NextNumber(hiz * 0.35, hiz),
+			-rng:NextNumber(yukari * 0.4, yukari),
+			rng:NextNumber(omur * 0.7, omur),
+			620
+		)
+	end
+end
+
+local function olcekPop(olcek: UIScale, tepe: number, sure: number)
+	olcek.Scale = tepe
+	TweenService:Create(olcek, TweenInfo.new(sure, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+local function auraParlat(renk: Color3)
+	auraCizgi.Color = renk
+	TweenService:Create(auraCizgi, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Color = kaziRenk,
+	}):Play()
+end
+
+local function tikEfekti()
+	local x, y = ikonNoktasi()
+	patlat(x, y, 5, { TOPRAK_RENKLERI[1], TOPRAK_RENKLERI[2], TOPRAK_RENKLERI[3], TOPRAK_RENKLERI[4], kaziRenk }, 170, 230, 0.7)
+
+	local simdi = os.clock()
+	efekt.kombo = if simdi - efekt.sonTik < 0.45 then efekt.kombo + 1 else 1
+	efekt.sonTik = simdi
+
+	if efekt.kombo >= 5 then
+		komboYazi.Visible = true
+		komboYazi.TextTransparency = 0
+		komboYazi.Text = `{efekt.kombo} COMBO`
+		komboYazi.TextColor3 = if efekt.kombo >= 30
+			then Color3.fromRGB(255, 110, 60)
+			elseif efekt.kombo >= 15 then EFEKT_ALTIN
+			else Color3.new(1, 1, 1)
+		komboYazi.Rotation = rng:NextNumber(-7, 7)
+		olcekPop(komboOlcek, 1.35, 0.18)
+		if efekt.kombo % 10 == 0 then
+			patlat(x, y, 10, { EFEKT_ALTIN, Color3.new(1, 1, 1) }, 240, 300, 0.8)
+			auraParlat(EFEKT_ALTIN)
+		end
+	end
+end
+
+local function efektleriSifirla()
+	for _, p in efekt.parcaciklar do
+		p.f:Destroy()
+	end
+	table.clear(efekt.parcaciklar)
+	efekt.kombo = 0
+	efekt.sonTik = 0
+	efekt.esik = 0
+	efekt.kabarcik = 0
+	komboYazi.Visible = false
+	sonucYazi.Visible = false
+	yuzdeYazi.TextColor3 = Color3.new(1, 1, 1)
+	auraCizgi.Color = kaziRenk
+	kaziCerceve.Position = CERCEVE_KONUM
+	kaziKatman.Position = CERCEVE_KONUM
+end
+
+local ESIKLER = { 0.25, 0.5, 0.75 }
+
+local function ilerlemeEfekti(dt: number, ilerleme: number, tehlikede: boolean)
+	efekt.ilerleme = ilerleme
+	yuzdeYazi.Text = `{math.floor(ilerleme * 100 + 0.5)}%`
+	yuzdeYazi.TextColor3 = if tehlikede then Color3.fromRGB(255, 90, 90) else Color3.new(1, 1, 1)
+
+	for i, esik in ESIKLER do
+		if ilerleme >= esik and efekt.esik < i then
+			efekt.esik = i
+			local x, y = ikonNoktasi()
+			patlat(x, y, 12, { EFEKT_ALTIN, Color3.new(1, 1, 1), kaziRenk }, 220, 280, 0.8)
+			auraParlat(EFEKT_ALTIN)
+			olcekPop(yuzdeOlcek, 1.5, 0.3)
+		end
+	end
+
+	efekt.kabarcik += dt
+	while efekt.kabarcik >= 0.12 do
+		efekt.kabarcik -= 0.12
+		if ilerleme > 0.05 then
+			parcacikAt(
+				rng:NextNumber(10, kaziCerceve.Size.X.Offset - 10),
+				KAZI_BOY - rng:NextNumber(0, ilerleme * KAZI_BOY),
+				Color3.new(1, 1, 1),
+				rng:NextNumber(4, 7),
+				0,
+				-rng:NextNumber(40, 80),
+				0.7,
+				0,
+				true,
+				0.55
+			)
+		end
+	end
+
+	if tehlikede then
+		local sars = UDim2.fromOffset(rng:NextNumber(-3, 3), rng:NextNumber(-2, 2))
+		kaziCerceve.Position = CERCEVE_KONUM + sars
+		kaziKatman.Position = CERCEVE_KONUM + sars
+	elseif kaziCerceve.Position ~= CERCEVE_KONUM then
+		kaziCerceve.Position = CERCEVE_KONUM
+		kaziKatman.Position = CERCEVE_KONUM
+	end
+end
+
+local function sonucEfekti(kazandi: boolean)
+	komboYazi.Visible = false
+	kaziCerceve.Position = CERCEVE_KONUM
+	kaziKatman.Position = CERCEVE_KONUM
+
+	sonucYazi.Visible = true
+	sonucYazi.TextTransparency = 0
+	sonucYazi.Rotation = if kazandi then -6 else 4
+	sonucYazi.Text = if kazandi then "DUG UP!" else "IT GOT AWAY!"
+	sonucYazi.TextColor3 = if kazandi then EFEKT_ALTIN else Color3.fromRGB(255, 80, 80)
+	sonucOlcek.Scale = 0.2
+	TweenService:Create(sonucOlcek, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+
+	local x, y = ikonNoktasi()
+	if kazandi then
+		patlat(x, y, 36, { kaziRenk, EFEKT_ALTIN, Color3.new(1, 1, 1), TOPRAK_RENKLERI[3] }, 320, 440, 1.1)
+		auraParlat(Color3.new(1, 1, 1))
+		yuzdeYazi.Text = "100%"
+		olcekPop(yuzdeOlcek, 1.6, 0.35)
+	else
+		patlat(x, y, 14, { TOPRAK_RENKLERI[1], TOPRAK_RENKLERI[2], Color3.fromRGB(60, 40, 24) }, 140, 120, 0.8)
+		auraParlat(Color3.fromRGB(255, 60, 60))
+		kaziDolgu.BackgroundColor3 = Color3.fromRGB(70, 20, 20)
+	end
+end
 
 local OGRETICI_NITELIK = "OgreticiAdim"
 local OGRETICI_ADIM = "ilkKazi"
@@ -530,6 +865,7 @@ local function tikla(girdi: EnumItem?)
 	vurusGucu = math.min(TIK_TAVAN, vurusGucu + TIK_GUCU)
 
 	vurusYon = -vurusYon
+	tikEfekti()
 end
 
 local function bindInput()
@@ -599,7 +935,13 @@ local function finish(won: boolean)
 			vurusGucu = TIK_TAVAN
 		end
 
-		kaziEkran.Enabled = false
+		sonucEfekti(won)
+		local bu = efekt.oyunNo
+		task.delay(0.9, function()
+			if efekt.oyunNo == bu and not calisiyor() then
+				kaziEkran.Enabled = false
+			end
+		end)
 		task.delay(0.8, sarsintiyiCoz)
 
 		MinigameSonuc:FireServer(won)
@@ -617,7 +959,7 @@ local function finish(won: boolean)
 	end)
 end
 
-local function renderKazi(state: KaziMinigame.State)
+local function renderKazi(state: KaziMinigame.State, dt: number)
 	kaziDolgu.Size = UDim2.fromScale(1, state.progress)
 
 	kaziIkon.Position = UDim2.fromScale(0.5, 1 - state.progress)
@@ -628,8 +970,10 @@ local function renderKazi(state: KaziMinigame.State)
 	local tehlikede = state.progress <= TEHLIKE_ORANI
 	kaziTehlike.BackgroundTransparency = if tehlikede then 0 else 0.15
 	kaziTehlike.BackgroundColor3 = if tehlikede
-		then Color3.fromRGB(90, 12, 12)
+		then Color3.fromRGB(90, 12, 12):Lerp(Color3.fromRGB(200, 30, 30), (math.sin(os.clock() * 14) + 1) * 0.5)
 		else Color3.fromRGB(10, 8, 6)
+
+	ilerlemeEfekti(dt, state.progress, tehlikede)
 end
 
 local function modKur(yeniMod: string, rarityId: string)
@@ -680,8 +1024,11 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 		local oyun = KaziMinigame.new(gearId, rarityId)
 		kazi = oyun
 
+		efekt.oyunNo += 1
+		efektleriSifirla()
+		efekt.esik = math.floor(KaziMinigame.START * 4)
 		bindInput()
-		renderKazi(oyun.state)
+		renderKazi(oyun.state, 0)
 
 		local otoBirikim = 0
 
@@ -711,7 +1058,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 				end
 			end
 
-			renderKazi(state)
+			renderKazi(state, step)
 
 			if state.finished then
 				tiklaYazisiCiz(step, false)
