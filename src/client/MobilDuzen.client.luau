@@ -198,19 +198,15 @@ task.spawn(function()
 	UI.onScaleChanged(uygula)
 end)
 
+playerGui.DescendantAdded:Connect(function(nesne)
+	if nesne.Name == "JumpButton" or nesne.Name == "TouchControlFrame" then
+		task.defer(ziplamaDuzenle)
+	end
+end)
+
 task.spawn(function()
-	local touchGui = playerGui:WaitForChild("TouchGui", 60)
-	if not touchGui then
-		return
+	while true do
+		task.wait(1)
+		ziplamaDuzenle()
 	end
-	local cerceve = touchGui:WaitForChild("TouchControlFrame", 30)
-	if not cerceve then
-		return
-	end
-	cerceve.ChildAdded:Connect(function(cocuk)
-		if cocuk.Name == "JumpButton" then
-			task.defer(ziplamaDuzenle)
-		end
-	end)
-	ziplamaDuzenle()
 end)

@@ -942,27 +942,18 @@ task.spawn(function()
 	local menuler = playerGui:WaitForChild("OyunMenuleri")
 	local sol = menuler:WaitForChild("SolMenu") :: GuiObject
 
-	local sag = menuler:WaitForChild("SagMenu") :: GuiObject
-
 	local function yerlestir()
-		if UI.Girdi.dokunmatik() then
-			tutucu.AnchorPoint = Vector2.new(1, 0)
-			tutucu.Position = UDim2.fromOffset(sag.AbsolutePosition.X - 8, sag.AbsolutePosition.Y)
-			return
-		end
-		local carpan = UI.carpan()
+		local bosluk = if UI.Girdi.dokunmatik() then 8 else MENU_BOSLUK
 		tutucu.AnchorPoint = Vector2.new(0, 1)
 		tutucu.Position = UDim2.fromOffset(
 			sol.AbsolutePosition.X,
-			sol.AbsolutePosition.Y - MENU_BOSLUK * carpan
+			sol.AbsolutePosition.Y - bosluk * UI.carpan()
 		)
 	end
 
 	yerlestir()
 	sol:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
 	sol:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
-	sag:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
-	sag:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
 	UI.onScaleChanged(yerlestir)
 	UI.Girdi.degisince(yerlestir)
 end)
