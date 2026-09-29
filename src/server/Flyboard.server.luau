@@ -566,6 +566,9 @@ RunService.Heartbeat:Connect(function(dt)
 			if not surface then
 				suyuBirak(player)
 				karayiKaydet(player, root, humanoid)
+				if Envanter.hasRod(player) then
+					Envanter.removeRod(player)
+				end
 				continue
 			end
 

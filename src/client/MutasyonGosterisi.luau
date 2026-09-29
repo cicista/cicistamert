@@ -107,13 +107,16 @@ local function oynat(oge: Oge)
 	parlama.BackgroundTransparency = 0
 
 	kutu.Visible = true
-	olcek.Scale = 0.2
+	local sigdir = if ekran.AbsoluteSize.X > 10
+		then math.min(1, ekran.AbsoluteSize.X * 0.92 / kutu.Size.X.Offset, ekran.AbsoluteSize.Y * 0.4 / kutu.Size.Y.Offset)
+		else 1
+	olcek.Scale = 0.2 * sigdir
 	baslik.Rotation = 0
 
-	local buyu = TweenService:Create(olcek, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.15 })
+	local buyu = TweenService:Create(olcek, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.15 * sigdir })
 	buyu:Play()
 	buyu.Completed:Wait()
-	TweenService:Create(olcek, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Scale = 1 }):Play()
+	TweenService:Create(olcek, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Scale = sigdir }):Play()
 
 	local salla = TweenService:Create(
 		baslik,

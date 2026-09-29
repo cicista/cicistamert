@@ -92,10 +92,12 @@ local function olcegiTazele()
 		icerik += SLOT_ARA + CEKMECE_EN
 	end
 
-	kokOlcek.Scale = math.clamp((en - 32) / icerik, 0.5, 1)
+	local pay = if UI.Girdi.dokunmatik() then 250 else 32
+	kokOlcek.Scale = math.clamp((en - pay) / icerik, 0.5, 1)
 end
 
 ekran:GetPropertyChangedSignal("AbsoluteSize"):Connect(olcegiTazele)
+UI.Girdi.degisince(olcegiTazele)
 
 local cubuk = Instance.new("Frame")
 cubuk.Name = "Cubuk"

@@ -118,7 +118,7 @@ Rods.Info = {
 	},
 } :: { [RodId]: RodInfo }
 
-Rods.ToolName = "Fishing Rod"
+Rods.ToolName = "OltaModeli"
 
 Rods.TipName = "OltaUcu"
 

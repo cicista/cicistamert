@@ -267,6 +267,22 @@ function Olta.has(player: Player): boolean
 	return character ~= nil and character:FindFirstChild(Rods.ToolName) ~= nil
 end
 
+function Olta.izVar(player: Player): boolean
+	if Olta.has(player) then
+		return true
+	end
+	for _, yer in { player.Character, player:FindFirstChildOfClass("Backpack") } do
+		if yer then
+			for _, t in yer:GetChildren() do
+				if t:IsA("Tool") and t:GetAttribute("RodId") ~= nil then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
 function Olta.reel(character: Model)
 	local old = character:FindFirstChild(Rods.LineName)
 	if old then
@@ -281,9 +297,10 @@ function Olta.remove(character: Model?)
 
 	Olta.reel(character)
 
-	local rod = character:FindFirstChild(Rods.ToolName)
-	if rod then
-		rod:Destroy()
+	for _, cocuk in character:GetChildren() do
+		if cocuk.Name == Rods.ToolName and not cocuk:IsA("Tool") then
+			cocuk:Destroy()
+		end
 	end
 	ikonToolKaldir(character)
 end

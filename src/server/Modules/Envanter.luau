@@ -154,6 +154,10 @@ function Envanter.removeRod(player: Player)
 	Olta.remove(player.Character)
 end
 
+function Envanter.hasRod(player: Player): boolean
+	return Olta.izVar(player)
+end
+
 function Envanter.giveShovel(player: Player)
 	if not held(player, Tools.ShovelName) then
 		return

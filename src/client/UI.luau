@@ -176,7 +176,7 @@ end
 UI.FonKatmani = 19
 UI.PanelKatmani = 20
 
-local function katmanKur(ad: string, sira: number): ScreenGui?
+local function katmanKur(ad: string, sira: number, olcekDisi: boolean?): ScreenGui?
 	local player = Players.LocalPlayer
 	if not player then
 		return nil
@@ -197,6 +197,9 @@ local function katmanKur(ad: string, sira: number): ScreenGui?
 	gui.DisplayOrder = sira
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	if olcekDisi then
+		gui:SetAttribute("OlcekDisi", true)
+	end
 	gui.Parent = playerGui
 	return gui
 end
@@ -216,7 +219,7 @@ function UI.fonEkrani(): ScreenGui?
 	if fonKatmani and fonKatmani.Parent then
 		return fonKatmani
 	end
-	fonKatmani = katmanKur("PanelFonKatmani", UI.FonKatmani)
+	fonKatmani = katmanKur("PanelFonKatmani", UI.FonKatmani, true)
 	return fonKatmani
 end
 

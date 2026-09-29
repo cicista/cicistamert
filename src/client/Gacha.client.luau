@@ -805,7 +805,9 @@ end)
 
 local ekranFlasi = Instance.new("Frame")
 ekranFlasi.Name = "EkranFlasi"
-ekranFlasi.Size = UDim2.fromScale(1, 1)
+ekranFlasi.AnchorPoint = Vector2.new(0.5, 0.5)
+ekranFlasi.Position = UDim2.fromScale(0.5, 0.5)
+ekranFlasi.Size = UDim2.fromScale(4, 4)
 ekranFlasi.BackgroundColor3 = BEYAZ
 ekranFlasi.BackgroundTransparency = 1
 ekranFlasi.BorderSizePixel = 0
