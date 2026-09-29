@@ -170,6 +170,22 @@ local function ziplamaDuzenle()
 	end
 end
 
+local HAREKET_ALANI_KONUM = UDim2.fromScale(0, 0)
+local HAREKET_ALANI_BOYUT = UDim2.fromScale(0.5, 1)
+
+local function hareketAlaniDuzenle()
+	local touchGui = playerGui:FindFirstChild("TouchGui")
+	local alan = touchGui and touchGui:FindFirstChild("DynamicThumbstickFrame", true)
+	if not alan or not alan:IsA("GuiObject") then
+		return
+	end
+	if alan.Size ~= HAREKET_ALANI_BOYUT or alan.Position ~= HAREKET_ALANI_KONUM or alan.AnchorPoint ~= Vector2.zero then
+		alan.AnchorPoint = Vector2.zero
+		alan.Position = HAREKET_ALANI_KONUM
+		alan.Size = HAREKET_ALANI_BOYUT
+	end
+end
+
 local function uygula()
 	local dokunmatik = Girdi.dokunmatik()
 
@@ -194,6 +210,7 @@ local function uygula()
 	end
 
 	ziplamaDuzenle()
+	hareketAlaniDuzenle()
 end
 
 task.spawn(function()
@@ -216,6 +233,8 @@ end)
 playerGui.DescendantAdded:Connect(function(nesne)
 	if nesne.Name == "JumpButton" or nesne.Name == "TouchControlFrame" then
 		task.defer(ziplamaDuzenle)
+	elseif nesne.Name == "DynamicThumbstickFrame" then
+		task.defer(hareketAlaniDuzenle)
 	end
 end)
 
@@ -223,5 +242,6 @@ task.spawn(function()
 	while true do
 		task.wait(1)
 		ziplamaDuzenle()
+		hareketAlaniDuzenle()
 	end
 end)

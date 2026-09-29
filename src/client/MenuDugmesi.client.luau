@@ -134,6 +134,11 @@ local function menuOgeleri(): { GuiObject }
 			end
 		end
 	end
+	local robux = playerGui:FindFirstChild("RobuxMagazasi")
+	local store = robux and robux:FindFirstChild("StoreButonu")
+	if store and store:IsA("GuiObject") then
+		table.insert(liste, store)
+	end
 	return liste
 end
 
@@ -191,6 +196,13 @@ sag.ChildAdded:Connect(function()
 end)
 Girdi.degisince(function()
 	uygula()
+end)
+
+task.spawn(function()
+	local robux = playerGui:WaitForChild("RobuxMagazasi", 30)
+	if robux and robux:WaitForChild("StoreButonu", 30) then
+		uygula()
+	end
 end)
 
 uygula()

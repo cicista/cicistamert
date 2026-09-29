@@ -929,64 +929,28 @@ local storeYazi = UI.text({
 	zIndex = 5,
 })
 
-local storeIkonVar = false
-local storeKompakt = false
-
-local function storeDuzeni(kompakt: boolean)
-	storeKompakt = kompakt
-	if kompakt then
-		storeIkon.AnchorPoint = Vector2.new(0.5, 0)
-		storeIkon.Position = UDim2.new(0.5, 0, 0, 2)
-		storeIkon.Size = UDim2.fromScale(0.6, 0.6)
-		storeYazi.TextSize = UI.Sizes.tiny
-		storeYazi.Size = if storeIkonVar then UDim2.fromScale(1, 0.36) else UDim2.fromScale(1, 1)
-		storeYazi.Position = if storeIkonVar then UDim2.fromScale(0, 0.62) else UDim2.new()
-		return
-	end
-	storeIkon.AnchorPoint = Vector2.new(0, 0.5)
-	storeIkon.Position = UDim2.new(0, 2, 0.5, 0)
-	storeIkon.Size = UDim2.fromOffset(40, 40)
-	storeYazi.TextSize = UI.Sizes.label
-	storeYazi.Size = if storeIkonVar then UDim2.new(1, -42, 1, 0) else UDim2.fromScale(1, 1)
-	storeYazi.Position = if storeIkonVar then UDim2.fromOffset(40, 0) else UDim2.new()
-end
-
 storeIkon.Visible = false
 Icons.bind(storeIkon, "store", function(ok)
 	if ok then
 		storeIkon.Visible = true
-		storeIkonVar = true
-		storeDuzeni(storeKompakt)
+		storeYazi.Size = UDim2.new(1, -42, 1, 0)
+		storeYazi.Position = UDim2.fromOffset(40, 0)
 	end
 end)
 
 task.spawn(function()
 	local menuler = playerGui:WaitForChild("OyunMenuleri")
 	local sol = menuler:WaitForChild("SolMenu") :: GuiObject
+	local sag = menuler:WaitForChild("SagMenu") :: GuiObject
 
 	local function yerlestir()
 		if UI.Girdi.dokunmatik() then
-			if tutucu.Parent ~= sol then
-				tutucu.LayoutOrder = -999
-				tutucu.Parent = sol
-			end
-			local olcek = tutucu:FindFirstChild("AyarOlcek")
-			if olcek and olcek:IsA("UIScale") then
-				olcek.Scale = 1
-			end
-			if not storeKompakt then
-				storeDuzeni(true)
-			end
+			tutucu.AnchorPoint = Vector2.new(1, 0)
+			tutucu.Position = UDim2.fromOffset(
+				sag.AbsolutePosition.X + sag.AbsoluteSize.X,
+				sag.AbsolutePosition.Y + sag.AbsoluteSize.Y + 8 * UI.carpan()
+			)
 			return
-		end
-
-		if tutucu.Parent ~= screen then
-			tutucu.Parent = screen
-			tutucu.Visible = true
-			tutucu.Size = UDim2.fromOffset(MENU_IKON * 2 + MENU_BOSLUK, MENU_IKON + LIP)
-		end
-		if storeKompakt then
-			storeDuzeni(false)
 		end
 		tutucu.AnchorPoint = Vector2.new(0, 1)
 		tutucu.Position = UDim2.fromOffset(
@@ -998,6 +962,8 @@ task.spawn(function()
 	yerlestir()
 	sol:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
 	sol:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
+	sag:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
+	sag:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
 	UI.onScaleChanged(yerlestir)
 	UI.Girdi.degisince(yerlestir)
 end)
