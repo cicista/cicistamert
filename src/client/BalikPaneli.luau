@@ -47,12 +47,12 @@ local BalikPaneli = {}
 ------------------------------------------------------------------
 -- AYARLAR
 ------------------------------------------------------------------
-local PANEL_EN = 320
-local PANEL_BOY = 600
+local PANEL_EN = 250
+local PANEL_BOY = 560
 
 -- Su sutunu ve ilerleme cubugunun ust kenari ve boyu
 local SUTUN_UST = 84
-local SUTUN_BOY = 440
+local SUTUN_BOY = 410
 
 -- Yakalama bolgesinin iki rengi: balik iceride / disarida
 local ICERI_RENK = Color3.fromRGB(86, 232, 140)
@@ -217,7 +217,7 @@ govde.Size = UDim2.fromScale(1, 1)
 govde.BackgroundColor3 = Color3.new(1, 1, 1)
 govde.BackgroundTransparency = 0.04
 govde.ClipsDescendants = true
-UI.corner(govde, 18)
+UI.corner(govde, 14)
 
 do
 	local gecis = Instance.new("UIGradient")
@@ -235,7 +235,7 @@ govdeOlcek.Name = "Ziplama"
 govdeOlcek.Parent = govde
 
 -- Cerceve kademe renginde, ince bir nefes alir
-local cerceve = UI.stroke(govde, UI.Colors.accent, 3)
+local cerceve = UI.stroke(govde, UI.Colors.accent, 2)
 
 -- Arka plan: isik bantlari ve buyuk soluk kabarciklar
 local arkaIsik = isikKati(govde, 0.94, 1)
@@ -243,7 +243,7 @@ local arkaKabarcik = kabarciklar(govde, 12, 6, 16, 0.82, 1)
 
 local header = UI.text({
 	text = "",
-	size = UI.Sizes.heading,
+	size = UI.Sizes.label,
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
 	frameSize = UDim2.new(1, -24, 0, 32),
@@ -271,10 +271,10 @@ local subHeader = UI.text({
 local track = kutu("Track", govde, 2)
 track.AnchorPoint = Vector2.new(0.5, 0)
 track.Position = UDim2.new(0.4, 0, 0, SUTUN_UST)
-track.Size = UDim2.fromOffset(96, SUTUN_BOY)
+track.Size = UDim2.fromOffset(58, SUTUN_BOY)
 track.BackgroundColor3 = Color3.new(1, 1, 1)
 track.ClipsDescendants = true
-UI.corner(track, 14)
+UI.corner(track, 10)
 
 do
 	local gecis = Instance.new("UIGradient")
@@ -287,7 +287,7 @@ do
 	gecis.Parent = track
 end
 
-local trackKontur = UI.stroke(track, Color3.fromRGB(0, 0, 0), 3)
+local trackKontur = UI.stroke(track, Color3.fromRGB(0, 0, 0), 2)
 
 local suIsik = isikKati(track, 0.86, 1)
 local suKabarcik = kabarciklar(track, 10, 3, 8, 0.55, 2)
@@ -305,16 +305,16 @@ local barHale = kutu("BarHale", track, 3)
 barHale.AnchorPoint = Vector2.new(0.5, 0.5)
 barHale.BackgroundColor3 = ICERI_RENK
 barHale.BackgroundTransparency = 0.75
-UI.corner(barHale, 12)
+UI.corner(barHale, 8)
 
 -- Oyuncunun kontrol ettigi yakalama bolgesi
 local bar = kutu("Bar", track, 4)
 bar.AnchorPoint = Vector2.new(0.5, 0.5)
 bar.Position = UDim2.fromScale(0.5, 0.5)
-bar.Size = UDim2.new(1, -14, 0, 60)
+bar.Size = UDim2.new(1, -10, 0, 60)
 bar.BackgroundColor3 = ICERI_RENK
 bar.BackgroundTransparency = 0.25
-UI.corner(bar, 10)
+UI.corner(bar, 6)
 
 do
 	-- Kenarlar dolu, ortasi cam gibi
@@ -329,14 +329,14 @@ do
 	gecis.Parent = bar
 end
 
-local barKontur = UI.stroke(bar, Color3.new(1, 1, 1), 2)
+local barKontur = UI.stroke(bar, Color3.new(1, 1, 1), 1)
 barKontur.Transparency = 0.2
 
 -- Misina: sutunun tepesinden baliga iner
 local misina = kutu("Misina", track, 5)
 misina.AnchorPoint = Vector2.new(0.5, 0)
 misina.Position = UDim2.fromScale(0.5, 0)
-misina.Size = UDim2.new(0, 2, 0.5, 0)
+misina.Size = UDim2.new(0, 1, 0.5, 0)
 misina.BackgroundColor3 = Color3.fromRGB(235, 245, 255)
 misina.BackgroundTransparency = 0.15
 
@@ -346,37 +346,37 @@ misina.BackgroundTransparency = 0.15
 local balik = kutu("Balik", track, 6)
 balik.AnchorPoint = Vector2.new(0.5, 0.5)
 balik.Position = UDim2.fromScale(0.5, 0.5)
-balik.Size = UDim2.fromOffset(64, 44)
+balik.Size = UDim2.fromOffset(44, 30)
 balik.BackgroundTransparency = 1
 
 -- Kademe renginde hale; rengi basla'da ayarlaniyor
-local hale = UI.parlama(balik, Color3.new(1, 1, 1), 96, 1)
+local hale = UI.parlama(balik, Color3.new(1, 1, 1), 66, 1)
 
 local kuyruk = kutu("Kuyruk", balik, 2)
 kuyruk.AnchorPoint = Vector2.new(0.5, 0.5)
-kuyruk.Position = UDim2.new(0, 12, 0.5, 0)
-kuyruk.Size = UDim2.fromOffset(22, 22)
+kuyruk.Position = UDim2.new(0, 8, 0.5, 0)
+kuyruk.Size = UDim2.fromOffset(15, 15)
 kuyruk.Rotation = 45
 kuyruk.BackgroundColor3 = BALIK_KOYU
-UI.corner(kuyruk, 4)
-UI.stroke(kuyruk, Color3.fromRGB(70, 22, 6), 2)
+UI.corner(kuyruk, 3)
+UI.stroke(kuyruk, Color3.fromRGB(70, 22, 6), 1)
 
 local yuzgec = kutu("Yuzgec", balik, 2)
 yuzgec.AnchorPoint = Vector2.new(0.5, 0.5)
-yuzgec.Position = UDim2.new(0.5, 2, 0.5, -14)
-yuzgec.Size = UDim2.fromOffset(14, 14)
+yuzgec.Position = UDim2.new(0.5, 2, 0.5, -10)
+yuzgec.Size = UDim2.fromOffset(10, 10)
 yuzgec.Rotation = 45
 yuzgec.BackgroundColor3 = BALIK_KOYU
-UI.corner(yuzgec, 3)
-UI.stroke(yuzgec, Color3.fromRGB(70, 22, 6), 2)
+UI.corner(yuzgec, 2)
+UI.stroke(yuzgec, Color3.fromRGB(70, 22, 6), 1)
 
 local balikGovde = kutu("Govde", balik, 3)
 balikGovde.AnchorPoint = Vector2.new(0.5, 0.5)
-balikGovde.Position = UDim2.new(0.5, 5, 0.5, 0)
-balikGovde.Size = UDim2.fromOffset(46, 30)
+balikGovde.Position = UDim2.new(0.5, 4, 0.5, 0)
+balikGovde.Size = UDim2.fromOffset(32, 20)
 balikGovde.BackgroundColor3 = BALIK_RENK
-UI.corner(balikGovde, 15)
-UI.stroke(balikGovde, Color3.fromRGB(70, 22, 6), 2)
+UI.corner(balikGovde, 10)
+UI.stroke(balikGovde, Color3.fromRGB(70, 22, 6), 1)
 
 do
 	-- Ustten aydinlik, alttan koyu: govde yuvarlak dursun
@@ -391,15 +391,15 @@ do
 
 	local goz = kutu("Goz", balikGovde, 4)
 	goz.AnchorPoint = Vector2.new(0.5, 0.5)
-	goz.Position = UDim2.new(1, -11, 0.42, 0)
-	goz.Size = UDim2.fromOffset(10, 10)
+	goz.Position = UDim2.new(1, -8, 0.42, 0)
+	goz.Size = UDim2.fromOffset(7, 7)
 	goz.BackgroundColor3 = Color3.new(1, 1, 1)
 	daire(goz)
 
 	local bebek = kutu("Bebek", goz, 5)
 	bebek.AnchorPoint = Vector2.new(0.5, 0.5)
 	bebek.Position = UDim2.fromScale(0.62, 0.5)
-	bebek.Size = UDim2.fromOffset(5, 5)
+	bebek.Size = UDim2.fromOffset(4, 4)
 	bebek.BackgroundColor3 = Color3.new(0, 0, 0)
 	daire(bebek)
 end
@@ -410,11 +410,11 @@ end
 local progressTrack = kutu("ProgressTrack", govde, 2)
 progressTrack.AnchorPoint = Vector2.new(0.5, 0)
 progressTrack.Position = UDim2.new(0.83, 0, 0, SUTUN_UST)
-progressTrack.Size = UDim2.fromOffset(30, SUTUN_BOY)
+progressTrack.Size = UDim2.fromOffset(16, SUTUN_BOY)
 progressTrack.BackgroundColor3 = Color3.fromRGB(8, 14, 26)
 progressTrack.ClipsDescendants = true
-UI.corner(progressTrack, 10)
-local progressKontur = UI.stroke(progressTrack, Color3.fromRGB(0, 0, 0), 3)
+UI.corner(progressTrack, 8)
+local progressKontur = UI.stroke(progressTrack, Color3.fromRGB(0, 0, 0), 2)
 
 local progressFill = kutu("Fill", progressTrack, 2)
 progressFill.AnchorPoint = Vector2.new(0.5, 1)
@@ -422,7 +422,7 @@ progressFill.Position = UDim2.fromScale(0.5, 1)
 progressFill.Size = UDim2.fromScale(1, 0.35)
 progressFill.BackgroundColor3 = UI.Colors.good
 progressFill.ClipsDescendants = true
-UI.corner(progressFill, 10)
+UI.corner(progressFill, 8)
 UI.cubukCilasi(progressFill)
 
 -- Dolgunun icinde yukari kayan parlak serit
@@ -454,38 +454,38 @@ makaraKatman.BackgroundTransparency = 1
 
 local makara = kutu("Makara", makaraKatman, 1)
 makara.AnchorPoint = Vector2.new(0.5, 0.5)
-makara.Size = UDim2.fromOffset(40, 40)
+makara.Size = UDim2.fromOffset(26, 26)
 makara.BackgroundColor3 = Color3.fromRGB(30, 36, 50)
 daire(makara)
-UI.stroke(makara, ALTIN, 3)
+UI.stroke(makara, ALTIN, 2)
 
 for i = 0, 2 do
 	local tel = kutu("Tel", makara, 2)
 	tel.AnchorPoint = Vector2.new(0.5, 0.5)
 	tel.Position = UDim2.fromScale(0.5, 0.5)
-	tel.Size = UDim2.fromOffset(4, 32)
+	tel.Size = UDim2.fromOffset(2, 20)
 	tel.Rotation = i * 60
 	tel.BackgroundColor3 = ALTIN
-	UI.corner(tel, 2)
+	UI.corner(tel, 1)
 end
 
 do
 	local gobek = kutu("Gobek", makara, 3)
 	gobek.AnchorPoint = Vector2.new(0.5, 0.5)
 	gobek.Position = UDim2.fromScale(0.5, 0.5)
-	gobek.Size = UDim2.fromOffset(12, 12)
+	gobek.Size = UDim2.fromOffset(8, 8)
 	gobek.BackgroundColor3 = Color3.fromRGB(255, 250, 220)
 	daire(gobek)
-	UI.stroke(gobek, Color3.fromRGB(0, 0, 0), 2)
+	UI.stroke(gobek, Color3.fromRGB(0, 0, 0), 1)
 end
 
 local yuzdeYazi = UI.text({
 	text = "0%",
-	size = UI.Sizes.body,
+	size = UI.Sizes.small,
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
 	anchor = Vector2.new(0.5, 0),
-	frameSize = UDim2.fromOffset(70, 24),
+	frameSize = UDim2.fromOffset(60, 22),
 	position = UDim2.new(0.83, 0, 0, SUTUN_UST + SUTUN_BOY + 6),
 	parent = govde,
 	name = "Yuzde",
@@ -495,11 +495,11 @@ local yuzdeYazi = UI.text({
 -- Sutunun altinda balikla ilgili durum yazisi: HOOKED! / SLIPPING!
 local durumYazi = UI.text({
 	text = "",
-	size = UI.Sizes.label,
+	size = UI.Sizes.body,
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
 	anchor = Vector2.new(0.5, 0),
-	frameSize = UDim2.fromOffset(180, 26),
+	frameSize = UDim2.fromOffset(140, 24),
 	position = UDim2.new(0.4, 0, 0, SUTUN_UST + SUTUN_BOY + 5),
 	parent = govde,
 	name = "Durum",
@@ -544,8 +544,8 @@ sahneOlcek.Parent = sahne
 
 local huzmeler = UI.isikHuzmeleri(sahne, ALTIN, {
 	sayi = 12,
-	uzunluk = 420,
-	kalinlik = 28,
+	uzunluk = 320,
+	kalinlik = 16,
 	tur = 6,
 	parlaklik = 0.35,
 	zIndex = 1,
@@ -553,7 +553,7 @@ local huzmeler = UI.isikHuzmeleri(sahne, ALTIN, {
 
 local sahneYazi = UI.text({
 	text = "",
-	size = UI.Sizes.huge,
+	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	align = Enum.TextXAlignment.Center,
 	anchor = Vector2.new(0.5, 0.5),
@@ -579,7 +579,7 @@ konfetiKatman.BackgroundTransparency = 1
 ]]
 local perfectLabel = UI.text({
 	text = "PERFECT!",
-	size = UI.Sizes.huge,
+	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	color = Color3.fromRGB(255, 226, 90),
 	align = Enum.TextXAlignment.Center,
@@ -708,7 +708,7 @@ local function kare(dt: number)
 	kabarciklariOynat(suKabarcik, dt * 1.6, t)
 
 	-- Cerceve nefes alir
-	cerceve.Thickness = 3 + math.sin(t * 3) * 0.9
+	cerceve.Thickness = 2 + math.sin(t * 3) * 0.5
 
 	local durum = sonDurum
 	local hiz = if durum then durum.targetVelocity else 0
@@ -716,13 +716,13 @@ local function kare(dt: number)
 	-- Balik: kuyruk sallanir, burun hiza gore kalkar/iner
 	local cirpma = 8 + math.min(math.abs(hiz) * 14, 16)
 	kuyruk.Rotation = 45 + math.sin(t * cirpma) * 20
-	kuyruk.Position = UDim2.new(0, 12 + math.sin(t * cirpma) * 1.5, 0.5, 0)
+	kuyruk.Position = UDim2.new(0, 8 + math.sin(t * cirpma) * 1.5, 0.5, 0)
 	local hedefEgim = if bitti then egim else math.clamp(-hiz * 45, -35, 35)
 	egim += (hedefEgim - egim) * math.min(dt * 10, 1)
 	balik.Rotation = egim
 
 	-- Misina baliga kadar iner (balik tweende de olsa pesinden gider)
-	misina.Size = UDim2.new(0, 2, math.max(balik.Position.Y.Scale, 0), 0)
+	misina.Size = UDim2.new(0, 1, math.max(balik.Position.Y.Scale, 0), 0)
 
 	-- Yakalama bolgesinin rengi yumusakca gecer
 	iceriOran += ((if iceride then 1 else 0) - iceriOran) * math.min(dt * 10, 1)
@@ -774,7 +774,7 @@ local function kare(dt: number)
 			durumYazi.Text = "SLIPPING!"
 			durumYazi.TextColor3 = DISARI_RENK
 		end
-		durumYazi.TextSize = math.floor(UI.Sizes.label * (1 + nabiz * (if iceride then 0.08 else 0.18)))
+		durumYazi.TextSize = math.floor(UI.Sizes.body * (1 + nabiz * (if iceride then 0.08 else 0.18)))
 		durumYazi.Rotation = if iceride then 0 else math.sin(t * 20) * 3
 	end
 
@@ -866,9 +866,9 @@ function BalikPaneli.ciz(state: DigMinigame.State, holding: boolean)
 	tutuyor = holding
 
 	-- Cubuk 0..1 -> ekranda ust 0, alt 1 olacak sekilde ters cevrilir
-	bar.Size = UDim2.new(1, -14, state.barSize, 0)
+	bar.Size = UDim2.new(1, -10, state.barSize, 0)
 	bar.Position = UDim2.fromScale(0.5, 1 - state.barPosition)
-	barHale.Size = UDim2.new(1, -4, state.barSize, 10)
+	barHale.Size = UDim2.new(1, -4, state.barSize, 6)
 	barHale.Position = bar.Position
 
 	balik.Position = UDim2.fromScale(0.5, 1 - state.targetPosition)
@@ -890,7 +890,7 @@ function BalikPaneli.bitir(won: boolean)
 	end
 	bitti = true
 	durumYazi.Rotation = 0
-	durumYazi.TextSize = UI.Sizes.label
+	durumYazi.TextSize = UI.Sizes.body
 
 	cerceve.Color = if won then ICERI_RENK else DISARI_RENK
 	header.Text = if won then "CAUGHT IT!" else "IT GOT AWAY!"
