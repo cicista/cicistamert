@@ -904,7 +904,20 @@ tutucu.Size = UDim2.fromOffset(MENU_IKON * 2 + MENU_BOSLUK, MENU_IKON + LIP)
 tutucu.BackgroundTransparency = 1
 tutucu.Parent = screen
 
-local storeButon, storeYuz = satinAlmaDugmesi(tutucu, ALTIN, true)
+local storeGovde = Instance.new("Frame")
+storeGovde.Name = "Govde"
+storeGovde.AnchorPoint = Vector2.new(0.5, 0.5)
+storeGovde.Position = UDim2.fromScale(0.5, 0.5)
+storeGovde.Size = UDim2.fromScale(1, 1)
+storeGovde.BackgroundTransparency = 1
+storeGovde.Parent = tutucu
+do
+	local gosterOlcek = Instance.new("UIScale")
+	gosterOlcek.Name = "GosterOlcek"
+	gosterOlcek.Parent = storeGovde
+end
+
+local storeButon, storeYuz = satinAlmaDugmesi(storeGovde, ALTIN, true)
 storeButon.Name = "Store"
 storeButon.AnchorPoint = Vector2.new(0.5, 0.5)
 storeButon.Position = UDim2.fromScale(0.5, 0.5)

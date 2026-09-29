@@ -125,13 +125,110 @@ local function gorunumuCiz()
 	end
 end
 
+local ACILIS_SURESI = 0.24
+local KAPANIS_SURESI = 0.14
+local SIRA_ARASI = 0.025
+
+type Durum = { hedef: boolean, surum: number }
+local durumlar: { [GuiObject]: Durum } = {}
+local ilkCizim = true
+local panelAcik = false
+
+local function gosterOlcegi(oge: GuiObject): UIScale?
+	local dogrudan = oge:FindFirstChild("GosterOlcek")
+	if dogrudan and dogrudan:IsA("UIScale") then
+		return dogrudan
+	end
+	local govde = oge:FindFirstChild("Govde")
+	local icte = govde and govde:FindFirstChild("GosterOlcek")
+	if icte and icte:IsA("UIScale") then
+		return icte
+	end
+	if oge:FindFirstChildOfClass("UIScale") then
+		return nil
+	end
+	local yeni = Instance.new("UIScale")
+	yeni.Name = "GosterOlcek"
+	yeni.Parent = oge
+	return yeni
+end
+
+local function ogeyiAyarla(oge: GuiObject, goster: boolean, gecikme: number)
+	local durum = durumlar[oge]
+	if not durum then
+		durum = { hedef = oge.Visible, surum = 0 }
+		durumlar[oge] = durum
+	end
+	if durum.hedef == goster and oge.Visible == goster then
+		return
+	end
+	durum.hedef = goster
+	durum.surum += 1
+	local surum = durum.surum
+	local olcek = gosterOlcegi(oge)
+
+	if ilkCizim or not olcek then
+		oge.Visible = goster
+		if olcek then
+			olcek.Scale = 1
+		end
+		return
+	end
+
+	if goster then
+		if not oge.Visible then
+			olcek.Scale = 0
+			oge.Visible = true
+		end
+		task.delay(gecikme, function()
+			if durum.surum ~= surum then
+				return
+			end
+			TweenService:Create(
+				olcek,
+				TweenInfo.new(ACILIS_SURESI, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+				{ Scale = 1 }
+			):Play()
+		end)
+		return
+	end
+
+	task.delay(gecikme, function()
+		if durum.surum ~= surum then
+			return
+		end
+		local kapanis = TweenService:Create(
+			olcek,
+			TweenInfo.new(KAPANIS_SURESI, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+			{ Scale = 0 }
+		)
+		kapanis.Completed:Connect(function(sonuc)
+			if durum.surum == surum and sonuc == Enum.PlaybackState.Completed then
+				oge.Visible = false
+				olcek.Scale = 1
+			end
+		end)
+		kapanis:Play()
+	end)
+end
+
 local function menuOgeleri(): { GuiObject }
 	local liste: { GuiObject } = {}
-	for _, kap in { sol, sag } do
-		for _, cocuk in kap:GetChildren() do
-			if cocuk:IsA("GuiObject") and cocuk ~= dugme then
-				table.insert(liste, cocuk)
-			end
+	local solOgeler: { GuiObject } = {}
+	for _, cocuk in sol:GetChildren() do
+		if cocuk:IsA("GuiObject") and cocuk ~= dugme then
+			table.insert(solOgeler, cocuk)
+		end
+	end
+	table.sort(solOgeler, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	for _, oge in solOgeler do
+		table.insert(liste, oge)
+	end
+	for _, cocuk in sag:GetChildren() do
+		if cocuk:IsA("GuiObject") then
+			table.insert(liste, cocuk)
 		end
 	end
 	local robux = playerGui:FindFirstChild("RobuxMagazasi")
@@ -157,15 +254,20 @@ end
 
 local function uygula()
 	local dokunmatik = Girdi.dokunmatik()
-	dugme.Visible = dokunmatik
-	local goster = not dokunmatik or acik
+	local goster = not panelAcik and (not dokunmatik or acik)
 
-	for _, oge in menuOgeleri() do
-		oge.Visible = goster
+	ogeyiAyarla(dugme, dokunmatik and not panelAcik, 0)
+
+	local ogeler = menuOgeleri()
+	local adet = #ogeler
+	for i, oge in ogeler do
+		local sira = if goster then i - 1 else adet - i
+		ogeyiAyarla(oge, goster, sira * SIRA_ARASI)
 		etkilesimiIzle(oge)
 	end
 
 	gorunumuCiz()
+	ilkCizim = false
 end
 
 local function menuyuAc(yeni: boolean)
@@ -209,14 +311,20 @@ uygula()
 
 task.spawn(function()
 	while true do
-		task.wait(0.5)
-		if not Girdi.dokunmatik() or not acik then
-			continue
+		task.wait(0.1)
+
+		local simdiPanel = UI.acikPanelVarMi()
+		if simdiPanel ~= panelAcik then
+			panelAcik = simdiPanel
+			uygula()
 		end
-		if UI.acikPanelVarMi() then
-			sonEtkilesim = os.clock()
-		elseif os.clock() - sonEtkilesim >= OTOMATIK_GIZLEME then
-			menuyuAc(false)
+
+		if Girdi.dokunmatik() and acik then
+			if panelAcik then
+				sonEtkilesim = os.clock()
+			elseif os.clock() - sonEtkilesim >= OTOMATIK_GIZLEME then
+				menuyuAc(false)
+			end
 		end
 	end
 end)
