@@ -18,8 +18,13 @@
 	   resmi, adi, kademesi ve "Return" dugmesi durur. Kurallar ve oranlar
 	   sunucuda (bkz. ServerScriptService > Fuse, Shared > Fuse).
 
+	   Sonuc kutusunda cikacak kademenin YUMURTASI durur (envanterdeki "?"
+	   ile ayni model); arkasinda kademe renginde isik huzmeleri doner, dolu
+	   borulardan kutuya kabarciklar akar.
+
 	2. BIRLESME GOSTERISI
-	   FUSE'a basinca: ruhlar donerek merkeze kapanir ve parlar. Basarida
+	   FUSE'a basinca: ruhlar donerek merkeze kapanir ve parlar, cekirdekte
+	   hedef kademenin yumurtasi titrer. Basarida
 	   yeni kademenin renginde patlama ve kazanilan brainrotun adi; basarisizlikta
 	   cekirdek sonup kaybolur.
 ]]
@@ -83,7 +88,8 @@ screen.Parent = playerGui
 local ANA_W = 640
 local SAG_EN = 250
 local W, H = ANA_W + SAG_EN, 548
-local BASLIK_BOY = 58
+-- UI.baslikCubugu 62. piksele kadar yer kapliyor
+local BASLIK_BOY = 62
 
 local MOR_A = Color3.fromRGB(150, 60, 230)
 local MOR_B = Color3.fromRGB(235, 70, 190)
@@ -107,47 +113,19 @@ local KUTU_Y = 330
 -- PENCERE
 ------------------------------------------------------------------
 local pencere = UI.panel(screen, UDim2.fromOffset(W, H), "FuseMakinesi")
-pencere.BackgroundColor3 = GOVDE
 pencere.ClipsDescendants = true
-UI.stroke(pencere, SIYAH, 4)
 
--- Mor-pembe baslik seridi
-local baslik = Instance.new("Frame")
-baslik.Name = "Baslik"
-baslik.Size = UDim2.new(1, 0, 0, BASLIK_BOY)
-baslik.BackgroundColor3 = Color3.new(1, 1, 1)
-baslik.BorderSizePixel = 0
-baslik.Parent = pencere
-UI.corner(baslik, 14)
+--[[
+	GORUNUM  --  oyunun diger panelleriyle ayni dil (bkz. UI.baslikCubugu)
 
-local baslikGecis = Instance.new("UIGradient")
-baslikGecis.Color = ColorSequence.new(MOR_A, MOR_B)
-baslikGecis.Parent = baslik
-
--- Baslik seridinin alt koselerini duz gostermek icin alt yariyi kapatan serit
-local baslikAlt = Instance.new("Frame")
-baslikAlt.Size = UDim2.new(1, 0, 0, 16)
-baslikAlt.Position = UDim2.new(0, 0, 1, -16)
-baslikAlt.BackgroundColor3 = Color3.new(1, 1, 1)
-baslikAlt.BorderSizePixel = 0
-baslikAlt.Parent = baslik
-local baslikAltGecis = baslikGecis:Clone()
-baslikAltGecis.Parent = baslikAlt
-
-UI.text({
-	text = "Fuse Machine",
-	size = UI.Sizes.title,
-	font = UI.Fonts.bold,
-	color = Color3.new(1, 1, 1),
-	frameSize = UDim2.new(1, -90, 1, 0),
-	position = UDim2.fromOffset(20, 0),
-	parent = baslik,
-	name = "Yazi",
-})
-
+	Mor-pembe cilali baslik cubugu, mora calan koyu zemin ve uzerinde soluk
+	capraz desen. Kapatma dugmesi ONCE kuruluyor: baslikCubugu onu cubugun
+	sag ucuna tasiyor.
+]]
 UI.closeButton(pencere).MouseButton1Click:Connect(function()
 	pencere.Visible = false
 end)
+UI.baslikCubugu(pencere, "Fuse Machine", MOR_A, MOR_B, nil, GOVDE)
 
 local yonerge = UI.text({
 	text = "",
@@ -188,11 +166,29 @@ local function bilgiKutusu(y: number, ad: string): TextLabel
 	kutuB.Name = ad
 	kutuB.Position = UDim2.fromOffset(ANA_W, y)
 	kutuB.Size = UDim2.fromOffset(SAG_EN - 20, BILGI_BOY)
-	kutuB.BackgroundColor3 = Color3.fromRGB(58, 56, 84)
+	kutuB.BackgroundColor3 = Color3.new(1, 1, 1)
 	kutuB.BorderSizePixel = 0
+	kutuB.ClipsDescendants = true
 	kutuB.Parent = pencere
 	UI.corner(kutuB, 10)
-	UI.stroke(kutuB, Color3.fromRGB(0, 0, 0), 2)
+	UI.stroke(kutuB, SIYAH, 2)
+
+	-- Ustu mora calan, alti koyu kart; ustte ince mor-pembe serit
+	local zemin = Instance.new("UIGradient")
+	zemin.Rotation = 90
+	zemin.Color = ColorSequence.new(KART:Lerp(MOR_A, 0.25), KART:Lerp(SIYAH, 0.25))
+	zemin.Parent = kutuB
+	UI.gloss(kutuB, 0.9)
+
+	local serit = Instance.new("Frame")
+	serit.Name = "Serit"
+	serit.Size = UDim2.new(1, 0, 0, 5)
+	serit.BackgroundColor3 = Color3.new(1, 1, 1)
+	serit.BorderSizePixel = 0
+	serit.Parent = kutuB
+	local seritGecis = Instance.new("UIGradient")
+	seritGecis.Color = ColorSequence.new(MOR_A, MOR_B)
+	seritGecis.Parent = serit
 
 	local yazi = UI.text({
 		text = "",
@@ -218,7 +214,12 @@ local onizleme = BrainrotOnizleme.seritPencere(pencere)
 ------------------------------------------------------------------
 -- BORULAR  (slotlardan sonuc kutusuna)
 ------------------------------------------------------------------
-type Boru = { parcalar: { Frame }, kapak: Frame }
+--[[
+	Dolu borudan sonuc kutusuna kabarciklar akar (bkz. BORU AKISI). yol,
+	borunun orta cizgisindeki kose noktalari: slotun altindan kutunun
+	kenarina.
+]]
+type Boru = { parcalar: { Frame }, kapak: Frame, yol: { Vector2 }, kabarciklar: { Frame }, dolu: boolean }
 local borular: { Boru } = {}
 
 local function boruParca(x: number, y: number, en: number, boy: number): Frame
@@ -240,15 +241,35 @@ do
 	for i = 1, 3 do
 		local merkezX = SLOT_X[i] + SLOT_EN / 2
 		local parcalar: { Frame } = {}
+		local yol: { Vector2 }
 
 		if i == 2 then
 			table.insert(parcalar, boruParca(merkezX - kalinlik / 2, ustY, kalinlik, KUTU_Y - ustY))
+			yol = { Vector2.new(merkezX, ustY), Vector2.new(merkezX, KUTU_Y) }
 		else
 			table.insert(parcalar, boruParca(merkezX - kalinlik / 2, ustY, kalinlik, ortaY - ustY + kalinlik))
 			local kutuKenar = if i == 1 then KUTU_X else KUTU_X + KUTU_EN
 			local solX = math.min(merkezX - kalinlik / 2, kutuKenar)
 			local sagX = math.max(merkezX + kalinlik / 2, kutuKenar)
 			table.insert(parcalar, boruParca(solX, ortaY, sagX - solX, kalinlik))
+			local ortaCizgi = ortaY + kalinlik / 2
+			yol = { Vector2.new(merkezX, ustY), Vector2.new(merkezX, ortaCizgi), Vector2.new(kutuKenar, ortaCizgi) }
+		end
+
+		local kabarciklar: { Frame } = {}
+		for _ = 1, 4 do
+			local k = Instance.new("Frame")
+			k.Name = "Kabarcik"
+			k.AnchorPoint = Vector2.new(0.5, 0.5)
+			k.Size = UDim2.fromOffset(10, 10)
+			k.BackgroundColor3 = Color3.new(1, 1, 1)
+			k.BorderSizePixel = 0
+			k.ZIndex = 2
+			k.Visible = false
+			k.Parent = pencere
+			UI.corner(k, 1000)
+			UI.stroke(k, SIYAH, 1.5)
+			table.insert(kabarciklar, k)
 		end
 
 		-- Slotun altindaki yesil baglanti kapagi
@@ -262,13 +283,77 @@ do
 		UI.corner(kapak, 4)
 		UI.stroke(kapak, SIYAH, 2)
 
-		borular[i] = { parcalar = parcalar, kapak = kapak }
+		borular[i] = { parcalar = parcalar, kapak = kapak, yol = yol, kabarciklar = kabarciklar, dolu = false }
 	end
 end
+
+--[[
+	BORU AKISI  --  dolu borularda kabarciklar sonuc kutusuna akar
+
+	Her borunun kabarciklari yol boyunca esit aralikla diziliyor ve hep
+	birlikte kayiyor; basa sarinca en arkadaki onden devam ediyor gibi
+	durur. Yalnizca pencere acikken calisir.
+]]
+local AKIS_HIZI = 0.55
+
+local function yoldaNokta(yol: { Vector2 }, oran: number): Vector2
+	local toplam = 0
+	for j = 1, #yol - 1 do
+		toplam += (yol[j + 1] - yol[j]).Magnitude
+	end
+	local kalan = oran * toplam
+	for j = 1, #yol - 1 do
+		local parca = (yol[j + 1] - yol[j]).Magnitude
+		if kalan <= parca then
+			return yol[j]:Lerp(yol[j + 1], if parca > 0 then kalan / parca else 0)
+		end
+		kalan -= parca
+	end
+	return yol[#yol]
+end
+
+local akisZamani = 0
+RunService.RenderStepped:Connect(function(dt)
+	if not pencere.Visible then
+		return
+	end
+	akisZamani += dt * AKIS_HIZI
+	for _, boru in borular do
+		local sayi = #boru.kabarciklar
+		for j, k in boru.kabarciklar do
+			if not boru.dolu then
+				k.Visible = false
+				continue
+			end
+			local oran = (akisZamani + (j - 1) / sayi) % 1
+			local nokta = yoldaNokta(boru.yol, oran)
+			k.Position = UDim2.fromOffset(nokta.X, nokta.Y)
+			-- Uclarda kucuk, ortada dolgun: kabarcik borudan cikip kutuda eriyor
+			local boy = 6 + math.sin(oran * math.pi) * 6
+			k.Size = UDim2.fromOffset(boy, boy)
+			k.Visible = true
+		end
+	end
+end)
 
 ------------------------------------------------------------------
 -- SONUC KUTUSU
 ------------------------------------------------------------------
+--[[
+	Kutunun ARKASINDA yavasca donen isik huzmeleri: cikacak kademenin
+	renginde (bkz. kutuyuBoya). Kutudan once ekleniyor ki altinda kalsin.
+]]
+local kutuHuzme = UI.isikHuzmeleri(pencere, Color3.new(1, 1, 1), {
+	sayi = 8,
+	uzunluk = 300,
+	kalinlik = 26,
+	tur = 14,
+	parlaklik = 0.55,
+	zIndex = 1,
+})
+kutuHuzme.Position = UDim2.fromOffset(KUTU_X + KUTU_EN / 2, KUTU_Y + KUTU_BOY / 2 - 6)
+kutuHuzme.Visible = false
+
 local kutu = Instance.new("Frame")
 kutu.Name = "Sonuc"
 kutu.Position = UDim2.fromOffset(KUTU_X, KUTU_Y)
@@ -280,15 +365,46 @@ kutu.Parent = pencere
 UI.corner(kutu, 8)
 local kutuKontur = UI.stroke(kutu, SIYAH, 3)
 
--- Silueti tasiyan alan; ustune buyuk "?" biner
+-- Kutunun canli zemini; renk degisince yeniden kuruluyor (bkz. kutuyuBoya)
+local kutuZemin: Frame? = nil
+
+--[[
+	CIKACAK BRAINROTUN YUMURTASI
+
+	Sonuc kutusunda cikacak kademenin KENDI yumurtasi duruyor (Assets >
+	hiddenBrainrotModel, elde tasinan ve envanterdeki "?" ile ayni model).
+	Eskiden kademe gonderilmedigi icin yedek Gold Ore gorunuyordu.
+
+	Yumurta hafifce zipliyor ve nabiz atiyor. ViewportFrame dondurulemedigi
+	icin sallanma yerine konum + UIScale kullaniliyor.
+]]
 local kutuResim = Instance.new("Frame")
 kutuResim.Name = "Resim"
-kutuResim.Position = UDim2.fromOffset(6, 6)
-kutuResim.Size = UDim2.new(1, -12, 1, -34)
+kutuResim.AnchorPoint = Vector2.new(0.5, 0)
+kutuResim.Position = UDim2.new(0.5, 0, 0, 4)
+kutuResim.Size = UDim2.new(1, -12, 1, -32)
 kutuResim.BackgroundTransparency = 1
-kutuResim.ZIndex = 2
+kutuResim.ZIndex = 3
 kutuResim.Parent = kutu
 
+local yumurtaOlcek = Instance.new("UIScale")
+yumurtaOlcek.Parent = kutuResim
+TweenService:Create(
+	yumurtaOlcek,
+	TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{ Scale = 1.08 }
+):Play()
+TweenService:Create(
+	kutuResim,
+	TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{ Position = UDim2.new(0.5, 0, 0, -2) }
+):Play()
+
+-- Kutunun onunde sonup yanan kivilcimlar (kademe renginde)
+local kutuPirilti = UI.pariltilar(kutu, Color3.new(1, 1, 1), 7, 6)
+kutuPirilti.Visible = false
+
+-- YEDEK: yumurta modeli bulunamazsa buyuk "?" gorunur
 local kutuSoru = UI.text({
 	text = "?",
 	size = UI.Sizes.huge,
@@ -300,6 +416,63 @@ local kutuSoru = UI.text({
 	name = "Soru",
 })
 kutuSoru.ZIndex = 5
+
+-- Sag ust kosede kucuk "?" rozeti: ne cikacagi yine surpriz
+local soruRozeti = Instance.new("Frame")
+soruRozeti.Name = "Rozet"
+soruRozeti.AnchorPoint = Vector2.new(0.5, 0.5)
+soruRozeti.Position = UDim2.new(1, -4, 0, 4)
+soruRozeti.Size = UDim2.fromOffset(30, 30)
+soruRozeti.BackgroundColor3 = Color3.fromRGB(255, 200, 40)
+soruRozeti.BorderSizePixel = 0
+soruRozeti.ZIndex = 7
+soruRozeti.Visible = false
+soruRozeti.Parent = kutu
+UI.corner(soruRozeti, 1000)
+UI.stroke(soruRozeti, SIYAH, 2)
+UI.text({
+	text = "?",
+	size = UI.Sizes.body,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromScale(1, 1),
+	parent = soruRozeti,
+	zIndex = 8,
+})
+UI.sallan(soruRozeti, 12, 0.6)
+
+--[[
+	Kutuyu cikacak kademenin rengine boyar (renk yoksa bos makine gorunumu).
+	Canli zemin kendi gradyanini kurulurken aldigi icin yeniden kuruluyor;
+	huzme ve kivilcimlarin yalnizca rengi degisiyor.
+]]
+local function kutuyuBoya(renk: Color3?)
+	local eski = kutuZemin
+	if eski then
+		eski:Destroy()
+	end
+	local yeni = UI.canliZemin(kutu, if renk then renk:Lerp(SIYAH, 0.3) else KART, 8, 2)
+	kutuZemin = yeni
+
+	kutuHuzme.Visible = renk ~= nil
+	kutuPirilti.Visible = renk ~= nil
+	soruRozeti.Visible = renk ~= nil
+	if renk then
+		for _, huzme in kutuHuzme:GetChildren() do
+			if huzme:IsA("Frame") then
+				huzme.BackgroundColor3 = renk
+			end
+		end
+		local acik = renk:Lerp(Color3.new(1, 1, 1), 0.5)
+		for _, k in kutuPirilti:GetChildren() do
+			if k:IsA("Frame") then
+				k.BackgroundColor3 = acik
+			end
+		end
+	end
+end
+kutuyuBoya(nil)
 
 local kutuYazi = UI.text({
 	text = "",
@@ -328,18 +501,24 @@ local uyari = UI.text({
 ------------------------------------------------------------------
 -- ALT DUGME  ("2 Brainrot Left" / "FUSE!")
 ------------------------------------------------------------------
-local fuseDugme = Instance.new("TextButton")
+--[[
+	Cilali 3B dugme (bkz. UI.dugme3B). Makine dolmadan soluk mor, dolunca
+	altin rengine doner ve nabiz atar. Fare buyutmesi kapali: nabiz kendi
+	UIScale'ini kullaniyor, iki olcek ayni nesnede cakisirdi.
+]]
+local DUGME_BEKLE = Color3.fromRGB(110, 96, 160)
+local DUGME_HAZIR = Color3.fromRGB(255, 190, 40)
+
+local fuseDugme, fuseYuz = UI.dugme3B(pencere, nil, UDim2.fromOffset(300, 62), DUGME_BEKLE, false)
 fuseDugme.Name = "Fuse"
 fuseDugme.AnchorPoint = Vector2.new(0.5, 1)
-fuseDugme.Position = UDim2.new(0, ANA_W / 2, 1, -16)
-fuseDugme.Size = UDim2.fromOffset(300, 58)
-fuseDugme.BackgroundColor3 = YESIL
-fuseDugme.AutoButtonColor = false
-fuseDugme.Text = ""
-fuseDugme.BorderSizePixel = 0
-fuseDugme.Parent = pencere
-UI.corner(fuseDugme, 8)
-UI.stroke(fuseDugme, SIYAH, 3)
+fuseDugme.Position = UDim2.new(0, ANA_W / 2, 1, -14)
+do
+	local kontur = fuseDugme:FindFirstChildOfClass("UIStroke")
+	if kontur then
+		kontur.Thickness = 3
+	end
+end
 
 local fuseYazi = UI.text({
 	text = "",
@@ -348,8 +527,9 @@ local fuseYazi = UI.text({
 	color = Color3.new(1, 1, 1),
 	align = Enum.TextXAlignment.Center,
 	frameSize = UDim2.fromScale(1, 1),
-	parent = fuseDugme,
+	parent = fuseYuz,
 	name = "Yazi",
+	zIndex = 5,
 })
 
 local fuseOlcek = Instance.new("UIScale")
@@ -450,19 +630,35 @@ local function slotKur(i: number, entry: any?)
 	kart.Size = UDim2.fromOffset(SLOT_EN, SLOT_BOY)
 	kart.BackgroundColor3 = KART
 	kart.BorderSizePixel = 0
+	kart.ClipsDescendants = true
 	kart.ZIndex = 4
 	kart.Parent = pencere
-	UI.corner(kart, 8)
-	UI.stroke(kart, SIYAH, 3)
+	UI.corner(kart, 10)
+	local kartKontur = UI.stroke(kart, SIYAH, 3)
 	slotKartlari[i] = kart
 
+	--[[
+		Dolu boru brainrotun kademe renginde parlar ve icinden kabarciklar
+		akar (bkz. BORU AKISI); bos boru koyu kalir.
+	]]
 	local boru = borular[i]
+	local boruRengi = if entry then Rarity.color(entry.rarity):Lerp(BORU_DOLU, 0.55) else BORU_BOS
 	for _, p in boru.parcalar do
-		p.BackgroundColor3 = if entry then BORU_DOLU else BORU_BOS
+		p.BackgroundColor3 = boruRengi
+	end
+	boru.dolu = entry ~= nil
+	for _, k in boru.kabarciklar do
+		k.BackgroundColor3 = if entry then Rarity.color(entry.rarity):Lerp(Color3.new(1, 1, 1), 0.6) else BORU_DOLU
 	end
 
 	if entry then
 		local renk = Rarity.color(entry.rarity)
+
+		-- Kademe renginden koyuya kayan kart, kademe renginde kontur
+		UI.renkliKart(kart, renk)
+		kartKontur.Color = renk
+		kartKontur.Thickness = 3
+		UI.gloss(kart, 0.85)
 
 		local ad = UI.text({
 			text = entry.name,
@@ -505,25 +701,30 @@ local function slotKur(i: number, entry: any?)
 		resim.BackgroundTransparency = 1
 		resim.ZIndex = 5
 		resim.Parent = kart
+		-- Modelin arkasinda kademe renginde nefes alan hale
+		UI.parlama(resim, renk, 96, 5)
 		onizleme.ekle(resim, { name = entry.name, mutation = entry.mutation, revealed = true })
 
-		local geri = UI.button(kart, "Return", UDim2.fromOffset(84, 30), YESIL)
-		geri.Position = UDim2.fromOffset(8, SLOT_BOY - 38)
+		local geri, _, geriYazi = UI.dugme3B(kart, "Return", UDim2.fromOffset(80, 32), Color3.fromRGB(235, 110, 70), false)
+		geri.Position = UDim2.fromOffset(8, SLOT_BOY - 40)
 		geri.ZIndex = 7
-		UI.stroke(geri, SIYAH, 2)
-		local geriYazi = geri:FindFirstChild("Label", true)
-		if geriYazi and geriYazi:IsA("TextLabel") then
-			geriYazi.ZIndex = 8
+		if geriYazi then
+			geriYazi.TextSize = 16
 		end
 		geri.MouseButton1Click:Connect(function()
 			FuseCikar:FireServer(entry.uid)
 		end)
 	else
+		-- Bos slot: koyu, mora calan zemin; "+" dugmesi nabiz atar
+		kart.BackgroundColor3 = KART:Lerp(SIYAH, 0.2)
+		kartKontur.Color = MOR_A:Lerp(SIYAH, 0.3)
+		UI.caprazDesen(kart, MOR_B, 4)
+
 		local bos = UI.text({
 			text = "Empty",
 			size = UI.Sizes.heading,
 			font = UI.Fonts.bold,
-			color = Color3.new(1, 1, 1),
+			color = Color3.fromRGB(200, 195, 230),
 			align = Enum.TextXAlignment.Center,
 			frameSize = UDim2.new(1, 0, 0, 30),
 			position = UDim2.fromOffset(0, 12),
@@ -531,16 +732,20 @@ local function slotKur(i: number, entry: any?)
 		})
 		bos.ZIndex = 6
 
-		local ekle = UI.button(kart, "+", UDim2.fromOffset(120, 50), YESIL)
+		local ekle, _, arti = UI.dugme3B(kart, "+", UDim2.fromOffset(110, 52), YESIL, false)
 		ekle.AnchorPoint = Vector2.new(0.5, 0)
-		ekle.Position = UDim2.new(0.5, 0, 0, 58)
+		ekle.Position = UDim2.new(0.5, 0, 0, 56)
 		ekle.ZIndex = 7
-		UI.stroke(ekle, SIYAH, 3)
-		local arti = ekle:FindFirstChild("Label", true)
-		if arti and arti:IsA("TextLabel") then
+		if arti then
 			arti.TextSize = 40
-			arti.ZIndex = 8
 		end
+		local artiOlcek = Instance.new("UIScale")
+		artiOlcek.Parent = ekle
+		TweenService:Create(
+			artiOlcek,
+			TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Scale = 1.07 }
+		):Play()
 		ekle.MouseButton1Click:Connect(function()
 			secim.Visible = true
 		end)
@@ -712,16 +917,19 @@ local function pencereCiz()
 	local sonraki = durum.nextRarity
 	if sonraki then
 		local renk = Rarity.color(sonraki)
-		kutu.BackgroundColor3 = renk:Lerp(SIYAH, 0.35)
+		kutuyuBoya(renk)
 		kutuKontur.Color = renk
 		kutuYazi.Text = `{Rarity.displayName(sonraki)} Brainrot`
 		UI.rarityStyle(kutuYazi, sonraki)
 		kutuSoru.Visible = true
-		-- Siyah siluet: ne cikacagi belli degil
-		onizleme.ekle(kutuResim, { revealed = false })
+		--[[
+			Cikacak kademenin yumurtasi. rarity VERILMEZSE yedek model (Gold
+			Ore) geliyordu. Model bulunursa "?" yedegi gizlenir.
+		]]
+		onizleme.ekle(kutuResim, { revealed = false, rarity = sonraki }, kutuSoru)
 		uyari.Text = `If it fails, all {gerekli} brainrots are lost`
 	else
-		kutu.BackgroundColor3 = KART
+		kutuyuBoya(nil)
 		kutuKontur.Color = SIYAH
 		kutuYazi.Text = "Result"
 		UI.plainStyle(kutuYazi, UI.Colors.textDim)
@@ -741,7 +949,7 @@ local function pencereCiz()
 
 	if makineDolu then
 		fuseYazi.Text = "FUSE!"
-		fuseDugme.BackgroundColor3 = Color3.fromRGB(255, 190, 40)
+		UI.dugme3BRenk(fuseDugme, DUGME_HAZIR)
 		local nabiz = TweenService:Create(
 			fuseOlcek,
 			TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
@@ -751,7 +959,7 @@ local function pencereCiz()
 		fuseNabiz = nabiz
 	else
 		fuseYazi.Text = `{eksik} Brainrot Left`
-		fuseDugme.BackgroundColor3 = YESIL
+		UI.dugme3BRenk(fuseDugme, DUGME_BEKLE)
 	end
 
 	if secim.Visible then
@@ -1121,7 +1329,40 @@ local function playMerge(data: any)
 		BackgroundColor3 = toColor,
 	}):Play()
 
+	--[[
+		CEKIRDEKTE HEDEF KADEMENIN YUMURTASI TITRER: pencerenin sonuc
+		kutusundaki yumurtanin aynisi. Parlama bitince kaybolur: basarida
+		yerine brainrot cikar, basarisizlikta cekirdek bos soner.
+	]]
+	local yumurtaKademe = if basari and data.toRarity then data.toRarity else durum.nextRarity
+	local yumurta: Frame? = nil
+	if type(yumurtaKademe) == "string" then
+		local y = Instance.new("Frame")
+		y.Name = "Yumurta"
+		y.AnchorPoint = Vector2.new(0.5, 0.5)
+		y.Position = UDim2.fromScale(0.5, 0.5)
+		y.Size = UDim2.fromScale(1.3, 1.3)
+		y.BackgroundTransparency = 1
+		y.ZIndex = 3
+		y.Parent = core
+		gosteriOnizleme.ekle(y, { revealed = false, rarity = yumurtaKademe })
+		-- Hizli sagli sollu titreme: catlamak uzere
+		TweenService:Create(
+			y,
+			TweenInfo.new(0.06, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Position = UDim2.new(0.5, 5, 0.5, 0) }
+		):Play()
+		yumurta = y
+	end
+
 	task.wait(M.flashTime)
+
+	-- Yumurta catladi: yerini sonuc (ya da hicbir sey) aliyor
+	local eskiYumurta = yumurta
+	if eskiYumurta then
+		gosteriOnizleme.temizle()
+		eskiYumurta:Destroy()
+	end
 
 	-- 3. ASAMA: sonuc
 	if basari then
