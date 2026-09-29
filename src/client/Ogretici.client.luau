@@ -46,159 +46,111 @@ ekran.ResetOnSpawn = false
 ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ekran.Parent = playerGui
 
+local SERIT_EN = 460
+local SERIT_DAR = 40
+local SERIT_GENIS = 62
+local GENIS_SURE = 6
+
 local serit = Instance.new("Frame")
 serit.Name = "Yonerge"
 serit.AnchorPoint = Vector2.new(0.5, 0)
 serit.Position = UDim2.new(0.5, 0, 0, 66)
-serit.Size = UDim2.fromOffset(520, 86)
+serit.Size = UDim2.fromOffset(SERIT_EN, SERIT_DAR)
 serit.BackgroundColor3 = BEYAZ
+serit.BackgroundTransparency = 0.12
 serit.BorderSizePixel = 0
+serit.ClipsDescendants = true
 serit.Visible = false
 serit.Parent = ekran
-UI.corner(serit, 16)
-UI.stroke(serit, SIYAH, 3)
-
-local ANLATICI = 78
-local YAZI_SOL = 22
-local YAZI_SAG = ANLATICI + 24
+UI.corner(serit, 12)
+local seritKontur = UI.stroke(serit, SIYAH, 2)
 
 do
 	local zemin = Instance.new("UIGradient")
 	zemin.Rotation = 90
 	zemin.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(58, 52, 120)),
-		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(32, 30, 62)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(46, 30, 78)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(32, 30, 62)),
 	})
 	zemin.Parent = serit
-
-	UI.caprazDesen(serit, ISARET, 3)
-
-	local isilti = Instance.new("Frame")
-	isilti.Name = "Isilti"
-	isilti.AnchorPoint = Vector2.new(0.5, 0.5)
-	isilti.Position = UDim2.fromScale(0.5, 0.5)
-	isilti.Size = UDim2.new(1, 10, 1, 10)
-	isilti.BackgroundTransparency = 1
-	isilti.ZIndex = 0
-	isilti.Parent = serit
-	UI.corner(isilti, 19)
-	local isiltiCizgi = UI.stroke(isilti, ISARET, 4)
-	isiltiCizgi.Transparency = 0.35
-	TweenService:Create(
-		isiltiCizgi,
-		TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Thickness = 9, Transparency = 0.85 }
-	):Play()
 end
-
-local anlaticiKap = Instance.new("Frame")
-anlaticiKap.Name = "Anlatici"
-anlaticiKap.AnchorPoint = Vector2.new(1, 0.5)
-anlaticiKap.Position = UDim2.new(1, -12, 0.5, 0)
-anlaticiKap.Size = UDim2.fromOffset(ANLATICI, ANLATICI)
-anlaticiKap.BackgroundColor3 = ISARET
-anlaticiKap.BackgroundTransparency = 0.82
-anlaticiKap.BorderSizePixel = 0
-anlaticiKap.ZIndex = 7
-anlaticiKap.Visible = false
-anlaticiKap.Parent = serit
-UI.corner(anlaticiKap, 1000)
-UI.stroke(anlaticiKap, ISARET, 3)
-
-local anlaticiResim = Instance.new("ImageLabel")
-anlaticiResim.Name = "Resim"
-anlaticiResim.AnchorPoint = Vector2.new(0.5, 0.5)
-anlaticiResim.Position = UDim2.fromScale(0.5, 0.5)
-anlaticiResim.Size = UDim2.fromScale(0.74, 0.74)
-anlaticiResim.BackgroundTransparency = 1
-anlaticiResim.ScaleType = Enum.ScaleType.Fit
-anlaticiResim.ZIndex = 8
-anlaticiResim.Parent = anlaticiKap
-
-do
-	TweenService:Create(
-		anlaticiKap,
-		TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Rotation = 4 }
-	):Play()
-	anlaticiKap.Rotation = -4
-end
-
-local anlaticiOnbellek: { [string]: string } = {}
-local anlaticiUyarildi: { [string]: boolean } = {}
-
-local function anlaticiBul(anahtar: string): string?
-	local hazir = anlaticiOnbellek[anahtar]
-	if hazir then
-		return hazir
-	end
-
-	local adaylar = Adimlar.Anlaticilar[anahtar]
-	if not adaylar then
-		return nil
-	end
-
-	for _, ad in adaylar do
-		local resim = Icons.assetTam(ad) or Icons.asset(ad)
-		if resim then
-			anlaticiOnbellek[anahtar] = resim
-			return resim
-		end
-	end
-
-	if not anlaticiUyarildi[anahtar] then
-		anlaticiUyarildi[anahtar] = true
-		warn(
-			`[Ogretici] Narrator image missing: add it to ReplicatedStorage > Assets > Icons `
-				.. `with one of these names: "{table.concat(adaylar, "\" / \"")}".`
-		)
-	end
-	return nil
-end
-
-local function anlaticiyiCiz(adim: Adimlar.Adim?)
-	local anahtar = if adim then adim.resim or "tesvik" else nil
-	local resim = if anahtar then anlaticiBul(anahtar) else nil
-
-	anlaticiResim.Image = resim or ""
-	anlaticiResim.Visible = resim ~= nil
-end
-
-local sayacYazi = UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = ISARET,
-	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -(YAZI_SOL + YAZI_SAG), 0, 18),
-	position = UDim2.fromOffset(YAZI_SOL, 8),
-	parent = serit,
-	zIndex = 5,
-})
 
 local yonergeYazi = UI.text({
 	text = "",
-	size = UI.Sizes.heading,
+	size = UI.Sizes.body,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
-	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -(YAZI_SOL + YAZI_SAG), 0, 30),
-	position = UDim2.fromOffset(YAZI_SOL, 26),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -24, 0, SERIT_DAR),
+	position = UDim2.fromOffset(12, 0),
 	parent = serit,
 	zIndex = 5,
 })
+yonergeYazi.RichText = true
+yonergeYazi.TextTruncate = Enum.TextTruncate.AtEnd
 
 local altYazi = UI.text({
 	text = "",
 	size = UI.Sizes.tiny,
 	color = Color3.fromRGB(205, 210, 225),
-	align = Enum.TextXAlignment.Left,
-	frameSize = UDim2.new(1, -(YAZI_SOL + YAZI_SAG), 0, 18),
-	position = UDim2.fromOffset(YAZI_SOL, 58),
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.new(1, -24, 0, 18),
+	position = UDim2.fromOffset(12, SERIT_DAR - 4),
 	parent = serit,
 	zIndex = 5,
 })
+altYazi.TextTruncate = Enum.TextTruncate.AtEnd
+altYazi.Visible = false
+
+local sonYazi = ""
+local genisSayac = 0
+
+local function daralt()
+	altYazi.Visible = false
+	TweenService:Create(
+		serit,
+		TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(SERIT_EN, SERIT_DAR) }
+	):Play()
+end
+
+local function genislet(altVar: boolean)
+	genisSayac += 1
+	local bu = genisSayac
+
+	seritKontur.Color = ISARET
+	seritKontur.Thickness = 3
+	TweenService:Create(seritKontur, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Color = SIYAH,
+		Thickness = 2,
+	}):Play()
+
+	if not altVar then
+		daralt()
+		return
+	end
+	altYazi.Visible = true
+	TweenService:Create(
+		serit,
+		TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(SERIT_EN, SERIT_GENIS) }
+	):Play()
+	task.delay(GENIS_SURE, function()
+		if bu == genisSayac then
+			daralt()
+		end
+	end)
+end
+
+local function seridiYaz(etiket: string, yazi: string, alt: string)
+	yonergeYazi.Text = `<font color="#{ISARET:ToHex()}">{etiket}</font>   {yazi}`
+	altYazi.Text = alt
+	serit.Visible = true
+	if yazi ~= sonYazi then
+		sonYazi = yazi
+		genislet(alt ~= "")
+	end
+end
 
 local parlama = Instance.new("Highlight")
 parlama.Name = "OgreticiParlamasi"
@@ -763,11 +715,7 @@ local function yonergeyiYaz()
 	if bitti or siraNo <= 0 then
 		local ipucu, baslik = ipucuOf()
 		if ipucu then
-			sayacYazi.Text = baslik or ""
-			yonergeYazi.Text = ipucu.yazi
-			altYazi.Text = ipucu.alt or ""
-			anlaticiyiCiz({ resim = ipucu.resim } :: any)
-			serit.Visible = true
+			seridiYaz(baslik or "", ipucu.yazi, ipucu.alt or "")
 		else
 			serit.Visible = false
 		end
@@ -780,11 +728,7 @@ local function yonergeyiYaz()
 		return
 	end
 
-	sayacYazi.Text = `STEP {siraNo} / {toplamAdim}`
-	yonergeYazi.Text = adim.yazi
-	altYazi.Text = adim.alt or ""
-	anlaticiyiCiz(adim)
-	serit.Visible = true
+	seridiYaz(`{siraNo}/{toplamAdim}`, adim.yazi, adim.alt or "")
 end
 
 local function hedefiTazele()

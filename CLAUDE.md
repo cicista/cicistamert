@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Roblox game (brainrot digging/collecting) written in Luau, synced into Studio with Rojo. The repo holds **only code** (`src/`); the map/Workspace lives in Team Create and Rojo never touches it. Code, comments, identifiers and commit messages are in Turkish written without diacritics (ASCII) — keep that style.
+Roblox game (brainrot digging/collecting) written in Luau, synced into Studio with Rojo. The repo holds **only code** (`src/`); the map/Workspace lives in Team Create and Rojo never touches it. Identifiers and commit messages are in Turkish written without diacritics (ASCII). Scripts contain **no comments** (only `--!strict` directives), and every string — player-facing text, logs/warnings, admin panel — is in English. Keep it that way.
 
 Two people develop on the same place: only ONE person may be connected to Rojo at a time, otherwise the last connection overwrites the other's code.
 
@@ -42,7 +42,7 @@ Rojo mapping (`default.project.json`):
 
 File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript, plain `.luau` = ModuleScript.
 
-- **Networking** — `src/shared/Net.luau` is the single registry of all RemoteEvents (`Net.Events`, with direction comments per event). Server calls `Net.init()` (done in `Leaderstats.server.luau`, the earliest script) to create them under `ReplicatedStorage.Remotes`; both sides get them with `Net.event("Name")`. Adding a remote = add its name to `Net.Events`.
+- **Networking** — `src/shared/Net.luau` is the single registry of all RemoteEvents (`Net.Events`). Server calls `Net.init()` (done in `Leaderstats.server.luau`, the earliest script) to create them under `ReplicatedStorage.Remotes`; both sides get them with `Net.event("Name")`. Adding a remote = add its name to `Net.Events`.
 - **Player data** — `src/server/Modules/PlayerData.luau` is the single source of truth for persisted state (DataStore): currencies (`rot`, `rotCoins`), inventory of brainrots (`{uid, rarity, condition, mutation, name?, revealed, slot?, island?}`), tools, base slots, rewards, passes, etc. Server feature scripts go through it; new fields need defaults/migration there.
 - **Shared config/catalog modules** in `src/shared` hold game data and tuning, used by both server and client: `Brainrots`, `Rarity`, `Condition`, `Mutations`, `Shovels`, `Rods`, `Detectors`, `Bases`, `Canta` (bag capacity/upgrade prices), `Passler`/`RobuxMagaza` (Robux products), `OyunConfig` (hand-tuned values, NPC names), `Assets` (asset IDs + naming conventions for models dropped into `ReplicatedStorage > Assets` — code falls back to generated visuals when a model is missing).
 - **Server scripts** are feature-oriented (`KaziSistemi` dig system, `BaseSistemi` base/slots/income, `Detective`, `Fuse`, `Olta` fishing, shops, `AdminPanel`, …). Cross-script server communication uses BindableEvents created by one script and found via `script.Parent:WaitForChild("<Script>"):WaitForChild("<Event>")` (e.g. `BaseSistemi.BaseYenile`, `KaziSistemi.KurekYenile`).
@@ -80,7 +80,7 @@ File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript
 - Back items display: `src/server/SirtEsyalari.server.luau`
 - Studio error relay: `src/server/HataIletici.server.luau`
 
-Numbers (chances, prices, durations) come from the `src/shared` modules, not from script comments. Header comments in server scripts can be stale (e.g. `Fuse.server.luau` still lists old fuse chances; real values are in `src/shared/Fuse.luau`).
+Numbers (chances, prices, durations) come from the `src/shared` modules.
 
 Core loop: GPS shows nearby dig spots → client requests dig (`SuzmeKaz`) → minigame (`DigMinigame`/`KaziMinigame`) → brainrot arrives black/unrevealed in inventory → Detective reveals its name → place it on base slots for passive `rot` income.
 
