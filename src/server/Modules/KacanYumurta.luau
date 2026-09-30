@@ -97,7 +97,7 @@ function KacanYumurta.ver(player: Player)
 
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
-	Teklif:FireClient(player, nil)
+	Teklif:FireClient(player, { yakalandi = true, rarity = rarityId })
 end
 
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId: number, productId: number, alindi: boolean)
