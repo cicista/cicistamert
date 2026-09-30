@@ -17,6 +17,7 @@ local Ores = require(Shared:WaitForChild("Ores"))
 local Canta = require(Shared:WaitForChild("Canta"))
 local AfkSans = require(Shared:WaitForChild("AfkSans"))
 local Gacha = require(Shared:WaitForChild("Gacha"))
+local KacanYumurta = require(Shared:WaitForChild("KacanYumurta"))
 local Net = require(Shared:WaitForChild("Net"))
 
 export type InventoryItem = {
@@ -85,6 +86,7 @@ export type Data = {
 	afkSeviye: number,
 	afkOzel: { [string]: boolean },
 	gachaIska: number,
+	kacanYumurta: { rarity: string, island: string? }?,
 	quests: QuestState,
 	discovered: { [string]: boolean },
 	discoveredMut: { [string]: { [string]: boolean } },
@@ -311,6 +313,12 @@ local function migrate(raw: any): Data
 		end
 	end
 	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
+	if type(raw.kacanYumurta) == "table" and KacanYumurta.uygun(raw.kacanYumurta.rarity) then
+		data.kacanYumurta = {
+			rarity = raw.kacanYumurta.rarity,
+			island = if type(raw.kacanYumurta.island) == "string" then raw.kacanYumurta.island else nil,
+		}
+	end
 
 	data.baseFloors = math.clamp(tonumber(raw.baseFloors) or 1, 1, 3)
 	data.baseSlots = math.clamp(tonumber(raw.baseSlots) or 10, 10, 30)

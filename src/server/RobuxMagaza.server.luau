@@ -13,6 +13,7 @@ local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local Gacha = require(Modules:WaitForChild("Gacha"))
 local AfkSans = require(Modules:WaitForChild("AfkSans"))
+local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
 local Canta = require(Shared:WaitForChild("Canta"))
 
 local Bildirim = Net.event("Bildirim")
@@ -81,13 +82,15 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 		AfkSans.robuxlaAc(player, urun.alan)
 	elseif urun.tur == "gacha" then
 		Gacha.ver(player)
+	elseif urun.tur == "kacanYumurta" then
+		KacanYumurta.ver(player)
 	else
 		error(`unknown product type: {urun.tur}`)
 	end
 end
 
 local function ekraniTazele(player: Player, urun: RobuxMagaza.Urun)
-	if urun.tur == "gacha" then
+	if urun.tur == "gacha" or urun.tur == "kacanYumurta" then
 		return
 	end
 	if urun.tur == "luckyblock" then
@@ -189,6 +192,10 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 
 	if not RobuxMagaza.satista(urun) then
 		Bildirim:FireClient(player, `{urun.ad} is coming soon!`, SARI)
+		return
+	end
+
+	if urun.tur == "kacanYumurta" and not KacanYumurta.satinAlmaBasla(player) then
 		return
 	end
 

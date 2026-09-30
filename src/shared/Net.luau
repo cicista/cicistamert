@@ -116,6 +116,7 @@ Net.Events = {
 	"AfkYenidenBaglan",
 
 	"GachaAc",
+	"KacanYumurtaTeklif",
 	"GachaSonuc",
 	"GachaDene",
 

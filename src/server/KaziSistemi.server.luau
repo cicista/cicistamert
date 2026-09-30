@@ -46,6 +46,7 @@ local MadenPatlamasi = require(Modules:WaitForChild("MadenPatlamasi"))
 local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
 local Seviye = require(Modules:WaitForChild("Seviye"))
 local AfkSans = require(Modules:WaitForChild("AfkSans"))
+local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -215,6 +216,9 @@ local function finishDig(player: Player, won: boolean)
 	if not won then
 		local kayip = if maden then `The {maden.displayName} crumbled!` else "The brainrot got away!"
 		Bildirim:FireClient(player, kayip, Color3.fromRGB(255, 120, 120))
+		if not maden then
+			KacanYumurta.teklifEt(player, beam.kind, beam.island)
+		end
 		return
 	end
 

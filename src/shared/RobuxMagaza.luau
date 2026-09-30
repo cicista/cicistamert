@@ -2,6 +2,7 @@
 
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Gacha = require(script.Parent.Gacha)
+local KacanYumurta = require(script.Parent.KacanYumurta)
 
 local RobuxMagaza = {}
 
@@ -151,6 +152,15 @@ RobuxMagaza.GizliUrunler = {
 		ad = "Secret Clover Field",
 		tur = "afkAlan",
 		alan = "Secret",
+	},
+
+	{
+		anahtar = KacanYumurta.UrunAnahtari,
+		id = 0,
+		fiyat = KacanYumurta.Fiyat,
+		etiket = "GET IT",
+		ad = "Missed Egg",
+		tur = "kacanYumurta",
 	},
 } :: { Urun }
 

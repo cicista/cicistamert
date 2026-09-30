@@ -235,7 +235,7 @@ function finishCollectButton(pad: Part, model: Model, baseIndex: number, cfg: an
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "Yazi"
 	sign.Size = UDim2.fromOffset(240, 64)
-	sign.StudsOffset = Vector3.new(0, 4, 0)
+	sign.StudsOffset = Vector3.new(0, 8, 0)
 	sign.AlwaysOnTop = false
 	sign.MaxDistance = 400
 	sign.LightInfluence = 0

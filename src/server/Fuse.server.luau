@@ -234,6 +234,16 @@ local function eligibleItems(player: Player): { any }
 		})
 	end
 
+	local makinede: { [string]: boolean } = {}
+	local dolu = pending[player]
+	if dolu then
+		for _, entry in dolu.entries do
+			if type(entry.item.name) == "string" then
+				makinede[entry.item.name] = true
+			end
+		end
+	end
+
 	for _, entry in out do
 		entry.owned = sayac[entry.name] or 0
 	end
@@ -241,6 +251,11 @@ local function eligibleItems(player: Player): { any }
 	table.sort(out, function(a, b)
 		if (a.locked ~= nil) ~= (b.locked ~= nil) then
 			return a.locked == nil
+		end
+		local aMakinede = makinede[a.name] == true
+		local bMakinede = makinede[b.name] == true
+		if aMakinede ~= bMakinede then
+			return aMakinede
 		end
 		if a.owned ~= b.owned then
 			return a.owned > b.owned

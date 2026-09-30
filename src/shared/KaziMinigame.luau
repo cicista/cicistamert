@@ -25,6 +25,10 @@ local GEREKEN_CPS: { [number]: number } = {
 
 local MUAF_KUREK_LEVEL = 1
 
+local KADEME_TAVANI: { [string]: number } = {
+	Common = 2,
+}
+
 KaziMinigame.IMKANSIZ_FARK = 2
 
 KaziMinigame.IMKANSIZ_KATI = 2.5
@@ -77,11 +81,10 @@ function KaziMinigame.gerekenCps(gearId: string, rarityId: string): number
 	local alt = math.floor(f)
 	local ust = math.ceil(f)
 	local altCps = GEREKEN_CPS[alt] or GEREKEN_CPS[-2]
-	if alt == ust then
-		return altCps
-	end
 	local ustCps = GEREKEN_CPS[ust] or altCps
-	return altCps + (ustCps - altCps) * (f - alt)
+	local cps = if alt == ust then altCps else altCps + (ustCps - altCps) * (f - alt)
+	local tavan = KADEME_TAVANI[rarityId]
+	return if tavan then math.min(cps, tavan) else cps
 end
 
 function KaziMinigame.drain(gearId: string, rarityId: string): number
