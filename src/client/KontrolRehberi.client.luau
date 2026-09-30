@@ -137,7 +137,7 @@ local function cip(tus: Enum.KeyCode | string, parent: Instance, sira: number)
 	kutu.FontFace = UI.Fonts.bold
 	kutu.Parent = parent
 	UI.corner(kutu, if yuzRengi then 13 else 7)
-	UI.stroke(kutu, Color3.fromRGB(0, 0, 0), 2)
+	UI.stroke(kutu, Color3.fromRGB(0, 0, 0), 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 	if not yuzRengi then
 		local dolgu = Instance.new("UIPadding")
