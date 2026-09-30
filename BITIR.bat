@@ -68,6 +68,8 @@ rem gondermis) ve asagisi onu kendisi cozuyor; kirmizi yazilari gormek
 rem bosuna korkutuyordu. Gercekten cozulemeyen bir hata olursa sebebi
 rem :PUSHHATA bolumunde acikca gosteriliyor.
 echo GitHub'a gonderiliyor...
+set "GIT_TERMINAL_PROMPT=0"
+set "GCM_INTERACTIVE=never"
 git push >nul 2>&1
 if not errorlevel 1 goto TAMAM
 
@@ -79,6 +81,8 @@ rem  Yoksa sorun baska (internet, yetki) ve o zaman gercek hatayi
 rem  gostermek gerekiyor.
 rem ------------------------------------------------------------------
 git fetch origin >nul 2>&1
+set "GIT_TERMINAL_PROMPT="
+set "GCM_INTERACTIVE="
 
 set "GERIDE="
 for /f "delims=" %%A in ('git log HEAD..origin/main --oneline 2^>nul') do set "GERIDE=1"
@@ -89,7 +93,7 @@ echo     Arkadasin senden sonra bir sey gondermis.
 echo     Onun isiyle birlestirilip tekrar denenecek...
 echo.
 
-git pull --rebase
+git -c core.editor=true pull --rebase
 if errorlevel 1 goto CAKISMA
 
 echo.
@@ -116,6 +120,7 @@ echo.
 echo !!! GONDERILEMEDI
 echo.
 echo     Commit'lerin duruyor, kaybolmadi. Gonderme neden olmadi:
+echo     (GitHub giris penceresi acilirsa giris yap; arkada kalmis olabilir)
 echo.
 git push
 echo.

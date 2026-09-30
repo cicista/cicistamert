@@ -98,13 +98,16 @@ echo.
 :CEK
 echo.
 echo [2/3] Kod cekiliyor...
-git pull
+echo     (GitHub giris penceresi acilirsa giris yap; arkada kalmis olabilir)
+git pull --no-rebase --no-edit
 if errorlevel 1 (
     echo.
     echo !!! KOD CEKILEMEDI
     echo.
-    echo     Muhtemel sebep: senin de kaydedilmemis degisikligin var.
-    echo     Cozum: once BITIR.bat calistir, sonra tekrar dene.
+    echo     Muhtemel sebepler:
+    echo       - Senin de kaydedilmemis degisikligin var: once BITIR.bat calistir.
+    echo       - Internet ya da GitHub girisi: yukaridaki hata satirina bak.
+    echo       - Ikiniz ayni satirlari degistirdiniz: KURTAR.bat calistir.
     echo.
     pause
     exit /b 1
