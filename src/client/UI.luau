@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Fonts = require(Shared:WaitForChild("Fonts"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Divine = require(Shared:WaitForChild("Divine"))
+local Assets = require(Shared:WaitForChild("Assets"))
 local Icons = require(Shared:WaitForChild("Icons"))
 
 local UI = {}
@@ -1683,6 +1684,17 @@ function UI.modelKaresi(parent: GuiObject, model: Instance, boyut: number, zInde
 		for _, cocuk in model:GetChildren() do
 			if cocuk:IsA("BasePart") then
 				cocuk.Parent = kap
+			elseif cocuk:IsA("Model") then
+				local efekt = false
+				for _, parca in cocuk:GetDescendants() do
+					if parca:IsA("BasePart") and parca:GetAttribute(Assets.RarityVFXAttribute) then
+						efekt = true
+						break
+					end
+				end
+				if not efekt then
+					cocuk.Parent = kap
+				end
 			end
 		end
 		model:Destroy()
