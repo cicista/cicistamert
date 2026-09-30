@@ -144,6 +144,7 @@ local ISIMLER: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.DPadUp] = "D-PAD",
 	[Enum.KeyCode.Thumbstick1] = "L-STICK",
 	[Enum.KeyCode.Thumbstick2] = "R-STICK",
+	[Enum.KeyCode.Space] = "SPACE",
 }
 
 function Girdi.tusAdi(tus: Enum.KeyCode): string

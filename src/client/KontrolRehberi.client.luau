@@ -190,7 +190,7 @@ end
 
 local function baglam(): string?
 	local tur = Girdi.tur()
-	if tur == "dokunmatik" then
+	if tur == "dokunmatik" or player:GetAttribute("RehberKapali") == true then
 		return nil
 	end
 	local onEk = if tur == "gamepad" then "gamepad" else "klavye"
@@ -246,6 +246,7 @@ end
 
 tazele()
 Girdi.degisince(tazele)
+player:GetAttributeChangedSignal("RehberKapali"):Connect(tazele)
 
 task.spawn(function()
 	while true do

@@ -78,6 +78,7 @@ export type Data = {
 	sfxVolume: number,
 	sfxMuted: boolean,
 	shakeOff: boolean,
+	hintsOff: boolean,
 	speedLevel: number,
 	speedRebirth: number,
 	afkPuan: number,
@@ -161,6 +162,7 @@ local function defaultData(): Data
 		sfxVolume = PlayerData.VarsayilanSfx,
 		sfxMuted = false,
 		shakeOff = false,
+		hintsOff = false,
 		speedLevel = 0,
 		speedRebirth = 0,
 		afkPuan = 0,
@@ -294,6 +296,7 @@ local function migrate(raw: any): Data
 	data.sfxVolume = math.clamp(tonumber(raw.sfxVolume) or PlayerData.VarsayilanSfx, 0, 100)
 	data.sfxMuted = raw.sfxMuted == true
 	data.shakeOff = raw.shakeOff == true
+	data.hintsOff = raw.hintsOff == true
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
 	data.afkPuan = math.clamp(tonumber(raw.afkPuan) or 0, 0, AfkSans.MaxPuan)

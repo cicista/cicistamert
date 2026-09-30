@@ -19,6 +19,7 @@ local function ayarlariYolla(player: Player)
 		return
 	end
 	player:SetAttribute("SarsintiKapali", data.shakeOff == true)
+	player:SetAttribute("RehberKapali", data.hintsOff == true)
 	AyarDurum:FireClient(player, {
 		uiScale = data.uiScale or 100,
 		uiScaleMobile = data.uiScaleMobile or OLCEK_MIN,
@@ -27,6 +28,7 @@ local function ayarlariYolla(player: Player)
 		sfxVolume = data.sfxVolume or 100,
 		sfxMuted = data.sfxMuted == true,
 		shakeOff = data.shakeOff == true,
+		hintsOff = data.hintsOff == true,
 	})
 end
 
@@ -63,6 +65,9 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 		end
 		if type(payload.shakeOff) == "boolean" then
 			data.shakeOff = payload.shakeOff
+		end
+		if type(payload.hintsOff) == "boolean" then
+			data.hintsOff = payload.hintsOff
 		end
 	end
 

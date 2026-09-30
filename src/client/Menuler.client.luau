@@ -3825,7 +3825,7 @@ do
 end
 
 do
-	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 560), "Ayarlar")
+	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 636), "Ayarlar")
 
 	UI.text({
 		text = "Settings",
@@ -3985,37 +3985,15 @@ do
 		parent = ayarPanel,
 	})
 
-	local sarsintiDugme = Instance.new("TextButton")
-	sarsintiDugme.Name = "SarsintiAcKapat"
-	sarsintiDugme.Position = UDim2.fromOffset(18, 490)
-	sarsintiDugme.Size = UDim2.new(1, -36, 0, 48)
-	sarsintiDugme.AutoButtonColor = false
-	sarsintiDugme.BorderSizePixel = 0
-	sarsintiDugme.Text = ""
-	sarsintiDugme.Parent = ayarPanel
-	UI.corner(sarsintiDugme, 10)
-	UI.stroke(sarsintiDugme, Color3.fromRGB(0, 0, 0), 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-	local sarsintiYazi = UI.text({
-		text = "",
-		size = UI.Sizes.body,
+	UI.text({
+		text = "CONTROL HINTS",
+		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
-		color = Color3.new(1, 1, 1),
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromScale(1, 1),
-		parent = sarsintiDugme,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.new(1, -36, 0, 20),
+		position = UDim2.fromOffset(18, 552),
+		parent = ayarPanel,
 	})
-
-	local function sarsintiKapaliMi(): boolean
-		return player:GetAttribute("SarsintiKapali") == true
-	end
-
-	local function sarsintiCiz()
-		local kapali = sarsintiKapaliMi()
-		sarsintiDugme.BackgroundColor3 = if kapali then Color3.fromRGB(200, 70, 80) else UI.Colors.good
-		sarsintiYazi.Text = if kapali then "Screen Shake: OFF" else "Screen Shake: ON"
-	end
-	player:GetAttributeChangedSignal("SarsintiKapali"):Connect(sarsintiCiz)
 
 	local ayarKaydiBekliyor = false
 
@@ -4034,9 +4012,51 @@ do
 				sfxVolume = SesEfekti.yuzde(),
 				sfxMuted = SesEfekti.kapali(),
 				shakeOff = player:GetAttribute("SarsintiKapali") == true,
+				hintsOff = player:GetAttribute("RehberKapali") == true,
 			})
 		end)
 	end
+
+	local function kapatmaDugmesi(ad: string, y: number, nitelik: string, etiket: string)
+		local dugme = Instance.new("TextButton")
+		dugme.Name = ad
+		dugme.Position = UDim2.fromOffset(18, y)
+		dugme.Size = UDim2.new(1, -36, 0, 48)
+		dugme.AutoButtonColor = false
+		dugme.BorderSizePixel = 0
+		dugme.Text = ""
+		dugme.Parent = ayarPanel
+		UI.corner(dugme, 10)
+		UI.stroke(dugme, Color3.fromRGB(0, 0, 0), 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+		local yazi = UI.text({
+			text = "",
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			color = Color3.new(1, 1, 1),
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromScale(1, 1),
+			parent = dugme,
+		})
+
+		local function ciz()
+			local kapali = player:GetAttribute(nitelik) == true
+			dugme.BackgroundColor3 = if kapali then Color3.fromRGB(200, 70, 80) else UI.Colors.good
+			yazi.Text = if kapali then `{etiket}: OFF` else `{etiket}: ON`
+		end
+		player:GetAttributeChangedSignal(nitelik):Connect(ciz)
+
+		dugme.MouseButton1Click:Connect(function()
+			player:SetAttribute(nitelik, player:GetAttribute(nitelik) ~= true)
+			ciz()
+			ayarKaydiniPlanla()
+		end)
+
+		ciz()
+	end
+
+	kapatmaDugmesi("SarsintiAcKapat", 490, "SarsintiKapali", "Screen Shake")
+	kapatmaDugmesi("RehberAcKapat", 578, "RehberKapali", "Control Hints")
 
 	local function olcekYazisiTazele(yuzde: number)
 		olcekYazi.Text = `{yuzde}%`
@@ -4090,12 +4110,6 @@ do
 		efektSesDegistir(MUZIK_ADIM)
 	end)
 
-	sarsintiDugme.MouseButton1Click:Connect(function()
-		player:SetAttribute("SarsintiKapali", not sarsintiKapaliMi())
-		sarsintiCiz()
-		ayarKaydiniPlanla()
-	end)
-
 	efektDugme.MouseButton1Click:Connect(function()
 		SesEfekti.ayarla(nil, not SesEfekti.kapali())
 		efektCiz()
@@ -4144,7 +4158,6 @@ do
 	olcekYazisiTazele(UI.getScale())
 	muzikCiz()
 	efektCiz()
-	sarsintiCiz()
 
 	function ayarPaneliniAc()
 		ayarPanel.Visible = not ayarPanel.Visible
