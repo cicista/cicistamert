@@ -8,6 +8,7 @@ local Mutations = require(script.Parent.Mutations)
 local Rarity = require(script.Parent.Rarity)
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Divine = require(script.Parent.Divine)
+local Petler = require(script.Parent.Petler)
 
 local Assets = {}
 
@@ -327,16 +328,83 @@ local function golgeyiKapat(model: Model?): Model?
 	return model
 end
 
-function Assets.brainrotModel(name: string?, mutationId: string?): Model?
-	if name and mutationId then
-		local prefix = Mutations.get(mutationId).prefix
-		local mutated = findModel(Assets.Categories.brainrots, prefix .. name)
-		if mutated then
-			return golgeyiKapat(mutated)
+local function petHazirla(model: Model): Model
+	local root = model:FindFirstChild("Root")
+	local kok: BasePart? = if root and root:IsA("BasePart")
+		then root
+		else model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+
+	for _, parca in model:GetDescendants() do
+		if parca:IsA("BasePart") and parca.Transparency >= 0.99 then
+			parca:SetAttribute(Assets.MeasureSkipAttribute, true)
 		end
 	end
 
-	return golgeyiKapat(findModel(Assets.Categories.brainrots, name))
+	if not kok then
+		return model
+	end
+
+	local on = kok.CFrame.LookVector
+	local duz = Vector3.new(on.X, 0, on.Z)
+	if duz.Magnitude > 1e-3 then
+		local aci = math.atan2(-duz.X, -duz.Z)
+		local merkez = kok.Position
+		model:PivotTo(CFrame.new(merkez) * CFrame.Angles(0, -aci, 0) * CFrame.new(-merkez) * model:GetPivot())
+	end
+
+	model.PrimaryPart = kok
+	return model
+end
+
+local function petModeli(name: string, sessiz: boolean?): Model?
+	local root = ReplicatedStorage:FindFirstChild(Assets.FolderName)
+	if not root then
+		return nil
+	end
+
+	local modelAdi = Petler.modelAdi(name)
+	for _, paketAdi in Petler.Paketler do
+		local paket = root:FindFirstChild(paketAdi)
+		local bulunan = if paket then paket:FindFirstChild(modelAdi) else nil
+		if bulunan and bulunan:IsA("Model") then
+			return petHazirla(bulunan:Clone())
+		end
+	end
+
+	if not sessiz then
+		Assets.warnOnce(
+			`pet missing: {modelAdi}`,
+			`[Assets] pet model "{modelAdi}" not found in {table.concat(Petler.Paketler, ", ")}`
+		)
+	end
+	return nil
+end
+
+function Assets.brainrotModel(name: string?, mutationId: string?): Model?
+	if not name or name == "" then
+		return nil
+	end
+
+	local pet = Petler.mi(name)
+
+	if mutationId then
+		local prefix = Mutations.get(mutationId).prefix
+		if prefix ~= "" then
+			local mutated = if pet
+				then petModeli(prefix .. Petler.modelAdi(name), true)
+				else findModel(Assets.Categories.brainrots, prefix .. name)
+			if mutated then
+				return golgeyiKapat(mutated)
+			end
+		end
+	end
+
+	local model = if pet then petModeli(name) else findModel(Assets.Categories.brainrots, name)
+	if model and Mutations.isSpecial(mutationId) then
+		Assets.mutasyonBoya(model, mutationId)
+	end
+
+	return golgeyiKapat(model)
 end
 
 Assets.ShovelIslandFolders = {
@@ -1324,6 +1392,96 @@ function Assets.tintSurfaces(root: Instance, color: Color3, preserveShading: boo
 			node.ImageColor3 = tint(node.ImageColor3, color, keepShading, vivid)
 		end
 	end
+end
+
+export type MutasyonBoyasi = {
+	alt: Color3,
+	ust: Color3,
+	yansima: number,
+	canlilik: number,
+	koyu: number?,
+	gokkusagi: boolean?,
+}
+
+Assets.MutasyonBoyasi = {
+	Gold = {
+		alt = Color3.fromRGB(214, 150, 30),
+		ust = Color3.fromRGB(255, 226, 110),
+		yansima = 0.3,
+		canlilik = 0.95,
+	},
+	Diamond = {
+		alt = Color3.fromRGB(70, 175, 255),
+		ust = Color3.fromRGB(205, 250, 255),
+		yansima = 0.4,
+		canlilik = 0.85,
+	},
+	Galaxy = {
+		alt = Color3.fromRGB(95, 45, 210),
+		ust = Color3.fromRGB(255, 90, 215),
+		yansima = 0.15,
+		canlilik = 0.95,
+	},
+	Lava = {
+		alt = Color3.fromRGB(255, 70, 15),
+		ust = Color3.fromRGB(255, 185, 50),
+		yansima = 0,
+		canlilik = 1,
+		koyu = 0.6,
+	},
+	Rainbow = {
+		alt = Color3.fromRGB(255, 80, 80),
+		ust = Color3.fromRGB(180, 90, 255),
+		yansima = 0.1,
+		canlilik = 0.9,
+		gokkusagi = true,
+	},
+	Hacker = {
+		alt = Color3.fromRGB(40, 255, 100),
+		ust = Color3.fromRGB(170, 255, 200),
+		yansima = 0,
+		canlilik = 1,
+		koyu = 0.45,
+	},
+} :: { [string]: MutasyonBoyasi }
+
+function Assets.mutasyonBoya(root: Instance, mutationId: string?)
+	local boya = Assets.MutasyonBoyasi[Mutations.get(mutationId).id]
+	if not boya then
+		return
+	end
+
+	local parcalar: { BasePart } = {}
+	local enAlt, enUst = math.huge, -math.huge
+	for _, node in root:GetDescendants() do
+		if node:IsA("BasePart") and node.Transparency < 1 then
+			table.insert(parcalar, node)
+			enAlt = math.min(enAlt, node.Position.Y)
+			enUst = math.max(enUst, node.Position.Y)
+		end
+	end
+
+	local boy = math.max(enUst - enAlt, 1e-3)
+
+	for _, parca in parcalar do
+		local oran = math.clamp((parca.Position.Y - enAlt) / boy, 0, 1)
+		local hedef = if boya.gokkusagi then Color3.fromHSV(oran * 0.83, 1, 1) else boya.alt:Lerp(boya.ust, oran)
+		local neon = parca.Material == Enum.Material.Neon
+
+		local renk = tint(parca.Color, hedef, true, boya.canlilik)
+		local koyu = boya.koyu
+		if koyu and not neon then
+			local h, doygunluk, v = renk:ToHSV()
+			renk = Color3.fromHSV(h, doygunluk, v * koyu)
+		end
+
+		parca.Color = renk
+		if not neon then
+			parca.Reflectance = math.max(parca.Reflectance, boya.yansima)
+		end
+	end
+
+	Assets.tintEffects(root, boya.ust)
 end
 
 function Assets.stripScripts(root: Instance): number

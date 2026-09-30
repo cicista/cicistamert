@@ -72,7 +72,7 @@ function Gacha.ver(player: Player)
 	local condition = Condition.roll(rng)
 	local mutation = Mutations.roll(rng)
 
-	local item = PlayerData.addBrainrot(player, rarityId, condition, mutation, nil, true)
+	local item = PlayerData.addBrainrot(player, rarityId, condition, mutation, Ayar.Ada, true)
 	if not item then
 		error("egg could not be added to the backpack")
 	end

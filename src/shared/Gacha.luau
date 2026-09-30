@@ -16,6 +16,7 @@ Gacha.Yumurtalar = {
 } :: { Yumurta }
 
 Gacha.Fiyat = 500
+Gacha.Ada = "deniz"
 Gacha.UrunAnahtari = "Gacha"
 
 Gacha.NpcAdi = "Gacha"

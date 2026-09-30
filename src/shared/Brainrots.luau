@@ -3,6 +3,7 @@
 local Rarity = require(script.Parent.Rarity)
 local Condition = require(script.Parent.Condition)
 local Mutations = require(script.Parent.Mutations)
+local Petler = require(script.Parent.Petler)
 
 export type BrainrotInfo = {
 	name: string,
@@ -10,6 +11,7 @@ export type BrainrotInfo = {
 	incomeFactor: number,
 	island: string,
 	modelName: string?,
+	pet: boolean?,
 }
 
 local Brainrots = {}
@@ -112,7 +114,24 @@ Brainrots.List = {
 	{ name = "Svinina Bombardino", rarity = "Epic", incomeFactor = 0.87, island = "kum" },
 
 	{ name = "Tralaledon", rarity = "Abyssal", incomeFactor = 0.6, island = "deniz" },
-} :: { BrainrotInfo }local byRarity: { [string]: { BrainrotInfo } } = {}
+} :: { BrainrotInfo }
+
+for _, pet in Petler.liste() do
+	if not Rarity.Info[pet.rarity :: Rarity.RarityId] then
+		warn(`[Brainrots] pet "{pet.name}" has unknown rarity: {pet.rarity}`)
+		continue
+	end
+	table.insert(Brainrots.List, {
+		name = pet.name,
+		rarity = pet.rarity :: Rarity.RarityId,
+		incomeFactor = pet.incomeFactor,
+		island = pet.island,
+		modelName = pet.modelName,
+		pet = true,
+	})
+end
+
+local byRarity: { [string]: { BrainrotInfo } } = {}
 local byName: { [string]: BrainrotInfo } = {}
 
 local byIsland: { [string]: { BrainrotInfo } } = {}
@@ -124,6 +143,9 @@ for _, info in Brainrots.List do
 		byRarity[info.rarity] = pool
 	end
 	table.insert(pool, info)
+	if byName[info.name] then
+		warn(`[Brainrots] duplicate name in catalog: {info.name}`)
+	end
 	byName[info.name] = info
 
 	local anahtar = `{info.rarity}|{string.lower(info.island)}`

@@ -64,7 +64,8 @@ File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript
 - Level / XP: `src/server/Modules/Seviye.luau`
 - Fuse machine: `src/server/Fuse.server.luau`
 - Lucky Block + block rain: `src/server/Modules/LuckyBlockOdul.luau`
-- Egg Gacha (Gacha NPC, 500 Robux product, egg spin): `src/server/Modules/Gacha.luau`, `src/client/Gacha.client.luau`, config `src/shared/Gacha.luau`
+- Pets (BGC Pets Pack models in `ReplicatedStorage > Assets`, joined into the brainrot catalog with rarity/island groups; `Assets.brainrotModel` normalizes their facing and paints missing mutation looks via `Assets.MutasyonBoyasi`): `src/shared/Petler.luau`
+- Egg Gacha (Gacha NPC, 500 Robux product, egg spin; eggs roll from every island's pool via `Gacha.Ada`): `src/server/Modules/Gacha.luau`, `src/client/Gacha.client.luau`, config `src/shared/Gacha.luau`
 - AFK luck (clover fields in `Workspace.CloverAreas`, Luck Points, Leprechaun field upgrades): `src/server/Modules/AfkSans.luau`, `src/client/AfkSans.client.luau`, config `src/shared/AfkSans.luau`
 - Quests: `src/server/Gorev.server.luau`
 - Daily reward: `src/server/Modules/Odul.luau`
