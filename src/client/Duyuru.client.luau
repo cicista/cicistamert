@@ -202,7 +202,7 @@ local function odulGoster(veri: any)
 	kapat.ZIndex = 10
 	kapat.Parent = kap
 
-	YerelSes.cal("LuckyBlock")
+	YerelSes.cal(if veri.tur == "rozet" then "Catch" else "LuckyBlock")
 
 	TweenService:Create(olcek, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
