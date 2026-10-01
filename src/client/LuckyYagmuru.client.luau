@@ -1,0 +1,244 @@
+--!strict
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
+
+local UI = require(script.Parent:WaitForChild("UI"))
+local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
+
+local E = LuckyBlock.Event
+
+local BEYAZ = Color3.new(1, 1, 1)
+local SIYAH = Color3.new(0, 0, 0)
+local ALTIN = Rarity.LuckyBlock.colorA
+local TURUNCU = Color3.fromRGB(255, 140, 30)
+local KIRMIZI = Color3.fromRGB(255, 70, 70)
+local SON_DAKIKA = 60
+
+if not E.enabled then
+	return
+end
+
+local screen = Instance.new("ScreenGui")
+screen.Name = "LuckyYagmuru"
+screen.DisplayOrder = 4
+screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+local kart = Instance.new("Frame")
+kart.Name = "Kart"
+kart.AnchorPoint = Vector2.new(1, 0.5)
+kart.Position = UDim2.new(1, -14, 0.4, 0)
+kart.Size = UDim2.fromOffset(250, 100)
+kart.BackgroundColor3 = BEYAZ
+kart.BorderSizePixel = 0
+kart.Parent = screen
+UI.corner(kart, 16)
+local kontur = UI.stroke(kart, SIYAH, 3)
+kontur.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local zemin = Instance.new("UIGradient")
+zemin.Rotation = 90
+zemin.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 40, 120)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 18, 60)),
+})
+zemin.Parent = kart
+
+local olcek = Instance.new("UIScale")
+olcek.Parent = kart
+
+local icAlan = Instance.new("Frame")
+icAlan.Name = "Ic"
+icAlan.Size = UDim2.fromScale(1, 1)
+icAlan.BackgroundTransparency = 1
+icAlan.ClipsDescendants = true
+icAlan.Parent = kart
+UI.corner(icAlan, 16)
+UI.caprazDesen(icAlan, BEYAZ, 8)
+UI.pariltilar(icAlan, ALTIN, 10, 2)
+
+local isik = Instance.new("Frame")
+isik.Name = "Isik"
+isik.AnchorPoint = Vector2.new(0.5, 0.5)
+isik.Position = UDim2.fromScale(-0.3, 0.5)
+isik.Size = UDim2.new(0, 60, 2, 0)
+isik.Rotation = 20
+isik.BackgroundColor3 = BEYAZ
+isik.BorderSizePixel = 0
+isik.ZIndex = 6
+isik.Parent = icAlan
+do
+	local g = Instance.new("UIGradient")
+	g.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.6),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	g.Parent = isik
+end
+TweenService:Create(
+	isik,
+	TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, false, 2.5),
+	{ Position = UDim2.fromScale(1.3, 0.5) }
+):Play()
+
+local blokAlani = Instance.new("Frame")
+blokAlani.Name = "Blok"
+blokAlani.AnchorPoint = Vector2.new(0.5, 0.5)
+blokAlani.Position = UDim2.fromOffset(52, 50)
+blokAlani.Size = UDim2.fromOffset(86, 86)
+blokAlani.BackgroundTransparency = 1
+blokAlani.ZIndex = 4
+blokAlani.Parent = kart
+
+local huzmeler = UI.isikHuzmeleri(blokAlani, ALTIN, {
+	sayi = 10,
+	uzunluk = 80,
+	kalinlik = 16,
+	tur = 10,
+	parlaklik = 0.3,
+	zIndex = 3,
+})
+huzmeler.Position = UDim2.fromScale(0.5, 0.5)
+UI.parlama(blokAlani, ALTIN, 96, 3)
+
+local model = Instance.new("Frame")
+model.Name = "Model"
+model.AnchorPoint = Vector2.new(0.5, 0.5)
+model.Position = UDim2.fromScale(0.5, 0.5)
+model.Size = UDim2.fromScale(1, 1)
+model.BackgroundTransparency = 1
+model.ZIndex = 5
+model.Parent = blokAlani
+LuckyOnizleme.ekle(model, LuckyBlock.Default, 5)
+TweenService:Create(
+	model,
+	TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{ Position = UDim2.new(0.5, 0, 0.5, -5) }
+):Play()
+
+local baslik = UI.text({
+	text = "LUCKY BLOCK RAIN",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = BEYAZ,
+	glow = ALTIN,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromOffset(150, 20),
+	position = UDim2.fromOffset(96, 8),
+	parent = kart,
+	zIndex = 7,
+})
+
+local sayac = UI.text({
+	text = "--:--",
+	size = 36,
+	font = UI.Fonts.bold,
+	color = BEYAZ,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromOffset(150, 40),
+	position = UDim2.fromOffset(96, 28),
+	parent = kart,
+	zIndex = 7,
+})
+local sayacOlcek = Instance.new("UIScale")
+sayacOlcek.Parent = sayac
+
+local alt = UI.text({
+	text = "",
+	size = UI.Sizes.tiny,
+	font = UI.Fonts.bold,
+	color = ALTIN,
+	align = Enum.TextXAlignment.Center,
+	frameSize = UDim2.fromOffset(150, 20),
+	position = UDim2.fromOffset(96, 70),
+	parent = kart,
+	zIndex = 7,
+})
+
+local function sure(saniye: number): string
+	local s = math.max(0, math.floor(saniye))
+	if s >= 3600 then
+		return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
+	end
+	return string.format("%02d:%02d", s // 60, s % 60)
+end
+
+local function nitelik(ad: string): number
+	local deger = Workspace:GetAttribute(ad)
+	return if type(deger) == "number" then deger else 0
+end
+
+local sonSaniye = -1
+
+local function vurus(guc: number)
+	sayacOlcek.Scale = guc
+	TweenService:Create(sayacOlcek, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+RunService.Heartbeat:Connect(function()
+	local simdi = Workspace:GetServerTimeNow()
+	local t = os.clock()
+
+	local sonraki = nitelik(E.nitelikSonraki)
+	local bitis = nitelik(E.nitelikBitis)
+	local kalan = nitelik(E.nitelikKalan)
+
+	local aktif = kalan > 0 and bitis > simdi
+	local bekleme = math.max(0, sonraki - simdi)
+	local yakin = not aktif and sonraki > 0 and bekleme <= SON_DAKIKA
+
+	huzmeler.Rotation = (t * (if aktif or yakin then 90 else 25)) % 360
+
+	if aktif then
+		local renk = Color3.fromHSV((t * 0.3) % 1, 0.6, 1)
+		baslik.Text = "RAIN IS ACTIVE!"
+		sayac.Text = `{math.floor(kalan)} LEFT`
+		sayac.TextColor3 = renk
+		alt.Text = `GRAB THEM! {sure(bitis - simdi)}`
+		alt.TextColor3 = BEYAZ
+		kontur.Color = renk
+		kontur.Thickness = 4
+		olcek.Scale = 1 + math.sin(t * 6) * 0.03
+		sayac.Rotation = 0
+	elseif yakin then
+		local yanip = math.sin(t * 10) > 0
+		baslik.Text = "LUCKY BLOCK RAIN"
+		sayac.Text = sure(bekleme)
+		sayac.TextColor3 = if yanip then KIRMIZI else ALTIN
+		sayac.Rotation = math.sin(t * 30) * 3
+		alt.Text = "DROPPING SOON!"
+		alt.TextColor3 = if yanip then ALTIN else TURUNCU
+		kontur.Color = if yanip then KIRMIZI else ALTIN
+		kontur.Thickness = 4
+		olcek.Scale = 1 + math.sin(t * 8) * 0.04
+
+		local saniye = math.ceil(bekleme)
+		if saniye ~= sonSaniye then
+			sonSaniye = saniye
+			vurus(if saniye <= 10 then 1.5 else 1.25)
+		end
+	else
+		baslik.Text = "LUCKY BLOCK RAIN"
+		sayac.Text = if sonraki > 0 then sure(bekleme) else "--:--"
+		sayac.TextColor3 = BEYAZ
+		sayac.Rotation = 0
+		alt.Text = `{LuckyBlock.toplamBlok()} BLOCKS EVERY HOUR`
+		alt.TextColor3 = ALTIN
+		kontur.Color = SIYAH
+		kontur.Thickness = 3
+		olcek.Scale = 1
+	end
+end)

@@ -177,13 +177,6 @@ function commands.luckyEvent(player, data)
 	return `Event started ({LuckyBlock.toplamBlok()} blocks)`
 end
 
-function commands.sahteOyuncu(player, data, arg)
-	local sayi = LuckyBlockOdul.sahteOyuncuAyarla(tonumber(arg) or 0)
-	return if sayi > 0
-		then `Acting as if the server has {sayi} players`
-		else "Back to the real player count"
-end
-
 function commands.giveLuckyBlock(player, data, arg)
 	local tierId = if type(arg) == "string" and LuckyBlock.exists(arg) then arg else LuckyBlock.Default
 	local tier = LuckyBlock.get(tierId)

@@ -31,7 +31,6 @@ Net.Events = {
 	"SlotaKoy",
 	"SlottanAl",
 
-	"EtkinlikSayaci",
 	"LuckyBlockAc",
 	"LuckyBlockSonuc",
 	"LuckyBlockBasladi",

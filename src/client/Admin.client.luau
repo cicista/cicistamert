@@ -198,24 +198,6 @@ local function buildPanel(info: any)
 	actionButton("Start weekend (48h test)", "haftaSonuBaslat", nil, Color3.fromRGB(80, 160, 255))
 	actionButton("Stop weekend test", "haftaSonuDurdur", nil, UI.Colors.bad)
 
-	section("FAKE PLAYER COUNT  --  test the rain notice")
-	local oyuncuChips: { any } = {}
-	for _, sayi in { 4, 5, 6 } do
-		table.insert(oyuncuChips, {
-			label = `{sayi} players`,
-			command = "sahteOyuncu",
-			arg = sayi,
-			color = Rarity.LuckyBlock.colorA,
-		})
-	end
-	table.insert(oyuncuChips, {
-		label = "Off",
-		command = "sahteOyuncu",
-		arg = 0,
-		color = UI.Colors.bad,
-	})
-	chipRow(oyuncuChips)
-
 	for _, tier in LuckyBlock.Tiers do
 		actionButton(`Give {tier.displayName}  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end

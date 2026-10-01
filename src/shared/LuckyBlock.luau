@@ -88,10 +88,8 @@ LuckyBlock.Default = "Normal"
 LuckyBlock.Event = {
 	enabled = true,
 
-	gerekenOyuncu = 6,
-	geriSayim = 300,
-	bildirimOyuncu = 4,
 	interval = 3600,
+	uyariSaniyeleri = { 300, 60 },
 	zeminAdi = "luckyzemin",
 
 	blokSayisi = 5,
@@ -102,6 +100,31 @@ LuckyBlock.Event = {
 		{ tier = "Golden", sans = 30 },
 	},
 
+	anaAdalar = {
+		{ kum = "kum", ad = "Main Island", tierSanslari = {} },
+		{ kum = "sekerkum", ad = "Candy Island", tierSanslari = {} },
+		{
+			kum = "snowkum",
+			ad = "Snow Island",
+			tierSanslari = {
+				{ tier = "Diamond", sans = 5 },
+				{ tier = "Golden", sans = 25 },
+			},
+		},
+		{
+			kum = "alevkum",
+			ad = "Volcano Island",
+			tierSanslari = {
+				{ tier = "Diamond", sans = 10 },
+				{ tier = "Golden", sans = 35 },
+			},
+		},
+	},
+
+	nitelikSonraki = "LuckyYagmurSonraki",
+	nitelikBitis = "LuckyYagmurBitis",
+	nitelikKalan = "LuckyYagmurKalan",
+
 	oyuncuBasiLimit = 1,
 
 	gorunum = {
@@ -111,10 +134,7 @@ LuckyBlock.Event = {
 		Hacker = { olcek = 1.7, sutun = 420, kalinlik = 9, isik = 60, kivilcim = true, halka = true },
 	},
 
-	islandSands = { "kum", "sekerkum", "snowkum", "alevkum", "deniz" },
-
-	firstDelay = 60,
-	despawn = 120,
+	despawn = 300,
 	beaconHeight = 7,
 	beaconWidth = 7,
 	pickupDistance = 12,
@@ -147,11 +167,16 @@ for _, tier in LuckyBlock.Tiers do
 end
 
 function LuckyBlock.toplamBlok(): number
-	return LuckyBlock.Event.blokSayisi
+	return LuckyBlock.Event.blokSayisi + #LuckyBlock.Event.anaAdalar
 end
 
-function LuckyBlock.etkinlikKademesi(rng: Random): string
-	for _, satir in LuckyBlock.Event.tierSanslari do
+function LuckyBlock.sonrakiYagmur(simdi: number): number
+	local aralik = LuckyBlock.Event.interval
+	return (math.floor(simdi / aralik) + 1) * aralik
+end
+
+function LuckyBlock.etkinlikKademesi(rng: Random, sanslar: { { tier: string, sans: number } }?): string
+	for _, satir in sanslar or LuckyBlock.Event.tierSanslari do
 		if rng:NextNumber() * 100 < satir.sans then
 			return satir.tier
 		end

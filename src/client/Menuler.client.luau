@@ -75,7 +75,6 @@ if not DetectiveDurum then
 end
 local BaseGuncelle = Net.event("BaseGuncelle")
 local SlottanAl = Net.event("SlottanAl")
-local EtkinlikSayaci = Net.event("EtkinlikSayaci")
 local LuckyBlockSonuc = Net.event("LuckyBlockSonuc")
 local OdulAc = Net.event("OdulAc")
 local OdulAl = Net.event("OdulAl")
@@ -1717,92 +1716,6 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 	luckyPanel.Visible = true
 end)
 
-local sayacKutu = Instance.new("Frame")
-sayacKutu.Name = "LuckyYagmurBilgisi"
-sayacKutu.AnchorPoint = Vector2.new(1, 0)
-sayacKutu.Position = UDim2.new(1, -16, 0, 210)
-sayacKutu.Size = UDim2.fromOffset(250, 108)
-sayacKutu.BackgroundTransparency = 1
-sayacKutu.BorderSizePixel = 0
-sayacKutu.Visible = false
-sayacKutu.Parent = screen
-
-do
-	local olcek = Instance.new("UIScale")
-	olcek.Scale = 0.7
-	olcek.Parent = sayacKutu
-end
-
-UI.text({
-	text = "LUCKY BLOCK RAIN",
-	size = UI.Sizes.tiny,
-	font = UI.Fonts.bold,
-	color = Rarity.LuckyBlock.colorA,
-	frameSize = UDim2.new(1, 0, 0, 18),
-	position = UDim2.fromOffset(0, 0),
-	parent = sayacKutu,
-})
-
-local sayacYazi = UI.text({
-	text = "0 / 6 PLAYERS",
-	size = UI.Sizes.heading,
-	font = UI.Fonts.bold,
-	frameSize = UDim2.new(1, 0, 0, 28),
-	position = UDim2.fromOffset(0, 18),
-	parent = sayacKutu,
-})
-
-UI.text({
-	text = "",
-	size = UI.Sizes.small,
-	font = UI.Fonts.bold,
-	color = UI.Colors.textDim,
-	frameSize = UDim2.new(1, 0, 0, 20),
-	position = UDim2.fromOffset(0, 46),
-	parent = sayacKutu,
-	name = "Durum",
-})
-
-do
-	local davet = Instance.new("TextButton")
-	davet.Name = "Davet"
-	davet.AnchorPoint = Vector2.new(0.5, 0)
-	davet.Position = UDim2.new(0.5, 0, 0, 72)
-	davet.Size = UDim2.new(0.78, 0, 0, 30)
-	davet.BackgroundColor3 = Color3.fromRGB(60, 130, 230)
-	davet.BorderSizePixel = 0
-	davet.AutoButtonColor = false
-	davet.Text = ""
-	davet.Parent = sayacKutu
-	UI.corner(davet, 8)
-	UI.stroke(davet, Color3.fromRGB(0, 0, 0), 2)
-	UI.hover(davet)
-
-	UI.text({
-		text = "INVITE FRIENDS",
-		size = UI.Sizes.small,
-		font = UI.Fonts.bold,
-		color = Color3.new(1, 1, 1),
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromScale(1, 1),
-		parent = davet,
-		zIndex = 2,
-	})
-
-	davet.Activated:Connect(function()
-		local social = game:GetService("SocialService")
-		local ok, izin = pcall(function()
-			return social:CanSendGameInviteAsync(player)
-		end)
-		if ok and izin == false then
-			return
-		end
-		pcall(function()
-			social:PromptGameInvite(player)
-		end)
-	end)
-end
-
 local function sureMetni(seconds: number): string
 	local total = math.max(0, math.floor(seconds))
 	local hours = math.floor(total / 3600)
@@ -1814,65 +1727,6 @@ local function sureMetni(seconds: number): string
 	end
 	return string.format("%02d:%02d", minutes, secs)
 end
-
-local function tazeleGorunurluk()
-	local oyuncu = sayacKutu:GetAttribute("Oyuncu") or 0
-	local gereken = sayacKutu:GetAttribute("Gereken") or LuckyBlock.Event.gerekenOyuncu
-	local esik = sayacKutu:GetAttribute("Esik") or LuckyBlock.Event.bildirimOyuncu
-	local durum = sayacKutu:FindFirstChild("Durum")
-
-	local gecen = os.clock() - (sayacKutu:GetAttribute("Zaman") or os.clock())
-	local hamSayim = sayacKutu:GetAttribute("Sayim") or -1
-	local sayim = if hamSayim >= 0 then math.max(0, hamSayim - gecen) else -1
-	local bekleme = math.max(0, (sayacKutu:GetAttribute("Bekleme") or 0) - gecen)
-
-	sayacKutu.Visible = LuckyBlock.Event.enabled and (oyuncu >= esik or sayim >= 0)
-
-	local yeterli = oyuncu >= gereken
-	sayacYazi.Text = `{oyuncu} / {gereken} PLAYERS`
-	sayacYazi.TextColor3 = if yeterli then Color3.fromRGB(120, 255, 150) else UI.Colors.text
-
-	if not (durum and durum:IsA("TextLabel")) then
-		return
-	end
-
-	if sayim >= 0 then
-		durum.Text = `DROPPING IN {sureMetni(sayim)}`
-		durum.TextColor3 = Rarity.LuckyBlock.colorA
-	elseif bekleme > 0 then
-		durum.Text = `next in {sureMetni(bekleme)}`
-		durum.TextColor3 = UI.Colors.textDim
-	elseif yeterli then
-		durum.Text = "STARTING..."
-		durum.TextColor3 = Rarity.LuckyBlock.colorA
-	else
-		durum.Text = `{gereken - oyuncu} more to start`
-		durum.TextColor3 = UI.Colors.textDim
-	end
-end
-
-EtkinlikSayaci.OnClientEvent:Connect(function(veri)
-	if type(veri) == "table" then
-		sayacKutu:SetAttribute("Oyuncu", math.floor(tonumber(veri.oyuncu) or 0))
-		sayacKutu:SetAttribute("Gereken", math.floor(tonumber(veri.gereken) or LuckyBlock.Event.gerekenOyuncu))
-		sayacKutu:SetAttribute("Esik", math.floor(tonumber(veri.esik) or LuckyBlock.Event.bildirimOyuncu))
-		sayacKutu:SetAttribute("Sayim", tonumber(veri.sayim) or -1)
-		sayacKutu:SetAttribute("Bekleme", math.max(0, tonumber(veri.bekleme) or 0))
-	else
-		sayacKutu:SetAttribute("Sayim", -1)
-		sayacKutu:SetAttribute("Bekleme", math.max(0, tonumber(veri) or 0))
-	end
-
-	sayacKutu:SetAttribute("Zaman", os.clock())
-	tazeleGorunurluk()
-end)
-
-task.spawn(function()
-	while true do
-		task.wait(0.5)
-		tazeleGorunurluk()
-	end
-end)
 
 local odulPaneliniAc: () -> ()
 local arkadasPaneliniAc: () -> ()

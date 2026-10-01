@@ -26,7 +26,6 @@ local Sand = require(script.Parent:WaitForChild("Sand"))
 local Patlama = require(script.Parent:WaitForChild("Patlama"))
 
 local Bildirim = Net.event("Bildirim")
-local EtkinlikSayaci = Net.event("EtkinlikSayaci")
 local LuckyBlockAc = Net.event("LuckyBlockAc")
 local LuckyBlockSonuc = Net.event("LuckyBlockSonuc")
 local LuckyBlockBasladi = Net.event("LuckyBlockBasladi")
@@ -478,18 +477,6 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 	return true
 end
 
-local function tierForIsland(index: number, islandCount: number): string
-	local tiers = LuckyBlock.Tiers
-
-	if index >= islandCount then
-		return tiers[#tiers].id
-	end
-
-	local oran = (index - 1) / math.max(1, islandCount)
-	local yer = math.clamp(math.floor(oran * #tiers) + 1, 1, #tiers)
-	return tiers[yer].id
-end
-
 local function normalAd(ad: string): string
 	return string.lower((string.gsub(ad, "[%s_%-]", "")))
 end
@@ -522,29 +509,8 @@ local function runEvent()
 	end
 
 	local zeminler = luckyZeminleri()
-
 	if #zeminler == 0 then
-		warn(
-			`[LuckyBlock] Event: no part with "{E.zeminAdi}" in its name -- `
-				.. "blocks fall on the island sand the old way. Put parts named "
-				.. "luckyzemin inside the island parts."
-		)
-
-		local dusen = 0
-		for index, sandName in E.islandSands do
-			local spot = Sand.randomSpotNamed({ sandName }, rng)
-			if spot and spawnEventBlock(tierForIsland(index, #E.islandSands), spot) then
-				dusen += 1
-			end
-		end
-
-		if dusen > 0 then
-			Bildirim:FireAllClients(
-				`LUCKY BLOCK RAIN! {dusen} blocks dropped on the sand`,
-				Rarity.LuckyBlock.colorA
-			)
-		end
-		return
+		warn(`[LuckyBlock] Event: no part with "{E.zeminAdi}" in its name -- only the main islands get blocks`)
 	end
 
 	for i = #zeminler, 2, -1 do
@@ -568,10 +534,23 @@ local function runEvent()
 		end
 	end
 
+	for _, ada in E.anaAdalar do
+		local tierId = LuckyBlock.etkinlikKademesi(rng, ada.tierSanslari)
+		local spot = Sand.randomSpotNamed({ ada.kum }, rng)
+		if spot and spawnEventBlock(tierId, spot) then
+			spawned += 1
+			if tierId ~= LuckyBlock.Default then
+				ozel += 1
+			end
+		end
+	end
+
 	if spawned == 0 then
-		warn("[LuckyBlock] Event: floors found but no block could be dropped")
+		warn("[LuckyBlock] Event: no block could be dropped")
 		return
 	end
+
+	Workspace:SetAttribute(E.nitelikBitis, os.time() + E.despawn)
 
 	local ozelYazi = if ozel > 0 then ` ({ozel} special!)` else ""
 	Bildirim:FireAllClients(
@@ -579,99 +558,53 @@ local function runEvent()
 			.. "hop on your flyboard and hunt them down!",
 		Rarity.LuckyBlock.colorA
 	)
-
-	print(`[LuckyBlock] Etkinlik: {spawned} blok / {#zeminler} zemin ({ozel} ozel)`)
 end
 
-local sonEtkinlik = 0
-local sayimBitis = 0
-
-local function sayimKalani(): number
-	if sayimBitis <= 0 then
-		return -1
+local function kalanBlok(): number
+	local kalan = 0
+	for _, blok in blocksFolder():GetChildren() do
+		local alPrompt = blok:FindFirstChild("AlPrompt", true)
+		if alPrompt and alPrompt:IsA("ProximityPrompt") and alPrompt.Enabled then
+			kalan += 1
+		end
 	end
-	return math.max(0, sayimBitis - os.clock())
-end
-
-local sahteOyuncu = 0
-
-local function oyuncuSayisi(): number
-	return if sahteOyuncu > 0 then sahteOyuncu else #Players:GetPlayers()
-end
-
-local function etkinlikDurumu(): { [string]: any }
-	local E = LuckyBlock.Event
-	return {
-		oyuncu = oyuncuSayisi(),
-		gereken = E.gerekenOyuncu,
-		esik = E.bildirimOyuncu,
-		bekleme = math.max(0, (sonEtkinlik + E.interval) - os.clock()),
-		sayim = sayimKalani(),
-	}
-end
-
-local function broadcastTimer(target: Player?)
-	local durum = etkinlikDurumu()
-	if target then
-		EtkinlikSayaci:FireClient(target, durum)
-	else
-		EtkinlikSayaci:FireAllClients(durum)
-	end
+	return kalan
 end
 
 if LuckyBlock.Event.enabled then
 	task.spawn(function()
 		local E = LuckyBlock.Event
-
-		sonEtkinlik = os.clock() - E.interval + E.firstDelay
+		local sonraki = LuckyBlock.sonrakiYagmur(os.time())
+		local uyarilan: { [number]: boolean } = {}
 
 		while true do
-			task.wait(2)
+			local simdi = os.time()
+			Workspace:SetAttribute(E.nitelikSonraki, sonraki)
 
-			local durum = etkinlikDurumu()
-			if durum.oyuncu < durum.gereken or durum.bekleme > 0 then
-				continue
+			local kalan = kalanBlok()
+			Workspace:SetAttribute(E.nitelikKalan, kalan)
+			if kalan == 0 then
+				Workspace:SetAttribute(E.nitelikBitis, 0)
 			end
 
-			sayimBitis = os.clock() + E.geriSayim
-			local dakika = math.floor(E.geriSayim / 60)
-			Bildirim:FireAllClients(
-				`LUCKY BLOCK RAIN in {if dakika > 0 then `{dakika} min` else `{E.geriSayim}s`}! `
-					.. `Server is full ({durum.gereken}/{durum.gereken})`,
-				Rarity.LuckyBlock.colorA
-			)
-
-			while sayimKalani() > 0 do
-				broadcastTimer(nil)
-				task.wait(0.5)
+			local saniye = sonraki - simdi
+			for _, esik in E.uyariSaniyeleri do
+				if saniye <= esik and saniye > esik - 5 and not uyarilan[esik] then
+					uyarilan[esik] = true
+					local yazi = if esik >= 60 then `{math.floor(esik / 60)} minute{if esik >= 120 then "s" else ""}` else `{esik} seconds`
+					Bildirim:FireAllClients(`LUCKY BLOCK RAIN in {yazi}!`, Rarity.LuckyBlock.colorA)
+				end
 			end
 
-			sayimBitis = 0
-			sonEtkinlik = os.clock()
-			runEvent()
-			broadcastTimer(nil)
+			if simdi >= sonraki then
+				sonraki = LuckyBlock.sonrakiYagmur(simdi)
+				table.clear(uyarilan)
+				runEvent()
+			end
+
+			task.wait(1)
 		end
 	end)
-
-	task.spawn(function()
-		while true do
-			broadcastTimer(nil)
-			task.wait(2)
-		end
-	end)
-
-	Players.PlayerAdded:Connect(function(player)
-		task.wait(2)
-		if player.Parent then
-			broadcastTimer(player)
-		end
-	end)
-end
-
-function LuckyBlockOdul.sahteOyuncuAyarla(sayi: number): number
-	sahteOyuncu = math.max(0, math.floor(sayi))
-	broadcastTimer(nil)
-	return sahteOyuncu
 end
 
 function LuckyBlockOdul.runEvent()
