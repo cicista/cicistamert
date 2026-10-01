@@ -233,7 +233,7 @@ Ipucu.bagla(havaKarti.cerceve, function()
 			renk = tur.renk,
 			satirlar = {
 				`Everything you dig or fish has a {tur.sans}% chance to get the {tur.mutasyon} mutation.`,
-				"Mutated brainrots earn more Rot on your base. Dig and fish as much as you can!",
+				"Mutated pets earn more Rot on your base. Dig and fish as much as you can!",
 				`Ends in {sure(bitis - simdi)}.`,
 			},
 		}

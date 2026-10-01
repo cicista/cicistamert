@@ -76,7 +76,7 @@ Ipucu.bagla(kart.cerceve, function()
 	end
 	table.insert(
 		satirlar,
-		`Each player can take {E.oyuncuBasiLimit} per rain. Open it from your backpack to win a random brainrot.`
+		`Each player can take {E.oyuncuBasiLimit} per rain. Open it from your backpack to win a random pet.`
 	)
 	table.insert(satirlar, "When the rain ends, a Mystery Beam drops on a random island!")
 

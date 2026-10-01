@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Roblox game (brainrot digging/collecting) written in Luau, synced into Studio with Rojo. The repo holds **only code** (`src/`); the map/Workspace lives in Team Create and Rojo never touches it. Identifiers and commit messages are in Turkish written without diacritics (ASCII). Scripts contain **no comments** (only `--!strict` directives), and every string — player-facing text, logs/warnings, admin panel — is in English. Keep it that way.
+Roblox game (brainrot digging/collecting) written in Luau, synced into Studio with Rojo. The repo holds **only code** (`src/`); the map/Workspace lives in Team Create and Rojo never touches it. Identifiers and commit messages are in Turkish written without diacritics (ASCII). Scripts contain **no comments** (only `--!strict` directives), and every string — player-facing text, logs/warnings, admin panel — is in English. Keep it that way. In player-facing text call the collectibles **pets**, never "brainrots" (code identifiers like `Brainrots` stay as they are).
 
 Two people develop on the same place: only ONE person may be connected to Rojo at a time, otherwise the last connection overwrites the other's code.
 
