@@ -9,6 +9,7 @@ local Ayar = require(Shared:WaitForChild("HaftaSonu"))
 
 local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
+local GOKKUSAGI_ADIM = 8
 
 type ParcaKaydi = { renk: Color3, malzeme: Enum.Material, faz: number }
 type VfxKaydi = { rate: number, size: NumberSequence }
@@ -83,6 +84,9 @@ local function tabelaKur(k: Kule)
 
 	k.ust = satir("Aktif", 0, 0.5)
 	k.alt = satir("Sure", 0.55, 0.4)
+	local gokkusagi = Instance.new("UIGradient")
+	gokkusagi.Name = "Gokkusagi"
+	gokkusagi.Parent = k.alt
 	k.tabela = tabela
 	tabela.Parent = yazi
 end
@@ -241,8 +245,18 @@ RunService.Heartbeat:Connect(function()
 		k.ust.Text = `{Ayar.SansCarpani}X LUCK ACTIVE!`
 		k.ust.TextColor3 = renk
 	end
-	if k.alt then
-		k.alt.Text = `ENDS IN {Ayar.sureYazisi(kalanSure())}`
+	local alt = k.alt
+	if alt then
+		alt.Text = `ENDS IN {Ayar.sureYazisi(kalanSure())}`
+		local gokkusagi = alt:FindFirstChild("Gokkusagi")
+		if gokkusagi and gokkusagi:IsA("UIGradient") then
+			local noktalar = {}
+			for i = 0, GOKKUSAGI_ADIM do
+				local ton = (i / GOKKUSAGI_ADIM - t * 0.25) % 1
+				table.insert(noktalar, ColorSequenceKeypoint.new(i / GOKKUSAGI_ADIM, Color3.fromHSV(ton, 0.85, 1)))
+			end
+			gokkusagi.Color = ColorSequence.new(noktalar)
+		end
 	end
 end)
 
