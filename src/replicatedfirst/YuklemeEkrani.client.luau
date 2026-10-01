@@ -396,7 +396,7 @@ gecis(kenarlar, nil, seri({ { 0, 0.35 }, { 0.2, 1 }, { 0.8, 1 }, { 1, 0.35 } }),
 local altKenar = cerceve({ ad = "AltKenar", ebeveyn = perde, renk = KOYU, saydamlik = 0, z = 2 })
 gecis(altKenar, nil, seri({ { 0, 0.5 }, { 0.18, 1 }, { 0.66, 1 }, { 1, 0.3 } }), 90)
 
-local isinKabi = cerceve({ ad = "Isinlar", ebeveyn = perde, z = 3 })
+local bokehKabi = cerceve({ ad = "Bokeh", ebeveyn = perde, z = 3 })
 local kivilcimKabi = cerceve({ ad = "Kivilcimlar", ebeveyn = perde, z = 4 })
 
 local efektKabi = cerceve({
@@ -753,55 +753,126 @@ local function rastgeleRenk(): Color3
 	return Color3.fromHSV(rastgele:NextNumber(), rastgele:NextNumber(0.55, 0.85), 1)
 end
 
-local function isinCikar()
-	local renk = rastgeleRenk()
-	local en = rastgele:NextInteger(3, 7)
-	local boy = rastgele:NextNumber(0.45, 0.9)
-	local sure = rastgele:NextNumber(2.2, 3.4)
+local function pastelRenk(): Color3
+	return Color3.fromHSV(rastgele:NextNumber(), rastgele:NextNumber(0.35, 0.6), 1)
+end
 
-	local tutucu = cerceve({
-		ad = "Isin",
-		ebeveyn = isinKabi,
-		boyut = UDim2.new(0, en * 9, 0, 0),
-		konum = UDim2.fromScale(rastgele:NextNumber(0.03, 0.97), 1),
-		capa = Vector2.new(0.5, 1),
+local function bokehCikar()
+	local cap = rastgele:NextInteger(40, 150)
+	local x = rastgele:NextNumber(0, 1)
+	local y = rastgele:NextNumber(0.1, 1.05)
+	local sure = rastgele:NextNumber(7, 12)
+	local renk = pastelRenk()
+	local yogunluk = rastgele:NextNumber(0.55, 1)
+
+	local top = cerceve({
+		ad = "Top",
+		ebeveyn = bokehKabi,
+		boyut = UDim2.fromOffset(cap, cap),
+		konum = UDim2.fromScale(x, y),
+		capa = Vector2.new(0.5, 0.5),
 		z = 1,
 	})
 
-	local hale = cerceve({ ad = "Hale", ebeveyn = tutucu, renk = renk, saydamlik = 1, z = 1 })
-	yuvarlak(hale)
-	gecis(hale, nil, seri({ { 0, 1 }, { 0.6, 0.55 }, { 1, 0.2 } }), 90)
+	local katmanlar: { { nesne: Frame, saydam: number } } = {}
+	for sira, oran in { 1, 0.78, 0.55 } do
+		local katman = cerceve({
+			ad = `Katman{sira}`,
+			ebeveyn = top,
+			boyut = UDim2.fromScale(oran, oran),
+			konum = UDim2.fromScale(0.5, 0.5),
+			capa = Vector2.new(0.5, 0.5),
+			renk = renk:Lerp(BEYAZ, (sira - 1) * 0.2),
+			saydamlik = 1,
+			z = sira,
+		})
+		yuvarlak(katman)
+		table.insert(katmanlar, { nesne = katman, saydam = 1 - (0.06 + sira * 0.035) * yogunluk })
+	end
+
+	TweenService:Create(top, TweenInfo.new(sure, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+		Position = UDim2.fromScale(x + rastgele:NextNumber(-0.06, 0.06), y - rastgele:NextNumber(0.08, 0.22)),
+		Size = UDim2.fromOffset(cap * 1.15, cap * 1.15),
+	}):Play()
+
+	local giris = TweenInfo.new(sure * 0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	for _, k in katmanlar do
+		TweenService:Create(k.nesne, giris, { BackgroundTransparency = k.saydam }):Play()
+	end
+
+	task.delay(sure * 0.55, function()
+		if not top.Parent or kapandi then
+			return
+		end
+		local cikis = TweenInfo.new(sure * 0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+		local son: Tween? = nil
+		for _, k in katmanlar do
+			local tween = TweenService:Create(k.nesne, cikis, { BackgroundTransparency = 1 })
+			tween:Play()
+			son = tween
+		end
+		if son then
+			son.Completed:Connect(function()
+				top:Destroy()
+			end)
+		end
+	end)
+end
+
+local parlamaKabi = cerceve({ ad = "Parlamalar", ebeveyn = logo, z = 12 })
+
+local function parlamaCikar()
+	local boy = rastgele:NextInteger(26, 54)
+	local renk = if rastgele:NextNumber() < 0.6 then BEYAZ else pastelRenk():Lerp(BEYAZ, 0.4)
+	local sure = rastgele:NextNumber(0.7, 1.1)
+
+	local yildiz = cerceve({
+		ad = "Parlama",
+		ebeveyn = parlamaKabi,
+		boyut = UDim2.fromOffset(boy, boy),
+		konum = UDim2.fromScale(rastgele:NextNumber(0.12, 0.88), rastgele:NextNumber(0.15, 0.85)),
+		capa = Vector2.new(0.5, 0.5),
+		z = 1,
+	})
+	local olcek = Instance.new("UIScale")
+	olcek.Scale = 0
+	olcek.Parent = yildiz
+
+	for sira, aci in { 0, 90 } do
+		local kol = cerceve({
+			ad = `Kol{sira}`,
+			ebeveyn = yildiz,
+			boyut = UDim2.new(0.14, 0, 1, 0),
+			konum = UDim2.fromScale(0.5, 0.5),
+			capa = Vector2.new(0.5, 0.5),
+			renk = renk,
+			saydamlik = 0,
+			z = 1,
+		})
+		kol.Rotation = aci
+		yuvarlak(kol)
+		gecis(kol, nil, seri({ { 0, 1 }, { 0.35, 0.6 }, { 0.5, 0 }, { 0.65, 0.6 }, { 1, 1 } }), 90)
+	end
 
 	local cekirdek = cerceve({
 		ad = "Cekirdek",
-		ebeveyn = tutucu,
-		boyut = UDim2.new(0, en, 1, 0),
-		konum = UDim2.fromScale(0.5, 0),
-		capa = Vector2.new(0.5, 0),
-		renk = renk:Lerp(BEYAZ, 0.55),
-		saydamlik = 1,
+		ebeveyn = yildiz,
+		boyut = UDim2.fromScale(0.3, 0.3),
+		konum = UDim2.fromScale(0.5, 0.5),
+		capa = Vector2.new(0.5, 0.5),
+		renk = BEYAZ,
+		saydamlik = 0.1,
 		z = 2,
 	})
 	yuvarlak(cekirdek)
-	gecis(cekirdek, nil, seri({ { 0, 1 }, { 0.5, 0.35 }, { 1, 0 } }), 90)
 
-	local cikis = TweenInfo.new(sure * 0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(tutucu, cikis, { Size = UDim2.new(0, en * 9, boy, 0) }):Play()
-	TweenService:Create(hale, cikis, { BackgroundTransparency = 0.68 }):Play()
-	TweenService:Create(cekirdek, cikis, { BackgroundTransparency = 0.45 }):Play()
-
-	task.delay(sure * 0.35, function()
-		if not tutucu.Parent or kapandi then
-			return
-		end
-		local sonus = TweenInfo.new(sure * 0.65, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
-		TweenService:Create(hale, sonus, { BackgroundTransparency = 1 }):Play()
-		local bitis = TweenService:Create(cekirdek, sonus, { BackgroundTransparency = 1 })
-		bitis.Completed:Connect(function()
-			tutucu:Destroy()
-		end)
-		bitis:Play()
+	local yari = TweenInfo.new(sure / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, true)
+	TweenService:Create(olcek, yari, { Scale = 1 }):Play()
+	local donus = TweenService:Create(yildiz, TweenInfo.new(sure, Enum.EasingStyle.Linear), { Rotation = 90 })
+	donus.Completed:Connect(function()
+		yildiz:Destroy()
 	end)
+	donus:Play()
 end
 
 local function kivilcimCikar()
@@ -897,10 +968,19 @@ end
 
 task.spawn(function()
 	while not kapandi do
-		if #isinKabi:GetChildren() < 9 then
-			isinCikar()
+		if #bokehKabi:GetChildren() < 16 then
+			bokehCikar()
 		end
-		task.wait(rastgele:NextNumber(0.35, 0.8))
+		task.wait(rastgele:NextNumber(0.3, 0.6))
+	end
+end)
+
+task.spawn(function()
+	while not kapandi do
+		if #parlamaKabi:GetChildren() < 4 then
+			parlamaCikar()
+		end
+		task.wait(rastgele:NextNumber(0.2, 0.5))
 	end
 end)
 
