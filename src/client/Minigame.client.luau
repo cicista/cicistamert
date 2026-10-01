@@ -60,6 +60,8 @@ local kazmaUyarisiVerildi = false
 
 local OTO_X = 0.72
 local OTO_Y = 0.8
+local OTO_X_DOKUNMATIK = 0.85
+local OTO_Y_DOKUNMATIK = 0.76
 
 local OTO_BOY = 92
 
@@ -161,7 +163,7 @@ kaziIkon.Rotation = IKON_ACI
 kaziIkon.ZIndex = 8
 kaziIkon.Parent = kaziKatman
 
-local CERCEVE_KONUM = kaziCerceve.Position
+local cerceveKonum = kaziCerceve.Position
 local EFEKT_ALTIN = Color3.fromRGB(255, 214, 60)
 local TOPRAK_RENKLERI = {
 	Color3.fromRGB(150, 108, 64),
@@ -600,8 +602,8 @@ local function efektleriSifirla()
 	sonucYazi.Visible = false
 	yuzdeYazi.TextColor3 = Color3.new(1, 1, 1)
 	auraCizgi.Color = kaziRenk
-	kaziCerceve.Position = CERCEVE_KONUM
-	kaziKatman.Position = CERCEVE_KONUM
+	kaziCerceve.Position = cerceveKonum
+	kaziKatman.Position = cerceveKonum
 end
 
 local ESIKLER = { 0.25, 0.5, 0.75 }
@@ -642,18 +644,18 @@ local function ilerlemeEfekti(dt: number, ilerleme: number, tehlikede: boolean)
 
 	if tehlikede then
 		local sars = UDim2.fromOffset(rng:NextNumber(-3, 3), rng:NextNumber(-2, 2))
-		kaziCerceve.Position = CERCEVE_KONUM + sars
-		kaziKatman.Position = CERCEVE_KONUM + sars
-	elseif kaziCerceve.Position ~= CERCEVE_KONUM then
-		kaziCerceve.Position = CERCEVE_KONUM
-		kaziKatman.Position = CERCEVE_KONUM
+		kaziCerceve.Position = cerceveKonum + sars
+		kaziKatman.Position = cerceveKonum + sars
+	elseif kaziCerceve.Position ~= cerceveKonum then
+		kaziCerceve.Position = cerceveKonum
+		kaziKatman.Position = cerceveKonum
 	end
 end
 
 local function sonucEfekti(kazandi: boolean)
 	komboYazi.Visible = false
-	kaziCerceve.Position = CERCEVE_KONUM
-	kaziKatman.Position = CERCEVE_KONUM
+	kaziCerceve.Position = cerceveKonum
+	kaziKatman.Position = cerceveKonum
 
 	sonucYazi.Visible = true
 	sonucYazi.TextTransparency = 0
@@ -748,8 +750,15 @@ local function kaziOlcegiTazele()
 	local alan = kaziEkran.AbsoluteSize
 	local genel = UI.carpan()
 	local bar = genel
+	local dokunmatik = UI.Girdi.dokunmatik()
+	local x = if dokunmatik then OTO_X_DOKUNMATIK else OTO_X
+	local y = if dokunmatik then OTO_Y_DOKUNMATIK else OTO_Y
+	cerceveKonum = UDim2.new(x, 0, y, -(OTO_BOY / 2 + KAZI_ARA))
+	kaziCerceve.Position = cerceveKonum
+	kaziKatman.Position = cerceveKonum
+	otoKutu.Position = UDim2.fromScale(x, y)
 	if alan.Y > 0 then
-		local yer = alan.Y * OTO_Y - (OTO_BOY / 2 + KAZI_ARA) - 16
+		local yer = alan.Y * y - (OTO_BOY / 2 + KAZI_ARA) - 16
 		bar = math.min(bar, yer / (KAZI_BOY + 70))
 	end
 	for _, cocuk in kaziEkran:GetChildren() do

@@ -12,7 +12,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
-local UI = require(script.Parent:WaitForChild("UI"))
 local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
 local SayacKarti = require(script.Parent:WaitForChild("SayacKarti"))
 local Ipucu = require(script.Parent:WaitForChild("Ipucu"))
@@ -89,28 +88,8 @@ local function ekranAcik(ad: string): boolean
 end
 
 local function yerlestir()
-	if not UI.Girdi.dokunmatik() then
-		kap.AnchorPoint = Vector2.new(1, 0)
-		kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
-		return
-	end
-
-	local menuler = playerGui:FindFirstChild("OyunMenuleri")
-	local sag = menuler and menuler:FindFirstChild("SagMenu")
-	local magaza = playerGui:FindFirstChild("RobuxMagazasi")
-	local store = magaza and magaza:FindFirstChild("StoreButonu")
-	if not (sag and sag:IsA("GuiObject")) then
-		kap.AnchorPoint = Vector2.new(1, 0)
-		kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
-		return
-	end
-
-	local alt = sag.AbsolutePosition.Y + sag.AbsoluteSize.Y
-	if store and store:IsA("GuiObject") and store.Visible then
-		alt = math.max(alt, store.AbsolutePosition.Y + store.AbsoluteSize.Y)
-	end
 	kap.AnchorPoint = Vector2.new(1, 0)
-	kap.Position = UDim2.fromOffset(sag.AbsolutePosition.X + sag.AbsoluteSize.X, alt + 8 * UI.carpan())
+	kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
 end
 
 RunService.Heartbeat:Connect(function()
@@ -148,18 +127,3 @@ RunService.Heartbeat:Connect(function()
 end)
 
 yerlestir()
-UI.Girdi.degisince(yerlestir)
-UI.onScaleChanged(yerlestir)
-task.spawn(function()
-	local menuler = playerGui:WaitForChild("OyunMenuleri", 30)
-	local sag = menuler and menuler:WaitForChild("SagMenu", 10)
-	local magaza = playerGui:WaitForChild("RobuxMagazasi", 30)
-	local store = magaza and magaza:WaitForChild("StoreButonu", 10)
-	for _, nesne in { sag, store } do
-		if nesne and nesne:IsA("GuiObject") then
-			nesne:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
-			nesne:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
-		end
-	end
-	yerlestir()
-end)

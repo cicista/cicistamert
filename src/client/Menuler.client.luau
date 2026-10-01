@@ -638,8 +638,7 @@ rotKutu.AnchorPoint = Vector2.new(0, 1)
 rotKutu.Position = UDim2.new(0, 16, 1, -16)
 local ROT_SATIR = 66
 local COIN_SATIR = 66
-rotKutu.Size = UDim2.fromOffset(460, 54 + ROT_SATIR + COIN_SATIR)
-rotKutu:SetAttribute("SansSatiri", 54)
+rotKutu.Size = UDim2.fromOffset(460, ROT_SATIR + COIN_SATIR)
 rotKutu.BackgroundTransparency = 1
 rotKutu.BorderSizePixel = 0
 rotKutu.Parent = screen
@@ -737,7 +736,7 @@ end
 
 local rotYazi = rotAnim.satir(
 	"Rot",
-	54,
+	0,
 	ROT_SATIR,
 	48,
 	"rotPara",
@@ -749,7 +748,7 @@ local rotYazi = rotAnim.satir(
 
 local coinYazi = rotAnim.satir(
 	"RotCoin",
-	54 + ROT_SATIR,
+	ROT_SATIR,
 	COIN_SATIR,
 	48,
 	"rotCoin",

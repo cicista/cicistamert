@@ -15,6 +15,9 @@ local DOKUNMATIK_ARA = 8
 local KENAR = 8
 local UST = 6
 local SOL_SUTUN_DOKUNMATIK = 2
+local ETKINLIK_ARA = 8
+
+local ETKINLIK_KAPLARI = { { "LuckyYagmuru", "Kap" }, { "Etkinlikler", "Kap" } }
 
 local PARA_DOKUNMATIK_OLCEGI = 0.62
 
@@ -83,6 +86,17 @@ local function solDuzenle(sol: GuiObject, dokunmatik: boolean)
 	end
 end
 
+local function etkinlikAlti(): number
+	local alt = UST
+	for _, yol in ETKINLIK_KAPLARI do
+		local kap = bul(yol)
+		if kap and kap.Visible and kap.AbsoluteSize.Y > 0 then
+			alt = math.max(alt, kap.AbsolutePosition.Y + kap.AbsoluteSize.Y + ETKINLIK_ARA)
+		end
+	end
+	return alt
+end
+
 local function sagDuzenle(sag: GuiObject, dokunmatik: boolean)
 	kaydet(sag)
 	local dizilim = sag:FindFirstChildOfClass("UIListLayout")
@@ -99,7 +113,7 @@ local function sagDuzenle(sag: GuiObject, dokunmatik: boolean)
 	end
 
 	sag.AnchorPoint = Vector2.new(1, 0)
-	sag.Position = UDim2.new(1, -KENAR, 0, UST)
+	sag.Position = UDim2.new(1, -KENAR, 0, etkinlikAlti())
 	sag.Size = UDim2.fromOffset(0, MENU_YUKSEKLIK)
 	sag.AutomaticSize = Enum.AutomaticSize.X
 	if dizilim then
@@ -228,6 +242,24 @@ task.spawn(function()
 	uygula()
 	Girdi.degisince(uygula)
 	UI.onScaleChanged(uygula)
+
+	local function sagTazele()
+		local sag = bul({ "OyunMenuleri", "SagMenu" })
+		if sag and Girdi.dokunmatik() then
+			sagDuzenle(sag, true)
+		end
+	end
+
+	for _, yol in ETKINLIK_KAPLARI do
+		local ekran = playerGui:WaitForChild(yol[1], 30)
+		local kap = ekran and ekran:WaitForChild(yol[2], 10)
+		if kap and kap:IsA("GuiObject") then
+			for _, ozellik in { "AbsolutePosition", "AbsoluteSize", "Visible" } do
+				kap:GetPropertyChangedSignal(ozellik):Connect(sagTazele)
+			end
+		end
+	end
+	sagTazele()
 end)
 
 playerGui.DescendantAdded:Connect(function(nesne)
