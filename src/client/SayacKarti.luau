@@ -13,11 +13,15 @@ SayacKarti.BOY = 64
 local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
 
-local MODEL = 58
+local MODEL = 64
+local YAGIS_ARASI = 0.12
+local YAGIS_TAVAN = 16
 local SLAYT_SURESI = 2.4
 local KAYMA_SURESI = 0.45
 
-export type Slayt = { kutu: Frame, renk: Color3 }
+export type Yagis = { sekil: string, renk: Color3 }
+
+export type Slayt = { kutu: Frame, renk: Color3, yagis: Yagis? }
 
 export type Kart = {
 	cerceve: Frame,
@@ -25,6 +29,7 @@ export type Kart = {
 	olcek: UIScale,
 	zemin: UIGradient,
 	modelAlani: Frame,
+	yagisAlani: Frame,
 	kaydirici: Frame,
 	huzmeler: Frame,
 	hale: Frame,
@@ -85,6 +90,14 @@ function SayacKarti.kur(parent: GuiObject, renk: Color3, rakam: boolean?): Kart
 	UI.caprazDesen(ic, BEYAZ, 6)
 	UI.pariltilar(ic, renk:Lerp(BEYAZ, 0.3), 6, 2, rakam)
 
+	local yagisAlani = Instance.new("Frame")
+	yagisAlani.Name = "Yagis"
+	yagisAlani.Position = UDim2.fromOffset(4, 0)
+	yagisAlani.Size = UDim2.fromOffset(MODEL, SayacKarti.BOY)
+	yagisAlani.BackgroundTransparency = 1
+	yagisAlani.ClipsDescendants = true
+	yagisAlani.ZIndex = 5
+
 	local modelAlani = Instance.new("Frame")
 	modelAlani.Name = "Model"
 	modelAlani.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -93,6 +106,7 @@ function SayacKarti.kur(parent: GuiObject, renk: Color3, rakam: boolean?): Kart
 	modelAlani.BackgroundTransparency = 1
 	modelAlani.ZIndex = 4
 	modelAlani.Parent = cerceve
+	yagisAlani.Parent = cerceve
 
 	local huzmeler = UI.isikHuzmeleri(modelAlani, renk, {
 		sayi = 10,
@@ -135,6 +149,7 @@ function SayacKarti.kur(parent: GuiObject, renk: Color3, rakam: boolean?): Kart
 		olcek = olcek,
 		zemin = zemin,
 		modelAlani = modelAlani,
+		yagisAlani = yagisAlani,
 		kaydirici = kaydirici,
 		huzmeler = huzmeler,
 		hale = hale,
@@ -148,7 +163,7 @@ function SayacKarti.kur(parent: GuiObject, renk: Color3, rakam: boolean?): Kart
 	return kart
 end
 
-function SayacKarti.slaytEkle(kart: Kart, renk: Color3, doldur: (Frame) -> ()): number
+function SayacKarti.slaytEkle(kart: Kart, renk: Color3, doldur: (Frame) -> (), yagis: Yagis?): number
 	local sira = #kart.slaytlar + 1
 	local kutu = Instance.new("Frame")
 	kutu.Name = `Slayt{sira}`
@@ -159,16 +174,16 @@ function SayacKarti.slaytEkle(kart: Kart, renk: Color3, doldur: (Frame) -> ()): 
 	kutu.ZIndex = 5
 	kutu.Parent = kart.kaydirici
 	doldur(kutu)
-	table.insert(kart.slaytlar, { kutu = kutu, renk = renk })
+	table.insert(kart.slaytlar, { kutu = kutu, renk = renk, yagis = yagis })
 	if sira == 1 then
 		efektRengi(kart, renk)
 	end
 	return sira
 end
 
-function SayacKarti.modelSlayti(kart: Kart, renk: Color3, model: Model?): number
+function SayacKarti.modelSlayti(kart: Kart, renk: Color3, model: Model?, yakinlik: number?, yagis: Yagis?): number
 	return SayacKarti.slaytEkle(kart, renk, function(kutu)
-		if not model or not LuckyOnizleme.modelEkle(kutu, model, 6) then
+		if not model or not LuckyOnizleme.modelEkle(kutu, model, 6, yakinlik) then
 			local top = Instance.new("Frame")
 			top.AnchorPoint = Vector2.new(0.5, 0.5)
 			top.Position = UDim2.fromScale(0.5, 0.5)
@@ -180,7 +195,7 @@ function SayacKarti.modelSlayti(kart: Kart, renk: Color3, model: Model?): number
 			UI.corner(top, 100)
 			UI.stroke(top, BEYAZ, 2)
 		end
-	end)
+	end, yagis)
 end
 
 local function gec(kart: Kart, hedef: number, animasyon: boolean)
@@ -212,7 +227,101 @@ function SayacKarti.sabitle(kart: Kart, sira: number?)
 	end
 end
 
+local function tane(yagis: Yagis): GuiObject
+	local sekil = yagis.sekil
+	if sekil == "kod" or sekil == "yildiz" then
+		local yazi = Instance.new("TextLabel")
+		yazi.BackgroundTransparency = 1
+		yazi.Text = if sekil == "kod" then (if math.random() < 0.5 then "0" else "1") else "✦"
+		yazi.Font = if sekil == "kod" then Enum.Font.Code else Enum.Font.GothamBold
+		yazi.TextSize = if sekil == "kod" then math.random(11, 15) else math.random(10, 16)
+		yazi.TextColor3 = yagis.renk
+		yazi.TextStrokeTransparency = 0.4
+		yazi.TextStrokeColor3 = yagis.renk:Lerp(SIYAH, 0.7)
+		yazi.Size = UDim2.fromOffset(14, 14)
+		return yazi
+	end
+
+	local boyut = if sekil == "elmas" then math.random(6, 9) else math.random(7, 10)
+	local tanecik = Instance.new("Frame")
+	tanecik.Size = UDim2.fromOffset(boyut, boyut)
+	tanecik.BackgroundColor3 = yagis.renk
+	tanecik.BorderSizePixel = 0
+	if sekil == "elmas" then
+		tanecik.Rotation = 45
+		local cizgi = UI.stroke(tanecik, BEYAZ, 1)
+		cizgi.Transparency = 0.3
+	else
+		UI.corner(tanecik, 100)
+		local cizgi = UI.stroke(tanecik, yagis.renk:Lerp(SIYAH, 0.45), 1.5)
+		cizgi.Transparency = 0.1
+	end
+	return tanecik
+end
+
+local function yagdir(kart: Kart, yagis: Yagis)
+	local alan = kart.yagisAlani
+	if #alan:GetChildren() >= YAGIS_TAVAN then
+		return
+	end
+
+	local nesne = tane(yagis)
+	local yildiz = yagis.sekil == "yildiz"
+	local x = math.random(6, MODEL - 6)
+	local y = if yildiz then math.random(6, SayacKarti.BOY - 6) else math.random(36, 44)
+	nesne.AnchorPoint = Vector2.new(0.5, 0.5)
+	nesne.Position = UDim2.fromOffset(x, y)
+	nesne.ZIndex = 5
+	nesne.Parent = alan
+
+	local sure = if yagis.sekil == "kod" then 0.7 else if yildiz then 1.1 else 0.95
+	local hedef: { [string]: any } = {}
+	if yildiz then
+		local olcek = Instance.new("UIScale")
+		olcek.Scale = 0.2
+		olcek.Parent = nesne
+		TweenService:Create(olcek, TweenInfo.new(sure / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0, true), { Scale = 1.3 }):Play()
+		hedef.Position = UDim2.fromOffset(x, y + 6)
+		hedef.Rotation = math.random(-90, 90)
+	else
+		hedef.Position = UDim2.fromOffset(x + math.random(-6, 6), SayacKarti.BOY + 10)
+		if yagis.sekil == "elmas" then
+			hedef.Rotation = 45 + math.random(-120, 120)
+		end
+	end
+
+	local bilgi = TweenInfo.new(sure, if yildiz then Enum.EasingStyle.Sine else Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(nesne, bilgi, hedef):Play()
+	task.delay(sure, function()
+		nesne:Destroy()
+	end)
+end
+
+local function ekranda(nesne: GuiObject): boolean
+	local node: Instance? = nesne
+	while node do
+		if node:IsA("GuiObject") and not node.Visible then
+			return false
+		end
+		if node:IsA("LayerCollector") then
+			return node.Enabled
+		end
+		node = node.Parent
+	end
+	return false
+end
+
 function SayacKarti.dondur(kart: Kart)
+	task.spawn(function()
+		while kart.cerceve.Parent do
+			task.wait(YAGIS_ARASI)
+			local slayt = kart.slaytlar[kart.simdiki]
+			if slayt and slayt.yagis and ekranda(kart.cerceve) then
+				yagdir(kart, slayt.yagis)
+			end
+		end
+	end)
+
 	task.spawn(function()
 		while kart.cerceve.Parent do
 			task.wait(SLAYT_SURESI)

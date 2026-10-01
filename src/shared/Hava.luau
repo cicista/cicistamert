@@ -9,6 +9,7 @@ export type HavaTuru = {
 	renk: Color3,
 	gok: Color3,
 	parcacik: Color3,
+	sekil: string,
 }
 
 local Hava = {}
@@ -18,6 +19,7 @@ Hava.Kayma = 900
 Hava.Sure = 240
 Hava.UyariSaniyeleri = { 60 }
 Hava.Model = "Cloud"
+Hava.ModelYakinligi = 1.6
 Hava.BeklemeRengi = Color3.fromRGB(120, 190, 255)
 
 Hava.Turler = {
@@ -30,6 +32,7 @@ Hava.Turler = {
 		renk = Color3.fromRGB(255, 200, 60),
 		gok = Color3.fromRGB(255, 232, 175),
 		parcacik = Color3.fromRGB(255, 214, 90),
+		sekil = "para",
 	},
 	{
 		id = "DiamondHail",
@@ -40,6 +43,7 @@ Hava.Turler = {
 		renk = Color3.fromRGB(110, 230, 255),
 		gok = Color3.fromRGB(200, 238, 255),
 		parcacik = Color3.fromRGB(170, 240, 255),
+		sekil = "elmas",
 	},
 	{
 		id = "GalaxyNight",
@@ -50,6 +54,7 @@ Hava.Turler = {
 		renk = Color3.fromRGB(170, 110, 255),
 		gok = Color3.fromRGB(205, 175, 255),
 		parcacik = Color3.fromRGB(215, 140, 255),
+		sekil = "yildiz",
 	},
 	{
 		id = "HackerStorm",
@@ -60,6 +65,7 @@ Hava.Turler = {
 		renk = Color3.fromRGB(60, 255, 110),
 		gok = Color3.fromRGB(175, 255, 195),
 		parcacik = Color3.fromRGB(90, 255, 140),
+		sekil = "kod",
 	},
 } :: { HavaTuru }
 

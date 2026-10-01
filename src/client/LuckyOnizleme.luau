@@ -84,7 +84,7 @@ function LuckyOnizleme.ekle(kutu: GuiObject, tier: any, zIndex: number?): boolea
 	return LuckyOnizleme.modelEkle(kutu, model, zIndex)
 end
 
-function LuckyOnizleme.modelEkle(kutu: GuiObject, model: Model, zIndex: number?): boolean
+function LuckyOnizleme.modelEkle(kutu: GuiObject, model: Model, zIndex: number?, yakinlik: number?): boolean
 	for _, nesne in model:GetDescendants() do
 		if nesne:IsA("BaseScript") or nesne:IsA("Sound") then
 			nesne:Destroy()
@@ -116,7 +116,7 @@ function LuckyOnizleme.modelEkle(kutu: GuiObject, model: Model, zIndex: number?)
 	kamera.Parent = vp
 	vp.CurrentCamera = kamera
 
-	local mesafe = (boyut.Magnitude / 2 * PAY) / math.tan(math.rad(FOV / 2))
+	local mesafe = (boyut.Magnitude / 2 * PAY) / math.tan(math.rad(FOV / 2)) / (yakinlik or 1)
 	kamera.CFrame = CFrame.lookAt(merkez + BAKIS * mesafe, merkez)
 
 	table.insert(kayitlar, { model = model, kutu = vp, merkez = merkez, taban = model:GetPivot() })
