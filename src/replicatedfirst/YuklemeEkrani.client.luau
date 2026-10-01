@@ -37,11 +37,11 @@ local ATLA_EYLEMI = "YuklemeAtla"
 
 local TASARIM = Vector2.new(1280, 760)
 local EN_KUCUK_OLCEK = 0.5
-local EN_BUYUK_OLCEK = 1.15
+local EN_BUYUK_OLCEK = 1
 
-local KART_EN = 760
-local KART_BOY = 276
-local KENAR = 28
+local KART_EN = 600
+local KART_BOY = 216
+local KENAR = 24
 
 local YAKLASMA = 1.07
 local PARALAKS = 14
@@ -82,7 +82,7 @@ local IPUCLARI = {
 	"Upgrade your shovel to dig up rarer pets.",
 	"The Detective reveals the pets you dig up.",
 	"Place pets on your base to earn Rot every second.",
-	"Gold, Diamond, Galaxy and Hacker mutations multiply a pet's income.",
+	"Gold, Diamond, Galaxy and Hacker mutations boost income.",
 	"New islands boost your luck: Candy x2, Snow x4, Volcano x8.",
 	"A Lucky Block rain starts every hour. Don't miss it!",
 	"Weekends bring 2x luck. Plan your digging!",
@@ -434,7 +434,7 @@ local altPerde = cerceve({
 	saydamlik = 0,
 	z = 5,
 })
-gecis(altPerde, nil, seri({ { 0, 1 }, { 0.45, 0.5 }, { 1, 0.04 } }), 90)
+gecis(altPerde, nil, seri({ { 0, 1 }, { 0.5, 0.72 }, { 1, 0.3 } }), 90)
 
 local ustPerde = cerceve({
 	ad = "UstPerde",
@@ -476,11 +476,11 @@ icerikOlcek.Parent = icerik
 
 local kayan = cerceve({ ad = "Kayan", ebeveyn = icerik, z = 1 })
 
-local kart = cerceve({ ad = "Kart", ebeveyn = kayan, saydamlik = 0.28, z = 1 })
-kose(kart, 22)
-gecis(kart, ColorSequence.new(Color3.fromRGB(28, 36, 60), Color3.fromRGB(8, 11, 20)), nil, 90)
+local kart = cerceve({ ad = "Kart", ebeveyn = kayan, saydamlik = 0.58, z = 1 })
+kose(kart, 18)
+gecis(kart, ColorSequence.new(Color3.fromRGB(24, 32, 56), Color3.fromRGB(6, 9, 18)), nil, 90)
 
-local kartKontur = kontur(kart, BEYAZ, 1.6, 0.1, true)
+local kartKontur = kontur(kart, BEYAZ, 1.4, 0.25, true)
 local konturGecis = gecis(
 	kartKontur,
 	ColorSequence.new({
@@ -495,7 +495,7 @@ local konturGecis = gecis(
 local ustCizgi = cerceve({
 	ad = "UstCizgi",
 	ebeveyn = kart,
-	boyut = UDim2.new(1, -80, 0, 1),
+	boyut = UDim2.new(1, -60, 0, 1),
 	konum = UDim2.new(0.5, 0, 0, 1),
 	capa = Vector2.new(0.5, 0),
 	saydamlik = 0.35,
@@ -506,8 +506,8 @@ gecis(ustCizgi, nil, seri({ { 0, 1 }, { 0.5, 0.2 }, { 1, 1 } }), 0)
 local ic = cerceve({
 	ad = "Ic",
 	ebeveyn = kayan,
-	boyut = UDim2.new(1, -56, 0, KART_BOY - 38),
-	konum = UDim2.fromOffset(28, 22),
+	boyut = UDim2.new(1, -44, 0, KART_BOY - 30),
+	konum = UDim2.fromOffset(22, 16),
 	z = 2,
 })
 
@@ -516,10 +516,10 @@ local baslik = yazi({
 	ebeveyn = ic,
 	metin = "LOADING",
 	font = BASLIK_FONTU,
-	boyut = 32,
+	boyut = 26,
 	hiza = Enum.TextXAlignment.Left,
-	cerceve = UDim2.new(0.6, 0, 0, 38),
-	kontur = 2.5,
+	cerceve = UDim2.new(0.6, 0, 0, 30),
+	kontur = 2,
 	z = 2,
 })
 
@@ -528,13 +528,13 @@ local yuzdeYazi = yazi({
 	ebeveyn = ic,
 	metin = "0%",
 	font = BASLIK_FONTU,
-	boyut = 34,
+	boyut = 28,
 	renk = NEON_ACIK,
 	hiza = Enum.TextXAlignment.Right,
-	cerceve = UDim2.new(0.4, 0, 0, 38),
+	cerceve = UDim2.new(0.4, 0, 0, 30),
 	konum = UDim2.fromScale(1, 0),
 	capa = Vector2.new(1, 0),
-	kontur = 2.5,
+	kontur = 2,
 	z = 2,
 })
 
@@ -543,19 +543,19 @@ local durumYazi = yazi({
 	ebeveyn = ic,
 	metin = "Reaching the server",
 	font = GOVDE_FONTU,
-	boyut = 18,
+	boyut = 15,
 	renk = SOLGUN,
 	hiza = Enum.TextXAlignment.Left,
-	cerceve = UDim2.new(1, 0, 0, 22),
-	konum = UDim2.fromOffset(0, 44),
+	cerceve = UDim2.new(1, 0, 0, 18),
+	konum = UDim2.fromOffset(0, 32),
 	z = 2,
 })
 
 local cubuk = cerceve({
 	ad = "Cubuk",
 	ebeveyn = ic,
-	boyut = UDim2.new(1, 0, 0, 16),
-	konum = UDim2.fromOffset(0, 78),
+	boyut = UDim2.new(1, 0, 0, 12),
+	konum = UDim2.fromOffset(0, 58),
 	renk = Color3.fromRGB(22, 28, 44),
 	saydamlik = 0.1,
 	z = 2,
@@ -586,7 +586,7 @@ local parlamaGecis = gecis(parilti, nil, seri({ { 0, 1 }, { 0.4, 1 }, { 0.5, 0.5
 local uc = cerceve({
 	ad = "Uc",
 	ebeveyn = cubuk,
-	boyut = UDim2.fromOffset(30, 30),
+	boyut = UDim2.fromOffset(24, 24),
 	konum = UDim2.fromScale(0, 0.5),
 	capa = Vector2.new(0.5, 0.5),
 	renk = NEON_ACIK,
@@ -601,7 +601,7 @@ ucOlcek.Parent = uc
 local ucCekirdek = cerceve({
 	ad = "Cekirdek",
 	ebeveyn = uc,
-	boyut = UDim2.fromOffset(12, 12),
+	boyut = UDim2.fromOffset(10, 10),
 	konum = UDim2.fromScale(0.5, 0.5),
 	capa = Vector2.new(0.5, 0.5),
 	saydamlik = 0,
@@ -620,7 +620,7 @@ type Adim = {
 
 local adimlar: { Adim } = {}
 
-local adimSirasi = cerceve({ ad = "Adimlar", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 22), konum = UDim2.fromOffset(0, 104), z = 2 })
+local adimSirasi = cerceve({ ad = "Adimlar", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 18), konum = UDim2.fromOffset(0, 78), z = 2 })
 local adimDuzen = Instance.new("UIListLayout")
 adimDuzen.FillDirection = Enum.FillDirection.Horizontal
 adimDuzen.SortOrder = Enum.SortOrder.LayoutOrder
@@ -635,10 +635,10 @@ for sira, tanim in ADIMLAR do
 	hucreDuzen.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	hucreDuzen.VerticalAlignment = Enum.VerticalAlignment.Center
 	hucreDuzen.SortOrder = Enum.SortOrder.LayoutOrder
-	hucreDuzen.Padding = UDim.new(0, 8)
+	hucreDuzen.Padding = UDim.new(0, 6)
 	hucreDuzen.Parent = hucre
 
-	local daire = cerceve({ ad = "Daire", ebeveyn = hucre, boyut = UDim2.fromOffset(14, 14), renk = NEON, z = 1 })
+	local daire = cerceve({ ad = "Daire", ebeveyn = hucre, boyut = UDim2.fromOffset(12, 12), renk = NEON, z = 1 })
 	daire.LayoutOrder = 1
 	yuvarlak(daire)
 	local cizgi = kontur(daire, SONUK, 2, 0, true)
@@ -646,7 +646,7 @@ for sira, tanim in ADIMLAR do
 	local nokta = cerceve({
 		ad = "Nokta",
 		ebeveyn = daire,
-		boyut = UDim2.fromOffset(6, 6),
+		boyut = UDim2.fromOffset(5, 5),
 		konum = UDim2.fromScale(0.5, 0.5),
 		capa = Vector2.new(0.5, 0.5),
 		saydamlik = 0,
@@ -660,9 +660,9 @@ for sira, tanim in ADIMLAR do
 		ebeveyn = hucre,
 		metin = tanim.ad,
 		font = KALIN_FONT,
-		boyut = 14,
+		boyut = 12,
 		renk = SONUK,
-		cerceve = UDim2.fromOffset(0, 20),
+		cerceve = UDim2.fromOffset(0, 16),
 		z = 1,
 	})
 	etiket.AutomaticSize = Enum.AutomaticSize.X
@@ -678,34 +678,34 @@ for sira, tanim in ADIMLAR do
 	})
 end
 
-local butonSirasi = cerceve({ ad = "Butonlar", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 62), konum = UDim2.fromOffset(0, 138), z = 3 })
+local butonSirasi = cerceve({ ad = "Butonlar", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 50), konum = UDim2.fromOffset(0, 104), z = 3 })
 local butonDuzen = Instance.new("UIListLayout")
 butonDuzen.FillDirection = Enum.FillDirection.Horizontal
 butonDuzen.HorizontalAlignment = Enum.HorizontalAlignment.Center
 butonDuzen.VerticalAlignment = Enum.VerticalAlignment.Center
 butonDuzen.SortOrder = Enum.SortOrder.LayoutOrder
-butonDuzen.Padding = UDim.new(0, 14)
+butonDuzen.Padding = UDim.new(0, 12)
 butonDuzen.Parent = butonSirasi
 
 local function tusCipi(ebeveyn: Instance): (Frame, TextLabel)
 	local cip = cerceve({
 		ad = "Tus",
 		ebeveyn = ebeveyn,
-		boyut = UDim2.fromOffset(58, 26),
-		konum = UDim2.new(1, -12, 0.5, 0),
+		boyut = UDim2.fromOffset(48, 22),
+		konum = UDim2.new(1, -10, 0.5, 0),
 		capa = Vector2.new(1, 0.5),
 		renk = SIYAH,
 		saydamlik = 0.55,
 		z = 6,
 	})
-	kose(cip, 8)
+	kose(cip, 7)
 	kontur(cip, BEYAZ, 1, 0.6, true)
-	local cipYazi = yazi({ ad = "Yazi", ebeveyn = cip, metin = "ENTER", font = BASLIK_FONTU, boyut = 13, z = 2 })
+	local cipYazi = yazi({ ad = "Yazi", ebeveyn = cip, metin = "ENTER", font = BASLIK_FONTU, boyut = 11, z = 2 })
 	cip.Visible = false
 	return cip, cipYazi
 end
 
-local oynaKap = cerceve({ ad = "BaslaKap", ebeveyn = butonSirasi, boyut = UDim2.fromOffset(300, 62), z = 1 })
+local oynaKap = cerceve({ ad = "BaslaKap", ebeveyn = butonSirasi, boyut = UDim2.fromOffset(230, 50), z = 1 })
 oynaKap.LayoutOrder = 1
 local oynaOlcek = Instance.new("UIScale")
 oynaOlcek.Parent = oynaKap
@@ -713,14 +713,14 @@ oynaOlcek.Parent = oynaKap
 local isilti = cerceve({
 	ad = "Isilti",
 	ebeveyn = oynaKap,
-	boyut = UDim2.new(1, 18, 1, 18),
+	boyut = UDim2.new(1, 14, 1, 14),
 	konum = UDim2.fromScale(0.5, 0.5),
 	capa = Vector2.new(0.5, 0.5),
 	renk = NEON,
 	saydamlik = 1,
 	z = 1,
 })
-kose(isilti, 24)
+kose(isilti, 20)
 
 local oyna = Instance.new("TextButton")
 oyna.Name = "Basla"
@@ -733,18 +733,18 @@ oyna.ClipsDescendants = true
 oyna.Selectable = false
 oyna.ZIndex = 2
 oyna.Parent = oynaKap
-kose(oyna, 16)
-kontur(oyna, SIYAH, 2.5, 0, true)
+kose(oyna, 14)
+kontur(oyna, SIYAH, 2, 0, true)
 local oynaGecis = gecis(oyna, PASIF_RENK, nil, 90)
 
 local oynaParlak = cerceve({ ad = "Parlak", ebeveyn = oyna, boyut = UDim2.new(1, -8, 0.5, -2), konum = UDim2.fromOffset(4, 3), saydamlik = 0.8, z = 2 })
-kose(oynaParlak, 12)
+kose(oynaParlak, 10)
 gecis(oynaParlak, nil, seri({ { 0, 0.2 }, { 1, 1 } }), 90)
 
 local oynaIsik = cerceve({
 	ad = "Isik",
 	ebeveyn = oyna,
-	boyut = UDim2.new(0, 46, 1.8, 0),
+	boyut = UDim2.new(0, 38, 1.8, 0),
 	konum = UDim2.new(-0.3, 0, 0.5, 0),
 	capa = Vector2.new(0.5, 0.5),
 	saydamlik = 1,
@@ -753,10 +753,10 @@ local oynaIsik = cerceve({
 oynaIsik.Rotation = 18
 gecis(oynaIsik, nil, seri({ { 0, 1 }, { 0.5, 0.35 }, { 1, 1 } }), 0)
 
-local oynaYazi = yazi({ ad = "Yazi", ebeveyn = oyna, metin = "PLAY", font = BASLIK_FONTU, boyut = 32, renk = SOLGUN, kontur = 3, z = 4 })
+local oynaYazi = yazi({ ad = "Yazi", ebeveyn = oyna, metin = "PLAY", font = BASLIK_FONTU, boyut = 26, renk = SOLGUN, kontur = 2.5, z = 4 })
 local oynaTus, oynaTusYazi = tusCipi(oyna)
 
-local atlaKap = cerceve({ ad = "AtlaKap", ebeveyn = butonSirasi, boyut = UDim2.fromOffset(176, 62), z = 1 })
+local atlaKap = cerceve({ ad = "AtlaKap", ebeveyn = butonSirasi, boyut = UDim2.fromOffset(140, 50), z = 1 })
 atlaKap.LayoutOrder = 2
 atlaKap.ClipsDescendants = true
 atlaKap.Visible = false
@@ -767,7 +767,7 @@ local atlaDugme = Instance.new("TextButton")
 atlaDugme.Name = "Atla"
 atlaDugme.AnchorPoint = Vector2.new(0.5, 0.5)
 atlaDugme.Position = UDim2.fromScale(0.5, 0.5)
-atlaDugme.Size = UDim2.fromOffset(172, 58)
+atlaDugme.Size = UDim2.fromOffset(136, 46)
 atlaDugme.BackgroundColor3 = BEYAZ
 atlaDugme.BackgroundTransparency = 0.88
 atlaDugme.BorderSizePixel = 0
@@ -776,34 +776,34 @@ atlaDugme.Text = ""
 atlaDugme.Selectable = false
 atlaDugme.ZIndex = 1
 atlaDugme.Parent = atlaKap
-kose(atlaDugme, 16)
-kontur(atlaDugme, BEYAZ, 2, 0.4, true)
+kose(atlaDugme, 14)
+kontur(atlaDugme, BEYAZ, 1.6, 0.4, true)
 
-local atlaYazi = yazi({ ad = "Yazi", ebeveyn = atlaDugme, metin = "SKIP  \u{BB}", font = BASLIK_FONTU, boyut = 26, kontur = 2.5, z = 2 })
+local atlaYazi = yazi({ ad = "Yazi", ebeveyn = atlaDugme, metin = "SKIP  \u{BB}", font = BASLIK_FONTU, boyut = 21, kontur = 2, z = 2 })
 local atlaTus, atlaTusYazi = tusCipi(atlaDugme)
 
-local ipucuSirasi = cerceve({ ad = "Ipucu", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 26), konum = UDim2.fromOffset(0, 212), z = 2 })
+local ipucuSirasi = cerceve({ ad = "Ipucu", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 22), konum = UDim2.fromOffset(0, 164), z = 2 })
 local ipucuDuzen = Instance.new("UIListLayout")
 ipucuDuzen.FillDirection = Enum.FillDirection.Horizontal
 ipucuDuzen.HorizontalAlignment = Enum.HorizontalAlignment.Center
 ipucuDuzen.VerticalAlignment = Enum.VerticalAlignment.Center
 ipucuDuzen.SortOrder = Enum.SortOrder.LayoutOrder
-ipucuDuzen.Padding = UDim.new(0, 10)
+ipucuDuzen.Padding = UDim.new(0, 8)
 ipucuDuzen.Parent = ipucuSirasi
 
-local ipucuEtiket = cerceve({ ad = "Etiket", ebeveyn = ipucuSirasi, boyut = UDim2.fromOffset(46, 24), renk = ALTIN, saydamlik = 0, z = 1 })
+local ipucuEtiket = cerceve({ ad = "Etiket", ebeveyn = ipucuSirasi, boyut = UDim2.fromOffset(38, 20), renk = ALTIN, saydamlik = 0, z = 1 })
 ipucuEtiket.LayoutOrder = 1
-kose(ipucuEtiket, 12)
-yazi({ ad = "Yazi", ebeveyn = ipucuEtiket, metin = "TIP", font = BASLIK_FONTU, boyut = 15, renk = LACIVERT, z = 2 })
+kose(ipucuEtiket, 10)
+yazi({ ad = "Yazi", ebeveyn = ipucuEtiket, metin = "TIP", font = BASLIK_FONTU, boyut = 13, renk = LACIVERT, z = 2 })
 
 local ipucuYazi = yazi({
 	ad = "Metin",
 	ebeveyn = ipucuSirasi,
 	metin = "",
 	font = GOVDE_FONTU,
-	boyut = 18,
+	boyut = 15,
 	renk = Color3.fromRGB(222, 230, 242),
-	cerceve = UDim2.fromOffset(0, 24),
+	cerceve = UDim2.fromOffset(0, 20),
 	z = 1,
 })
 ipucuYazi.AutomaticSize = Enum.AutomaticSize.X
@@ -812,7 +812,7 @@ ipucuYazi.LayoutOrder = 2
 local solAlt = cerceve({
 	ad = "SolAlt",
 	ebeveyn = perde,
-	boyut = UDim2.fromOffset(260, 40),
+	boyut = UDim2.fromOffset(240, 34),
 	konum = UDim2.new(0, KENAR, 1, -KENAR),
 	capa = Vector2.new(0, 1),
 	z = 10,
@@ -823,17 +823,17 @@ solAltOlcek.Parent = solAlt
 local halka = cerceve({
 	ad = "Halka",
 	ebeveyn = solAlt,
-	boyut = UDim2.fromOffset(32, 32),
+	boyut = UDim2.fromOffset(26, 26),
 	konum = UDim2.fromScale(0, 0.5),
 	capa = Vector2.new(0, 0.5),
 	z = 1,
 })
 yuvarlak(halka)
-kontur(halka, BEYAZ, 4, 0.85, true)
+kontur(halka, BEYAZ, 3.5, 0.85, true)
 
 local donen = cerceve({ ad = "Donen", ebeveyn = halka, z = 2 })
 yuvarlak(donen)
-local donenKontur = kontur(donen, NEON, 4, 0, true)
+local donenKontur = kontur(donen, NEON, 3.5, 0, true)
 local donenGecis = gecis(donenKontur, nil, seri({ { 0, 0 }, { 0.55, 0 }, { 0.75, 1 }, { 1, 1 } }), 0)
 
 local halkaYazi = yazi({
@@ -841,11 +841,11 @@ local halkaYazi = yazi({
 	ebeveyn = solAlt,
 	metin = "SETTING UP",
 	font = BASLIK_FONTU,
-	boyut = 16,
+	boyut = 14,
 	renk = SOLGUN,
 	hiza = Enum.TextXAlignment.Left,
-	cerceve = UDim2.new(1, -44, 1, 0),
-	konum = UDim2.fromOffset(44, 0),
+	cerceve = UDim2.new(1, -36, 1, 0),
+	konum = UDim2.fromOffset(36, 0),
 	kontur = 1.5,
 	z = 1,
 })
@@ -853,7 +853,7 @@ local halkaYazi = yazi({
 local sagAlt = cerceve({
 	ad = "SagAlt",
 	ebeveyn = perde,
-	boyut = UDim2.fromOffset(320, 40),
+	boyut = UDim2.fromOffset(300, 34),
 	konum = UDim2.new(1, -KENAR, 1, -KENAR),
 	capa = Vector2.new(1, 1),
 	z = 10,
@@ -866,7 +866,7 @@ yazi({
 	ebeveyn = sagAlt,
 	metin = OYUN_ADI,
 	font = BASLIK_FONTU,
-	boyut = 17,
+	boyut = 15,
 	renk = SOLGUN,
 	hiza = Enum.TextXAlignment.Right,
 	kontur = 1.5,
@@ -919,7 +919,7 @@ local function isinCikar()
 	local tutucu = cerceve({
 		ad = "Isin",
 		ebeveyn = isinKabi,
-		boyut = UDim2.new(0, en * 7, 0, 0),
+		boyut = UDim2.new(0, en * 9, 0, 0),
 		konum = UDim2.fromScale(rastgele:NextNumber(0.04, 0.96), 1),
 		capa = Vector2.new(0.5, 1),
 		z = 1,
@@ -943,9 +943,9 @@ local function isinCikar()
 	gecis(cekirdek, nil, seri({ { 0, 1 }, { 0.5, 0.35 }, { 1, 0 } }), 90)
 
 	local cikis = TweenInfo.new(sure * 0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(tutucu, cikis, { Size = UDim2.new(0, en * 7, boy, 0) }):Play()
-	TweenService:Create(hale, cikis, { BackgroundTransparency = 0.82 }):Play()
-	TweenService:Create(cekirdek, cikis, { BackgroundTransparency = 0.3 }):Play()
+	TweenService:Create(tutucu, cikis, { Size = UDim2.new(0, en * 9, boy, 0) }):Play()
+	TweenService:Create(hale, cikis, { BackgroundTransparency = 0.76 }):Play()
+	TweenService:Create(cekirdek, cikis, { BackgroundTransparency = 0.62 }):Play()
 
 	task.delay(sure * 0.35, function()
 		if not tutucu.Parent or kapandi then
@@ -1165,11 +1165,11 @@ local function tusIpuclari()
 
 	oynaTus.Visible = oynaAktif and tur ~= "dokunmatik"
 	oynaTusYazi.Text = if tur == "gamepad" then "A" else "ENTER"
-	oynaTus.Size = UDim2.fromOffset(if tur == "gamepad" then 28 else 58, 26)
+	oynaTus.Size = UDim2.fromOffset(if tur == "gamepad" then 24 else 48, 22)
 
 	atlaTus.Visible = tur == "gamepad"
 	atlaTusYazi.Text = "X"
-	atlaTus.Size = UDim2.fromOffset(28, 26)
+	atlaTus.Size = UDim2.fromOffset(24, 22)
 
 	if hazirGorundu and not kapandi then
 		durumYazi.Text = if tur == "gamepad"
@@ -1259,7 +1259,7 @@ local function atlaGizle()
 	local daral = TweenService:Create(
 		atlaKap,
 		TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ Size = UDim2.fromOffset(0, 62) }
+		{ Size = UDim2.fromOffset(0, 50) }
 	)
 	daral.Completed:Connect(function()
 		if not kapandi then
