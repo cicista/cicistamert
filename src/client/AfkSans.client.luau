@@ -991,7 +991,10 @@ local function flyboardda(h: Humanoid): boolean
 end
 
 local function normalHiz(): number
-	return Hiz.hiz(tonumber(player:GetAttribute(Hiz.Nitelik)) or 0)
+	return Hiz.hiz(Hiz.etkinSeviye(
+		tonumber(player:GetAttribute(Hiz.Nitelik)) or 0,
+		tonumber(player:GetAttribute(Hiz.TercihNitelik))
+	))
 end
 
 local function hiziSabitle(h: Humanoid)

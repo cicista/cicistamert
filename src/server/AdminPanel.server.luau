@@ -814,7 +814,7 @@ local function hiziYenile(player: Player)
 	local data = PlayerData.get(player)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if data and humanoid then
-		local hiz = Hiz.hiz(data.speedLevel)
+		local hiz = Hiz.hiz(Hiz.etkinSeviye(data.speedLevel, data.hizTercihi))
 		if humanoid:GetAttribute("FlyboardTabanHiz") ~= nil then
 			humanoid:SetAttribute("FlyboardTabanHiz", hiz)
 		else
@@ -845,6 +845,7 @@ function commands.setSpeed(player, data, arg)
 		return nil
 	end
 	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
+	data.hizTercihi = -1
 	hiziYenile(player)
 	return `Speed set: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
 end

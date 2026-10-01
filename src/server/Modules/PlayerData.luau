@@ -82,6 +82,7 @@ export type Data = {
 	hintsOff: boolean,
 	speedLevel: number,
 	speedRebirth: number,
+	hizTercihi: number,
 	afkPuan: number,
 	afkSeviye: number,
 	afkOzel: { [string]: boolean },
@@ -170,6 +171,7 @@ local function defaultData(): Data
 		hintsOff = false,
 		speedLevel = 0,
 		speedRebirth = 0,
+		hizTercihi = -1,
 		afkPuan = 0,
 		afkSeviye = 1,
 		afkOzel = {},
@@ -307,6 +309,7 @@ local function migrate(raw: any): Data
 	data.hintsOff = raw.hintsOff == true
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
+	data.hizTercihi = math.clamp(math.floor(tonumber(raw.hizTercihi) or -1), -1, 100)
 	data.afkPuan = math.clamp(tonumber(raw.afkPuan) or 0, 0, AfkSans.MaxPuan)
 	data.afkSeviye = math.clamp(math.floor(tonumber(raw.afkSeviye) or 1), 1, AfkSans.siraliSayi())
 	data.afkOzel = {}

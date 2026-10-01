@@ -12,6 +12,14 @@ Hiz.SonFiyat = 5_000_000_000_000
 Hiz.Oran = (Hiz.SonFiyat / Hiz.IlkFiyat) ^ (1 / (Hiz.Max - 1))
 
 Hiz.Nitelik = "SpeedLevel"
+Hiz.TercihNitelik = "HizTercihi"
+
+function Hiz.etkinSeviye(alinan: number, tercih: number?): number
+	if tercih and tercih >= 0 then
+		return math.min(alinan, tercih)
+	end
+	return alinan
+end
 
 local function yuvarla(x: number): number
 	local basamak = 10 ^ math.max(0, math.floor(math.log10(x)) - 2)

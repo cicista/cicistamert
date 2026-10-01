@@ -104,6 +104,7 @@ Net.Events = {
 
 	"HizAl",
 	"HizRebirth",
+	"HizAyarla",
 
 	"YoncaListesi",
 	"YoncaIste",

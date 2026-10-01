@@ -16,6 +16,7 @@ local Seviye = require(Modules:WaitForChild("Seviye"))
 local Bildirim = Net.event("Bildirim")
 local HizAl = Net.event("HizAl")
 local HizRebirth = Net.event("HizRebirth")
+local HizAyarla = Net.event("HizAyarla")
 
 local IZ_ADI = "HizIzi"
 
@@ -40,7 +41,8 @@ local function hiziUygula(player: Player)
 		return
 	end
 
-	local hiz = Hiz.hiz(data.speedLevel)
+	player:SetAttribute(Hiz.TercihNitelik, data.hizTercihi)
+	local hiz = Hiz.hiz(Hiz.etkinSeviye(data.speedLevel, data.hizTercihi))
 	if humanoid:GetAttribute(FLYBOARD_TABAN) ~= nil then
 		humanoid:SetAttribute(FLYBOARD_TABAN, hiz)
 	else
@@ -136,6 +138,7 @@ task.spawn(function()
 				continue
 			end
 			local seviyeFarkli = player:GetAttribute(Hiz.Nitelik) ~= data.speedLevel
+				or player:GetAttribute(Hiz.TercihNitelik) ~= data.hizTercihi
 			local rebirthFarkli = player:GetAttribute(Hiz.RebirthNitelik) ~= data.speedRebirth
 			if seviyeFarkli or rebirthFarkli then
 				hiziUygula(player)
@@ -164,6 +167,7 @@ HizRebirth.OnServerEvent:Connect(function(player)
 	end
 
 	data.speedRebirth += 1
+	data.hizTercihi = -1
 	data.speedLevel = 0
 	hiziUygula(player)
 	iziKur(player)
@@ -207,6 +211,7 @@ HizAl.OnServerEvent:Connect(function(player, adet)
 
 	PlayerData.addRot(player, -fiyat)
 	data.speedLevel += adet
+	data.hizTercihi = -1
 	hiziUygula(player)
 	Seviye.etiketGuncelle(player)
 	Envanter.push(player)
@@ -216,4 +221,30 @@ HizAl.OnServerEvent:Connect(function(player, adet)
 		`Speed {data.speedLevel + 1}!  (x{string.format("%.2f", Hiz.carpan(data.speedLevel))} walk speed)`,
 		Hiz.renk(data.speedLevel + 1)
 	)
+end)
+
+local sonAyar: { [Player]: number } = {}
+
+HizAyarla.OnServerEvent:Connect(function(player, seviye)
+	if type(seviye) ~= "number" or seviye ~= seviye then
+		return
+	end
+	local simdi = os.clock()
+	if simdi - (sonAyar[player] or 0) < 0.15 then
+		return
+	end
+	sonAyar[player] = simdi
+
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	local hedef = math.clamp(math.floor(seviye), 0, data.speedLevel)
+	data.hizTercihi = if hedef >= data.speedLevel then -1 else hedef
+	hiziUygula(player)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	sonAyar[player] = nil
 end)
