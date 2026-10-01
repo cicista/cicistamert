@@ -120,6 +120,8 @@ Net.Events = {
 	"UnvanDurum",
 	"UnvanAc",
 	"UnvanKusan",
+	"TakasIslem",
+	"TakasDurum",
 	"GachaSonuc",
 	"GachaDene",
 

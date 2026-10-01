@@ -23,6 +23,7 @@ Icons.report()
 require(Modules:WaitForChild("Odul"))
 require(Modules:WaitForChild("Arkadaslar"))
 require(Modules:WaitForChild("Seviye"))
+require(Modules:WaitForChild("Takas"))
 
 local function saniyelikGelir(player: Player): number
 	return math.round(Gelir.saniyelik(player))

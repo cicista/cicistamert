@@ -678,6 +678,13 @@ function PlayerData.fisKaydedildi(player: Player, fisId: string): boolean
 	return kayitli()
 end
 
+function PlayerData.hemenKaydet(player: Player)
+	local profile = profiller[player]
+	if profile and profile:IsActive() then
+		profile:Save()
+	end
+end
+
 function PlayerData.release(player: Player)
 	local profile = profiller[player]
 	if profile then
