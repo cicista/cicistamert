@@ -86,6 +86,7 @@ export type Data = {
 	afkSeviye: number,
 	afkOzel: { [string]: boolean },
 	gachaIska: number,
+	sonGorulme: number,
 	kacanYumurta: { rarity: string, island: string? }?,
 	quests: QuestState,
 	discovered: { [string]: boolean },
@@ -171,6 +172,7 @@ local function defaultData(): Data
 		afkSeviye = 1,
 		afkOzel = {},
 		gachaIska = 0,
+		sonGorulme = 0,
 		quests ={ cycle = 0, progress = {}, done = {} },
 		tutorial = { adim = 1, bitti = false },
 		discovered = {},
@@ -313,6 +315,7 @@ local function migrate(raw: any): Data
 		end
 	end
 	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
+	data.sonGorulme = math.max(0, math.floor(tonumber(raw.sonGorulme) or 0))
 	if type(raw.kacanYumurta) == "table" and KacanYumurta.uygun(raw.kacanYumurta.rarity) then
 		data.kacanYumurta = {
 			rarity = raw.kacanYumurta.rarity,

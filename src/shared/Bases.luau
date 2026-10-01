@@ -51,6 +51,13 @@ end
 
 Bases.PayoutInterval = 1
 
+Bases.Offline = {
+	oran = 0.02,
+	enFazlaSaat = 48,
+	enAzSaniye = 300,
+	kayitAraligi = 30,
+}
+
 Bases.CollectMarkerName = "ToplaNoktasi"
 
 Bases.HologramHeight = 15

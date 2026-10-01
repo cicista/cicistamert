@@ -19,6 +19,8 @@ local Etiket = require(Shared:WaitForChild("Etiket"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
+local Gelir = require(Modules:WaitForChild("Gelir"))
+require(Modules:WaitForChild("OfflineGelir"))
 local Tools = require(Modules:WaitForChild("Tools"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
 local Ogretici = {
@@ -1414,13 +1416,7 @@ function showInSlot(baseIndex, slotIndex, item)
 end
 
 local function totalIncome(player: Player): number
-	local total = 0
-	for _, item in PlayerData.placedItems(player) do
-		if item.revealed and item.name then
-			total += Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
-		end
-	end
-	return total
+	return Gelir.saniyelik(player)
 end
 
 local OWNED_COLOR = Color3.fromRGB(90, 235, 130)
@@ -1487,7 +1483,7 @@ local function updateCollectButton(baseIndex: number)
 	if sahip then
 		for _, item in PlayerData.placedItems(sahip) do
 			if item.revealed and item.name then
-				local gelir = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
+				local gelir = Brainrots.income(item.name, item.condition :: any, item.mutation :: any) * Gelir.carpan(sahip)
 				if gelir > 0 then
 					table.insert(gelirler, string.format("%.2f", gelir))
 					toplam += gelir
@@ -1586,7 +1582,7 @@ function pushBase(player: Player)
 				condition = item.condition,
 				mutation = item.mutation,
 				income = if item.name
-					then Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
+					then Brainrots.income(item.name, item.condition :: any, item.mutation :: any) * Gelir.carpan(player)
 					else 0,
 			}
 		end
@@ -1764,7 +1760,7 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 
 	Ogretici.olay(player, "slotladi")
 
-	local income = Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
+	local income = Brainrots.income(item.name, item.condition :: any, item.mutation :: any) * Gelir.carpan(player)
 	local color = Rarity.color(item.rarity)
 
 	if swapped then

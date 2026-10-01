@@ -11,6 +11,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("OyunConfig")) :: any
 local Divine = require(Shared:WaitForChild("Divine"))
+local Icons = require(Shared:WaitForChild("Icons"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
@@ -46,8 +47,17 @@ end
 local odulSirasi: { any } = {}
 local odulAcik = false
 
+local function yuklemeBitsin()
+	local basla = os.clock()
+	while playerGui:FindFirstChild("YuklemeEkrani") and os.clock() - basla < 180 do
+		task.wait(0.5)
+	end
+	task.wait(0.6)
+end
+
 local function odulGoster(veri: any)
 	odulAcik = true
+	yuklemeBitsin()
 
 	local tier = if type(veri.luckyBlock) == "string" then LuckyBlock.get(veri.luckyBlock) else nil
 	local renk = if tier then tier.color else Color3.fromRGB(255, 215, 60)
@@ -94,6 +104,18 @@ local function odulGoster(veri: any)
 	model.Parent = sahne
 	if tier then
 		LuckyOnizleme.ekle(model, tier, 4)
+	elseif type(veri.ikon) == "string" then
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "Ikon"
+		ikon.AnchorPoint = Vector2.new(0.5, 0.5)
+		ikon.Position = UDim2.fromScale(0.5, 0.5)
+		ikon.Size = UDim2.fromScale(0.8, 0.8)
+		ikon.BackgroundTransparency = 1
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.ZIndex = 5
+		ikon.Parent = model
+		Icons.bind(ikon, veri.ikon)
+		UI.sallan(ikon)
 	end
 	TweenService:Create(
 		model,

@@ -12,6 +12,7 @@ local Rods = require(Shared:WaitForChild("Rods"))
 local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local Net = require(Shared:WaitForChild("Net"))
+local Passler = require(Shared:WaitForChild("Passler"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -90,6 +91,7 @@ local function luckFor(player: Player): number
 		* Seviye.carpan(player)
 		* AfkSans.carpan(player)
 		* HaftaSonu.carpan()
+		* Passler.sansCarpani(player)
 end
 
 local function detectorFor(player: Player): Detectors.DetectorInfo
@@ -595,6 +597,7 @@ task.spawn(function()
 						* Seviye.carpan(player)
 						* AfkSans.carpan(player)
 						* HaftaSonu.carpan()
+						* Passler.sansCarpani(player)
 					if Beams.trySpawnSea(player, denizSansi, rng, rod.maxWhirls, rod.scanRadius) then
 						lastWhirl[player] = simdi
 						girdapBildirildi = true

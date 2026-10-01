@@ -7,11 +7,11 @@ local Assets = require(Shared:WaitForChild("Assets"))
 local Icons = require(Shared:WaitForChild("Icons"))
 
 local Hiz = require(Shared:WaitForChild("Hiz"))
-local Brainrots = require(Shared:WaitForChild("Brainrots"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local SureliGecis = require(Modules:WaitForChild("SureliGecis"))
+local Gelir = require(Modules:WaitForChild("Gelir"))
 
 Assets.ensureFolders()
 Net.init()
@@ -25,13 +25,7 @@ require(Modules:WaitForChild("Arkadaslar"))
 require(Modules:WaitForChild("Seviye"))
 
 local function saniyelikGelir(player: Player): number
-	local toplam = 0
-	for _, item in PlayerData.placedItems(player) do
-		if item.revealed and item.name then
-			toplam += Brainrots.income(item.name, item.condition :: any, item.mutation :: any)
-		end
-	end
-	return math.round(toplam)
+	return math.round(Gelir.saniyelik(player))
 end
 
 local function setupStats(player: Player)
