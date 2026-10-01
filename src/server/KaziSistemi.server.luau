@@ -50,6 +50,9 @@ local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
 local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
 local Unvan = require(Modules:WaitForChild("Unvan"))
+local Hava = require(Modules:WaitForChild("Hava"))
+local SunucuIsini = require(Modules:WaitForChild("SunucuIsini"))
+local GizemAyar = require(Shared:WaitForChild("SunucuIsini"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -204,6 +207,15 @@ local function finishDig(player: Player, won: boolean)
 		return
 	end
 
+	if beam.herkes then
+		if won then
+			SunucuIsini.kazandi(player, beam)
+		else
+			SunucuIsini.kaybetti(player, beam)
+		end
+		return
+	end
+
 	Beams.remove(session.beamId, if won then "dig won" else "dig lost")
 
 	local maden = Ores.get(beam.kind)
@@ -257,7 +269,7 @@ local function finishDig(player: Player, won: boolean)
 	end
 
 	local condition = Condition.roll(rng)
-	local mutation = Mutations.roll(rng)
+	local mutation = Hava.mutasyon(rng) or Mutations.roll(rng)
 	local item = PlayerData.addBrainrot(player, beam.kind, condition, mutation, beam.island)
 	if not item then
 		return
@@ -358,7 +370,21 @@ local function startDig(player: Player, beamId: string)
 	end
 
 	local beam = Beams.get(beamId)
-	if not beam or beam.owner ~= player or beam.claimed then
+	if not beam then
+		return
+	end
+
+	if beam.herkes then
+		if beam.claimed then
+			local kazan = beam.kazan
+			Bildirim:FireClient(
+				player,
+				`{if kazan then kazan.DisplayName else "Someone"} is already digging the Mystery Beam!`,
+				GizemAyar.Renk
+			)
+			return
+		end
+	elseif beam.owner ~= player or beam.claimed then
 		return
 	end
 
@@ -422,6 +448,7 @@ local function startDig(player: Player, beamId: string)
 	end
 
 	local gearId = if beam.sea then (data.rod or Rods.Order[1]) elseif pickaxeId then pickaxeId else data.shovel
+	local zorlukId = if beam.herkes then GizemAyar.zorluk(gearId) else beam.kind
 	local gear = DigMinigame.gear(gearId)
 
 	local prepare = if beam.sea then Rods.CastTime else 0
@@ -433,9 +460,14 @@ local function startDig(player: Player, beamId: string)
 		sea = beam.sea == true,
 		gearId = gearId,
 		rarityId = beam.kind,
+		zorlukId = zorlukId,
 		startPos = root.Position,
 		pickaxeId = pickaxeId,
 	}
+
+	if beam.herkes then
+		SunucuIsini.basladi(player, beam)
+	end
 
 	if not beam.sea and player.Character then
 		player.Character:SetAttribute("Kaziyor", true)
@@ -456,7 +488,7 @@ local function startDig(player: Player, beamId: string)
 
 	local seed = rng:NextInteger(1, 2 ^ 30)
 	session.seed = seed
-	MinigameBasla:FireClient(player, gearId, beam.kind, seed, if beam.sea then "sea" else "sand")
+	MinigameBasla:FireClient(player, gearId, beam.kind, seed, if beam.sea then "sea" else "sand", zorlukId)
 
 	task.delay(D.minigameTimeout, function()
 		local stuck = digging[player]
@@ -504,7 +536,7 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 	end
 
 	if not session.sea and won == true then
-		local enHizli = KaziMinigame.minDuration(session.gearId, session.rarityId)
+		local enHizli = KaziMinigame.minDuration(session.gearId, session.zorlukId or session.rarityId)
 
 		if enHizli == math.huge then
 			warn(

@@ -29,6 +29,8 @@ local Tools = require(Modules:WaitForChild("Tools"))
 local Beams = require(Modules:WaitForChild("Beams"))
 local Sand = require(Modules:WaitForChild("Sand"))
 local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
+local SunucuIsini = require(Modules:WaitForChild("SunucuIsini"))
+local Hava = require(Modules:WaitForChild("Hava"))
 local Unvan = require(Modules:WaitForChild("Unvan"))
 local Yetki = require(Modules:WaitForChild("Yetki"))
 local Seviye = require(Modules:WaitForChild("Seviye"))
@@ -891,6 +893,20 @@ end
 function commands.haftaSonuDurdur()
 	HaftaSonu.testDurdur()
 	return if HaftaSonu.aktif() then "Test stopped (it is a real weekend, still active)" else "Weekend test stopped"
+end
+
+function commands.gizemIsini()
+	local _, mesaj = SunucuIsini.dogur()
+	return mesaj
+end
+
+function commands.havaBaslat(_player, _data, arg)
+	local tur = Hava.baslat(if type(arg) == "string" then arg else nil)
+	return `{tur.ad} started ({tur.sans}% {tur.mutasyon})`
+end
+
+function commands.havaDurdur()
+	return if Hava.durdur() then "Weather stopped" else "No weather is active"
 end
 
 function commands.clearInventory(player, data)

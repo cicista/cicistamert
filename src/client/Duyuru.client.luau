@@ -234,7 +234,7 @@ local function seritGoster(veri: any)
 	seritAcik = true
 
 	local kademe = tostring(veri.kademe or "")
-	local renk = Rarity.color(kademe)
+	local renk = if typeof(veri.renk) == "Color3" then veri.renk else Rarity.color(kademe)
 	local parilti = Divine.Flashes[kademe]
 	local renkA = if parilti then parilti.colorA else renk
 	local renkB = renkA:Lerp(SIYAH, 0.55)
@@ -290,7 +290,7 @@ local function seritGoster(veri: any)
 
 	local fiil = if veri.kaynak == "sea" then "FISHED UP" else "DUG UP"
 	UI.text({
-		text = `{string.upper(tostring(veri.oyuncu or "Someone"))} {fiil} AN`,
+		text = if type(veri.ust) == "string" then veri.ust else `{string.upper(tostring(veri.oyuncu or "Someone"))} {fiil} AN`,
 		size = UI.Sizes.body,
 		font = UI.Fonts.bold,
 		color = BEYAZ,
@@ -302,7 +302,7 @@ local function seritGoster(veri: any)
 	})
 
 	local buyuk = UI.text({
-		text = `{string.upper(Rarity.displayName(kademe))} EGG!`,
+		text = if type(veri.buyuk) == "string" then veri.buyuk else `{string.upper(Rarity.displayName(kademe))} EGG!`,
 		size = 34,
 		font = UI.Fonts.bold,
 		color = renkA,

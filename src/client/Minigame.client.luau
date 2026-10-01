@@ -1145,7 +1145,7 @@ local function modKur(yeniMod: string, rarityId: string)
 	end
 end
 
-MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
+MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod, zorlukId)
 	if calisiyor() then
 		return
 	end
@@ -1158,7 +1158,7 @@ MinigameBasla.OnClientEvent:Connect(function(gearId, rarityId, seed, gelenMod)
 	task.spawn(startDigAnimation)
 
 	if mod == "sand" then
-		local oyun = KaziMinigame.new(gearId, rarityId)
+		local oyun = KaziMinigame.new(gearId, if type(zorlukId) == "string" then zorlukId else rarityId)
 		kazi = oyun
 
 		efekt.oyunNo += 1

@@ -26,7 +26,7 @@ local W = Config.WhirlVFX
 
 export type Beam = {
 	id: string,
-	owner: Player,
+	owner: Player?,
 	kind: string,
 	position: Vector3,
 	model: Model,
@@ -34,6 +34,9 @@ export type Beam = {
 	claimed: boolean,
 	sea: boolean?,
 	island: string?,
+	herkes: boolean?,
+	omur: number?,
+	kazan: Player?,
 }
 
 local active: { [string]: Beam } = {}
@@ -817,6 +820,82 @@ local function createBeam(player: Player, kind: string, spot: Vector3, sea: bool
 	return beam
 end
 
+local function herkesEtiketi(model: Model, spot: Vector3, kind: string)
+	local ana = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not ana then
+		return
+	end
+
+	local renk = Rarity.beamColor(kind)
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = ETIKET_ADI
+	gui.Size = UDim2.fromOffset(240, 70)
+	gui.StudsOffsetWorldSpace = (spot + Vector3.new(0, 28, 0)) - ana.Position
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = math.huge
+	gui:SetAttribute("Kind", kind)
+
+	local ad = Instance.new("TextLabel")
+	ad.Name = "Kind"
+	ad.BackgroundTransparency = 1
+	ad.Size = UDim2.new(1, 0, 0.6, 0)
+	ad.Text = string.upper(Rarity.beamName(kind))
+	ad.TextColor3 = renk
+	ad.TextSize = 30
+	Fonts.apply(ad)
+	ad.Parent = gui
+
+	local alt = Instance.new("TextLabel")
+	alt.Name = "Alt"
+	alt.BackgroundTransparency = 1
+	alt.Size = UDim2.new(1, 0, 0.4, 0)
+	alt.Position = UDim2.fromScale(0, 0.6)
+	alt.Text = "FIRST TO DIG WINS!"
+	alt.TextColor3 = Color3.fromRGB(255, 255, 255)
+	alt.TextSize = 18
+	Fonts.apply(alt)
+	alt.Parent = gui
+
+	gui.Parent = ana
+end
+
+function Beams.spawnPublic(kind: string, spot: Vector3, island: string?, omur: number): Beam
+	beamCounter += 1
+	local id = `beam_{beamCounter}`
+
+	local model = buildBeamModel(kind, spot)
+	for _, parca in model:GetDescendants() do
+		if parca:IsA("BasePart") then
+			parca.CanCollide = false
+			parca.CanQuery = false
+			parca.CanTouch = false
+		end
+	end
+	model:SetAttribute("BeamId", id)
+	model:SetAttribute("Herkes", true)
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	herkesEtiketi(model, spot, kind)
+	model.Parent = folder
+
+	local beam: Beam = {
+		id = id,
+		owner = nil,
+		kind = kind,
+		position = spot,
+		model = model,
+		bornAt = os.clock(),
+		claimed = false,
+		island = island,
+		herkes = true,
+		omur = omur,
+	}
+	active[id] = beam
+
+	return beam
+end
+
 local function findSeaSpot(player: Player, maxDistance: number?): Vector3?
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -951,7 +1030,8 @@ function Beams.remove(id: string, reason: string?)
 	end
 
 	if Beams.Debug then
-		print(`[Suzme] REMOVED {id} ({beam.kind}) owner={beam.owner.Name} reason={reason or "unspecified"}`)
+		local sahip = beam.owner
+		print(`[Suzme] REMOVED {id} ({beam.kind}) owner={if sahip then sahip.Name else "server"} reason={reason or "unspecified"}`)
 	end
 
 	if beam.model.Parent then
@@ -986,7 +1066,7 @@ function Beams.snapshotFor(player: Player, scanRadius: number?): { { id: string,
 	end
 
 	for id, beam in active do
-		if beam.owner == player and not beam.claimed then
+		if (beam.owner == player or beam.herkes) and not beam.claimed then
 			local distance = (beam.position - root.Position).Magnitude
 			if distance <= (scanRadius or G.scanRadius) then
 				table.insert(out, {
@@ -1008,8 +1088,10 @@ function Beams.cleanup()
 
 	for id, beam in active do
 		local age = now - beam.bornAt
-		local ownerGone = beam.owner.Parent == nil
-		local expired = if beam.claimed then age > claimedLimit else age > G.beamLifetime
+		local sahip = beam.owner
+		local ownerGone = sahip ~= nil and sahip.Parent == nil
+		local omur = beam.omur or G.beamLifetime
+		local expired = if beam.claimed then (not beam.herkes and age > claimedLimit) else age > omur
 
 		if expired or ownerGone then
 			Beams.remove(id, if ownerGone then "sahip cikti" else `omur doldu ({math.floor(age)}sn)`)

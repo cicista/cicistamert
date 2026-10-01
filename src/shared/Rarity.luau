@@ -171,6 +171,12 @@ Rarity.LuckyBlock = {
 	beamChance = 0,
 }
 
+Rarity.Mystery = {
+	id = "Mystery",
+	displayName = "Mystery Beam",
+	color = Color3.fromRGB(255, 210, 70),
+}
+
 function Rarity.get(id: RarityId): RarityInfo
 	local info = Rarity.Info[id]
 	assert(info, `unknown rarity: {tostring(id)}`)
@@ -246,6 +252,9 @@ function Rarity.beamName(kind: string): string
 	if kind == "LuckyBlock" then
 		return Rarity.LuckyBlock.displayName
 	end
+	if kind == Rarity.Mystery.id then
+		return Rarity.Mystery.displayName
+	end
 	local maden = Ores.get(kind)
 	if maden then
 		return maden.displayName
@@ -256,6 +265,9 @@ end
 function Rarity.beamColor(kind: string): Color3
 	if kind == "LuckyBlock" then
 		return Rarity.LuckyBlock.colorA
+	end
+	if kind == Rarity.Mystery.id then
+		return Rarity.Mystery.color
 	end
 	local maden = Ores.get(kind)
 	if maden then

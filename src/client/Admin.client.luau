@@ -19,6 +19,7 @@ local Net = require(Shared:WaitForChild("Net"))
 local Ores = require(Shared:WaitForChild("Ores"))
 local Passler = require(Shared:WaitForChild("Passler"))
 local Hiz = require(Shared:WaitForChild("Hiz"))
+local Hava = require(Shared:WaitForChild("Hava"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -193,6 +194,13 @@ local function buildPanel(info: any)
 		nil,
 		UI.Colors.warn
 	)
+
+	section("EVENTS  --  Mystery Beam and weather")
+	actionButton("Drop a Mystery Beam now", "gizemIsini", nil, Color3.fromRGB(255, 210, 70))
+	for _, tur in Hava.Turler do
+		actionButton(`Start {tur.ad}  ({tur.sans}% {tur.mutasyon})`, "havaBaslat", tur.id, tur.renk)
+	end
+	actionButton("Stop weather", "havaDurdur", nil, UI.Colors.bad)
 
 	section("BADGES  --  test the titles")
 	actionButton("Give all badges", "tumRozetler", nil, Color3.fromRGB(255, 200, 40))

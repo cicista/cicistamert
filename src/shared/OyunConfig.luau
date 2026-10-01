@@ -166,6 +166,7 @@ Config.BeamVFX = {
 		Gizli = 3.4,
 		Infernal = 3.9,
 		Abyssal = 4.5,
+		Mystery = 5.5,
 	},
 
 	alignToGround = true,
