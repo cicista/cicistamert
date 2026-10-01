@@ -16,12 +16,10 @@ local rng = Random.new()
 
 local aktif: Ayar.HavaTuru? = nil
 local bitis = 0
-local siradaki: Ayar.HavaTuru = Ayar.sec(rng)
 
 local function yayinla()
 	Workspace:SetAttribute(Ayar.Nitelik.tur, if aktif then aktif.id else "")
 	Workspace:SetAttribute(Ayar.Nitelik.bitis, if aktif then bitis else 0)
-	Workspace:SetAttribute(Ayar.Nitelik.siradaki, siradaki.id)
 end
 
 function Hava.aktif(): Ayar.HavaTuru?
@@ -40,11 +38,7 @@ function Hava.mutasyon(zar: Random): string?
 end
 
 function Hava.baslat(id: string?, sure: number?): Ayar.HavaTuru
-	local tur = Ayar.get(id)
-	if not tur then
-		tur = siradaki
-		siradaki = Ayar.sec(rng)
-	end
+	local tur = Ayar.get(id) or Ayar.sec(rng)
 	aktif = tur
 	bitis = os.time() + (sure or tur.sure or Ayar.Sure)
 	yayinla()

@@ -78,7 +78,6 @@ Hava.Nitelik = {
 	tur = "HavaTur",
 	bitis = "HavaBitis",
 	sonraki = "HavaSonraki",
-	siradaki = "HavaSiradaki",
 }
 
 function Hava.get(id: string?): HavaTuru?
