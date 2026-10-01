@@ -91,7 +91,7 @@ local function satirCiz(entry: any, order: number)
 	})
 
 	UI.text({
-		text = if entry.needs then entry.needs else `Luck x{entry.luck}`,
+		text = if entry.needs then entry.needs else `Range {entry.scanRadius} studs`,
 		size = UI.Sizes.small,
 		color = if entry.needs then UI.Colors.warn else UI.Colors.textDim,
 		frameSize = UDim2.new(1, -150, 0, 20),

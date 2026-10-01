@@ -9,7 +9,6 @@ local Detectors = require(Shared:WaitForChild("Detectors"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local OyunConfig = require(Shared:WaitForChild("OyunConfig"))
 local Passler = require(Shared:WaitForChild("Passler"))
-local Rods = require(Shared:WaitForChild("Rods"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Sand = require(script.Parent:WaitForChild("Sand"))
@@ -66,20 +65,12 @@ function Sans.adaSansi(ada: string): number
 	return Sand.adaSansi(ada)
 end
 
-local function kisiselParcalar(player: Player, deniz: boolean): { Parca }
+local function kisiselParcalar(player: Player): { Parca }
 	local data = PlayerData.get(player)
-
-	local arac: Parca
-	if deniz then
-		local rod = Rods.get(if data then data.rod else nil)
-		arac = { ad = "Rod", carpan = if rod then rod.luck else 1 }
-	else
-		local dedektor = Detectors.get((if data then data.detector else Detectors.Default) :: any)
-		arac = { ad = "Detector", carpan = dedektor.luck }
-	end
+	local dedektor = Detectors.get((if data then data.detector else Detectors.Default) :: any)
 
 	return {
-		arac,
+		{ ad = "Detector", carpan = dedektor.luck },
 		{ ad = "Clovers", carpan = AfkSans.carpan(player), gizli = true },
 		{ ad = "Level", carpan = Seviye.carpan(player) },
 		{ ad = "Potion", carpan = PlayerData.luckBonus(player) },
@@ -104,11 +95,11 @@ function Sans.kazi(player: Player): number
 	if ada == Sans.Deniz then
 		ada = Brainrots.IslandOrder[1]
 	end
-	return Sans.adaSansi(ada) + carp(kisiselParcalar(player, false), true)
+	return Sans.adaSansi(ada) + carp(kisiselParcalar(player), true)
 end
 
 function Sans.deniz(player: Player): number
-	return Sans.adaSansi(Sans.Deniz) + carp(kisiselParcalar(player, true), true)
+	return Sans.adaSansi(Sans.Deniz) + carp(kisiselParcalar(player), true)
 end
 
 local function yuvarla(deger: number): number
@@ -125,7 +116,7 @@ local function yayinla(player: Player)
 
 	local ada = Sans.bolge(player)
 	local adaSansi = Sans.adaSansi(ada)
-	local parcalar = kisiselParcalar(player, ada == Sans.Deniz)
+	local parcalar = kisiselParcalar(player)
 
 	local satirlar: { string } = {}
 	if adaSansi > 0 then

@@ -38,7 +38,6 @@ local function payload(player: Player)
 			level = info.level,
 			rarity = info.rarity,
 			price = info.price,
-			luck = info.luck,
 			scanRadius = info.scanRadius,
 			color = info.color,
 			owned = enYuksek >= info.level,
