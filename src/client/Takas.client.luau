@@ -260,8 +260,63 @@ local onunBaslik = baslik(oturumAlani, "THEIR OFFER", UDim.new(0.5, 6), 0, UDim.
 local benimKutu, benimIzgara, benimDurum = teklifKutusu("Benim", 0)
 local onunKutu, onunIzgara, onunDurum = teklifKutusu("Onun", 0.5)
 
-baslik(oturumAlani, "YOUR BACKPACK  (click to add, click your offer to take it back)", UDim.new(0, 0), 250, UDim.new(1, 0)).TextColor3 =
-	UI.Colors.textDim
+baslik(oturumAlani, "YOUR BACKPACK", UDim.new(0, 0), 250, UDim.new(0, 160)).TextColor3 = UI.Colors.textDim
+
+local filtre = "hepsi"
+local sonVeri: any = nil
+local filtreDugmeleri: { [string]: TextButton } = {}
+local envanterCiz: (veri: any) -> ()
+
+do
+	local sekmeler = Instance.new("Frame")
+	sekmeler.Name = "Filtreler"
+	sekmeler.AnchorPoint = Vector2.new(1, 0)
+	sekmeler.Position = UDim2.new(1, 0, 0, 248)
+	sekmeler.Size = UDim2.fromOffset(420, 26)
+	sekmeler.BackgroundTransparency = 1
+	sekmeler.Parent = oturumAlani
+	local d = Instance.new("UIListLayout")
+	d.FillDirection = Enum.FillDirection.Horizontal
+	d.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	d.Padding = UDim.new(0, 6)
+	d.SortOrder = Enum.SortOrder.LayoutOrder
+	d.Parent = sekmeler
+
+	for sira, satir in { { "hepsi", "ALL" }, { "pet", "PETS" }, { "blok", "BLOCKS" } } do
+		local anahtar, yazi = satir[1], satir[2]
+		local dugme = Instance.new("TextButton")
+		dugme.Name = anahtar
+		dugme.LayoutOrder = sira
+		dugme.Size = UDim2.fromOffset(98, 26)
+		dugme.AutoButtonColor = false
+		dugme.BackgroundColor3 = KOYU
+		dugme.BorderSizePixel = 0
+		dugme.Text = ""
+		dugme.Parent = sekmeler
+		UI.corner(dugme, 8)
+		UI.stroke(dugme, SIYAH, 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		UI.text({
+			text = yazi,
+			size = UI.Sizes.tiny,
+			font = UI.Fonts.bold,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromScale(1, 1),
+			parent = dugme,
+			zIndex = 2,
+		})
+		filtreDugmeleri[anahtar] = dugme
+		dugme.MouseButton1Click:Connect(function()
+			filtre = anahtar
+			for ad, d2 in filtreDugmeleri do
+				d2.BackgroundColor3 = if ad == filtre then TURKUAZ:Lerp(SIYAH, 0.3) else KOYU
+			end
+			if sonVeri then
+				envanterCiz(sonVeri)
+			end
+		end)
+	end
+	filtreDugmeleri.hepsi.BackgroundColor3 = TURKUAZ:Lerp(SIYAH, 0.3)
+end
 
 local envanterListe = Instance.new("ScrollingFrame")
 envanterListe.Name = "Envanter"
@@ -406,22 +461,25 @@ local function teklifCiz(izgara: Frame, onizleme: any, teklif: any, benim: boole
 	end
 end
 
-local function envanterCiz(veri: any)
+function envanterCiz(veri: any)
+	sonVeri = veri
 	envanterOnizleme.temizle()
 	temizle(envanterListe)
 	local sira = 0
-	for _, tier in LuckyBlock.Tiers do
-		local adet = (veri.bloklarim or {})[tier.id]
-		if adet and adet > 0 then
-			sira += 1
-			local tierId = tier.id
-			kartKur(envanterListe, sira, envanterOnizleme, nil, tierId, adet, function()
-				TakasIslem:FireServer({ tur = "blok", tier = tierId, adet = 1 })
-			end)
+	if filtre == "hepsi" or filtre == "blok" then
+		for _, tier in LuckyBlock.Tiers do
+			local adet = (veri.bloklarim or {})[tier.id]
+			if adet and adet > 0 then
+				sira += 1
+				local tierId = tier.id
+				kartKur(envanterListe, sira, envanterOnizleme, nil, tierId, adet, function()
+					TakasIslem:FireServer({ tur = "blok", tier = tierId, adet = 1 })
+				end)
+			end
 		end
 	end
 
-	local liste = table.clone(veri.envanter or {})
+	local liste = if filtre == "blok" then {} else table.clone(veri.envanter or {})
 	table.sort(liste, function(a, b)
 		local ra = Rarity.Info[a.rarity]
 		local rb = Rarity.Info[b.rarity]
@@ -439,6 +497,23 @@ local function envanterCiz(veri: any)
 		kartKur(envanterListe, sira, envanterOnizleme, bilgi, nil, nil, function()
 			TakasIslem:FireServer({ tur = "ekle", uid = uid })
 		end)
+	end
+
+	if sira == 0 then
+		local bos = UI.text({
+			text = if filtre == "pet"
+				then "No pets in your backpack"
+				elseif filtre == "blok" then "No Lucky Blocks"
+				else "Nothing to trade",
+			size = UI.Sizes.tiny,
+			font = UI.Fonts.bold,
+			color = UI.Colors.textDim,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromOffset(KART_EN, KART_BOY),
+			parent = envanterListe,
+			wrapped = true,
+		})
+		bos.LayoutOrder = 1
 	end
 end
 

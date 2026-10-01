@@ -63,7 +63,12 @@ File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript
 - Speed upgrade: `src/server/Hiz.server.luau`
 - Level / XP: `src/server/Modules/Seviye.luau`
 - Fuse machine: `src/server/Fuse.server.luau`
-- Lucky Block + block rain: `src/server/Modules/LuckyBlockOdul.luau`
+- Lucky Block + block rain (every hour on the clock, no player minimum: 5 blocks on the `luckyzemin` floors + 1 per main island; timer card `src/client/LuckyYagmuru.client.luau` reads `LuckyYagmur*` attributes on Workspace): `src/server/Modules/LuckyBlockOdul.luau`
+- Screen announcements (`Duyuru` remote: big reward splash for tutorial reward / starter pack / welcome back / new badge; server-wide banner when someone digs or fishes an Infernal/Abyssal): `src/client/Duyuru.client.luau`, rarities in `OyunConfig.Duyuru`
+- Base income formula (placed items x 1.5x Rot pass) and offline income (2% of income/s while away, max 48 h): `src/server/Modules/Gelir.luau`, `src/server/Modules/OfflineGelir.luau`, config `Bases.Offline`
+- Badges & titles (counters fed by `GorevTakip.ilerlet` and dig/fish/rot hooks; overhead billboard in `Seviye.etiketGuncelle` shows title / name / level / speed; title effects via CollectionService tags; optional Roblox badge IDs in `robloxId`): `src/server/Modules/Unvan.luau`, `src/client/Unvanlar.client.luau`, config `src/shared/Unvanlar.luau`
+- Trade (Level 15+, brainrots/pets and Lucky Blocks, 5 s countdown after both accept; all checks server-side, items get a fresh uid on transfer, both profiles saved right after): `src/server/Modules/Takas.luau`, `src/client/Takas.client.luau`, config `src/shared/Takas.luau`
+- Right-side menu buttons from other scripts: `UI.sagMenuyeEkle(icon, name, color, onClick)` (Menuler sets `UI.sagMenuButonu`)
 - Pets (BGC Pets Pack models in `ReplicatedStorage > Assets`, joined into the brainrot catalog with rarity/island groups; `Assets.brainrotModel` normalizes their facing and paints missing mutation looks via `Assets.MutasyonBoyasi`): `src/shared/Petler.luau`
 - Egg Gacha (Gacha NPC, 500 Robux product, egg spin; eggs roll from every island's pool via `Gacha.Ada`): `src/server/Modules/Gacha.luau`, `src/client/Gacha.client.luau`, config `src/shared/Gacha.luau`
 - Missed egg offer (losing a Cosmic/Secret/Infernal/Abyssal dig or fishing minigame opens a 15 s, 25 Robux window to still get that egg; product ID goes in `RobuxMagaza.GizliUrunler`, offer only shows in Studio until the ID is set): `src/server/Modules/KacanYumurta.luau`, `src/client/KacanYumurta.client.luau`, config `src/shared/KacanYumurta.luau`
@@ -76,7 +81,7 @@ File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript
 - Index (discovery book): `src/server/Index.server.luau`
 - Island teleport: `src/server/AdaTeleport.server.luau`
 - Rot Coin shop: `src/server/RotCoinMagaza.server.luau`
-- Robux store: `src/server/RobuxMagaza.server.luau`
+- Robux store (one-time 49 R$ Starter Pack at the top, `RobuxMagaza.BaslangicPaketi`): `src/server/RobuxMagaza.server.luau`
 - Game Passes: `src/server/Passler.server.luau`
 - Settings: `src/server/Ayarlar.server.luau`
 - Admin panel: `src/server/AdminPanel.server.luau`
