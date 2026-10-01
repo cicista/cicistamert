@@ -261,4 +261,10 @@ Config.WhirlVFX = {
 	height = 0,
 }
 
+Config.Duyuru = {
+	kademeler = { "Infernal", "Abyssal" },
+	seritSuresi = 6,
+	odulSuresi = 4.5,
+}
+
 return Config

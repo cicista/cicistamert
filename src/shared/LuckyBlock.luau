@@ -42,7 +42,6 @@ LuckyBlock.Tiers = {
 		color = Color3.fromRGB(255, 190, 40),
 		dropWeight = 24,
 		rarityWeights = {
-			Rare = 6,
 			Epic = 30,
 			Legendary = 38,
 			Mythic = 21,

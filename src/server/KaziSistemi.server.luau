@@ -55,6 +55,7 @@ local SuzmeKaz = Net.event("SuzmeKaz")
 local MinigameBasla = Net.event("MinigameBasla")
 local MinigameSonuc = Net.event("MinigameSonuc")
 local KaziBitti = Net.event("KaziBitti")
+local Duyuru = Net.event("Duyuru")
 
 local D = Config.Dig
 
@@ -261,6 +262,15 @@ local function finishDig(player: Player, won: boolean)
 
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
+
+	if table.find(Config.Duyuru.kademeler, beam.kind) then
+		Duyuru:FireAllClients({
+			tur = "sunucu",
+			oyuncu = player.DisplayName,
+			kademe = beam.kind,
+			kaynak = if session.sea then "sea" else "dig",
+		})
+	end
 
 	GorevTakip.ilerlet(player, "dig", 1)
 	GorevTakip.ilerlet(player, "collect", 1, beam.kind)

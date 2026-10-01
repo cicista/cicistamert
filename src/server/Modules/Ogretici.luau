@@ -5,9 +5,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 local Adimlar = require(Shared:WaitForChild("Ogretici"))
+local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 
 local PlayerData = require(script.Parent.PlayerData)
 local Patlama = require(script.Parent.Patlama)
+local Envanter = require(script.Parent.Envanter)
 
 local remoteler: { [string]: RemoteEvent } = {}
 
@@ -150,6 +152,23 @@ local function odullendir(player: Player, adim: Adimlar.Adim, sira: number)
 	remote("Bildirim"):FireClient(player, yazi, Adimlar.IsaretRengi)
 end
 
+local function bitisOdulu(player: Player)
+	local odul = Adimlar.BitisOdulu
+	local tier = LuckyBlock.get(odul.luckyBlock)
+	PlayerData.addLuckyBlocks(player, tier.id, odul.adet)
+
+	Envanter.syncLuckyBlocks(player)
+	Envanter.push(player)
+
+	remote("Duyuru"):FireClient(player, {
+		tur = "odul",
+		baslik = "TUTORIAL COMPLETE!",
+		yazi = `You got a {string.upper(tier.displayName)}!`,
+		alt = "Find it in your backpack and open it.",
+		luckyBlock = tier.id,
+	})
+end
+
 function Ogretici.olay(player: Player, olay: string)
 	local data = PlayerData.get(player)
 	if not data or data.tutorial.bitti then
@@ -172,6 +191,7 @@ function Ogretici.olay(player: Player, olay: string)
 
 	if sira >= Adimlar.adimSayisi() then
 		data.tutorial.bitti = true
+		bitisOdulu(player)
 	else
 		data.tutorial.adim = sira + 1
 	end
