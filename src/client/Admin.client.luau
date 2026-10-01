@@ -194,6 +194,10 @@ local function buildPanel(info: any)
 		UI.Colors.warn
 	)
 
+	section("WEEKEND  --  2x luck, tower effects, 48h timer")
+	actionButton("Start weekend (48h test)", "haftaSonuBaslat", nil, Color3.fromRGB(80, 160, 255))
+	actionButton("Stop weekend test", "haftaSonuDurdur", nil, UI.Colors.bad)
+
 	section("FAKE PLAYER COUNT  --  test the rain notice")
 	local oyuncuChips: { any } = {}
 	for _, sayi in { 4, 5, 6 } do

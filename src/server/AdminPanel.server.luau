@@ -29,6 +29,7 @@ local Envanter = require(Modules:WaitForChild("Envanter"))
 local Tools = require(Modules:WaitForChild("Tools"))
 local Beams = require(Modules:WaitForChild("Beams"))
 local Sand = require(Modules:WaitForChild("Sand"))
+local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
 
 local baseYenile = script.Parent:WaitForChild("BaseSistemi"):WaitForChild("BaseYenile") :: BindableEvent
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
@@ -860,6 +861,16 @@ function commands.setSpeed(player, data, arg)
 	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
 	hiziYenile(player)
 	return `Speed set: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
+end
+
+function commands.haftaSonuBaslat()
+	HaftaSonu.testBaslat()
+	return "Weekend started: 2x luck for 48 hours (test)"
+end
+
+function commands.haftaSonuDurdur()
+	HaftaSonu.testDurdur()
+	return if HaftaSonu.aktif() then "Test stopped (it is a real weekend, still active)" else "Weekend test stopped"
 end
 
 function commands.clearInventory(player, data)

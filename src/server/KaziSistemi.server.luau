@@ -47,6 +47,7 @@ local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
 local Seviye = require(Modules:WaitForChild("Seviye"))
 local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
+local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -87,6 +88,7 @@ local function luckFor(player: Player): number
 		* Arkadaslar.carpan(player)
 		* Seviye.carpan(player)
 		* AfkSans.carpan(player)
+		* HaftaSonu.carpan()
 end
 
 local function detectorFor(player: Player): Detectors.DetectorInfo
@@ -582,6 +584,7 @@ task.spawn(function()
 						* Arkadaslar.carpan(player)
 						* Seviye.carpan(player)
 						* AfkSans.carpan(player)
+						* HaftaSonu.carpan()
 					if Beams.trySpawnSea(player, denizSansi, rng, rod.maxWhirls, rod.scanRadius) then
 						lastWhirl[player] = simdi
 						girdapBildirildi = true

@@ -67,6 +67,7 @@ File suffixes follow Rojo: `.server.luau` = Script, `.client.luau` = LocalScript
 - Pets (BGC Pets Pack models in `ReplicatedStorage > Assets`, joined into the brainrot catalog with rarity/island groups; `Assets.brainrotModel` normalizes their facing and paints missing mutation looks via `Assets.MutasyonBoyasi`): `src/shared/Petler.luau`
 - Egg Gacha (Gacha NPC, 500 Robux product, egg spin; eggs roll from every island's pool via `Gacha.Ada`): `src/server/Modules/Gacha.luau`, `src/client/Gacha.client.luau`, config `src/shared/Gacha.luau`
 - Missed egg offer (losing a Cosmic/Secret/Infernal/Abyssal dig or fishing minigame opens a 15 s, 25 Robux window to still get that egg; product ID goes in `RobuxMagaza.GizliUrunler`, offer only shows in Studio until the ID is set): `src/server/Modules/KacanYumurta.luau`, `src/client/KacanYumurta.client.luau`, config `src/shared/KacanYumurta.luau`
+- Weekend 2x luck (Saturday 00:00 UTC for 48 h, or admin test; multiplies dig and sea luck; client turns `Workspace.MainIsland.updatetower` blue/white neon, doubles its VFX and shows a countdown; end time is the `HaftaSonuBitis` attribute on Workspace): `src/server/Modules/HaftaSonu.luau`, `src/client/HaftaSonu.client.luau`, config `src/shared/HaftaSonu.luau`
 - AFK luck (clover fields in `Workspace.CloverAreas`, Luck Points, Leprechaun field upgrades): `src/server/Modules/AfkSans.luau`, `src/client/AfkSans.client.luau`, config `src/shared/AfkSans.luau`
 - Quests: `src/server/Gorev.server.luau`
 - Daily reward: `src/server/Modules/Odul.luau`
