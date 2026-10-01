@@ -29,7 +29,10 @@ Config.Seller = {
 
 Config.Admin = {
 	userIds = {
+		5501871609,
 	},
+	grupId = 283943894,
+	grupRutbesi = 254,
 	allowInStudio = true,
 	keyCode = Enum.KeyCode.F2,
 	rotGrant = 1_000_000_000_000,

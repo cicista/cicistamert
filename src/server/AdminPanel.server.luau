@@ -1,6 +1,5 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -31,6 +30,7 @@ local Beams = require(Modules:WaitForChild("Beams"))
 local Sand = require(Modules:WaitForChild("Sand"))
 local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
 local Unvan = require(Modules:WaitForChild("Unvan"))
+local Yetki = require(Modules:WaitForChild("Yetki"))
 
 local baseYenile = script.Parent:WaitForChild("BaseSistemi"):WaitForChild("BaseYenile") :: BindableEvent
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
@@ -44,17 +44,7 @@ local A = Config.Admin
 local rng = Random.new()
 
 local function isAdmin(player: Player): boolean
-	if A.allowInStudio and RunService:IsStudio() then
-		return true
-	end
-
-	for _, id in A.userIds do
-		if player.UserId == id then
-			return true
-		end
-	end
-
-	return false
+	return Yetki.admin(player)
 end
 
 local commands: { [string]: (player: Player, data: any, arg: any) -> string? } = {}
@@ -923,12 +913,13 @@ end)
 
 local function announce(player: Player)
 	task.wait(1)
+	local yetkili = Yetki.bekle(player)
 	if not player.Parent then
 		return
 	end
 
 	AdminPanelAc:FireClient(player, {
-		allowed = isAdmin(player),
+		allowed = yetkili,
 		rotGrant = A.rotGrant,
 		shovels = Shovels.Order,
 		detectors = Detectors.Order,

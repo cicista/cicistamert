@@ -2,7 +2,6 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -10,12 +9,12 @@ local Ayar = require(Shared:WaitForChild("Gacha"))
 local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Net = require(Shared:WaitForChild("Net"))
-local OyunConfig = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
 local Patlama = require(script.Parent:WaitForChild("Patlama"))
+local Yetki = require(script.Parent:WaitForChild("Yetki"))
 
 local Gacha = {}
 
@@ -24,16 +23,7 @@ local rng = Random.new()
 local mesgul: { [Player]: boolean } = {}
 
 local function adminMi(player: Player): boolean
-	local A = OyunConfig.Admin
-	if A.allowInStudio and RunService:IsStudio() then
-		return true
-	end
-	for _, id in A.userIds do
-		if player.UserId == id then
-			return true
-		end
-	end
-	return false
+	return Yetki.admin(player)
 end
 
 local function gosteri(player: Player, rarityId: string, onceki: number, yeni: number)
