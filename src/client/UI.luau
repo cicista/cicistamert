@@ -906,11 +906,19 @@ end
 
 UI.OlcekDisiNitelik = "OlcekDisi"
 
+local OLCEKSIZ_EKRANLAR = { TouchGui = true }
+
 local function guiIzle(gui: Instance)
 	if not gui:IsA("ScreenGui") then
 		return
 	end
-	if gui:GetAttribute(UI.OlcekDisiNitelik) == true then
+	if gui:GetAttribute(UI.OlcekDisiNitelik) == true or OLCEKSIZ_EKRANLAR[gui.Name] then
+		for _, cocuk in gui:GetChildren() do
+			local olcek = cocuk:FindFirstChild(OLCEK_ADI)
+			if olcek and olcek:IsA("UIScale") then
+				olcek:Destroy()
+			end
+		end
 		return
 	end
 
