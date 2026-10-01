@@ -25,8 +25,6 @@ local KIRMIZI = Color3.fromRGB(255, 80, 80)
 
 local YAKIN = 60
 local KENAR = 12
-local KART_EN = 250
-local KART_BOY = 76
 
 local N = GizemAyar.Nitelik
 local HN = HavaAyar.Nitelik
@@ -42,7 +40,7 @@ local kap = Instance.new("Frame")
 kap.Name = "Kap"
 kap.AnchorPoint = Vector2.new(1, 0)
 kap.Position = UDim2.new(1, -KENAR, 0, 120)
-kap.Size = UDim2.fromOffset(KART_EN, 0)
+kap.Size = UDim2.fromOffset(SayacKarti.EN, 0)
 kap.AutomaticSize = Enum.AutomaticSize.Y
 kap.BackgroundTransparency = 1
 kap.Parent = screen
@@ -58,8 +56,6 @@ type Kart = {
 	cerceve: Frame,
 	kontur: UIStroke,
 	olcek: UIScale,
-	rozet: TextLabel,
-	rozetZemin: Frame,
 	baslik: TextLabel,
 	buyuk: TextLabel,
 	alt: TextLabel,
@@ -68,7 +64,7 @@ type Kart = {
 local function kartKur(sira: number, renk: Color3): Kart
 	local cerceve = Instance.new("Frame")
 	cerceve.Name = `Kart{sira}`
-	cerceve.Size = UDim2.fromOffset(KART_EN, KART_BOY)
+	cerceve.Size = UDim2.fromOffset(SayacKarti.EN, SayacKarti.BOY)
 	cerceve.BackgroundColor3 = BEYAZ
 	cerceve.BorderSizePixel = 0
 	cerceve.LayoutOrder = sira
@@ -96,28 +92,7 @@ local function kartKur(sira: number, renk: Color3): Kart
 	UI.caprazDesen(ic, BEYAZ, 6)
 	UI.pariltilar(ic, renk:Lerp(BEYAZ, 0.3), 8, 2)
 
-	local rozetZemin = Instance.new("Frame")
-	rozetZemin.Name = "Rozet"
-	rozetZemin.AnchorPoint = Vector2.new(0.5, 0.5)
-	rozetZemin.Position = UDim2.fromOffset(38, KART_BOY / 2)
-	rozetZemin.Size = UDim2.fromOffset(56, 56)
-	rozetZemin.BackgroundColor3 = renk:Lerp(SIYAH, 0.25)
-	rozetZemin.BorderSizePixel = 0
-	rozetZemin.ZIndex = 3
-	rozetZemin.Parent = cerceve
-	UI.corner(rozetZemin, 28)
-	UI.stroke(rozetZemin, renk:Lerp(BEYAZ, 0.35), 2)
-
-	local rozet = UI.text({
-		text = "?",
-		size = 30,
-		font = UI.Fonts.bold,
-		color = BEYAZ,
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromScale(1, 1),
-		parent = rozetZemin,
-		zIndex = 4,
-	})
+	local yaziEni = SayacKarti.EN - 8
 
 	local baslik = UI.text({
 		text = "",
@@ -126,20 +101,20 @@ local function kartKur(sira: number, renk: Color3): Kart
 		color = BEYAZ,
 		glow = renk,
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromOffset(170, 20),
-		position = UDim2.fromOffset(74, 6),
+		frameSize = UDim2.fromOffset(yaziEni, 16),
+		position = UDim2.fromOffset(4, 4),
 		parent = cerceve,
 		zIndex = 5,
 	})
 
 	local buyuk = UI.text({
 		text = "",
-		size = 26,
+		size = 22,
 		font = UI.Fonts.bold,
 		color = BEYAZ,
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromOffset(170, 30),
-		position = UDim2.fromOffset(74, 25),
+		frameSize = UDim2.fromOffset(yaziEni, 24),
+		position = UDim2.fromOffset(4, 20),
 		parent = cerceve,
 		zIndex = 5,
 	})
@@ -150,8 +125,8 @@ local function kartKur(sira: number, renk: Color3): Kart
 		font = UI.Fonts.bold,
 		color = renk:Lerp(BEYAZ, 0.4),
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.fromOffset(170, 18),
-		position = UDim2.fromOffset(74, 54),
+		frameSize = UDim2.fromOffset(yaziEni, 16),
+		position = UDim2.fromOffset(4, 44),
 		parent = cerceve,
 		zIndex = 5,
 	})
@@ -160,8 +135,6 @@ local function kartKur(sira: number, renk: Color3): Kart
 		cerceve = cerceve,
 		kontur = kontur,
 		olcek = olcek,
-		rozet = rozet,
-		rozetZemin = rozetZemin,
 		baslik = baslik,
 		buyuk = buyuk,
 		alt = alt,
@@ -355,7 +328,6 @@ local function gizemGuncelle(simdi: number, t: number)
 	end
 
 	local renk = Color3.fromHSV((t * 0.25) % 1, 0.55, 1)
-	kart.rozetZemin.Rotation = math.sin(t * 3) * 10
 
 	if aktif then
 		local mesafe = "?"
@@ -369,7 +341,7 @@ local function gizemGuncelle(simdi: number, t: number)
 			local kapisma = string.find(kazan, " VS ", 1, true) ~= nil
 			kart.buyuk.Text = `{string.upper(kazan)}`
 			kart.buyuk.TextColor3 = KIRMIZI
-			kart.buyuk.TextScaled = kapisma
+			kart.buyuk.TextScaled = true
 			kart.alt.Text = if kapisma then "CLASH IN PROGRESS!" else "IS DIGGING IT!"
 		else
 			kart.buyuk.TextScaled = false
