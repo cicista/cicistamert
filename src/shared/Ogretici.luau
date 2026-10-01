@@ -106,7 +106,7 @@ Ogretici.UcAdet = 3
 
 Ogretici.RotCoinOdulu = 1
 
-Ogretici.BitisOdulu = { luckyBlock = "Golden", adet = 1 }
+Ogretici.BitisOdulu = { luckyBlock = "Normal", adet = 1 }
 
 Ogretici.PatlamaRengi = Color3.fromRGB(255, 255, 255)
 
