@@ -202,6 +202,47 @@ local function kumMu(node: BasePart): boolean
 	return Sand.isSandMaterial(node.Material) or Sand.isSandName(node.Name)
 end
 
+local adaKumlari: { [string]: { BasePart } } = {}
+
+local function adaKumParcalari(ada: string): { BasePart }
+	local liste = adaKumlari[ada]
+	if liste and #liste > 0 then
+		return liste
+	end
+	liste = {}
+	for _, node in Workspace:GetDescendants() do
+		if node:IsA("BasePart") and kumMu(node) and Brainrots.islandOf(node) == ada then
+			table.insert(liste, node)
+		end
+	end
+	adaKumlari[ada] = liste
+	return liste
+end
+
+function Sand.enYakinKum(konum: Vector3, ada: string, pay: number?): Vector3?
+	local kenar = pay or 4
+	local enIyi: Vector3? = nil
+	local enIyiMesafe = math.huge
+
+	for _, parca in adaKumParcalari(ada) do
+		if parca.Parent then
+			local yerel = parca.CFrame:PointToObjectSpace(konum)
+			local yari = parca.Size / 2
+			local sinirX = math.max(yari.X - kenar, 0)
+			local sinirZ = math.max(yari.Z - kenar, 0)
+			local nokta = parca.CFrame:PointToWorldSpace(
+				Vector3.new(math.clamp(yerel.X, -sinirX, sinirX), yari.Y, math.clamp(yerel.Z, -sinirZ, sinirZ))
+			)
+			local mesafe = (nokta - konum).Magnitude
+			if mesafe < enIyiMesafe then
+				enIyi, enIyiMesafe = nokta, mesafe
+			end
+		end
+	end
+
+	return enIyi
+end
+
 local function sandParts(uygun: (BasePart) -> boolean): ({ BasePart }, { number }, number)
 	local parts: { BasePart } = {}
 	local weights: { number } = {}

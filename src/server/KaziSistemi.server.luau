@@ -408,6 +408,7 @@ do
 	local suzmem: { [Player]: { string } } = {}
 
 	local ARALIK = 7
+	local OGRETICI_OMRU = 3600
 
 	function ogreticiSuzmesi(player: Player, adet: number)
 		local liste = suzmem[player]
@@ -436,7 +437,9 @@ do
 			local sira = #liste
 			local istenen: Vector3? = nil
 
-			if sira > 0 then
+			if sira == 0 and adet == 1 then
+				istenen = Sand.enYakinKum(kok.Position, "kum")
+			elseif sira > 0 then
 				local ilk = Beams.get(liste[1])
 				if ilk then
 					local yon = if sira % 2 == 1 then 1 else -1
@@ -449,6 +452,7 @@ do
 			if not beam then
 				return
 			end
+			beam.omur = OGRETICI_OMRU
 			table.insert(liste, beam.id)
 		end
 
@@ -729,11 +733,11 @@ task.spawn(function()
 			local rodInHand = player:GetAttribute("Flyboarding") == true
 			local rod = rodFor(player)
 
-			if sirasiGeldi and gpsInHand and not digging[player] and Sand.isOnSand(player) then
-				local ogreticiAdim = if Ogretici.adimId then Ogretici.adimId(player) else nil
-				if ogreticiAdim == "ilkKazi" then
-					ogreticiSuzmesi(player, 1)
-				elseif ogreticiAdim == "ucKazi" then
+			local ogreticiAdim = if Ogretici.adimId then Ogretici.adimId(player) else nil
+			if ogreticiAdim == "ilkKazi" and not digging[player] then
+				ogreticiSuzmesi(player, 1)
+			elseif sirasiGeldi and gpsInHand and not digging[player] and Sand.isOnSand(player) then
+				if ogreticiAdim == "ucKazi" then
 					ogreticiSuzmesi(player, Adimlar.UcAdet or 3)
 				else
 					local detector = detectorFor(player)
