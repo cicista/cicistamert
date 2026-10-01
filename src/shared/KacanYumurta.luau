@@ -4,9 +4,9 @@ local KacanYumurta = {}
 
 KacanYumurta.UrunAnahtari = "KacanYumurta"
 
-KacanYumurta.Fiyat = 25
+KacanYumurta.Fiyat = 29
 
-KacanYumurta.EskiFiyat = 50
+KacanYumurta.EskiFiyat = 59
 
 KacanYumurta.Sure = 15
 

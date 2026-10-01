@@ -15,7 +15,7 @@ Gacha.Yumurtalar = {
 	{ rarity = "Abyssal", sans = 5 },
 } :: { Yumurta }
 
-Gacha.Fiyat = 500
+Gacha.Fiyat = 499
 Gacha.Ada = "deniz"
 Gacha.UrunAnahtari = "Gacha"
 

@@ -13,21 +13,21 @@ export type PassInfo = {
 Passler.Info = {
 	AutoClicker = {
 		id = 0,
-		fiyat = 500,
+		fiyat = 499,
 		ad = "Auto Clicker",
 		aciklama = "Your shovel digs by itself during the dig minigame.",
 		nitelik = "Pass_AutoClicker",
 	},
 	Teleporter = {
 		id = 0,
-		fiyat = 250,
+		fiyat = 249,
 		ad = "Teleporter",
 		aciklama = "Teleport to any island you have unlocked, from anywhere.",
 		nitelik = "Pass_Teleporter",
 	},
 	DetectivePass = {
 		id = 0,
-		fiyat = 350,
+		fiyat = 349,
 		ad = "Detective Pass",
 		aciklama = "Everything you dig or fish comes already identified.",
 		nitelik = "Pass_DetectivePass",
