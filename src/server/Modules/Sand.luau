@@ -198,26 +198,18 @@ function Sand.report(player: Player): (boolean, { string })
 	return onSand, lines
 end
 
-local function sandParts(names: { string }?): ({ BasePart }, { number }, number)
-	local istenen: { [string]: boolean }? = nil
-	if names then
-		istenen = {}
-		for _, name in names do
-			(istenen :: { [string]: boolean })[string.lower(name)] = true
-		end
-	end
+local function kumMu(node: BasePart): boolean
+	return Sand.isSandMaterial(node.Material) or Sand.isSandName(node.Name)
+end
 
+local function sandParts(uygun: (BasePart) -> boolean): ({ BasePart }, { number }, number)
 	local parts: { BasePart } = {}
 	local weights: { number } = {}
 	local total = 0
 
 	for _, node in Workspace:GetDescendants() do
 		if node:IsA("BasePart") then
-			local kum = if istenen
-				then istenen[string.lower(node.Name)] == true
-				else Sand.isSandMaterial(node.Material) or Sand.isSandName(node.Name)
-
-			if kum then
+			if uygun(node) then
 				local area = node.Size.X * node.Size.Z
 				table.insert(parts, node)
 				table.insert(weights, area)
@@ -269,12 +261,25 @@ local function spotFrom(
 end
 
 function Sand.randomSpot(rng: Random, attempts: number?): Vector3?
-	local parts, weights, total = sandParts(nil)
+	local parts, weights, total = sandParts(kumMu)
 	return spotFrom(parts, weights, total, rng, attempts)
 end
 
 function Sand.randomSpotNamed(names: { string }, rng: Random, attempts: number?): Vector3?
-	local parts, weights, total = sandParts(names)
+	local istenen: { [string]: boolean } = {}
+	for _, name in names do
+		istenen[string.lower(name)] = true
+	end
+	local parts, weights, total = sandParts(function(node)
+		return istenen[string.lower(node.Name)] == true
+	end)
+	return spotFrom(parts, weights, total, rng, attempts)
+end
+
+function Sand.randomSpotOnIsland(ada: string, rng: Random, attempts: number?): Vector3?
+	local parts, weights, total = sandParts(function(node)
+		return kumMu(node) and Brainrots.islandOf(node) == ada
+	end)
 	return spotFrom(parts, weights, total, rng, attempts)
 end
 

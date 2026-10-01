@@ -318,7 +318,8 @@ local function gizemGuncelle(simdi: number, t: number)
 			kart.buyuk.TextScaled = false
 			kart.buyuk.Text = `{mesafe}  {sure(bitis - simdi)}`
 			kart.buyuk.TextColor3 = renk
-			kart.alt.Text = "FIRST TO DIG WINS!"
+			local ada = Workspace:GetAttribute(N.ada)
+			kart.alt.Text = if type(ada) == "string" and ada ~= "" then `ON {string.upper(ada)}!` else "FIRST TO DIG WINS!"
 		end
 		kart.kontur.Color = renk
 		kart.kontur.Thickness = 4
@@ -327,7 +328,7 @@ local function gizemGuncelle(simdi: number, t: number)
 		local yanip = math.sin(t * 10) > 0
 		kart.buyuk.Text = `IN {sure(bekleme)}`
 		kart.buyuk.TextColor3 = if yanip then GizemAyar.Renk else BEYAZ
-		kart.alt.Text = `LANDS ON {string.upper(GizemAyar.AdaAdi)}`
+		kart.alt.Text = "AFTER THE LUCKY RAIN"
 		kart.kontur.Color = if yanip then GizemAyar.Renk else SIYAH
 		kart.kontur.Thickness = 3
 		nabiz(kart, t, 8, 0.04)

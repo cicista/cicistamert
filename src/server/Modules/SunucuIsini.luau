@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Ayar = require(Shared:WaitForChild("SunucuIsini"))
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Condition = require(Shared:WaitForChild("Condition"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 local Net = require(Shared:WaitForChild("Net"))
@@ -39,6 +40,7 @@ local function temizle()
 	Workspace:SetAttribute(N.konum, nil)
 	Workspace:SetAttribute(N.bitis, 0)
 	Workspace:SetAttribute(N.kazan, "")
+	Workspace:SetAttribute(N.ada, "")
 end
 
 function SunucuIsini.aktif(): Beams.Beam?
@@ -51,32 +53,48 @@ function SunucuIsini.dogur(): (boolean, string)
 		return false, "A Mystery Beam is already active"
 	end
 
-	local spot = Sand.randomSpotNamed(Ayar.Kumlar, rng)
+	local adalar = table.clone(Ayar.Adalar)
+	for i = #adalar, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		adalar[i], adalar[j] = adalar[j], adalar[i]
+	end
+
+	local spot: Vector3? = nil
+	local ada = adalar[1]
+	for _, aday in adalar do
+		spot = Sand.randomSpotOnIsland(aday, rng)
+		if spot then
+			ada = aday
+			break
+		end
+	end
 	if not spot then
-		warn(`[SunucuIsini] no sand spot found on {table.concat(Ayar.Kumlar, ", ")}`)
+		warn(`[SunucuIsini] no sand spot found on {table.concat(Ayar.Adalar, ", ")}`)
 		return false, "No sand spot found"
 	end
 
-	local beam = Beams.spawnPublic(Ayar.Kind, spot, Ayar.Ada, Ayar.Omur)
+	local adaAdi = (Brainrots.IslandNames :: { [string]: string })[ada] or ada
+	local beam = Beams.spawnPublic(Ayar.Kind, spot, ada, Ayar.Omur)
 	aktifId = beam.id
 	bitis = os.time() + Ayar.Omur
 
 	Workspace:SetAttribute(N.konum, spot)
 	Workspace:SetAttribute(N.bitis, bitis)
 	Workspace:SetAttribute(N.kazan, "")
+	Workspace:SetAttribute(N.ada, adaAdi)
 
 	Duyuru:FireAllClients({
 		tur = "sunucu",
 		renk = Ayar.Renk,
-		ust = `A MYSTERY BEAM LANDED ON {string.upper(Ayar.AdaAdi)}`,
+		ust = `A MYSTERY BEAM LANDED ON {string.upper(adaAdi)}`,
 		buyuk = "FIRST TO DIG WINS!",
 	})
 	Bildirim:FireAllClients(
-		`A MYSTERY BEAM landed on {Ayar.AdaAdi}! First to dig it wins a pet above your best rarity!`,
+		`A MYSTERY BEAM landed on {adaAdi}! First to dig it wins a Legendary to Abyssal pet!`,
 		Ayar.Renk
 	)
 
-	return true, `Mystery Beam dropped at {math.floor(spot.X)}, {math.floor(spot.Z)}`
+	return true, `Mystery Beam dropped on {adaAdi} at {math.floor(spot.X)}, {math.floor(spot.Z)}`
 end
 
 function SunucuIsini.basladi(player: Player, beam: Beams.Beam)
@@ -107,7 +125,7 @@ function SunucuIsini.kazandi(player: Player, beam: Beams.Beam)
 		return
 	end
 
-	local odul = Ayar.odulKademesi(rng, data.shovel)
+	local odul = Ayar.odulKademesi(rng)
 	local condition = Condition.roll(rng)
 	local mutation = Hava.mutasyon(rng) or Mutations.roll(rng)
 
@@ -151,36 +169,14 @@ function SunucuIsini.calistir()
 		end
 	end)
 
+	Workspace:SetAttribute(N.sonraki, 0)
+
 	task.spawn(function()
-		local sonraki = Ayar.sonraki(os.time())
-		local uyarilan: { [number]: boolean } = {}
-
 		while true do
-			local simdi = os.time()
-			Workspace:SetAttribute(N.sonraki, sonraki)
-
 			if aktifId and not SunucuIsini.aktif() then
 				temizle()
 				Bildirim:FireAllClients("Nobody dug the Mystery Beam in time... it faded away.", Ayar.Renk)
 			end
-
-			local kalan = sonraki - simdi
-			for _, esik in Ayar.UyariSaniyeleri do
-				if kalan <= esik and kalan > esik - 5 and not uyarilan[esik] then
-					uyarilan[esik] = true
-					Bildirim:FireAllClients(
-						`A MYSTERY BEAM lands on {Ayar.AdaAdi} in 1 minute! Get ready to race!`,
-						Ayar.Renk
-					)
-				end
-			end
-
-			if simdi >= sonraki then
-				sonraki = Ayar.sonraki(simdi)
-				table.clear(uyarilan)
-				SunucuIsini.dogur()
-			end
-
 			task.wait(1)
 		end
 	end)

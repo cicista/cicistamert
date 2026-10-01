@@ -39,6 +39,10 @@ end)
 
 local LuckyBlockOdul = {}
 
+LuckyBlockOdul.YagmurBitti = Instance.new("BindableEvent")
+
+local yagiyor = false
+
 local rng = Random.new()
 
 local opening: { [Player]: boolean } = {}
@@ -588,6 +592,7 @@ local function runEvent()
 	end
 
 	Workspace:SetAttribute(E.nitelikBitis, os.time() + E.despawn)
+	yagiyor = true
 
 	local ozelYazi = if ozel > 0 then ` ({ozel} special!)` else ""
 	Bildirim:FireAllClients(
@@ -622,6 +627,10 @@ if LuckyBlock.Event.enabled then
 			Workspace:SetAttribute(E.nitelikKalan, kalan)
 			if kalan == 0 then
 				Workspace:SetAttribute(E.nitelikBitis, 0)
+				if yagiyor then
+					yagiyor = false
+					LuckyBlockOdul.YagmurBitti:Fire()
+				end
 			end
 
 			local saniye = sonraki - simdi
