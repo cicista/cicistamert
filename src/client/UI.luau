@@ -416,48 +416,13 @@ local function kapanisOynat(frame: Frame)
 	sonme:Play()
 end
 
-UI.DokuBoyu = 64
-UI.DokuSaydamlik = 0.86
+UI.DokuBoyu = 36
+UI.DokuSaydamlik = 0.8
 
-local DOKU_YIV = Color3.fromRGB(0, 0, 0)
-local DOKU_ISIK = Color3.fromRGB(255, 255, 255)
-
-local DOKU_EN_COK_CIZGI = 40
-
-local function dokuCizgisi(
-	kap: Instance,
-	x: number,
-	y: number,
-	uzunluk: number,
-	aci: number,
-	renk: Color3
-)
-	local cizgi = Instance.new("Frame")
-	cizgi.Name = "Cizgi"
-	cizgi.BorderSizePixel = 0
-	cizgi.BackgroundColor3 = renk
-	cizgi.AnchorPoint = Vector2.new(0.5, 0.5)
-	cizgi.Size = UDim2.fromOffset(uzunluk, 1)
-	cizgi.Position = UDim2.fromOffset(x, y)
-	cizgi.Rotation = aci
-	cizgi.Parent = kap
-end
-
-local function dokuAilesi(kap: Instance, en: number, boy: number, aci: number, adim: number)
-	local r = math.rad(aci)
-	local nx, ny = -math.sin(r), math.cos(r)
-
-	local uzunluk = en + boy
-	local adet = math.ceil((en + boy) / (2 * adim))
-	local ortaX, ortaY = en / 2, boy / 2
-
-	for k = -adet, adet do
-		local x = ortaX + k * adim * nx
-		local y = ortaY + k * adim * ny
-		dokuCizgisi(kap, x, y, uzunluk, aci, DOKU_YIV)
-		dokuCizgisi(kap, x + nx, y + ny, uzunluk, aci, DOKU_ISIK)
-	end
-end
+local DOKU_NOKTA = Color3.fromRGB(255, 255, 255)
+local DOKU_EN_BUYUK = 11
+local DOKU_EN_KUCUK = 2.5
+local DOKU_EN_COK_NOKTA = 260
 
 local function dokuyuKur(kap: Frame, en: number, boy: number)
 	for _, cocuk in kap:GetChildren() do
@@ -470,10 +435,45 @@ local function dokuyuKur(kap: Frame, en: number, boy: number)
 		return
 	end
 
-	local adim = math.max(UI.DokuBoyu, math.ceil((en + boy) / DOKU_EN_COK_CIZGI))
+	local adim = math.max(UI.DokuBoyu, math.ceil(math.sqrt(en * boy / DOKU_EN_COK_NOKTA)))
+	local satirAdim = adim * 0.866
 
-	dokuAilesi(kap, en, boy, 45, adim)
-	dokuAilesi(kap, en, boy, -45, adim)
+	local isilti = Instance.new("Frame")
+	isilti.Name = "Isilti"
+	isilti.Size = UDim2.fromScale(1, 1)
+	isilti.BackgroundColor3 = DOKU_NOKTA
+	isilti.BorderSizePixel = 0
+	isilti.Parent = kap
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(0.45, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	gecis.Parent = isilti
+
+	local satir = 0
+	local y = adim / 2
+	while y < boy + adim do
+		local x = if satir % 2 == 0 then adim / 2 else adim
+		while x < en + adim do
+			local oran = math.clamp((x / en + y / boy) / 2, 0, 1)
+			local cap = DOKU_EN_BUYUK + (DOKU_EN_KUCUK - DOKU_EN_BUYUK) * oran
+			local nokta = Instance.new("Frame")
+			nokta.Name = "Nokta"
+			nokta.AnchorPoint = Vector2.new(0.5, 0.5)
+			nokta.Position = UDim2.fromOffset(x, y)
+			nokta.Size = UDim2.fromOffset(cap, cap)
+			nokta.BackgroundColor3 = DOKU_NOKTA
+			nokta.BorderSizePixel = 0
+			nokta.Parent = kap
+			UI.corner(nokta, math.ceil(cap))
+			x += adim
+		end
+		satir += 1
+		y += satirAdim
+	end
 end
 
 function UI.dokuZemini(cerceve: GuiObject, kose: number?): Frame
