@@ -883,6 +883,12 @@ local function baslangicKarti()
 	UI.stroke(cerceve, BEYAZ, 4)
 	renkliZemin(cerceve, Color3.fromRGB(255, 196, 40), Color3.fromRGB(255, 96, 40), 12)
 
+	local arkaPlan = Icons.assetKlasorden(Assets.Categories.backgrounds, "starterbackground")
+	if arkaPlan then
+		local resimKabi = UI.yumusakResim(cerceve, arkaPlan, ARKA_PLAN_SAYDAM, ARKA_PLAN_YAYILMA, 1)
+		UI.corner(resimKabi, 12)
+	end
+
 	local pariltiAlani = Instance.new("Frame")
 	pariltiAlani.Name = "PariltiAlani"
 	pariltiAlani.Size = UDim2.fromScale(1, 1)
