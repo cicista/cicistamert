@@ -23,12 +23,12 @@ local Teklif = Net.event("KacanYumurtaTeklif")
 local RobuxUrunAl = Net.event("RobuxUrunAl")
 
 local KIRMIZI = Color3.fromRGB(255, 60, 60)
-local TURUNCU = Color3.fromRGB(255, 150, 30)
 local SARI = Color3.fromRGB(255, 210, 60)
 local YESIL = Color3.fromRGB(60, 215, 90)
 local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
 local KOYU = Color3.fromRGB(26, 20, 34)
+local BORDO = Color3.fromRGB(120, 16, 30)
 
 local ACILIS_GECIKMESI = 0.4
 local SON_SANIYELER = 5
@@ -48,18 +48,21 @@ UI.closeButton(panel).MouseButton1Click:Connect(function()
 	panel.Visible = false
 end)
 
-local baslikCubuk, baslik = UI.baslikCubugu(panel, "TIME'S TICKING!", KIRMIZI, TURUNCU, nil, KOYU)
+local baslikCubuk, baslik = UI.baslikCubugu(panel, "TIME'S TICKING!", BORDO, KIRMIZI, nil, KOYU)
 baslik.TextXAlignment = Enum.TextXAlignment.Center
 baslik.Position = UDim2.fromOffset(0, 0)
 baslik.Size = UDim2.fromScale(1, 1)
-local baslikOlcek = Instance.new("UIScale")
-baslikOlcek.Parent = baslik
-TweenService:Create(
-	baslikOlcek,
-	TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-	{ Scale = 1.08 }
-):Play()
-local baslikGecis = baslikCubuk:FindFirstChildOfClass("UIGradient")
+
+local baslikFlas = Instance.new("Frame")
+baslikFlas.Name = "Flas"
+baslikFlas.Size = UDim2.fromScale(1, 1)
+baslikFlas.BackgroundColor3 = BEYAZ
+baslikFlas.BackgroundTransparency = 1
+baslikFlas.BorderSizePixel = 0
+baslikFlas.ZIndex = 4
+baslikFlas.Parent = baslikCubuk
+UI.corner(baslikFlas, 10)
+
 local panelKontur = panel:FindFirstChildOfClass("UIStroke")
 
 local altBaslik = UI.text({
@@ -119,7 +122,7 @@ local uyari = UI.text({
 	parent = panel,
 })
 
-local alDugme, alYuz = UI.dugme3B(panel, nil, UDim2.fromOffset(280, 70), YESIL, false)
+local alDugme, alYuz = UI.dugme3B(panel, nil, UDim2.fromOffset(330, 70), YESIL, false)
 alDugme.Name = "Al"
 alDugme.AnchorPoint = Vector2.new(0.5, 1)
 alDugme.Position = UDim2.new(0.5, 0, 1, -16)
@@ -147,7 +150,7 @@ dizilim.Parent = icerik
 
 local alYazi = UI.text({
 	text = "CATCH IT!",
-	size = UI.Sizes.title,
+	size = UI.Sizes.heading,
 	font = UI.Fonts.bold,
 	color = BEYAZ,
 	align = Enum.TextXAlignment.Center,
@@ -159,8 +162,59 @@ alYazi.AutomaticSize = Enum.AutomaticSize.X
 alYazi.TextTruncate = Enum.TextTruncate.None
 alYazi.LayoutOrder = 1
 
+local eskiKap = Instance.new("Frame")
+eskiKap.Name = "EskiFiyat"
+eskiKap.Size = UDim2.fromOffset(0, 30)
+eskiKap.AutomaticSize = Enum.AutomaticSize.X
+eskiKap.BackgroundTransparency = 1
+eskiKap.ZIndex = icerik.ZIndex + 1
+eskiKap.LayoutOrder = 2
+eskiKap.Parent = icerik
+
+local eskiFiyat = UI.robuxFiyati(eskiKap, Ayar.EskiFiyat, UI.Sizes.body, icerik.ZIndex + 1)
+eskiFiyat.AnchorPoint = Vector2.new(0, 0.5)
+eskiFiyat.Position = UDim2.fromScale(0, 0.5)
+for _, d in eskiFiyat:GetDescendants() do
+	if d:IsA("TextLabel") then
+		d.TextColor3 = Color3.fromRGB(225, 225, 225)
+		d.TextTransparency = 0.15
+	elseif d:IsA("ImageLabel") then
+		d.ImageTransparency = 0.15
+	end
+end
+
+local cizik = Instance.new("Frame")
+cizik.Name = "Cizik"
+cizik.AnchorPoint = Vector2.new(0.5, 0.5)
+cizik.Position = UDim2.fromScale(0.5, 0.5)
+cizik.Size = UDim2.new(1, 10, 0, 4)
+cizik.Rotation = -14
+cizik.BackgroundColor3 = KIRMIZI
+cizik.BorderSizePixel = 0
+cizik.ZIndex = icerik.ZIndex + 4
+cizik.Parent = eskiKap
+UI.corner(cizik, 2)
+UI.stroke(cizik, SIYAH, 1.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
 local fiyatKutusu = UI.robuxFiyati(icerik, Ayar.Fiyat, UI.Sizes.title, icerik.ZIndex + 1)
-fiyatKutusu.LayoutOrder = 2
+fiyatKutusu.LayoutOrder = 3
+
+local indirim = Instance.new("TextLabel")
+indirim.Name = "Indirim"
+indirim.AnchorPoint = Vector2.new(0.5, 0.5)
+indirim.Position = UDim2.new(1, -8, 0, -2)
+indirim.Size = UDim2.fromOffset(86, 28)
+indirim.Rotation = 12
+indirim.BackgroundColor3 = KIRMIZI
+indirim.BorderSizePixel = 0
+indirim.FontFace = UI.Fonts.bold
+indirim.Text = `{math.floor((1 - Ayar.Fiyat / Ayar.EskiFiyat) * 100 + 0.5)}% OFF`
+indirim.TextColor3 = BEYAZ
+indirim.TextSize = UI.Sizes.small
+indirim.ZIndex = 20
+indirim.Parent = alDugme
+UI.corner(indirim, 8)
+UI.stroke(indirim, SIYAH, 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local isilti = Instance.new("Frame")
 isilti.Name = "Isilti"
@@ -368,6 +422,13 @@ local function saniyeVurusu(sonAn: boolean)
 		TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 		{ Scale = 1 }
 	):Play()
+
+	baslikFlas.BackgroundTransparency = if sonAn then 0.35 else 0.65
+	TweenService:Create(
+		baslikFlas,
+		TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ BackgroundTransparency = 1 }
+	):Play()
 end
 
 local function kactiGoster()
@@ -459,10 +520,6 @@ local function tik()
 		local yanip = sonAn and math.sin(simdi * 18) > 0
 		panelKontur.Color = if yanip then KIRMIZI else SIYAH
 		panelKontur.Thickness = if yanip then 5 else 3
-	end
-
-	if baslikGecis then
-		baslikGecis.Offset = Vector2.new(math.sin(simdi * 3) * 0.3, 0)
 	end
 
 	local s = sahne

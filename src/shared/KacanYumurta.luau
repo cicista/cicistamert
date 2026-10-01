@@ -6,6 +6,8 @@ KacanYumurta.UrunAnahtari = "KacanYumurta"
 
 KacanYumurta.Fiyat = 25
 
+KacanYumurta.EskiFiyat = 50
+
 KacanYumurta.Sure = 15
 
 KacanYumurta.Kademeler = {

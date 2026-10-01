@@ -1,5 +1,6 @@
 --!strict
 
+local ContentProvider = game:GetService("ContentProvider")
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -1680,6 +1681,21 @@ end
 function UI.modelKaresi(parent: GuiObject, model: Instance, boyut: number, zIndex: number): ViewportFrame?
 	local govde: Instance = model
 	if model:IsA("Tool") then
+		local yon = model:GetAttribute("IkonYonu")
+		local tutamak = model:FindFirstChild("Handle")
+		if typeof(yon) == "CFrame" and tutamak and tutamak:IsA("BasePart") then
+			local tutamakCf = tutamak.CFrame
+			local yerler: { [BasePart]: CFrame } = {}
+			for _, parca in model:GetDescendants() do
+				if parca:IsA("BasePart") then
+					yerler[parca] = yon * tutamakCf:ToObjectSpace(parca.CFrame)
+				end
+			end
+			for parca, cf in yerler do
+				parca.CFrame = cf
+			end
+		end
+
 		local kap = Instance.new("Model")
 		for _, cocuk in model:GetChildren() do
 			if cocuk:IsA("BasePart") then
@@ -1800,6 +1816,27 @@ function UI.modelKaresi(parent: GuiObject, model: Instance, boyut: number, zInde
 
 	local uzaklik = math.max(olcu.Magnitude * 0.85, 1)
 	kamera.CFrame = CFrame.lookAt(merkez + Vector3.new(0, 0, -1) * uzaklik, merkez)
+
+	local meshler: { Instance } = {}
+	for _, d in vp:GetDescendants() do
+		if d:IsA("SpecialMesh") or d:IsA("MeshPart") then
+			table.insert(meshler, d)
+		end
+	end
+	if #meshler > 0 then
+		task.spawn(function()
+			pcall(function()
+				ContentProvider:PreloadAsync(meshler)
+			end)
+			if not vp.Parent then
+				return
+			end
+			local cf = kamera.CFrame
+			kamera.CFrame = cf * CFrame.new(0, 0, 0.001)
+			task.wait()
+			kamera.CFrame = cf
+		end)
+	end
 
 	return vp
 end

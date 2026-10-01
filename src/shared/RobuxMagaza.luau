@@ -158,6 +158,7 @@ RobuxMagaza.GizliUrunler = {
 		anahtar = KacanYumurta.UrunAnahtari,
 		id = 0,
 		fiyat = KacanYumurta.Fiyat,
+		eskiFiyat = KacanYumurta.EskiFiyat,
 		etiket = "GET IT",
 		ad = "Missed Egg",
 		tur = "kacanYumurta",

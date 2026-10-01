@@ -31,6 +31,13 @@ Tools.PickaxeName = "Pickaxe"
 
 Tools.onLuckyBlockUsed = nil :: ((player: Player, tierId: string) -> ())?
 
+local function ikonYonuKaydet(tool: Tool)
+	local handle = tool:FindFirstChild("Handle")
+	if handle and handle:IsA("BasePart") then
+		tool:SetAttribute("IkonYonu", handle.CFrame.Rotation)
+	end
+end
+
 local function attachModel(tool: Tool, model: Model): BasePart?
 	local primary = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	if not primary then
@@ -424,6 +431,7 @@ function Tools.buildShovel(shovelId: string): Tool
 		LevelGlow.apply(tool, info.level)
 	end
 
+	ikonYonuKaydet(tool)
 	return tool
 end
 
@@ -477,6 +485,7 @@ function Tools.buildPickaxe(pickaxeId: string): Tool
 
 	setHoldAnimation(tool, Assets.Animations.shovelHold)
 
+	ikonYonuKaydet(tool)
 	return tool
 end
 
@@ -544,6 +553,7 @@ function Tools.buildGPS(detectorId: string): Tool
 
 	LevelGlow.apply(tool, info.level)
 
+	ikonYonuKaydet(tool)
 	return tool
 end
 
@@ -864,6 +874,7 @@ function Tools.buildBrainrot(item: any): Tool
 		Assets.attachRarityVFX(tool, item.rarity, handle)
 	end
 
+	ikonYonuKaydet(tool)
 	return tool
 end
 
@@ -918,6 +929,7 @@ function Tools.buildScroll(scrollId: string, count: number): Tool?
 		end
 	end
 
+	ikonYonuKaydet(tool)
 	return tool
 end
 
@@ -971,6 +983,7 @@ function Tools.buildLuckyBlock(tierId: string, count: number): Tool
 		end
 	end)
 
+	ikonYonuKaydet(tool)
 	return tool
 end
 
