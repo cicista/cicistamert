@@ -53,6 +53,9 @@ local Unvan = require(Modules:WaitForChild("Unvan"))
 local Hava = require(Modules:WaitForChild("Hava"))
 local SunucuIsini = require(Modules:WaitForChild("SunucuIsini"))
 local GizemAyar = require(Shared:WaitForChild("SunucuIsini"))
+local Kapisma = require(Modules:WaitForChild("Kapisma"))
+local KapismaAyar = require(Shared:WaitForChild("Kapisma"))
+local Workspace = game:GetService("Workspace")
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -299,6 +302,120 @@ local function finishDig(player: Player, won: boolean)
 	Ogretici.ucKontrol(player)
 end
 
+local function kapisabilir(player: Player, beam: any): Player?
+	if beam.sea or beam.kapisma or not beam.claimed then
+		return nil
+	end
+	if not KapismaAyar.kademeUygun(beam.kind) then
+		return nil
+	end
+
+	local rakip: Player? = if beam.herkes then beam.kazan else beam.owner
+	if not rakip or rakip == player or not rakip.Parent then
+		return nil
+	end
+
+	local oturum = digging[rakip]
+	if not oturum or oturum.beamId ~= beam.id or oturum.kapisma then
+		return nil
+	end
+	if digging[player] or Kapisma.icinde(player) or Kapisma.icinde(rakip) then
+		return nil
+	end
+
+	if not beam.herkes then
+		local benim, onun = PlayerData.get(player), PlayerData.get(rakip)
+		if not benim or not onun then
+			return nil
+		end
+		if benim.level < KapismaAyar.MinSeviye or onun.level < KapismaAyar.MinSeviye then
+			return nil
+		end
+		if math.abs(benim.level - onun.level) > KapismaAyar.SeviyeFarki then
+			return nil
+		end
+	end
+
+	return rakip
+end
+
+local function kapismaKaybi(player: Player)
+	if not digging[player] then
+		return
+	end
+	digging[player] = nil
+	lastDig[player] = os.clock()
+
+	serbestBirak(player)
+
+	local karakter = player.Character
+	if karakter then
+		karakter:SetAttribute("Kaziyor", nil)
+		karakter:SetAttribute("KaziHedef", nil)
+	end
+
+	if player.Parent then
+		KaziBitti:FireClient(player)
+		otoEkipman(player)
+	end
+end
+
+local function kapismaBaslat(player: Player, rakip: Player, beam: any)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local data = PlayerData.get(player)
+	local rakipOturum = digging[rakip]
+	if not char or not root or not root:IsA("BasePart") or not data or not rakipOturum then
+		return
+	end
+
+	beam.kapisma = true
+	rakipOturum.kapisma = true
+	KaziBitti:FireClient(rakip)
+
+	sabitle(player, root, beam.position)
+	Envanter.equipShovel(player)
+
+	digging[player] = {
+		beamId = beam.id,
+		startedAt = os.clock(),
+		sea = false,
+		gearId = data.shovel,
+		rarityId = beam.kind,
+		zorlukId = beam.kind,
+		startPos = root.Position,
+		kapisma = true,
+	}
+	char:SetAttribute("Kaziyor", true)
+	char:SetAttribute("KaziHedef", beam.position)
+
+	if beam.herkes then
+		Workspace:SetAttribute(GizemAyar.Nitelik.kazan, `{rakip.DisplayName} VS {player.DisplayName}`)
+	end
+
+	Kapisma.basla(rakip, player, beam.kind, function(kazanan: Player, kaybeden: Player)
+		beam.kapisma = false
+		kapismaKaybi(kaybeden)
+
+		local oturum = digging[kazanan]
+		if kazanan.Parent and oturum and oturum.beamId == beam.id then
+			oturum.kapisma = nil
+			finishDig(kazanan, true)
+			return
+		end
+
+		kapismaKaybi(kazanan)
+		local kalan = Beams.get(beam.id)
+		if kalan and kalan.herkes then
+			kalan.claimed = false
+			kalan.kazan = nil
+			Workspace:SetAttribute(GizemAyar.Nitelik.kazan, "")
+		elseif kalan then
+			Beams.remove(beam.id, "clash abandoned")
+		end
+	end)
+end
+
 local ogreticiSuzmesi: (player: Player, adet: number) -> ()
 do
 	local suzmem: { [Player]: { string } } = {}
@@ -374,17 +491,33 @@ local function startDig(player: Player, beamId: string)
 		return
 	end
 
-	if beam.herkes then
-		if beam.claimed then
+	if beam.claimed then
+		local rakip = kapisabilir(player, beam)
+		if rakip then
+			local govde = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if not govde or not govde:IsA("BasePart") then
+				return
+			end
+			if (beam.position - govde.Position).Magnitude > KapismaAyar.Mesafe then
+				Bildirim:FireClient(player, "Get closer to challenge them!", KapismaAyar.Renk)
+				return
+			end
+			kapismaBaslat(player, rakip, beam)
+			return
+		end
+
+		if beam.herkes then
 			local kazan = beam.kazan
 			Bildirim:FireClient(
 				player,
 				`{if kazan then kazan.DisplayName else "Someone"} is already digging the Mystery Beam!`,
 				GizemAyar.Renk
 			)
-			return
 		end
-	elseif beam.owner ~= player or beam.claimed then
+		return
+	end
+
+	if not beam.herkes and beam.owner ~= player then
 		return
 	end
 
@@ -492,7 +625,7 @@ local function startDig(player: Player, beamId: string)
 
 	task.delay(D.minigameTimeout, function()
 		local stuck = digging[player]
-		if stuck and stuck.beamId == beamId then
+		if stuck and stuck.beamId == beamId and not stuck.kapisma then
 			finishDig(player, false)
 		end
 	end)
@@ -507,7 +640,7 @@ end)
 
 MinigameSonuc.OnServerEvent:Connect(function(player, won)
 	local session = digging[player]
-	if not session then
+	if not session or session.kapisma then
 		return
 	end
 
@@ -657,7 +790,26 @@ task.spawn(function()
 				yaricap *= math.clamp(insan.WalkSpeed / Hiz.TabanHiz, 1, 3)
 			end
 
-			GPSGuncelle:FireClient(player, Beams.snapshotFor(player, yaricap))
+			local liste: { any } = Beams.snapshotFor(player, yaricap)
+			if konum then
+				for id, beam in Beams.all() do
+					if beam.claimed and (beam.position - konum).Magnitude <= yaricap then
+						local rakip = kapisabilir(player, beam)
+						if rakip then
+							table.insert(liste, {
+								id = id,
+								kind = beam.kind,
+								position = beam.position,
+								sea = false,
+								kapisma = true,
+								rakip = rakip.DisplayName,
+							})
+						end
+					end
+				end
+			end
+
+			GPSGuncelle:FireClient(player, liste)
 		end
 	end
 end)

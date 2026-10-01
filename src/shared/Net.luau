@@ -133,6 +133,11 @@ Net.Events = {
 
 	"OgreticiDurum",
 	"OgreticiIste",
+
+	"KapismaBasla",
+	"KapismaDurum",
+	"KapismaTik",
+	"KapismaBitti",
 }
 
 local function folder(): Folder

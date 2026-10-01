@@ -11,6 +11,7 @@ local Config = require(Shared:WaitForChild("OyunConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Icons = require(Shared:WaitForChild("Icons"))
 local Net = require(Shared:WaitForChild("Net"))
+local KapismaAyar = require(Shared:WaitForChild("Kapisma"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -181,13 +182,22 @@ task.spawn(function()
 			continue
 		end
 
-		local best: { id: string, distance: number, kind: string, sea: boolean }? = nil
+		local best: { id: string, distance: number, kind: string, sea: boolean, kapisma: boolean, rakip: string? }? = nil
 
 		for _, beam in beams do
 			local distance = (beam.position - root.Position).Magnitude
+			local kapisma = (beam :: any).kapisma == true
+			local siradaki = if kapisma then distance - KapismaAyar.Mesafe + G.digDistance else distance
 
-			if not best or distance < best.distance then
-				best = { id = beam.id, distance = distance, kind = beam.kind, sea = beam.sea == true }
+			if not best or siradaki < best.distance then
+				best = {
+					id = beam.id,
+					distance = siradaki,
+					kind = beam.kind,
+					sea = (beam :: any).sea == true,
+					kapisma = kapisma,
+					rakip = (beam :: any).rakip,
+				}
 			end
 		end
 
@@ -208,9 +218,17 @@ task.spawn(function()
 			hintIkon.Visible = madenMi
 			hintLabel.Position = UDim2.fromOffset(if madenMi then 16 else 0, 0)
 
-			local eylem = if best.sea then "fish" else "dig"
-			hintLabel.Text = `{kindName(best.kind)} - `
-				.. UI.Girdi.sec(`click to {eylem}`, `tap to {eylem}`, `press X to {eylem}`)
+			if best.kapisma then
+				local kapismaRengi = KapismaAyar.Renk
+				hintStroke.Color = kapismaRengi
+				hintLabel.TextColor3 = kapismaRengi
+				hintLabel.Text = `CHALLENGE {string.upper(best.rakip or "them")}! - `
+					.. UI.Girdi.sec("click", "tap", "press X")
+			else
+				local eylem = if best.sea then "fish" else "dig"
+				hintLabel.Text = `{kindName(best.kind)} - `
+					.. UI.Girdi.sec(`click to {eylem}`, `tap to {eylem}`, `press X to {eylem}`)
+			end
 			hint.Visible = true
 		else
 			nearest = nil

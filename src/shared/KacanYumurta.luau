@@ -13,6 +13,7 @@ KacanYumurta.Sure = 15
 KacanYumurta.Kademeler = {
 	Cosmic = true,
 	Secret = true,
+	Gizli = true,
 	Infernal = true,
 	Abyssal = true,
 } :: { [string]: boolean }

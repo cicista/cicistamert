@@ -37,6 +37,7 @@ export type Beam = {
 	herkes: boolean?,
 	omur: number?,
 	kazan: Player?,
+	kapisma: boolean?,
 }
 
 local active: { [string]: Beam } = {}
@@ -1019,6 +1020,10 @@ end
 
 function Beams.get(id: string): Beam?
 	return active[id]
+end
+
+function Beams.all(): { [string]: Beam }
+	return active
 end
 
 Beams.Debug = false

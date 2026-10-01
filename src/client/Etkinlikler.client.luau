@@ -305,10 +305,13 @@ local function gizemGuncelle(simdi: number, t: number)
 		end
 
 		if type(kazan) == "string" and kazan ~= "" then
+			local kapisma = string.find(kazan, " VS ", 1, true) ~= nil
 			kart.buyuk.Text = `{string.upper(kazan)}`
 			kart.buyuk.TextColor3 = KIRMIZI
-			kart.alt.Text = "IS DIGGING IT!"
+			kart.buyuk.TextScaled = kapisma
+			kart.alt.Text = if kapisma then "CLASH IN PROGRESS!" else "IS DIGGING IT!"
 		else
+			kart.buyuk.TextScaled = false
 			kart.buyuk.Text = `{mesafe}  {sure(bitis - simdi)}`
 			kart.buyuk.TextColor3 = renk
 			kart.alt.Text = "FIRST TO DIG WINS!"

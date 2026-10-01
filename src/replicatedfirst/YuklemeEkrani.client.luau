@@ -1028,15 +1028,15 @@ task.spawn(function()
 		if kapandi then
 			break
 		end
-		local cik = TweenService:Create(ipucuYazi, TweenInfo.new(0.25), { TextTransparency = 1 })
-		cik:Play()
-		cik.Completed:Wait()
+		TweenService:Create(ipucuYazi, TweenInfo.new(0.2), { TextTransparency = 0.7 }):Play()
+		task.wait(0.2)
 		if kapandi then
 			break
 		end
 		sira = sira % #IPUCLARI + 1
 		ipucuYazi.Text = IPUCLARI[sira]
-		TweenService:Create(ipucuYazi, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+		ipucuYazi.TextTransparency = 0.7
+		TweenService:Create(ipucuYazi, TweenInfo.new(0.25), { TextTransparency = 0 }):Play()
 	end
 end)
 
