@@ -85,20 +85,11 @@ local sonKonum: { [Player]: Vector3 } = {}
 
 local girdapBildirildi = false
 
+local Sans = require(Modules:WaitForChild("Sans"))
+Sans.calistir()
+
 local function luckFor(player: Player): number
-	local ground = Sand.luckUnder(player)
-
-	local data = PlayerData.get(player)
-	local detector = if data then Detectors.get(data.detector :: any) else Detectors.get(Detectors.Default)
-
-	return ground
-		* detector.luck
-		* PlayerData.luckBonus(player)
-		* Arkadaslar.carpan(player)
-		* Seviye.carpan(player)
-		* AfkSans.carpan(player)
-		* HaftaSonu.carpan()
-		* Passler.sansCarpani(player)
+	return Sans.kazi(player)
 end
 
 local function detectorFor(player: Player): Detectors.DetectorInfo
