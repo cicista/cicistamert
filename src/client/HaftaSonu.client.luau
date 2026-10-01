@@ -20,6 +20,7 @@ type Kule = {
 	tabela: BillboardGui?,
 	ust: TextLabel?,
 	alt: TextLabel?,
+	baglantilar: { RBXScriptConnection },
 }
 
 local kule: Kule? = nil
@@ -57,7 +58,6 @@ local function tabelaKur(k: Kule)
 	tabela.LightInfluence = 0
 	tabela.Brightness = 2
 	tabela.Enabled = false
-	tabela.Parent = yazi
 
 	local function satir(ad: string, y: number, boy: number): TextLabel
 		local etiket = Instance.new("TextLabel")
@@ -84,48 +84,103 @@ local function tabelaKur(k: Kule)
 	k.ust = satir("Aktif", 0, 0.5)
 	k.alt = satir("Sure", 0.55, 0.4)
 	k.tabela = tabela
+	tabela.Parent = yazi
 end
 
-local function kuleKur(model: Model): Kule
-	local k: Kule = { model = model, parcalar = {}, vfxler = {}, tabela = nil, ust = nil, alt = nil }
-
-	local enAlt = math.huge
-	for _, d in model:GetDescendants() do
-		if d:IsA("BasePart") and d.Transparency < 0.99 and d.Name ~= Ayar.YaziParcasi then
-			enAlt = math.min(enAlt, d.Position.Y)
+local function yaziTipiAl(k: Kule, ornek: TextLabel)
+	local tabela = k.tabela
+	if not tabela or ornek:IsDescendantOf(tabela) then
+		return
+	end
+	for _, etiket in { k.ust, k.alt } do
+		if etiket then
+			etiket.FontFace = ornek.FontFace
 		end
 	end
+end
 
-	for _, d in model:GetDescendants() do
-		if d:IsA("BasePart") and d.Transparency < 0.99 and d.Name ~= Ayar.YaziParcasi then
-			k.parcalar[d] = { renk = d.Color, malzeme = d.Material, faz = (d.Position.Y - enAlt) * 0.12 }
-		elseif d:IsA("ParticleEmitter") then
-			k.vfxler[d] = { rate = d.Rate, size = d.Size }
-		end
+local function parcaUygula(parca: BasePart, kayit: ParcaKaydi, acik: boolean)
+	if acik then
+		parca.Material = Enum.Material.Neon
+	else
+		parca.Material = kayit.malzeme
+		parca.Color = kayit.renk
 	end
+end
 
-	tabelaKur(k)
-	return k
+local function vfxUygula(vfx: ParticleEmitter, kayit: VfxKaydi, acik: boolean)
+	vfx.Rate = if acik then kayit.rate * Ayar.VfxCarpani else kayit.rate
+	vfx.Size = if acik then olcekli(kayit.size, Ayar.VfxCarpani) else kayit.size
 end
 
 local function uygula(k: Kule, acik: boolean)
 	for parca, kayit in k.parcalar do
-		if acik then
-			parca.Material = Enum.Material.Neon
-		else
-			parca.Material = kayit.malzeme
-			parca.Color = kayit.renk
-		end
+		parcaUygula(parca, kayit, acik)
 	end
-
 	for vfx, kayit in k.vfxler do
-		vfx.Rate = if acik then kayit.rate * Ayar.VfxCarpani else kayit.rate
-		vfx.Size = if acik then olcekli(kayit.size, Ayar.VfxCarpani) else kayit.size
+		vfxUygula(vfx, kayit, acik)
 	end
-
 	if k.tabela then
 		k.tabela.Enabled = acik
 	end
+end
+
+local function kaydet(k: Kule, d: Instance)
+	if d:IsA("BasePart") then
+		if k.parcalar[d] or d.Transparency >= 0.99 or d.Name == Ayar.YaziParcasi then
+			return
+		end
+		local _, _, parlaklik = d.Color:ToHSV()
+		local kayit = {
+			renk = d.Color,
+			malzeme = d.Material,
+			faz = d.Position.Y * 0.12 + (if parlaklik < 0.6 then math.pi else 0),
+		}
+		k.parcalar[d] = kayit
+		if aktif then
+			parcaUygula(d, kayit, true)
+		end
+	elseif d:IsA("ParticleEmitter") then
+		if k.vfxler[d] then
+			return
+		end
+		local kayit = { rate = d.Rate, size = d.Size }
+		k.vfxler[d] = kayit
+		if aktif then
+			vfxUygula(d, kayit, true)
+		end
+	end
+
+	if not k.tabela and (d.Name == Ayar.YaziParcasi or d:IsA("TextLabel")) then
+		tabelaKur(k)
+		if k.tabela then
+			k.tabela.Enabled = aktif
+		end
+	elseif d:IsA("TextLabel") then
+		yaziTipiAl(k, d)
+	end
+end
+
+local function kuleKur(model: Model): Kule
+	local k: Kule = { model = model, parcalar = {}, vfxler = {}, tabela = nil, ust = nil, alt = nil, baglantilar = {} }
+
+	tabelaKur(k)
+	for _, d in model:GetDescendants() do
+		kaydet(k, d)
+	end
+
+	table.insert(k.baglantilar, model.DescendantAdded:Connect(function(d)
+		kaydet(k, d)
+	end))
+	table.insert(k.baglantilar, model.DescendantRemoving:Connect(function(d)
+		if d:IsA("BasePart") then
+			k.parcalar[d] = nil
+		elseif d:IsA("ParticleEmitter") then
+			k.vfxler[d] = nil
+		end
+	end))
+
+	return k
 end
 
 local function kalanSure(): number
@@ -145,6 +200,9 @@ local function denetle()
 		end
 		if mevcut.tabela then
 			mevcut.tabela:Destroy()
+		end
+		for _, b in mevcut.baglantilar do
+			b:Disconnect()
 		end
 		kule = nil
 		mevcut = nil

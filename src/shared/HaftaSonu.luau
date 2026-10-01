@@ -16,8 +16,8 @@ HaftaSonu.KuleYolu = { "MainIsland", "updatetower" }
 
 HaftaSonu.YaziParcasi = "TEXT"
 
-HaftaSonu.RenkA = Color3.fromRGB(30, 110, 255)
-HaftaSonu.RenkB = Color3.fromRGB(255, 255, 255)
+HaftaSonu.RenkA = Color3.fromRGB(20, 90, 255)
+HaftaSonu.RenkB = Color3.fromRGB(215, 235, 255)
 
 function HaftaSonu.dogalBitis(simdi: number): number
 	local kayma = HaftaSonu.SaatDilimi * 3600
