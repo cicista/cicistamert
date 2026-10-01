@@ -26,8 +26,10 @@ local ARKA_PLAN_ADI = "LoadingScreen"
 local LOGO_ORANI = 1842 / 1026
 
 local ADA_ADI = "MainIsland"
-local YORUNGE_SURESI = 80
-local BULANIKLIK = 14
+local YORUNGE_SURESI = 70
+local YORUNGE_YARICAPI = 120
+local YORUNGE_YUKSEKLIGI = 0.35
+local BULANIKLIK = 9
 local KAMERA_EYLEMI = "YuklemeKamerasi"
 
 local EN_COK_BEKLEME = 45
@@ -297,19 +299,19 @@ bulaniklik.Parent = Lighting
 
 local adaMerkezi: Vector3? = nil
 local gorunenMerkez: Vector3? = nil
-local adaYaricapi = 380
-local gorunenYaricap = 380
 
 task.spawn(function()
 	while not kapandi do
 		local ada = Workspace:FindFirstChild(ADA_ADI)
-		if ada and ada:IsA("Model") then
+		local dogus = ada and ada:FindFirstChildWhichIsA("SpawnLocation", true)
+		if dogus and dogus:IsA("BasePart") then
+			adaMerkezi = dogus.Position
+		elseif ada and ada:IsA("Model") then
 			local ok, cf, boyut = pcall(function()
 				return ada:GetBoundingBox()
 			end)
 			if ok and cf and boyut and boyut.Magnitude > 1 then
 				adaMerkezi = (cf :: CFrame).Position
-				adaYaricapi = math.clamp(math.max((boyut :: Vector3).X, (boyut :: Vector3).Z) * 0.55, 160, 600)
 			end
 		end
 		task.wait(1.5)
@@ -325,11 +327,10 @@ RunService:BindToRenderStep(KAMERA_EYLEMI, Enum.RenderPriority.Camera.Value + 1,
 
 	local onceki = gorunenMerkez
 	gorunenMerkez = if onceki then onceki:Lerp(merkez, math.min(1, dt * 1.5)) else merkez
-	gorunenYaricap += (adaYaricapi - gorunenYaricap) * math.min(1, dt * 1.5)
 
 	local odak = gorunenMerkez :: Vector3
 	local aci = (Workspace:GetServerTimeNow() / YORUNGE_SURESI) % 1 * math.pi * 2
-	local konum = odak + Vector3.new(math.cos(aci) * gorunenYaricap, gorunenYaricap * 0.42, math.sin(aci) * gorunenYaricap)
+	local konum = odak + Vector3.new(math.cos(aci) * YORUNGE_YARICAPI, YORUNGE_YARICAPI * YORUNGE_YUKSEKLIGI, math.sin(aci) * YORUNGE_YARICAPI)
 
 	kamera.CameraType = Enum.CameraType.Scriptable
 	kamera.CFrame = CFrame.lookAt(konum, odak)
