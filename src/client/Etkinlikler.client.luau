@@ -17,6 +17,7 @@ local HavaAyar = require(Shared:WaitForChild("Hava"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 local SayacKarti = require(script.Parent:WaitForChild("SayacKarti"))
+local Ipucu = require(script.Parent:WaitForChild("Ipucu"))
 
 local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
@@ -193,6 +194,62 @@ local function sayi(ad: string): number
 	local deger = Workspace:GetAttribute(ad)
 	return if type(deger) == "number" then deger else 0
 end
+
+local abyssalSansi = 0
+for _, satir in GizemAyar.OdulSanslari do
+	if satir.kademe == "Abyssal" then
+		abyssalSansi = satir.sans
+	end
+end
+
+Ipucu.bagla(gizemKarti.cerceve, function()
+	local simdi = Workspace:GetServerTimeNow()
+	local bitis = sayi(N.bitis)
+	local ada = Workspace:GetAttribute(N.ada)
+
+	local satirlar: { string } = {}
+	if bitis > simdi and type(ada) == "string" and ada ~= "" then
+		table.insert(satirlar, `It landed on {ada}! It fades in {sure(bitis - simdi)}.`)
+	end
+	table.insert(satirlar, "A giant beam that drops on a random island right after the Lucky Block Rain ends.")
+	table.insert(satirlar, `The first player to dig it wins a Legendary to Abyssal pet ({abyssalSansi}% Abyssal!).`)
+	table.insert(
+		satirlar,
+		`Someone else digging it? Walk up and {UI.Girdi.sec("click", "tap", "press the button")} to challenge them to a Clash!`
+	)
+
+	return { baslik = GizemAyar.Ad, renk = GizemAyar.Renk, satirlar = satirlar }
+end)
+
+Ipucu.bagla(havaKarti.cerceve, function()
+	local simdi = Workspace:GetServerTimeNow()
+	local turId = Workspace:GetAttribute(HN.tur)
+	local bitis = sayi(HN.bitis)
+	local tur = if type(turId) == "string" and bitis > simdi then HavaAyar.get(turId) else nil
+
+	if tur then
+		return {
+			baslik = string.upper(tur.ad),
+			renk = tur.renk,
+			satirlar = {
+				`Everything you dig or fish has a {tur.sans}% chance to get the {tur.mutasyon} mutation.`,
+				"Mutated brainrots earn more Rot on your base. Dig and fish as much as you can!",
+				`Ends in {sure(bitis - simdi)}.`,
+			},
+		}
+	end
+
+	local satirlar: { string } = {}
+	local sonraki = sayi(HN.sonraki)
+	if sonraki > 0 then
+		table.insert(satirlar, `A random weather event starts in {sure(sonraki - simdi)}. Each one gives mutations to your digs and catches:`)
+	end
+	for _, aday in HavaAyar.Turler do
+		table.insert(satirlar, `{aday.ad}: {aday.sans}% {aday.mutasyon} chance for {math.floor(aday.sure / 60)} min`)
+	end
+
+	return { baslik = "WEATHER EVENT", renk = HavaAyar.BeklemeRengi, satirlar = satirlar }
+end)
 
 local function ekranAcik(ad: string): boolean
 	local gui = playerGui:FindFirstChild(ad)

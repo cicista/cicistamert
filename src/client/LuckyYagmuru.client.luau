@@ -15,6 +15,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local UI = require(script.Parent:WaitForChild("UI"))
 local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
 local SayacKarti = require(script.Parent:WaitForChild("SayacKarti"))
+local Ipucu = require(script.Parent:WaitForChild("Ipucu"))
 
 local E = LuckyBlock.Event
 
@@ -56,6 +57,31 @@ local function nitelik(ad: string): number
 end
 
 local sonSaniye = -1
+
+Ipucu.bagla(kart.cerceve, function()
+	local simdi = Workspace:GetServerTimeNow()
+	local bitis = nitelik(E.nitelikBitis)
+	local kalan = nitelik(E.nitelikKalan)
+	local sonraki = nitelik(E.nitelikSonraki)
+
+	local satirlar: { string } = {}
+	if kalan > 0 and bitis > simdi then
+		table.insert(satirlar, `It's raining Lucky Blocks! {math.floor(kalan)} left on the islands.`)
+		table.insert(satirlar, `Hop on your flyboard and grab one before they vanish ({SayacKarti.sure(bitis - simdi)} left).`)
+	else
+		table.insert(satirlar, "Every hour, Lucky Blocks drop on the islands.")
+		if sonraki > 0 then
+			table.insert(satirlar, `Next rain in {SayacKarti.sure(sonraki - simdi)}.`)
+		end
+	end
+	table.insert(
+		satirlar,
+		`Each player can take {E.oyuncuBasiLimit} per rain. Open it from your backpack to win a random brainrot.`
+	)
+	table.insert(satirlar, "When the rain ends, a Mystery Beam drops on a random island!")
+
+	return { baslik = "LUCKY BLOCK RAIN", renk = ALTIN, satirlar = satirlar }
+end)
 
 local function ekranAcik(ad: string): boolean
 	local gui = playerGui:FindFirstChild(ad)
