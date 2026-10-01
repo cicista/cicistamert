@@ -220,7 +220,7 @@ local function finishDig(player: Player, won: boolean)
 	end
 
 	if not won then
-		local kayip = if maden then `The {maden.displayName} crumbled!` else "The brainrot got away!"
+		local kayip = if maden then `The {maden.displayName} crumbled!` else "The pet got away!"
 		Bildirim:FireClient(player, kayip, Color3.fromRGB(255, 120, 120))
 		if not maden then
 			KacanYumurta.teklifEt(player, beam.kind, beam.island)

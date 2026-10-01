@@ -86,7 +86,7 @@ local function buildStand(): Model
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.FontFace = Fonts.bold
-	label.Text = "Brainrot Detective"
+	label.Text = "Pet Detective"
 	label.TextColor3 = Color3.fromRGB(255, 236, 180)
 	label.TextSize = 20
 	label.TextScaled = false
@@ -224,7 +224,7 @@ local function teslimAl(player: Player, data: any)
 		local special = Mutations.isSpecial(enIyi.mutation)
 		Bildirim:FireClient(
 			player,
-			`Collected {#sonuclar} brainrot(s) from the Detective! Best: {enIyi.name} ({Format.perSecond(enIyi.income)})`,
+			`Collected {#sonuclar} pet(s) from the Detective! Best: {enIyi.name} ({Format.perSecond(enIyi.income)})`,
 			if special then Mutations.color(enIyi.mutation) else Rarity.color(enIyi.rarity)
 		)
 	end
@@ -241,7 +241,7 @@ function panelAc(player: Player)
 	local liste = bekleyenler(data)
 	local ozet = isOzeti(data)
 	if #liste == 0 and not ozet then
-		Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "You have no unidentified pets.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
@@ -268,7 +268,7 @@ local function isiBitir(player: Player, data: any)
 
 	Bildirim:FireClient(
 		player,
-		`The Detective identified {#is.items} brainrot(s)! Go to the Detective to collect them.`,
+		`The Detective identified {#is.items} pet(s)! Go to the Detective to collect them.`,
 		Color3.fromRGB(255, 236, 180)
 	)
 end
@@ -351,7 +351,7 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 	end
 
 	if #liste == 0 then
-		Bildirim:FireClient(player, "You have no unidentified brainrots.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "You have no unidentified pets.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
@@ -375,7 +375,7 @@ DetectiveTeslim.OnServerEvent:Connect(function(player, secilen)
 	durumYolla(player, data)
 	Bildirim:FireClient(
 		player,
-		`Detective is identifying {#items} brainrot(s) ({sureYazisi(toplam)}). You can leave!`,
+		`Detective is identifying {#items} pet(s) ({sureYazisi(toplam)}). You can leave!`,
 		Color3.fromRGB(255, 236, 180)
 	)
 end)

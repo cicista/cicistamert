@@ -445,7 +445,7 @@ secim.Visible = false
 secim.Parent = pencere
 
 local secimBaslik = UI.text({
-	text = "Choose a Brainrot",
+	text = "Choose a Pet",
 	size = UI.Sizes.heading,
 	font = UI.Fonts.bold,
 	color = Color3.new(1, 1, 1),
@@ -635,14 +635,14 @@ local function secimCiz()
 
 	local items = durum.items or {}
 	secimBaslik.Text = if durum.rarity
-		then `Add another {Rarity.displayName(durum.rarity)} brainrot`
-		else "Choose a Brainrot"
+		then `Add another {Rarity.displayName(durum.rarity)} pet`
+		else "Choose a Pet"
 
 	if #items == 0 then
 		local yok = UI.text({
 			text = if durum.rarity
-				then `You have no more {Rarity.displayName(durum.rarity)} brainrots to add.`
-				else "No brainrots you can fuse. You need identified brainrots that are not on your base.",
+				then `You have no more {Rarity.displayName(durum.rarity)} pets to add.`
+				else "No pets you can fuse. You need identified pets that are not on your base.",
 			size = UI.Sizes.small,
 			color = UI.Colors.textDim,
 			align = Enum.TextXAlignment.Center,
@@ -736,30 +736,30 @@ local function pencereCiz()
 	local gerekli = durum.required or Fuse.Required
 	local sayi = #slots
 
-	yonerge.Text = `Bring <font color="#FF4040">{gerekli}</font> Brainrots of the same tier`
+	yonerge.Text = `Bring <font color="#FF4040">{gerekli}</font> Pets of the same tier`
 	local sanslar = durum.chances or Fuse.Chances
 	if durum.chance then
-		sansYazi.Text = `{durum.chance}% chance for a better Brainrot!`
+		sansYazi.Text = `{durum.chance}% chance for a better Pet!`
 	else
-		sansYazi.Text = `{sanslar.mixed}-{sanslar.same3}% chance  -  same brainrots = higher!`
+		sansYazi.Text = `{sanslar.mixed}-{sanslar.same3}% chance  -  same pets = higher!`
 	end
 
 	local simdiki = if durum.chance then `<font color="#46D250">{durum.chance}%</font>` else "-"
 	sansBilgi.Text = table.concat({
 		`<font color="#FFD629">SUCCESS CHANCE</font>`,
-		`3 same brainrots: <b>{sanslar.same3}%</b>`,
-		`Different brainrots: <b>{sanslar.mixed}%</b>`,
+		`3 same pets: <b>{sanslar.same3}%</b>`,
+		`Different pets: <b>{sanslar.mixed}%</b>`,
 		`Now: <b>{simdiki}</b>`,
-		`If it fails, the brainrots are lost.`,
+		`If it fails, the pets are lost.`,
 	}, "\n")
 
 	local mutSatirlari = {
 		`<font color="#FFD629">MUTATION TRANSFER</font>`,
-		`Each mutated brainrot: <b>{Fuse.Mutation.chancePerItem}%</b> to pass its mutation on`,
+		`Each mutated pet: <b>{Fuse.Mutation.chancePerItem}%</b> to pass its mutation on`,
 	}
 	local mutasyonlar = durum.mutations or {}
 	if #mutasyonlar == 0 then
-		table.insert(mutSatirlari, "No mutated brainrots in the machine")
+		table.insert(mutSatirlari, "No mutated pets in the machine")
 	else
 		for _, m in mutasyonlar do
 			local info = Mutations.get(m.id)
@@ -781,11 +781,11 @@ local function pencereCiz()
 		local renk = Rarity.color(sonraki)
 		kutuyuBoya(renk)
 		kutuKontur.Color = renk
-		kutuYazi.Text = `{Rarity.displayName(sonraki)} Brainrot`
+		kutuYazi.Text = `{Rarity.displayName(sonraki)} Pet`
 		UI.rarityStyle(kutuYazi, sonraki)
 		kutuSoru.Visible = true
 		onizleme.ekle(kutuResim, { revealed = false, rarity = sonraki }, kutuSoru)
-		uyari.Text = `If it fails, all {gerekli} brainrots are lost`
+		uyari.Text = `If it fails, all {gerekli} pets are lost`
 	else
 		kutuyuBoya(nil)
 		kutuKontur.Color = SIYAH
@@ -815,7 +815,7 @@ local function pencereCiz()
 		nabiz:Play()
 		fuseNabiz = nabiz
 	else
-		fuseYazi.Text = `{eksik} Brainrot Left`
+		fuseYazi.Text = `{eksik} Pet Left`
 		UI.dugme3BRenk(fuseDugme, DUGME_BEKLE)
 	end
 
@@ -1113,7 +1113,7 @@ local function playMerge(data: any)
 
 	mergeTitle.Text = `FUSING {string.upper(tostring(data.fromName or ""))}`
 	if tonumber(data.chance) then
-		mergeSub.Text = `{data.chance}% chance for a better brainrot...`
+		mergeSub.Text = `{data.chance}% chance for a better pet...`
 		mergeSub.TextColor3 = UI.Colors.textDim
 	end
 	UI.plainStyle(mergeTitle, fromColor)
@@ -1246,7 +1246,7 @@ local function playMerge(data: any)
 		UI.plainStyle(mergeTitle, KIRMIZI)
 		mergeName.Text = "Better luck next time!"
 		UI.plainStyle(mergeName, Color3.new(1, 1, 1))
-		mergeSub.Text = `All {soulCount} brainrots were lost`
+		mergeSub.Text = `All {soulCount} pets were lost`
 		mergeSub.TextColor3 = Color3.fromRGB(255, 120, 120)
 	end
 

@@ -53,24 +53,24 @@ local Pool: { QuestDef } = {
 		rarity = "Common",
 		target = 10,
 		difficulty = "easy",
-		short = "Common Brainrots",
-		text = "Collect 10 Common Brainrots",
+		short = "Common Pets",
+		text = "Collect 10 Common Pets",
 	},
 	{
 		id = "sell8",
 		kind = "sell",
 		target = 8,
 		difficulty = "easy",
-		short = "Brainrots Sold",
-		text = "Sell 8 Brainrots",
+		short = "Pets Sold",
+		text = "Sell 8 Pets",
 	},
 	{
 		id = "place3",
 		kind = "place",
 		target = 3,
 		difficulty = "easy",
-		short = "Brainrots Placed",
-		text = "Place 3 Brainrots On Your Base",
+		short = "Pets Placed",
+		text = "Place 3 Pets On Your Base",
 	},
 
 	{
@@ -87,24 +87,24 @@ local Pool: { QuestDef } = {
 		rarity = "Rare",
 		target = 8,
 		difficulty = "normal",
-		short = "Rare Brainrots",
-		text = "Collect 8 Rare Brainrots",
+		short = "Rare Pets",
+		text = "Collect 8 Rare Pets",
 	},
 	{
 		id = "sell20",
 		kind = "sell",
 		target = 20,
 		difficulty = "normal",
-		short = "Brainrots Sold",
-		text = "Sell 20 Brainrots",
+		short = "Pets Sold",
+		text = "Sell 20 Pets",
 	},
 	{
 		id = "place8",
 		kind = "place",
 		target = 8,
 		difficulty = "normal",
-		short = "Brainrots Placed",
-		text = "Place 8 Brainrots On Your Base",
+		short = "Pets Placed",
+		text = "Place 8 Pets On Your Base",
 	},
 
 	{
@@ -113,8 +113,8 @@ local Pool: { QuestDef } = {
 		rarity = "Epic",
 		target = 3,
 		difficulty = "hard",
-		short = "Epic Brainrots",
-		text = "Collect 3 Epic Brainrots",
+		short = "Epic Pets",
+		text = "Collect 3 Epic Pets",
 	},
 	{
 		id = "dig60",
@@ -147,8 +147,8 @@ local Pool: { QuestDef } = {
 		rarity = "Legendary",
 		target = 1,
 		difficulty = "extreme",
-		short = "Legendary Brainrots",
-		text = "Collect A Legendary Brainrot",
+		short = "Legendary Pets",
+		text = "Collect A Legendary Pet",
 	},
 	{
 		id = "epic6",
@@ -156,8 +156,8 @@ local Pool: { QuestDef } = {
 		rarity = "Epic",
 		target = 6,
 		difficulty = "extreme",
-		short = "Epic Brainrots",
-		text = "Collect 6 Epic Brainrots",
+		short = "Epic Pets",
+		text = "Collect 6 Epic Pets",
 	},
 	{
 		id = "rare20",
@@ -165,8 +165,8 @@ local Pool: { QuestDef } = {
 		rarity = "Rare",
 		target = 20,
 		difficulty = "extreme",
-		short = "Rare Brainrots",
-		text = "Collect 20 Rare Brainrots",
+		short = "Rare Pets",
+		text = "Collect 20 Rare Pets",
 	},
 }
 
@@ -198,7 +198,7 @@ end
 
 function Gorevler.rewardText(def: QuestDef): string
 	local reward = Gorevler.reward(def)
-	local ad = `{Rarity.displayName(reward.rarity)} Brainrot`
+	local ad = `{Rarity.displayName(reward.rarity)} Pet`
 	return if reward.count > 1 then `{reward.count}x {ad}` else ad
 end
 

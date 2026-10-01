@@ -923,7 +923,7 @@ end
 
 local IPUCLARI = {
 	"Every clover makes your digs LUCKIER!",
-	"AFK here and come back with rarer Brainrots!",
+	"AFK here and come back with rarer Pets!",
 	"Clover Luck never runs out - it's permanent!",
 	"Better fields give WAY more Clover Luck!",
 	"Up to x20 Luck on every dig!",

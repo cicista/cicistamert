@@ -174,15 +174,15 @@ end
 
 local function uygunsuzluk(player: Player, item: any): string?
 	if item.slot then
-		return "A brainrot on your base cannot be fused."
+		return "A pet on your base cannot be fused."
 	end
 	if not item.revealed or type(item.name) ~= "string" then
-		return "Unidentified brainrots cannot be fused. Take it to the Detective first."
+		return "Unidentified pets cannot be fused. Take it to the Detective first."
 	end
 
 	local next = Fuse.nextRarity(item.rarity)
 	if not next then
-		return `{Rarity.displayName(item.rarity)} brainrots cannot be fused.`
+		return `{Rarity.displayName(item.rarity)} pets cannot be fused.`
 	end
 
 	if not Brainrots.availableOn(next, fuseAdasi(player)) then
@@ -190,12 +190,12 @@ local function uygunsuzluk(player: Player, item: any): string?
 		local adaAdi = if ilk then Brainrots.IslandNames[ilk] else nil
 		return if adaAdi
 			then `Unlock {adaAdi} to fuse into {Rarity.displayName(next)}.`
-			else `{Rarity.displayName(next)} brainrots unlock on a later island.`
+			else `{Rarity.displayName(next)} pets unlock on a later island.`
 	end
 
 	local slot = pending[player]
 	if slot and slot.rarity ~= item.rarity then
-		return `The machine holds {Rarity.displayName(slot.rarity)} brainrots, add the same tier.`
+		return `The machine holds {Rarity.displayName(slot.rarity)} pets, add the same tier.`
 	end
 
 	return nil
@@ -323,7 +323,7 @@ local function returnItems(player: Player, reason: string?)
 	Envanter.push(player)
 
 	if count > 0 and reason then
-		Bildirim:FireClient(player, `{count} brainrot(s) returned from the machine ({reason})`, UYARI)
+		Bildirim:FireClient(player, `{count} pet(s) returned from the machine ({reason})`, UYARI)
 	end
 end
 
@@ -364,7 +364,7 @@ local function insertItem(player: Player, uid: string)
 
 	local item = PlayerData.findItem(player, uid)
 	if not item then
-		Bildirim:FireClient(player, "That brainrot is no longer in your inventory.", UYARI)
+		Bildirim:FireClient(player, "That pet is no longer in your inventory.", UYARI)
 		return
 	end
 
@@ -421,7 +421,7 @@ local function completeFuse(player: Player)
 	end
 
 	if #slot.entries < Fuse.Required then
-		Bildirim:FireClient(player, `You need {Fuse.Required} brainrots of the same tier to fuse.`, UYARI)
+		Bildirim:FireClient(player, `You need {Fuse.Required} pets of the same tier to fuse.`, UYARI)
 		return
 	end
 
@@ -429,7 +429,7 @@ local function completeFuse(player: Player)
 	local ada = fuseAdasi(player)
 
 	if not nextRarity or not Brainrots.availableOn(nextRarity, ada) then
-		returnItems(player, "cannot fuse this brainrot")
+		returnItems(player, "cannot fuse this pet")
 		pushStatus(player)
 		return
 	end
@@ -480,7 +480,7 @@ local function completeFuse(player: Player)
 			hepsiAyni = false
 		end
 	end
-	local fromName = if hepsiAyni then slot.name else `{Rarity.displayName(fromRarity)} brainrots`
+	local fromName = if hepsiAyni then slot.name else `{Rarity.displayName(fromRarity)} pets`
 
 	pending[player] = nil
 	fusing[player] = true
@@ -533,7 +533,7 @@ local function completeFuse(player: Player)
 				Rarity.color(nextRarity :: string)
 			)
 		else
-			Bildirim:FireClient(player, `Fuse failed... your {souls} brainrots were lost.`, RED)
+			Bildirim:FireClient(player, `Fuse failed... your {souls} pets were lost.`, RED)
 		end
 
 		pushStatus(player)

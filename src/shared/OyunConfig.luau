@@ -12,7 +12,7 @@ Config.NPC = {
 Config.Detective = {
 	name = "BrainrotDetective",
 	promptText = "Inspect",
-	promptSubText = "Brainrot Detective",
+	promptSubText = "Pet Detective",
 	promptDistance = 12,
 	spawnPosition = Vector3.new(24, 5, -40),
 }
@@ -61,7 +61,7 @@ Config.Islands = {
 	},
 	{
 		name = "Candy Island",
-		desc = "Sticky pink sands. Luck x2. Cosmic brainrots appear here.",
+		desc = "Sticky pink sands. Luck x2. Cosmic pets appear here.",
 		spawnPartName = "Spawn_Sakiz",
 		position = Vector3.new(-990.1, 28.6, -747.5),
 				price = 1_000_000_000,
@@ -70,7 +70,7 @@ Config.Islands = {
 	},
 	{
 		name = "Snow Island",
-		desc = "Frozen sands. Luck x4. Secret brainrots appear here.",
+		desc = "Frozen sands. Luck x4. Secret pets appear here.",
 		spawnPartName = "Spawn_Buz",
 		position = Vector3.new(-262.8, 30.5, 709.7),
 		price = 30_000_000_000,
@@ -79,7 +79,7 @@ Config.Islands = {
 	},
 	{
 		name = "Volcano Island",
-		desc = "Scorching sands. Luck x8. Infernal brainrots appear here.",
+		desc = "Scorching sands. Luck x8. Infernal pets appear here.",
 		spawnPartName = "Spawn_Volkan",
 		position = Vector3.new(620.3, 16.3, -34.5),
 		price = 250_000_000_000,

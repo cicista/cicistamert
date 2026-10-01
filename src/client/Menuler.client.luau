@@ -413,7 +413,7 @@ local function bosSlotSatiri(parent: Instance, slotNo: number, order: number)
 	})
 
 	UI.text({
-		text = UI.Girdi.sec(`Empty slot  -  hold a brainrot and press E on slot {slotNo}`, `Empty slot  -  hold a brainrot and tap slot {slotNo}`, `Empty slot  -  hold a brainrot and press X on slot {slotNo}`),
+		text = UI.Girdi.sec(`Empty slot  -  hold a pet and press E on slot {slotNo}`, `Empty slot  -  hold a pet and tap slot {slotNo}`, `Empty slot  -  hold a pet and press X on slot {slotNo}`),
 		size = UI.Sizes.small,
 		color = UI.Colors.textDim,
 		frameSize = UDim2.new(1, -60, 1, 0),
@@ -454,7 +454,7 @@ local function refreshEnvanter()
 	end
 	placed += #fazlaSlot
 
-	cipToplam.Text = `{#items} Brainrots`
+	cipToplam.Text = `{#items} Pets`
 	cipGizli.Text = `{hidden} Unidentified`
 	cipBase.Text = `{placed}/{slotSayisi} On Base`
 
@@ -806,7 +806,7 @@ end)
 local detective = UI.panel(screen, UDim2.fromOffset(640, 540), "Detective")
 
 UI.text({
-	text = "Brainrot Detective",
+	text = "Pet Detective",
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	color = Color3.fromRGB(255, 236, 180),
@@ -1107,7 +1107,7 @@ function detektifDurumCiz()
 		detektifBar.Visible = true
 		detektifDolgu.Size = UDim2.fromScale(math.clamp(1 - kalan / toplam, 0, 1), 1)
 		detektifBarYazi.Text = `{detektifSure(kalan)} left  -  you can leave!`
-		detektifOzet.Text = `Identifying {detektifIs.adet or 0} brainrot(s)...`
+		detektifOzet.Text = `Identifying {detektifIs.adet or 0} pet(s)...`
 		detektifDugme.BackgroundColor3 = UI.Colors.gold
 		detektifDugmeYazi.Text = ""
 	elseif detektifIs and detektifIs.bitti then
@@ -1115,7 +1115,7 @@ function detektifDurumCiz()
 		detektifBar.Visible = true
 		detektifDolgu.Size = UDim2.fromScale(1, 1)
 		detektifBarYazi.Text = "READY"
-		detektifOzet.Text = `{adet} brainrot(s) identified -- take them back!`
+		detektifOzet.Text = `{adet} pet(s) identified -- take them back!`
 		detektifDugme.BackgroundColor3 = UI.Colors.good
 		detektifDugmeYazi.Text = `COLLECT {adet}`
 	else
@@ -1134,7 +1134,7 @@ function detektifDurumCiz()
 		detektifOzet.Text = if secili > 0
 			then `{secili} selected  -  {detektifSure(seciliSure)}`
 			elseif #detektifBekleyen > 0 then `{#detektifBekleyen} unidentified  -  total {detektifSure(toplam)}`
-			else "No unidentified brainrots"
+			else "No unidentified pets"
 		detektifDugme.BackgroundColor3 = if #detektifBekleyen > 0 then UI.Colors.good else UI.Colors.panel
 		detektifDugmeYazi.Text = if secili > 0
 			then `IDENTIFY {secili}`
@@ -1149,7 +1149,7 @@ local function detektifCiz()
 
 	if detektifCalisiyor() then
 		local bilgi = UI.text({
-			text = "The Detective is working on your brainrots. Come back when the bar is full!",
+			text = "The Detective is working on your pets. Come back when the bar is full!",
 			size = UI.Sizes.body,
 			font = UI.Fonts.bold,
 			color = UI.Colors.textDim,
@@ -1611,7 +1611,7 @@ LuckyBlockSonuc.OnClientEvent:Connect(function(data)
 			Rulet.kutla(luckyReel, Rarity.color(rarityId))
 			luckyResult.Text = string.upper(Rarity.displayName(rarityId))
 			UI.rarityStyle(luckyResult, rarityId)
-			luckyDetail.Text = "Tier locked in, now which brainrot?"
+			luckyDetail.Text = "Tier locked in, now which pet?"
 			luckyDetail.TextColor3 = UI.Colors.textDim
 		end,
 
@@ -4742,7 +4742,7 @@ do
 
 		if not takipIs then
 			UI.text({
-				text = "Take your unidentified brainrots to the Detective. You can follow the progress here.",
+				text = "Take your unidentified pets to the Detective. You can follow the progress here.",
 				size = UI.Sizes.small,
 				color = UI.Colors.textDim,
 				align = Enum.TextXAlignment.Center,
@@ -4755,7 +4755,7 @@ do
 
 		if not takipIs.bitti then
 			UI.text({
-				text = `The Detective is identifying {takipIs.adet or 0} brainrot(s). Results will show up here.`,
+				text = `The Detective is identifying {takipIs.adet or 0} pet(s). Results will show up here.`,
 				size = UI.Sizes.small,
 				color = UI.Colors.textDim,
 				align = Enum.TextXAlignment.Center,
@@ -4787,16 +4787,16 @@ do
 		takipDolgu.Size = UDim2.fromScale(oran, 1)
 
 		if not takipIs then
-			takipDurum.Text = "No brainrots at the Detective."
+			takipDurum.Text = "No pets at the Detective."
 			takipDurum.TextColor3 = UI.Colors.textDim
 			takipBarYazi.Text = ""
 		elseif takipIs.bitti then
-			takipDurum.Text = `Done! Go to the Detective to collect {takipIs.adet or 0} brainrot(s).`
+			takipDurum.Text = `Done! Go to the Detective to collect {takipIs.adet or 0} pet(s).`
 			takipDurum.TextColor3 = DOLUM_YESIL
 			takipBarYazi.Text = "READY"
 		else
 			local t = math.ceil(takipKalan())
-			takipDurum.Text = `Identifying {takipIs.adet or 0} brainrot(s)...`
+			takipDurum.Text = `Identifying {takipIs.adet or 0} pet(s)...`
 			takipDurum.TextColor3 = TAKIP_SARI
 			takipBarYazi.Text = string.format("%d:%02d left", t // 60, t % 60)
 		end

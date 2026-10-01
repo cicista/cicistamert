@@ -235,11 +235,11 @@ function commands.revealAll(player, data)
 	end
 
 	if count == 0 then
-		return "No unidentified brainrots to reveal"
+		return "No unidentified pets to reveal"
 	end
 
 	Envanter.syncBrainrots(player)
-	return `{count} brainrot(s) revealed`
+	return `{count} pet(s) revealed`
 end
 
 function commands.setMutation(player, data, arg)
@@ -249,7 +249,7 @@ function commands.setMutation(player, data, arg)
 
 	local _, heldUid = Tools.equippedBrainrot(player)
 	if not heldUid then
-		return "Hold a brainrot first"
+		return "Hold a pet first"
 	end
 
 	local item = PlayerData.findItem(player, heldUid)
@@ -258,7 +258,7 @@ function commands.setMutation(player, data, arg)
 	end
 
 	if not item.revealed or not item.name then
-		return "This brainrot is not identified"
+		return "This pet is not identified"
 	end
 
 	if item.mutation == arg then
@@ -349,7 +349,7 @@ function commands.giveGizliBrainrot(player, data, arg)
 	Envanter.syncBrainrots(player)
 	Envanter.push(player)
 
-	return `Unidentified {Rarity.displayName(rarityId)} brainrot given -- reveal it at the Detective`
+	return `Unidentified {Rarity.displayName(rarityId)} pet given -- reveal it at the Detective`
 end
 
 local function vec(position: Vector3): string
@@ -899,7 +899,7 @@ function commands.clearInventory(player, data)
 	Envanter.syncBrainrots(player)
 	baseYenile:Fire(player)
 
-	return `{count} brainrot(s) deleted`
+	return `{count} pet(s) deleted`
 end
 
 AdminKomut.OnServerEvent:Connect(function(player, command, arg)

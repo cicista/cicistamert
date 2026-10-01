@@ -1076,7 +1076,7 @@ function BalikPaneli.basla(gear: DigMinigame.GearInfo, rarityId: string)
 	local info = Rarity.Info[rarityId :: Rarity.RarityId]
 	local renk: Color3
 	if info then
-		header.Text = `{info.displayName} BRAINROT`
+		header.Text = `{info.displayName} PET`
 		UI.rarityStyle(header, rarityId)
 		renk = info.color
 	else

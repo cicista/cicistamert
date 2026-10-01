@@ -434,7 +434,7 @@ local function scrollKullan(player: Player, data: any, scrollId: string, slotInd
 	end
 
 	if not hedef then
-		Bildirim:FireClient(player, "Put a brainrot in the slot first.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "Put a pet in the slot first.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
@@ -533,7 +533,7 @@ local function buildSlotPrompt(pad: BasePart, baseIndex: number, slotIndex: numb
 			end
 		end
 
-		Bildirim:FireClient(player, "Hold a brainrot to place it.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "Hold a pet to place it.", Color3.fromRGB(255, 200, 90))
 	end)
 end
 
@@ -1723,7 +1723,7 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 	end
 
 	if not item.revealed or not item.name then
-		Bildirim:FireClient(player, "Take it to the Brainrot Detective first!", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "Take it to the Pet Detective first!", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
@@ -1768,7 +1768,7 @@ function placeInSlot(player: Player, uid: string, slotIndex: number)
 	if swapped then
 		Bildirim:FireClient(
 			player,
-			`{item.name} placed ({swapped.name or "Brainrot"} returned)`,
+			`{item.name} placed ({swapped.name or "Pet"} returned)`,
 			color
 		)
 	else
@@ -1801,7 +1801,7 @@ function removeFromSlot(player: Player, uid: string)
 	Envanter.push(player)
 	pushBase(player)
 
-	Bildirim:FireClient(player, `{item.name or "Brainrot"} went back to your backpack.`, Color3.fromRGB(200, 210, 225))
+	Bildirim:FireClient(player, `{item.name or "Pet"} went back to your backpack.`, Color3.fromRGB(200, 210, 225))
 end
 
 local function refreshSlots(player: Player)

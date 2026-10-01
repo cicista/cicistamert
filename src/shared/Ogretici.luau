@@ -36,7 +36,7 @@ Ogretici.Adimlar = {
 		hedef = "base",
 		resim = "tesvik",
 		yazi = "Place it in a base slot!",
-		alt = "Brainrots earn cash while placed.",
+		alt = "Pets earn cash while placed.",
 	},
 	{
 		id = "para",
@@ -85,7 +85,7 @@ Ogretici.AdaIpucu = {
 	yazi = "You can afford a new island!",
 	alt = "Open the Teleporter and pick the red island.",
 	resim = "tesvik",
-	varis = "Stronger brainrots live here -- dig this sand for better rot!",
+	varis = "Stronger pets live here -- dig this sand for better rot!",
 	renk = Color3.fromRGB(255, 60, 60),
 }
 

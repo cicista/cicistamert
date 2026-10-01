@@ -205,7 +205,7 @@ local function buildPanel(info: any)
 	for _, tier in LuckyBlock.Tiers do
 		actionButton(`Give {tier.displayName}  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end
-	actionButton("Reveal all brainrots in inventory", "revealAll", nil, UI.Colors.accent)
+	actionButton("Reveal all pets in inventory", "revealAll", nil, UI.Colors.accent)
 	actionButton("Restart tutorial (step 1)", "ogreticiSifirla", nil, Color3.fromRGB(255, 215, 60))
 	actionButton("Tutorial: skip to next step", "ogreticiAtla", nil, Color3.fromRGB(255, 190, 90))
 	actionButton("Finish tutorial", "ogreticiBitir", nil, Color3.fromRGB(200, 170, 110))
@@ -214,7 +214,7 @@ local function buildPanel(info: any)
 	actionButton("Map report (island/base/NPC positions, prints to Output)", "haritaRaporu", nil, UI.Colors.textDim)
 	actionButton("Sand report (ground under you, prints to Output)", "kumRaporu", nil, UI.Colors.textDim)
 	actionButton("VFX report (beam effect contents)", "vfxRaporu", nil, UI.Colors.textDim)
-	actionButton("Hidden brainrot report (HiddenPart model)", "gizliRaporu", nil, UI.Colors.textDim)
+	actionButton("Hidden pet report (HiddenPart model)", "gizliRaporu", nil, UI.Colors.textDim)
 	actionButton("Foreign script report (scripts in the map, prints to Output)", "scriptRaporu", nil, UI.Colors.warn)
 
 	section("PLAYER LEVEL  --  level up (with rewards) or set directly")
@@ -378,7 +378,7 @@ local function buildPanel(info: any)
 		chipRow(spawnChips)
 	end
 
-	section("MUTATION  --  converts the HELD brainrot")
+	section("MUTATION  --  converts the HELD pet")
 
 	local mutationChips: { TextButton }
 	local mutationEntries: { any } = {}
@@ -442,7 +442,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(girdapChips)
 
-	section("GIVE BRAINROT  --  random mutation")
+	section("GIVE PET  --  random mutation")
 	local rarityChips: { any } = {}
 	for _, id in Rarity.Order do
 		table.insert(rarityChips, {
@@ -454,7 +454,7 @@ local function buildPanel(info: any)
 	end
 	chipRow(rarityChips)
 
-	section("GIVE UNIDENTIFIED BRAINROT  --  reveal it at the Detective")
+	section("GIVE UNIDENTIFIED PET  --  reveal it at the Detective")
 	local gizliChips: { any } = {}
 	for _, id in Rarity.Order do
 		table.insert(gizliChips, {

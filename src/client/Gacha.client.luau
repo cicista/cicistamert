@@ -511,7 +511,7 @@ local sonucYazi = UI.text({
 })
 
 local detayYazi = UI.text({
-	text = "Every egg hatches into a top-tier Brainrot!",
+	text = "Every egg hatches into a top-tier Pet!",
 	size = UI.Sizes.body,
 	font = UI.Fonts.bold,
 	color = UI.Colors.textDim,
@@ -913,7 +913,7 @@ local function kutla(rarityId: string, ad: string)
 
 	sonucYazi.Text = string.upper(ad)
 	UI.rarityStyle(sonucYazi, rarityId)
-	detayYazi.Text = "Take it to the Detective to reveal your Brainrot!"
+	detayYazi.Text = "Take it to the Detective to reveal your Pet!"
 	detayYazi.TextColor3 = renk:Lerp(BEYAZ, 0.35)
 end
 
@@ -1018,7 +1018,7 @@ GachaAc.OnClientEvent:Connect(function(veri)
 		bekleSeridi()
 		sanslariCiz(if type(veri) == "table" then tonumber(veri.iska) or 0 else 0, false)
 		sonucYazi.Text = ""
-		detayYazi.Text = "Every egg hatches into a top-tier Brainrot!"
+		detayYazi.Text = "Every egg hatches into a top-tier Pet!"
 		detayYazi.TextColor3 = UI.Colors.textDim
 	end
 	panel.Visible = true

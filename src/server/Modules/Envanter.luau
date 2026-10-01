@@ -483,7 +483,7 @@ task.spawn(function()
 
 		Bildirim:FireClient(
 			player,
-			`Backpack upgraded to {PlayerData.cantaKapasitesi(player)} brainrots!`,
+			`Backpack upgraded to {PlayerData.cantaKapasitesi(player)} pets!`,
 			Color3.fromRGB(120, 255, 150)
 		)
 	end)

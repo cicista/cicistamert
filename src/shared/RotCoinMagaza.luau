@@ -40,7 +40,7 @@ for _, tur in LuckyBlock.Tiers do
 		id = `LuckyBlock_{tur.id}`,
 		kind = "luckyblock",
 		name = tur.displayName,
-		desc = "Spin the wheel for a random brainrot!",
+		desc = "Spin the wheel for a random pet!",
 		price = LUCKY_FIYAT[tur.id] or tur.order * 5,
 		icon = "luckyBlock",
 		color = tur.color,

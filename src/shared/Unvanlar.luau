@@ -63,7 +63,7 @@ Unvanlar.Liste = {
 	{ id = "yerYaran", ad = "Ground Breaker", unvan = "Ground Breaker", tur = "kazi", hedef = 1000, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 200, 60), renkB = Color3.fromRGB(255, 70, 40) }, robloxId = 0 },
 	{ id = "servetAvcisi", ad = "Fortune Hunter", unvan = "Fortune Hunter", tur = "lucky", hedef = 50, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 240, 90), renkB = Color3.fromRGB(80, 230, 110) }, robloxId = 0 },
 	{ id = "mitik", ad = "Mythic Seeker", unvan = "Mythic Seeker", tur = "kademe", hedef = kademeSirasi("Mythic"), seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 80, 120), renkB = Color3.fromRGB(255, 160, 220) }, robloxId = 0 },
-	{ id = "alim", ad = "Brainrot Scholar", unvan = "Brainrot Scholar", tur = "index", hedef = 50, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(90, 160, 255), renkB = Color3.fromRGB(190, 110, 255) }, robloxId = 0 },
+	{ id = "alim", ad = "Pet Scholar", unvan = "Pet Scholar", tur = "index", hedef = 50, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(90, 160, 255), renkB = Color3.fromRGB(190, 110, 255) }, robloxId = 0 },
 	{ id = "denizKurdu", ad = "Old Sea Dog", unvan = "Captain of the Sea", tur = "balik", hedef = 500, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(40, 220, 255), renkB = Color3.fromRGB(30, 90, 255) }, robloxId = 0 },
 
 	{ id = "ilahi", ad = "Divine Touch", unvan = "Divine Touched", tur = "kademe", hedef = kademeSirasi("Secret"), seviye = 4, stil = { tur = "flas", etiket = "IlahiRenk" }, robloxId = 0 },
@@ -77,7 +77,7 @@ Unvanlar.Liste = {
 	{ id = "hizSeytani", ad = "Speed Demon", unvan = "Speed Demon", tur = "rebirth", hedef = 3, seviye = 5, stil = { tur = "flas", etiket = "GalaksiRenk", nabiz = true }, robloxId = 0 },
 
 	{ id = "ucurum", ad = "Abyss Walker", unvan = "Abyss Walker", tur = "kademe", hedef = kademeSirasi("Abyssal"), seviye = 6, stil = { tur = "flas", etiket = "AbyssalRenk", nabiz = true }, robloxId = 0 },
-	{ id = "efsane", ad = "Brainrot Legend", unvan = "Brainrot Legend", tur = "index", hedef = #Brainrots.List, seviye = 6, stil = { tur = "gokkusagi", nabiz = true }, robloxId = 0 },
+	{ id = "efsane", ad = "Pet Legend", unvan = "Pet Legend", tur = "index", hedef = #Brainrots.List, seviye = 6, stil = { tur = "gokkusagi", nabiz = true }, robloxId = 0 },
 	{ id = "gizemUstasi", ad = "Mystery Master", unvan = "Mystery Master", tur = "level", hedef = SeviyeAyar.Max, seviye = 6, stil = { tur = "gokkusagi", nabiz = true }, robloxId = 0 },
 } :: { Rozet }
 
@@ -96,13 +96,13 @@ function Unvanlar.gereksinim(rozet: Rozet): string
 	if tur == "kazi" then
 		return if h == 1 then "Dig up your first beam" else `Dig up {Format.short(h)} beams`
 	elseif tur == "balik" then
-		return `Fish up {Format.short(h)} brainrots at sea`
+		return `Fish up {Format.short(h)} pets at sea`
 	elseif tur == "place" then
-		return `Place {h} brainrots on your base`
+		return `Place {h} pets on your base`
 	elseif tur == "lucky" then
 		return if h == 1 then "Open a Lucky Block" else `Open {Format.short(h)} Lucky Blocks`
 	elseif tur == "fuse" then
-		return `Fuse brainrots {h} times`
+		return `Fuse pets {h} times`
 	elseif tur == "trade" then
 		return `Complete {h} trades`
 	elseif tur == "rot" then
@@ -110,7 +110,7 @@ function Unvanlar.gereksinim(rozet: Rozet): string
 	elseif tur == "level" then
 		return `Reach Level {h}`
 	elseif tur == "index" then
-		return if h >= #Brainrots.List then "Discover every brainrot in the Index" else `Discover {h} brainrots in the Index`
+		return if h >= #Brainrots.List then "Discover every pet in the Index" else `Discover {h} pets in the Index`
 	elseif tur == "rebirth" then
 		return `Speed Rebirth {h} times`
 	elseif tur == "kademe" then
@@ -120,7 +120,7 @@ function Unvanlar.gereksinim(rozet: Rozet): string
 				local ad = Rarity.displayName(id)
 				local harf = string.upper(string.sub(ad, 1, 1))
 				local tanim = if string.find("AEIOU", harf, 1, true) then "an" else "a"
-				return `Find {tanim} {ad} brainrot`
+				return `Find {tanim} {ad} pet`
 			end
 		end
 	end

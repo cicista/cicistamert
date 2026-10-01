@@ -25,7 +25,7 @@ local Ores = require(Shared:WaitForChild("Ores"))
 local Tools = {}
 
 Tools.ShovelName = "Shovel"
-Tools.GPSName = "Brainrot GPS"
+Tools.GPSName = "Pet GPS"
 Tools.LuckyBlockName = "Lucky Block"
 Tools.PickaxeName = "Pickaxe"
 

@@ -137,7 +137,7 @@ local function sellItem(player: Player, uid: string): boolean
 	end
 
 	if item.slot then
-		Bildirim:FireClient(player, "A brainrot on your base cannot be sold.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "A pet on your base cannot be sold.", Color3.fromRGB(255, 200, 90))
 		return false
 	end
 
@@ -182,7 +182,7 @@ BrainrotSat.OnServerEvent:Connect(function(player, uid)
 	end
 
 	if not hedef then
-		Bildirim:FireClient(player, "Pick a brainrot from the list to sell it.", Color3.fromRGB(255, 200, 90))
+		Bildirim:FireClient(player, "Pick a pet from the list to sell it.", Color3.fromRGB(255, 200, 90))
 		return
 	end
 
@@ -217,7 +217,7 @@ TumunuSat.OnServerEvent:Connect(function(player)
 
 	Bildirim:FireClient(
 		player,
-		`Sold {count} brainrots (+{Format.short(total)} Rot)`,
+		`Sold {count} pets (+{Format.short(total)} Rot)`,
 		Bases.RotColor
 	)
 end)

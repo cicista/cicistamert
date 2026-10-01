@@ -705,7 +705,7 @@ local function cantaDoluUyar(player: Player, data: Data)
 
 	local kapasite = Canta.duzelt(data.inventoryMax)
 	local mesaj = if Canta.dolu(kapasite)
-		then `Backpack full ({kapasite})! Sell some brainrots or place them on your base.`
+		then `Backpack full ({kapasite})! Sell some pets or place them on your base.`
 		else `Backpack full ({kapasite})! Sell some, place them on your base, or upgrade in your Inventory.`
 
 	pcall(function()

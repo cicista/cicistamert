@@ -64,7 +64,7 @@ local function oyuncuGeldi(player: Player)
 		tur = "odul",
 		baslik = "WELCOME BACK!",
 		yazi = `+{Format.short(miktar)} Rot`,
-		alt = `Your brainrots kept working while you were away ({sureYazisi(math.min(saniye, A.enFazlaSaat * 3600))})`,
+		alt = `Your pets kept working while you were away ({sureYazisi(math.min(saniye, A.enFazlaSaat * 3600))})`,
 		ikon = "rot",
 	})
 end

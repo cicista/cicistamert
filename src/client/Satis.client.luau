@@ -26,7 +26,7 @@ local satilabilir: { any } = {}
 local pencere = UI.panel(screen, UDim2.fromOffset(480, 470), "SaticiPenceresi")
 
 UI.text({
-	text = "Sell Brainrots",
+	text = "Sell Pets",
 	size = UI.Sizes.title,
 	font = UI.Fonts.bold,
 	frameSize = UDim2.new(1, -80, 0, 36),
@@ -234,7 +234,7 @@ hepsiButon.MouseButton1Click:Connect(function()
 		return
 	end
 	onayla(
-		`Sell <b>all {#satilabilir} brainrots</b> for <font color="#FFD629">{Format.short(sonToplam)} Rot</font>?`,
+		`Sell <b>all {#satilabilir} pets</b> for <font color="#FFD629">{Format.short(sonToplam)} Rot</font>?`,
 		function()
 			TumunuSat:FireServer()
 		end
@@ -250,7 +250,7 @@ local function listeyiCiz()
 
 	if #satilabilir == 0 then
 		UI.text({
-			text = "Nothing to sell. Dig up some brainrots first.",
+			text = "Nothing to sell. Dig up some pets first.",
 			size = UI.Sizes.small,
 			color = UI.Colors.textDim,
 			frameSize = UDim2.new(1, -6, 0, 40),
@@ -328,7 +328,7 @@ SaticiDurum.OnClientEvent:Connect(function(data)
 
 	local toplam = tonumber(data.totalValue) or 0
 	sonToplam = toplam
-	ozet.Text = `{#satilabilir} brainrots  --  {Format.short(toplam)} Rot total`
+	ozet.Text = `{#satilabilir} pets  --  {Format.short(toplam)} Rot total`
 
 	if hepsiYazi then
 		hepsiYazi.Text = if #satilabilir > 0
