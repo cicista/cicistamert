@@ -177,8 +177,11 @@ end
 local PARCA_ADI: { [string]: string } = {
 	kum = "kum",
 	sekerkum = "sekerkum",
+	sakizkum = "sekerkum",
 	snowkum = "snowkum",
+	buzkum = "snowkum",
 	alevkum = "alevkum",
+	volkankum = "alevkum",
 	water = "deniz",
 	deniz = "deniz",
 }

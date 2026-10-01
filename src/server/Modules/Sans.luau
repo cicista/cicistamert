@@ -4,8 +4,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Detectors = require(Shared:WaitForChild("Detectors"))
+local Flyboard = require(Shared:WaitForChild("Flyboard"))
+local OyunConfig = require(Shared:WaitForChild("OyunConfig"))
 local Passler = require(Shared:WaitForChild("Passler"))
+local Rods = require(Shared:WaitForChild("Rods"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Sand = require(script.Parent:WaitForChild("Sand"))
@@ -14,35 +18,69 @@ local Seviye = require(script.Parent:WaitForChild("Seviye"))
 local AfkSans = require(script.Parent:WaitForChild("AfkSans"))
 local HaftaSonu = require(script.Parent:WaitForChild("HaftaSonu"))
 
-export type Parca = { ad: string, carpan: number }
+export type Parca = { ad: string, carpan: number, gizli: boolean? }
 
 local Sans = {}
 
 Sans.Nitelik = "SansCarpani"
 Sans.AyrintiNiteligi = "SansAyrinti"
 Sans.GeciciNiteligi = "SansGeciciBitis"
+Sans.Deniz = "deniz"
 
 local ARALIK = 0.5
 
-local sonKum: { [Player]: number } = {}
+local bolgeler: { [Player]: string } = {}
 
-local function kumSansi(player: Player): number
-	local ground = Sand.underPlayer(player)
-	if ground and ground.isSand then
-		sonKum[player] = ground.luck
-		return ground.luck
+local function suda(player: Player, ground: Sand.GroundInfo?): boolean
+	if player:GetAttribute("Flyboarding") == true then
+		return true
 	end
-	return sonKum[player] or 1
+
+	local char = player.Character
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		if humanoid:GetState() == Enum.HumanoidStateType.Swimming or humanoid.FloorMaterial == Enum.Material.Water then
+			return true
+		end
+	end
+
+	return ground ~= nil
+		and not ground.isSand
+		and (ground.material == Enum.Material.Water or Flyboard.isSeaInstance(ground.part))
 end
 
-function Sans.parcalar(player: Player): { Parca }
+function Sans.bolge(player: Player): string
+	local ground = Sand.underPlayer(player)
+	if player:GetAttribute("Flyboarding") ~= true and ground and ground.isSand then
+		bolgeler[player] = Brainrots.islandOf(ground.part)
+	elseif suda(player, ground) then
+		bolgeler[player] = Sans.Deniz
+	end
+	return bolgeler[player] or Brainrots.IslandOrder[1]
+end
+
+function Sans.adaSansi(ada: string): number
+	if ada == Sans.Deniz then
+		return OyunConfig.GPS.seaLuck or 0
+	end
+	return Sand.adaSansi(ada)
+end
+
+local function kisiselParcalar(player: Player, deniz: boolean): { Parca }
 	local data = PlayerData.get(player)
-	local dedektor = Detectors.get((if data then data.detector else Detectors.Default) :: any)
+
+	local arac: Parca
+	if deniz then
+		local rod = Rods.get(if data then data.rod else nil)
+		arac = { ad = "Rod", carpan = if rod then rod.luck else 1 }
+	else
+		local dedektor = Detectors.get((if data then data.detector else Detectors.Default) :: any)
+		arac = { ad = "Detector", carpan = dedektor.luck }
+	end
 
 	return {
-		{ ad = "Island", carpan = kumSansi(player) },
-		{ ad = "Detector", carpan = dedektor.luck },
-		{ ad = "Clovers", carpan = AfkSans.carpan(player) },
+		arac,
+		{ ad = "Clovers", carpan = AfkSans.carpan(player), gizli = true },
 		{ ad = "Level", carpan = Seviye.carpan(player) },
 		{ ad = "Potion", carpan = PlayerData.luckBonus(player) },
 		{ ad = "Friends", carpan = Arkadaslar.carpan(player) },
@@ -51,15 +89,26 @@ function Sans.parcalar(player: Player): { Parca }
 	}
 end
 
-function Sans.kazi(player: Player): number
-	local ground = Sand.luckUnder(player)
-	local toplam = ground
-	for _, parca in Sans.parcalar(player) do
-		if parca.ad ~= "Island" then
+local function carp(parcalar: { Parca }, gizliDahil: boolean): number
+	local toplam = 1
+	for _, parca in parcalar do
+		if gizliDahil or not parca.gizli then
 			toplam *= parca.carpan
 		end
 	end
 	return toplam
+end
+
+function Sans.kazi(player: Player): number
+	local ada = Sans.bolge(player)
+	if ada == Sans.Deniz then
+		ada = Brainrots.IslandOrder[1]
+	end
+	return Sans.adaSansi(ada) + carp(kisiselParcalar(player, false), true)
+end
+
+function Sans.deniz(player: Player): number
+	return Sans.adaSansi(Sans.Deniz) + carp(kisiselParcalar(player, true), true)
 end
 
 local function yuvarla(deger: number): number
@@ -74,16 +123,21 @@ local function yayinla(player: Player)
 		return
 	end
 
-	local toplam = 1
+	local ada = Sans.bolge(player)
+	local adaSansi = Sans.adaSansi(ada)
+	local parcalar = kisiselParcalar(player, ada == Sans.Deniz)
+
 	local satirlar: { string } = {}
-	for _, parca in Sans.parcalar(player) do
-		toplam *= parca.carpan
-		if math.abs(parca.carpan - 1) > 1e-3 then
+	if adaSansi > 0 then
+		table.insert(satirlar, `{(Brainrots.IslandNames :: { [string]: string })[ada] or ada} +{yuvarla(adaSansi)}`)
+	end
+	for _, parca in parcalar do
+		if not parca.gizli and math.abs(parca.carpan - 1) > 1e-3 then
 			table.insert(satirlar, `{parca.ad} x{yuvarla(parca.carpan)}`)
 		end
 	end
 
-	local deger = yuvarla(toplam)
+	local deger = yuvarla(adaSansi + carp(parcalar, false))
 	if player:GetAttribute(Sans.Nitelik) ~= deger then
 		player:SetAttribute(Sans.Nitelik, deger)
 	end
@@ -109,7 +163,7 @@ function Sans.calistir()
 	calisti = true
 
 	Players.PlayerRemoving:Connect(function(player)
-		sonKum[player] = nil
+		bolgeler[player] = nil
 	end)
 
 	task.spawn(function()

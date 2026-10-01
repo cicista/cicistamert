@@ -12,7 +12,6 @@ local Rods = require(Shared:WaitForChild("Rods"))
 local DigMinigame = require(Shared:WaitForChild("DigMinigame"))
 local KaziMinigame = require(Shared:WaitForChild("KaziMinigame"))
 local Net = require(Shared:WaitForChild("Net"))
-local Passler = require(Shared:WaitForChild("Passler"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -44,11 +43,8 @@ local Envanter = require(Modules:WaitForChild("Envanter"))
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
 local Patlama = require(Modules:WaitForChild("Patlama"))
 local MadenPatlamasi = require(Modules:WaitForChild("MadenPatlamasi"))
-local Arkadaslar = require(Modules:WaitForChild("Arkadaslar"))
 local Seviye = require(Modules:WaitForChild("Seviye"))
-local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
-local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
 local Unvan = require(Modules:WaitForChild("Unvan"))
 local Hava = require(Modules:WaitForChild("Hava"))
 local SunucuIsini = require(Modules:WaitForChild("SunucuIsini"))
@@ -753,14 +749,7 @@ task.spawn(function()
 				local sonGirdap = lastWhirl[player] or 0
 
 				if simdi - sonGirdap >= GIRDAP_ARASI and rng:NextNumber() * 100 <= rod.spawnChance then
-					local denizSansi = rod.luck
-						* (G.seaLuck or 1)
-						* PlayerData.luckBonus(player)
-						* Arkadaslar.carpan(player)
-						* Seviye.carpan(player)
-						* AfkSans.carpan(player)
-						* HaftaSonu.carpan()
-						* Passler.sansCarpani(player)
+					local denizSansi = Sans.deniz(player)
 					if Beams.trySpawnSea(player, denizSansi, rng, rod.maxWhirls, rod.scanRadius) then
 						lastWhirl[player] = simdi
 						girdapBildirildi = true

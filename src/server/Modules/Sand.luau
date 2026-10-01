@@ -3,14 +3,16 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("OyunConfig"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
+local Config = require(Shared:WaitForChild("OyunConfig"))
 
 local Sand = {}
 
 local S = Config.Sand
 
-function Sand.luckOf(name: string): number
-	return S.luckByName[string.lower(name)] or 1
+function Sand.adaSansi(ada: string): number
+	return S.islandLuck[ada] or 0
 end
 
 function Sand.isSandName(name: string): boolean
@@ -76,7 +78,7 @@ function Sand.probe(origin: Vector3, ignore: { Instance }?): GroundInfo?
 		isSand = sand,
 		part = part,
 		material = result.Material,
-		luck = if part then Sand.luckOf(part.Name) else 1,
+		luck = Sand.adaSansi(Brainrots.islandOf(part)),
 	}
 end
 
@@ -104,14 +106,6 @@ function Sand.isOnSand(player: Player, ignore: { Instance }?): boolean
 
 	local ground = Sand.underPlayer(player, ignore)
 	return ground ~= nil and ground.isSand
-end
-
-function Sand.luckUnder(player: Player): number
-	local ground = Sand.underPlayer(player)
-	if not ground or not ground.isSand then
-		return 1
-	end
-	return ground.luck
 end
 
 function Sand.report(player: Player): (boolean, { string })
@@ -159,7 +153,7 @@ function Sand.report(player: Player): (boolean, { string })
 			lines,
 			`  Sand by name?                  : {ground.part ~= nil and Sand.isSandName(ground.part.Name)}`
 		)
-		table.insert(lines, `  Ground luck multiplier         : x{ground.luck}`)
+		table.insert(lines, `  Island luck bonus              : +{ground.luck}`)
 	else
 		table.insert(lines, `  The ray hit no ground (checked {S.rayDepth} studs down)`)
 	end

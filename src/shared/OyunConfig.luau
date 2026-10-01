@@ -105,13 +105,11 @@ Config.Sand = {
 	nameKeywords = { "kum", "sand" },
 	rayDepth = 12,
 
-	luckByName = {
+	islandLuck = {
+		kum = 0,
 		sekerkum = 2,
-		sakizkum = 2,
 		snowkum = 4,
-		buzkum = 4,
 		alevkum = 8,
-		volkankum = 8,
 	},
 }
 
