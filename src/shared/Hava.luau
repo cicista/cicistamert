@@ -10,6 +10,7 @@ export type HavaTuru = {
 	gok: Color3,
 	parcacik: Color3,
 	sekil: string,
+	sure: number,
 }
 
 local Hava = {}
@@ -33,6 +34,7 @@ Hava.Turler = {
 		gok = Color3.fromRGB(255, 232, 175),
 		parcacik = Color3.fromRGB(255, 214, 90),
 		sekil = "para",
+		sure = 300,
 	},
 	{
 		id = "DiamondHail",
@@ -44,6 +46,7 @@ Hava.Turler = {
 		gok = Color3.fromRGB(200, 238, 255),
 		parcacik = Color3.fromRGB(170, 240, 255),
 		sekil = "elmas",
+		sure = 300,
 	},
 	{
 		id = "GalaxyNight",
@@ -55,6 +58,7 @@ Hava.Turler = {
 		gok = Color3.fromRGB(205, 175, 255),
 		parcacik = Color3.fromRGB(215, 140, 255),
 		sekil = "yildiz",
+		sure = 180,
 	},
 	{
 		id = "HackerStorm",
@@ -66,6 +70,7 @@ Hava.Turler = {
 		gok = Color3.fromRGB(175, 255, 195),
 		parcacik = Color3.fromRGB(90, 255, 140),
 		sekil = "kod",
+		sure = 180,
 	},
 } :: { HavaTuru }
 
@@ -73,6 +78,7 @@ Hava.Nitelik = {
 	tur = "HavaTur",
 	bitis = "HavaBitis",
 	sonraki = "HavaSonraki",
+	siradaki = "HavaSiradaki",
 }
 
 function Hava.get(id: string?): HavaTuru?

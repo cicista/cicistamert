@@ -345,8 +345,12 @@ local function havaGuncelle(simdi: number, t: number)
 	local tur = if type(turId) == "string" and bitis > simdi then HavaAyar.get(turId) else nil
 	havaGorunumu(tur)
 
+	local siradakiId = Workspace:GetAttribute(HN.siradaki)
+	local siradaki = if type(siradakiId) == "string" then HavaAyar.get(siradakiId) else nil
+
 	local kart = havaKarti
-	local zeminRengi = if tur then tur.renk else HavaAyar.BeklemeRengi
+	local gosterilen = tur or siradaki
+	local zeminRengi = if gosterilen then gosterilen.renk else HavaAyar.BeklemeRengi
 	if havaZemini ~= zeminRengi then
 		havaZemini = zeminRengi
 		SayacKarti.zeminRengi(kart, zeminRengi)
@@ -359,7 +363,7 @@ local function havaGuncelle(simdi: number, t: number)
 		return
 	end
 
-	SayacKarti.sabitle(kart, nil)
+	SayacKarti.sabitle(kart, if siradaki then havaSlaytlari[siradaki.id] else nil)
 	local bekleme = math.max(0, sonraki - simdi)
 	if sonraki > 0 and bekleme <= YAKIN then
 		kart.sayac.Text = SayacKarti.sure(bekleme)
