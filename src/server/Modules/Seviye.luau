@@ -91,7 +91,7 @@ local function etiketGuncelle(player: Player)
 	if unvanYazi then
 		local kusanilan = data.unvan.kusanilan
 		local rozet = Unvanlar.get(kusanilan)
-		unvanYazi.Visible = rozet ~= nil
+		unvanYazi.Visible = rozet ~= nil and data.hideTitle ~= true
 		if unvanYazi:GetAttribute("UnvanId") ~= kusanilan then
 			unvanYazi:SetAttribute("UnvanId", kusanilan)
 			unvanYazi.Text = if rozet then rozet.unvan else ""
@@ -102,11 +102,13 @@ local function etiketGuncelle(player: Player)
 	local isim = (etiket :: BillboardGui):FindFirstChild("Isim") :: TextLabel?
 	if isim then
 		isim.Text = player.DisplayName
+		isim.Visible = data.hideName ~= true
 	end
 
 	local yazi = (etiket :: BillboardGui):FindFirstChild("Yazi") :: TextLabel?
 	if yazi then
 		yazi.Text = `Lv. {data.level}`
+		yazi.Visible = data.hideLevel ~= true
 	end
 
 	local hizYazi = (etiket :: BillboardGui):FindFirstChild("Hiz") :: TextLabel?
@@ -114,6 +116,7 @@ local function etiketGuncelle(player: Player)
 		local hizSeviyesi = (data.speedLevel or 0) + 1
 		hizYazi.Text = `Speed {hizSeviyesi}`
 		hizYazi.TextColor3 = Hiz.renk(hizSeviyesi)
+		hizYazi.Visible = data.hideSpeed ~= true
 	end
 end
 

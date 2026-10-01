@@ -6,6 +6,7 @@ local Net = require(Shared:WaitForChild("Net"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
+local Seviye = require(Modules:WaitForChild("Seviye"))
 
 local AyarDurum = Net.event("AyarDurum")
 local AyarKaydet = Net.event("AyarKaydet")
@@ -13,13 +14,24 @@ local AyarKaydet = Net.event("AyarKaydet")
 local OLCEK_MIN = 50
 local OLCEK_MAX = 150
 
+local ACIK_KAPALI = {
+	shakeOff = "SarsintiKapali",
+	hintsOff = "RehberKapali",
+	beamSoundOff = "SuzmeSesiKapali",
+	hideTitle = "UnvanGizli",
+	hideName = "IsimGizli",
+	hideLevel = "LevelGizli",
+	hideSpeed = "HizGizli",
+}
+
 local function ayarlariYolla(player: Player)
 	local data = PlayerData.bekle(player)
 	if not data then
 		return
 	end
-	player:SetAttribute("SarsintiKapali", data.shakeOff == true)
-	player:SetAttribute("RehberKapali", data.hintsOff == true)
+	for alan, nitelik in ACIK_KAPALI do
+		player:SetAttribute(nitelik, (data :: any)[alan] == true)
+	end
 	AyarDurum:FireClient(player, {
 		uiScale = data.uiScale or 100,
 		uiScaleMobile = data.uiScaleMobile or OLCEK_MIN,
@@ -63,11 +75,18 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 		if type(payload.sfxMuted) == "boolean" then
 			data.sfxMuted = payload.sfxMuted
 		end
-		if type(payload.shakeOff) == "boolean" then
-			data.shakeOff = payload.shakeOff
+		local etiketDegisti = false
+		for alan in ACIK_KAPALI do
+			local deger = payload[alan]
+			if type(deger) == "boolean" then
+				if (data :: any)[alan] ~= deger and string.sub(alan, 1, 4) == "hide" then
+					etiketDegisti = true
+				end
+				(data :: any)[alan] = deger
+			end
 		end
-		if type(payload.hintsOff) == "boolean" then
-			data.hintsOff = payload.hintsOff
+		if etiketDegisti then
+			Seviye.etiketGuncelle(player)
 		end
 	end
 

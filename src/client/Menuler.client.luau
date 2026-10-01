@@ -3683,7 +3683,7 @@ do
 end
 
 do
-	local ayarPanel = UI.panel(screen, UDim2.fromOffset(430, 636), "Ayarlar")
+	local ayarPanel = UI.panel(screen, UDim2.fromOffset(860, 636), "Ayarlar")
 
 	UI.text({
 		text = "Settings",
@@ -3871,15 +3871,20 @@ do
 				sfxMuted = SesEfekti.kapali(),
 				shakeOff = player:GetAttribute("SarsintiKapali") == true,
 				hintsOff = player:GetAttribute("RehberKapali") == true,
+				beamSoundOff = player:GetAttribute("SuzmeSesiKapali") == true,
+				hideTitle = player:GetAttribute("UnvanGizli") == true,
+				hideName = player:GetAttribute("IsimGizli") == true,
+				hideLevel = player:GetAttribute("LevelGizli") == true,
+				hideSpeed = player:GetAttribute("HizGizli") == true,
 			})
 		end)
 	end
 
-	local function kapatmaDugmesi(ad: string, y: number, nitelik: string, etiket: string)
+	local function kapatmaDugmesi(ad: string, y: number, nitelik: string, etiket: string, x: number?, gizleme: boolean?)
 		local dugme = Instance.new("TextButton")
 		dugme.Name = ad
-		dugme.Position = UDim2.fromOffset(18, y)
-		dugme.Size = UDim2.new(1, -36, 0, 48)
+		dugme.Position = UDim2.fromOffset(x or 18, y)
+		dugme.Size = UDim2.fromOffset(394, 48)
 		dugme.AutoButtonColor = false
 		dugme.BorderSizePixel = 0
 		dugme.Text = ""
@@ -3900,7 +3905,9 @@ do
 		local function ciz()
 			local kapali = player:GetAttribute(nitelik) == true
 			dugme.BackgroundColor3 = if kapali then Color3.fromRGB(200, 70, 80) else UI.Colors.good
-			yazi.Text = if kapali then `{etiket}: OFF` else `{etiket}: ON`
+			yazi.Text = if gizleme
+				then (if kapali then `{etiket}: HIDDEN` else `{etiket}: SHOWN`)
+				else (if kapali then `{etiket}: OFF` else `{etiket}: ON`)
 		end
 		player:GetAttributeChangedSignal(nitelik):Connect(ciz)
 
@@ -3915,6 +3922,48 @@ do
 
 	kapatmaDugmesi("SarsintiAcKapat", 490, "SarsintiKapali", "Screen Shake")
 	kapatmaDugmesi("RehberAcKapat", 578, "RehberKapali", "Control Hints")
+
+	local SAG_X = 448
+
+	local ayrac = Instance.new("Frame")
+	ayrac.Name = "Ayrac"
+	ayrac.Position = UDim2.fromOffset(429, 62)
+	ayrac.Size = UDim2.fromOffset(2, 560)
+	ayrac.BackgroundColor3 = UI.Colors.panelLight
+	ayrac.BorderSizePixel = 0
+	ayrac.Parent = ayarPanel
+
+	for _, baslik in { { "BEAM SOUND", 62 }, { "OVERHEAD DISPLAY", 150 } } do
+		UI.text({
+			text = baslik[1] :: string,
+			size = UI.Sizes.small,
+			font = UI.Fonts.bold,
+			color = UI.Colors.textDim,
+			frameSize = UDim2.fromOffset(394, 20),
+			position = UDim2.fromOffset(SAG_X, baslik[2] :: number),
+			parent = ayarPanel,
+		})
+	end
+
+	kapatmaDugmesi("SuzmeSesiAcKapat", 88, "SuzmeSesiKapali", "Beam Spawn Sound", SAG_X)
+
+	UI.text({
+		text = "Choose what shows above your head.",
+		size = UI.Sizes.small,
+		color = UI.Colors.textDim,
+		frameSize = UDim2.fromOffset(394, 20),
+		position = UDim2.fromOffset(SAG_X, 172),
+		parent = ayarPanel,
+	})
+
+	for sira, satir in {
+		{ "UnvanGosterim", "UnvanGizli", "Title" },
+		{ "IsimGosterim", "IsimGizli", "Name" },
+		{ "LevelGosterim", "LevelGizli", "Level" },
+		{ "HizGosterim", "HizGizli", "Speed" },
+	} do
+		kapatmaDugmesi(satir[1], 200 + (sira - 1) * 58, satir[2], satir[3], SAG_X, true)
+	end
 
 	local function olcekYazisiTazele(yuzde: number)
 		olcekYazi.Text = `{yuzde}%`

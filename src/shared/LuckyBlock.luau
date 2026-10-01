@@ -128,10 +128,10 @@ LuckyBlock.Event = {
 	oyuncuBasiLimit = 1,
 
 	gorunum = {
-		Normal = { olcek = 1, sutun = 140, kalinlik = 4, isik = 26 },
-		Golden = { olcek = 1.45, sutun = 320, kalinlik = 7, isik = 45, kivilcim = true },
-		Diamond = { olcek = 1.7, sutun = 420, kalinlik = 9, isik = 60, kivilcim = true, halka = true },
-		Hacker = { olcek = 1.7, sutun = 420, kalinlik = 9, isik = 60, kivilcim = true, halka = true },
+		Normal = { olcek = 1, isik = 26 },
+		Golden = { olcek = 1.45, isik = 45, kivilcim = true },
+		Diamond = { olcek = 1.7, isik = 60, kivilcim = true, halka = true },
+		Hacker = { olcek = 1.7, isik = 60, kivilcim = true, halka = true },
 	},
 
 	despawn = 300,

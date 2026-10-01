@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Unvanlar = require(Shared:WaitForChild("Unvanlar"))
 
@@ -34,13 +35,45 @@ local function indexSayisi(player: Player): number
 	return sayi
 end
 
-local function deger(player: Player, data: any, tur: string): number
+local siradanKademe: { [number]: string } = {}
+for _, id in Rarity.Order do
+	local info = Rarity.Info[id]
+	if info then
+		siradanKademe[info.order] = id
+	end
+end
+
+local function kademeBulundu(player: Player, data: any, sira: number): boolean
+	local id = siradanKademe[sira]
+	if not id then
+		return false
+	end
+	if data.unvan.kademeler[id] then
+		return true
+	end
+	for _, item in data.inventory or {} do
+		if type(item) == "table" and item.rarity == id then
+			data.unvan.kademeler[id] = true
+			return true
+		end
+	end
+	for ad in PlayerData.discovered(player) do
+		local info = Brainrots.get(ad)
+		if info and info.rarity == id then
+			data.unvan.kademeler[id] = true
+			return true
+		end
+	end
+	return false
+end
+
+local function deger(player: Player, data: any, tur: string, hedef: number): number
 	if tur == "level" then
 		return data.level or 0
 	elseif tur == "index" then
 		return indexSayisi(player)
 	elseif tur == "kademe" then
-		return data.unvan.kademe or 0
+		return if kademeBulundu(player, data, hedef) then hedef else 0
 	elseif tur == "rebirth" then
 		return data.speedRebirth or 0
 	end
@@ -73,7 +106,7 @@ function Unvan.gonder(player: Player)
 	for _, rozet in Unvanlar.Liste do
 		table.insert(liste, {
 			id = rozet.id,
-			ilerleme = math.min(deger(player, data, rozet.tur), rozet.hedef),
+			ilerleme = math.min(deger(player, data, rozet.tur, rozet.hedef), rozet.hedef),
 			kazanildi = data.unvan.kazanilan[rozet.id] == true,
 		})
 	end
@@ -92,7 +125,7 @@ function Unvan.kontrol(player: Player, sessiz: boolean?)
 
 	local yeniler: { Unvanlar.Rozet } = {}
 	for _, rozet in Unvanlar.Liste do
-		if not data.unvan.kazanilan[rozet.id] and deger(player, data, rozet.tur) >= rozet.hedef then
+		if not data.unvan.kazanilan[rozet.id] and deger(player, data, rozet.tur, rozet.hedef) >= rozet.hedef then
 			data.unvan.kazanilan[rozet.id] = true
 			table.insert(yeniler, rozet)
 			robloxRozeti(player, rozet)
@@ -145,8 +178,11 @@ function Unvan.ilerlet(player: Player, tur: string, miktar: number?, kademe: str
 
 	if kademe then
 		local info = Rarity.Info[kademe :: Rarity.RarityId]
-		if info and info.order > (data.unvan.kademe or 0) then
-			data.unvan.kademe = info.order
+		if info then
+			data.unvan.kademeler[info.id] = true
+			if info.order > (data.unvan.kademe or 0) then
+				data.unvan.kademe = info.order
+			end
 		end
 	end
 
@@ -211,6 +247,16 @@ local function oyuncuGeldi(player: Player)
 	local data = PlayerData.bekle(player)
 	if not data or not player.Parent then
 		return
+	end
+
+	for _, rozet in Unvanlar.Liste do
+		if
+			rozet.tur == "kademe"
+			and data.unvan.kazanilan[rozet.id]
+			and not kademeBulundu(player, data, rozet.hedef)
+		then
+			data.unvan.kazanilan[rozet.id] = nil
+		end
 	end
 
 	if data.unvan.kusanilan and not data.unvan.kazanilan[data.unvan.kusanilan] then

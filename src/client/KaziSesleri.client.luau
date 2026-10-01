@@ -85,7 +85,7 @@ task.spawn(function()
 		end
 		gorulen[id] = true
 
-		if model:GetAttribute("Owner") == localPlayer.UserId then
+		if model:GetAttribute("Owner") == localPlayer.UserId and localPlayer:GetAttribute("SuzmeSesiKapali") ~= true then
 			cal(suzmeSesi)
 		end
 	end)

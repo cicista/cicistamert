@@ -201,42 +201,7 @@ end
 
 local function gorunumOf(tierId: string): any
 	local g = LuckyBlock.Event.gorunum
-	return g[tierId] or g.Normal or { olcek = 1, sutun = 140, kalinlik = 4, isik = 26 }
-end
-
-local function buildSkyColumn(parent: BasePart, groundY: number, tier: any, gorunum: any)
-	local yukseklik = gorunum.sutun or 140
-	if yukseklik <= 0 then
-		return
-	end
-
-	local alt = Instance.new("Attachment")
-	alt.Name = "SutunAlt"
-	alt.Position = Vector3.new(0, groundY - parent.Position.Y, 0)
-	alt.Parent = parent
-
-	local ust = Instance.new("Attachment")
-	ust.Name = "SutunUst"
-	ust.Position = Vector3.new(0, groundY - parent.Position.Y + yukseklik, 0)
-	ust.Parent = parent
-
-	local sutun = Instance.new("Beam")
-	sutun.Name = "GokSutunu"
-	sutun.Attachment0 = alt
-	sutun.Attachment1 = ust
-	sutun.Width0 = gorunum.kalinlik or 4
-	sutun.Width1 = (gorunum.kalinlik or 4) * 0.35
-	sutun.FaceCamera = true
-	sutun.LightEmission = 1
-	sutun.LightInfluence = 0
-	sutun.Color = ColorSequence.new(Color3.new(1, 1, 1), tier.color)
-	sutun.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.35),
-		NumberSequenceKeypoint.new(0.6, 0.72),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	sutun.Segments = 4
-	sutun.Parent = parent
+	return g[tierId] or g.Normal or { olcek = 1, isik = 26 }
 end
 
 local function buildOzelSus(parent: BasePart, tier: any, gorunum: any)
@@ -292,12 +257,45 @@ local function buildOzelSus(parent: BasePart, tier: any, gorunum: any)
 	end
 end
 
-local function buildBeacon(parent: BasePart, groundY: number)
+local KONI_KATMANLARI = {
+	{ ad = "IsikDis", uc = 1.4, agiz = 1.3, renk = 1, saydamUc = 0.62, saydamAgiz = 0.86 },
+	{ ad = "Isik", uc = 0.7, agiz = 1, renk = 0.45, saydamUc = 0.35, saydamAgiz = 0.66 },
+	{ ad = "IsikCekirdek", uc = 0.25, agiz = 0.38, renk = 0, saydamUc = 0.1, saydamAgiz = 0.55 },
+}
+
+local KONI_DILIMLERI = {
+	{ oran = 0.36, saydam = 0.78 },
+	{ oran = 0.68, saydam = 0.74 },
+	{ oran = 0.94, saydam = 0.66 },
+}
+
+local function koniDiski(parent: BasePart, ad: string, y: number, cap: number, renk: Color3, saydam: number)
+	local disk = Instance.new("Part")
+	disk.Name = ad
+	disk.Shape = Enum.PartType.Cylinder
+	disk.Size = Vector3.new(0.12, cap, cap)
+	disk.CFrame = CFrame.new(parent.Position.X, y, parent.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	disk.Anchored = true
+	disk.CanCollide = false
+	disk.CanQuery = false
+	disk.CanTouch = false
+	disk.CastShadow = false
+	disk.Material = Enum.Material.Neon
+	disk.Color = renk
+	disk.Transparency = saydam
+	disk.Parent = parent.Parent
+end
+
+local function buildBeacon(parent: BasePart, groundY: number, tier: any, gorunum: any)
 	local E = LuckyBlock.Event
+	local olcek = gorunum.olcek or 1
+	local genislik = E.beaconWidth * olcek
+	local yukseklik = parent.Position.Y - groundY
+	local beyaz = Color3.new(1, 1, 1)
 
 	local uc = Instance.new("Attachment")
 	uc.Name = "KoniUc"
-	uc.Position = Vector3.new(0, groundY - parent.Position.Y, 0)
+	uc.Position = Vector3.new(0, -yukseklik, 0)
 	uc.Parent = parent
 
 	local agiz = Instance.new("Attachment")
@@ -305,25 +303,65 @@ local function buildBeacon(parent: BasePart, groundY: number)
 	agiz.Position = Vector3.new(0, 0, 0)
 	agiz.Parent = parent
 
-	local koni = Instance.new("Beam")
-	koni.Name = "Isik"
-	koni.Attachment0 = uc
-	koni.Attachment1 = agiz
-	koni.Width0 = 0.4
-	koni.Width1 = E.beaconWidth
-	koni.FaceCamera = true
-	koni.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
-	koni.LightEmission = 1
-	koni.LightInfluence = 0
-	koni.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.25),
-		NumberSequenceKeypoint.new(1, 0.55),
+	for _, katman in KONI_KATMANLARI do
+		local koni = Instance.new("Beam")
+		koni.Name = katman.ad
+		koni.Attachment0 = uc
+		koni.Attachment1 = agiz
+		koni.Width0 = katman.uc * olcek
+		koni.Width1 = genislik * katman.agiz
+		koni.FaceCamera = true
+		koni.Color = ColorSequence.new(beyaz:Lerp(tier.color, katman.renk), beyaz:Lerp(tier.color, katman.renk * 0.6))
+		koni.LightEmission = 1
+		koni.LightInfluence = 0
+		koni.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, katman.saydamUc),
+			NumberSequenceKeypoint.new(0.5, (katman.saydamUc + katman.saydamAgiz) / 2 - 0.08),
+			NumberSequenceKeypoint.new(1, katman.saydamAgiz),
+		})
+		koni.Segments = 8
+		koni.Parent = parent
+	end
+
+	koniDiski(parent, "KoniTabani", groundY + 0.08, genislik * 0.55, tier.color, 0.5)
+	koniDiski(parent, "KoniHalesi", groundY + 0.05, genislik * 1.1, tier.color, 0.82)
+	for _, dilim in KONI_DILIMLERI do
+		koniDiski(
+			parent,
+			"KoniDilimi",
+			groundY + yukseklik * dilim.oran,
+			math.max(0.4 * olcek, genislik * dilim.oran),
+			beyaz:Lerp(tier.color, 0.5),
+			dilim.saydam
+		)
+	end
+
+	local yukselen = Instance.new("ParticleEmitter")
+	yukselen.Name = "KoniParcaciklari"
+	yukselen.Color = ColorSequence.new(beyaz, tier.color)
+	yukselen.LightEmission = 1
+	yukselen.LightInfluence = 0
+	yukselen.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15 * olcek),
+		NumberSequenceKeypoint.new(0.5, 0.45 * olcek),
+		NumberSequenceKeypoint.new(1, 0),
 	})
-	koni.Segments = 1
-	koni.Parent = parent
+	yukselen.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.6),
+		NumberSequenceKeypoint.new(0.3, 0.1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	yukselen.Speed = NumberRange.new(3.5, 5)
+	yukselen.Lifetime = NumberRange.new(yukseklik / 5, yukseklik / 3.5)
+	yukselen.SpreadAngle = Vector2.new(22, 22)
+	yukselen.Rotation = NumberRange.new(0, 360)
+	yukselen.RotSpeed = NumberRange.new(-90, 90)
+	yukselen.Rate = 14 * olcek
+	yukselen.EmissionDirection = Enum.NormalId.Top
+	yukselen.Parent = uc
 
 	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 255, 255)
+	light.Color = beyaz:Lerp(tier.color, 0.4)
 	light.Range = 26
 	light.Brightness = 3
 	light.Parent = parent
@@ -365,8 +403,7 @@ local function spawnEventBlock(tierId: string, spot: Vector3?): boolean
 	model.Parent = blocksFolder()
 
 	Assets.playAnimations(model)
-	buildBeacon(primary, nokta.Y)
-	buildSkyColumn(primary, nokta.Y, tier, gorunum)
+	buildBeacon(primary, nokta.Y, tier, gorunum)
 	buildOzelSus(primary, tier, gorunum)
 
 	local renkliIsik = Instance.new("PointLight")

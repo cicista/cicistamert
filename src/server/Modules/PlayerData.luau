@@ -80,6 +80,11 @@ export type Data = {
 	sfxMuted: boolean,
 	shakeOff: boolean,
 	hintsOff: boolean,
+	beamSoundOff: boolean,
+	hideTitle: boolean,
+	hideName: boolean,
+	hideLevel: boolean,
+	hideSpeed: boolean,
 	speedLevel: number,
 	speedRebirth: number,
 	hizTercihi: number,
@@ -89,7 +94,7 @@ export type Data = {
 	gachaIska: number,
 	sonGorulme: number,
 	baslangicAlindi: boolean,
-	unvan: { sayac: { [string]: number }, kademe: number, kazanilan: { [string]: boolean }, kusanilan: string? },
+	unvan: { sayac: { [string]: number }, kademe: number, kademeler: { [string]: boolean }, kazanilan: { [string]: boolean }, kusanilan: string? },
 	kacanYumurta: { rarity: string, island: string? }?,
 	quests: QuestState,
 	discovered: { [string]: boolean },
@@ -169,6 +174,11 @@ local function defaultData(): Data
 		sfxMuted = false,
 		shakeOff = false,
 		hintsOff = false,
+		beamSoundOff = false,
+		hideTitle = false,
+		hideName = false,
+		hideLevel = false,
+		hideSpeed = false,
 		speedLevel = 0,
 		speedRebirth = 0,
 		hizTercihi = -1,
@@ -178,7 +188,7 @@ local function defaultData(): Data
 		gachaIska = 0,
 		sonGorulme = 0,
 		baslangicAlindi = false,
-		unvan = { sayac = {}, kademe = 0, kazanilan = {}, kusanilan = nil },
+		unvan = { sayac = {}, kademe = 0, kademeler = {}, kazanilan = {}, kusanilan = nil },
 		quests ={ cycle = 0, progress = {}, done = {} },
 		tutorial = { adim = 1, bitti = false },
 		discovered = {},
@@ -307,6 +317,11 @@ local function migrate(raw: any): Data
 	data.sfxMuted = raw.sfxMuted == true
 	data.shakeOff = raw.shakeOff == true
 	data.hintsOff = raw.hintsOff == true
+	data.beamSoundOff = raw.beamSoundOff == true
+	data.hideTitle = raw.hideTitle == true
+	data.hideName = raw.hideName == true
+	data.hideLevel = raw.hideLevel == true
+	data.hideSpeed = raw.hideSpeed == true
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
 	data.hizTercihi = math.clamp(math.floor(tonumber(raw.hizTercihi) or -1), -1, 100)
@@ -324,7 +339,7 @@ local function migrate(raw: any): Data
 	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
 	data.sonGorulme = math.max(0, math.floor(tonumber(raw.sonGorulme) or 0))
 	data.baslangicAlindi = raw.baslangicAlindi == true
-	data.unvan = { sayac = {}, kademe = 0, kazanilan = {}, kusanilan = nil }
+	data.unvan = { sayac = {}, kademe = 0, kademeler = {}, kazanilan = {}, kusanilan = nil }
 	if type(raw.unvan) == "table" then
 		if type(raw.unvan.sayac) == "table" then
 			for tur, deger in raw.unvan.sayac do
@@ -335,6 +350,13 @@ local function migrate(raw: any): Data
 			end
 		end
 		data.unvan.kademe = math.max(0, math.floor(tonumber(raw.unvan.kademe) or 0))
+		if type(raw.unvan.kademeler) == "table" then
+			for id, var in raw.unvan.kademeler do
+				if type(id) == "string" and var == true then
+					data.unvan.kademeler[id] = true
+				end
+			end
+		end
 		if type(raw.unvan.kazanilan) == "table" then
 			for id, var in raw.unvan.kazanilan do
 				if type(id) == "string" and var == true then

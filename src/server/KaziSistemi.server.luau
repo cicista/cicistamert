@@ -479,7 +479,12 @@ MinigameSonuc.OnServerEvent:Connect(function(player, won)
 		return
 	end
 
-	if Ogretici.adimId and Ogretici.adimId(player) == "ilkKazi" then
+	if
+		not session.sea
+		and session.rarityId == Adimlar.IlkKademe
+		and Ogretici.adimId
+		and Ogretici.adimId(player) == "ilkKazi"
+	then
 		finishDig(player, true)
 		return
 	end
