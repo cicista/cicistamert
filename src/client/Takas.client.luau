@@ -12,6 +12,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Ayar = require(Shared:WaitForChild("Takas"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
+local Condition = require(Shared:WaitForChild("Condition"))
+local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
@@ -32,8 +35,8 @@ local TURKUAZ = Color3.fromRGB(40, 200, 220)
 local MAVI = Color3.fromRGB(70, 110, 255)
 local KOYU = Color3.fromRGB(26, 25, 38)
 
-local KART_EN = 70
-local KART_BOY = 92
+local KART_EN = 80
+local KART_BOY = 114
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "Takas"
@@ -42,7 +45,7 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.DisplayOrder = 8
 screen.Parent = playerGui
 
-local panel = UI.panel(screen, UDim2.fromOffset(800, 600), "Takas")
+local panel = UI.panel(screen, UDim2.fromOffset(840, 660), "Takas")
 local kapatDugme = UI.closeButton(panel)
 UI.baslikCubugu(panel, "Trade", TURKUAZ, MAVI, "trade")
 
@@ -215,11 +218,11 @@ local function baslik(parent: Instance, yazi: string, x: UDim, y: number, en: UD
 	})
 end
 
-local function teklifKutusu(ad: string, x: number): (Frame, Frame, TextLabel)
+local function teklifKutusu(ad: string, x: number): (Frame, ScrollingFrame, TextLabel)
 	local kutu = Instance.new("Frame")
 	kutu.Name = ad
 	kutu.Position = UDim2.new(x, if x > 0 then 6 else 0, 0, 28)
-	kutu.Size = UDim2.new(0.5, -6, 0, 214)
+	kutu.Size = UDim2.new(0.5, -6, 0, 262)
 	kutu.BackgroundColor3 = KOYU
 	kutu.BorderSizePixel = 0
 	kutu.Parent = oturumAlani
@@ -227,11 +230,15 @@ local function teklifKutusu(ad: string, x: number): (Frame, Frame, TextLabel)
 	local cizgi = UI.stroke(kutu, GRI, 3)
 	cizgi.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-	local izgara = Instance.new("Frame")
+	local izgara = Instance.new("ScrollingFrame")
 	izgara.Name = "Izgara"
 	izgara.Position = UDim2.fromOffset(8, 8)
-	izgara.Size = UDim2.new(1, -16, 1, -16)
+	izgara.Size = UDim2.new(1, -12, 1, -16)
 	izgara.BackgroundTransparency = 1
+	izgara.BorderSizePixel = 0
+	izgara.ScrollBarThickness = 5
+	izgara.CanvasSize = UDim2.new()
+	izgara.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	izgara.Parent = kutu
 	local g = Instance.new("UIGridLayout")
 	g.CellSize = UDim2.fromOffset(KART_EN, KART_BOY)
@@ -260,7 +267,7 @@ local onunBaslik = baslik(oturumAlani, "THEIR OFFER", UDim.new(0.5, 6), 0, UDim.
 local benimKutu, benimIzgara, benimDurum = teklifKutusu("Benim", 0)
 local onunKutu, onunIzgara, onunDurum = teklifKutusu("Onun", 0.5)
 
-baslik(oturumAlani, "YOUR BACKPACK", UDim.new(0, 0), 250, UDim.new(0, 160)).TextColor3 = UI.Colors.textDim
+baslik(oturumAlani, "YOUR BACKPACK", UDim.new(0, 0), 298, UDim.new(0, 160)).TextColor3 = UI.Colors.textDim
 
 local filtre = "hepsi"
 local sonVeri: any = nil
@@ -271,7 +278,7 @@ do
 	local sekmeler = Instance.new("Frame")
 	sekmeler.Name = "Filtreler"
 	sekmeler.AnchorPoint = Vector2.new(1, 0)
-	sekmeler.Position = UDim2.new(1, 0, 0, 248)
+	sekmeler.Position = UDim2.new(1, 0, 0, 296)
 	sekmeler.Size = UDim2.fromOffset(420, 26)
 	sekmeler.BackgroundTransparency = 1
 	sekmeler.Parent = oturumAlani
@@ -320,8 +327,8 @@ end
 
 local envanterListe = Instance.new("ScrollingFrame")
 envanterListe.Name = "Envanter"
-envanterListe.Position = UDim2.fromOffset(0, 276)
-envanterListe.Size = UDim2.new(1, 0, 0, 152)
+envanterListe.Position = UDim2.fromOffset(0, 324)
+envanterListe.Size = UDim2.new(1, 0, 0, 184)
 envanterListe.BackgroundColor3 = Color3.fromRGB(18, 17, 26)
 envanterListe.BorderSizePixel = 0
 envanterListe.ScrollBarThickness = 6
@@ -350,6 +357,14 @@ local benimOnizleme = BrainrotOnizleme.seritPencere(benimKutu)
 local onunOnizleme = BrainrotOnizleme.seritPencere(onunKutu)
 local envanterOnizleme = BrainrotOnizleme.pencere(envanterListe, panel)
 
+local function gelirOf(bilgi: any): number
+	if not (bilgi.revealed and bilgi.name) then
+		return 0
+	end
+	local ok, gelir = pcall(Brainrots.income, bilgi.name, bilgi.condition, bilgi.mutation)
+	return if ok and type(gelir) == "number" then gelir else 0
+end
+
 local function kartKur(parent: Instance, sira: number, onizleme: any, bilgi: any, blok: string?, adet: number?, tikla: (() -> ())?)
 	local renk = if blok then LuckyBlock.get(blok).color else Rarity.color(bilgi.rarity)
 
@@ -368,56 +383,64 @@ local function kartKur(parent: Instance, sira: number, onizleme: any, bilgi: any
 	local resim = Instance.new("Frame")
 	resim.Name = "Resim"
 	resim.Position = UDim2.fromOffset(4, 4)
-	resim.Size = UDim2.new(1, -8, 0, 58)
+	resim.Size = UDim2.new(1, -8, 0, 50)
 	resim.BackgroundTransparency = 1
 	resim.ZIndex = 2
 	resim.Parent = kart
 
-	local ad: string
+	local function satir(metin: string, y: number, boyut: number, satirRengi: Color3, zengin: boolean?): TextLabel
+		local etiket = UI.text({
+			text = metin,
+			size = boyut,
+			font = UI.Fonts.bold,
+			color = satirRengi,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, -4, 0, 14),
+			position = UDim2.fromOffset(2, y),
+			parent = kart,
+			zIndex = 4,
+		})
+		etiket.TextTruncate = Enum.TextTruncate.AtEnd
+		if zengin then
+			etiket.RichText = true
+		end
+		return etiket
+	end
+
 	if blok then
+		local tier = LuckyBlock.get(blok)
 		LuckyOnizleme.ekle(resim, blok, 3)
-		ad = LuckyBlock.get(blok).displayName
+		satir(tier.displayName, 56, 11, BEYAZ)
+		satir("LUCKY BLOCK", 70, 10, renk)
+		satir(`x{adet or 1}`, 86, 18, BEYAZ)
 	else
+		local acik = bilgi.revealed == true and bilgi.name ~= nil
 		onizleme.ekle(resim, {
 			name = bilgi.name,
 			mutation = bilgi.mutation,
-			revealed = bilgi.revealed == true and bilgi.name ~= nil,
+			revealed = acik,
 			rarity = bilgi.rarity,
 		})
-		ad = if bilgi.revealed and bilgi.name then bilgi.name else `{Rarity.displayName(bilgi.rarity)} Egg`
+
+		satir(if acik then bilgi.name else `{Rarity.displayName(bilgi.rarity)} Egg`, 55, 11, BEYAZ)
+		satir(Rarity.displayName(bilgi.rarity), 68, 10, Rarity.textColor(bilgi.rarity))
+		satir(
+			if acik then Format.perSecond(gelirOf(bilgi)) else "?/s",
+			81,
+			12,
+			Color3.fromRGB(110, 255, 140)
+		)
+
+		local kosul = Condition.get(bilgi.condition)
+		local parcalar = { `<font color="#{kosul.color:ToHex()}">{kosul.shortName}</font>` }
+		if Mutations.isSpecial(bilgi.mutation) then
+			table.insert(
+				parcalar,
+				`<font color="#{Mutations.color(bilgi.mutation):ToHex()}">{Mutations.get(bilgi.mutation).displayName}</font>`
+			)
+		end
+		satir(table.concat(parcalar, " "), 96, 10, BEYAZ, true)
 	end
-
-	local yazi = UI.text({
-		text = ad,
-		size = 11,
-		font = UI.Fonts.bold,
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, -4, 0, 14),
-		position = UDim2.new(0, 2, 1, -28),
-		parent = kart,
-		zIndex = 4,
-	})
-	yazi.TextTruncate = Enum.TextTruncate.AtEnd
-
-	local altYazi = if blok
-		then `x{adet or 1}`
-		elseif Mutations.isSpecial(bilgi.mutation) then Mutations.get(bilgi.mutation).displayName
-		else Rarity.displayName(bilgi.rarity)
-	local altRenk = if blok
-		then BEYAZ
-		elseif Mutations.isSpecial(bilgi.mutation) then Mutations.color(bilgi.mutation)
-		else renk
-	UI.text({
-		text = altYazi,
-		size = if blok then 14 else 11,
-		font = UI.Fonts.bold,
-		color = altRenk,
-		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, -4, 0, 14),
-		position = UDim2.new(0, 2, 1, -15),
-		parent = kart,
-		zIndex = 4,
-	})
 
 	if tikla then
 		kart.MouseButton1Click:Connect(tikla)
@@ -434,12 +457,18 @@ local function temizle(kap: Instance)
 	end
 end
 
-local function teklifCiz(izgara: Frame, onizleme: any, teklif: any, benim: boolean)
+local function teklifCiz(izgara: GuiObject, onizleme: any, teklif: any, benim: boolean): (number, boolean)
 	onizleme.temizle()
 	temizle(izgara)
 	local sira = 0
+	local toplam = 0
+	local bilinmeyen = false
 	for _, bilgi in teklif.esyalar or {} do
 		sira += 1
+		toplam += gelirOf(bilgi)
+		if not (bilgi.revealed and bilgi.name) then
+			bilinmeyen = true
+		end
 		local uid = bilgi.uid
 		kartKur(izgara, sira, onizleme, bilgi, nil, nil, if benim
 			then function()
@@ -459,6 +488,12 @@ local function teklifCiz(izgara: Frame, onizleme: any, teklif: any, benim: boole
 				else nil)
 		end
 	end
+	return toplam, bilinmeyen
+end
+
+local function baslikYazisi(etiket: TextLabel, ad: string, toplam: number, bilinmeyen: boolean)
+	etiket.RichText = true
+	etiket.Text = `{ad}  <font color="#6EFF8C">{Format.perSecond(toplam)}</font>{if bilinmeyen then " +?" else ""}`
 end
 
 function envanterCiz(veri: any)
@@ -606,11 +641,10 @@ local function oturumCiz(veri: any)
 	panel.Visible = true
 
 	local karsiAd = if type(veri.karsi) == "table" then tostring(veri.karsi.ad) else "?"
-	onunBaslik.Text = `{string.upper(karsiAd)}'S OFFER`
-	benimBaslik.Text = "YOUR OFFER"
-
-	teklifCiz(benimIzgara, benimOnizleme, veri.benim or {}, true)
-	teklifCiz(onunIzgara, onunOnizleme, veri.onun or {}, false)
+	local benimToplam, benimBilinmeyen = teklifCiz(benimIzgara, benimOnizleme, veri.benim or {}, true)
+	local onunToplam, onunBilinmeyen = teklifCiz(onunIzgara, onunOnizleme, veri.onun or {}, false)
+	baslikYazisi(benimBaslik, "YOUR OFFER", benimToplam, benimBilinmeyen)
+	baslikYazisi(onunBaslik, `{string.upper(karsiAd)}'S OFFER`, onunToplam, onunBilinmeyen)
 	envanterCiz(veri)
 
 	benimKabul = veri.benimKabul == true
