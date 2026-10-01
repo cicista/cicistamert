@@ -2062,6 +2062,10 @@ menuButonu(sagSutun, "settings", "Settings", MenuRenk.settings, function()
 	ayarPaneliniAc()
 end)
 
+UI.sagMenuButonu = function(iconId: string, isim: string, renk: Color3, onClick: (() -> ())?, yedekYazi: string?): ImageButton
+	return menuButonu(sagSutun, iconId, isim, renk, onClick, yedekYazi)
+end
+
 local ODUL_KART = 150
 local ODUL_BOSLUK = 10
 local ODUL_UST = 112

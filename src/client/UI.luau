@@ -190,6 +190,17 @@ end
 UI.FonKatmani = 19
 UI.PanelKatmani = 20
 
+UI.sagMenuButonu = nil :: ((iconId: string, isim: string, renk: Color3, onClick: (() -> ())?, yedekYazi: string?) -> ImageButton)?
+
+function UI.sagMenuyeEkle(iconId: string, isim: string, renk: Color3, onClick: (() -> ())?): ImageButton?
+	local basla = os.clock()
+	while not UI.sagMenuButonu and os.clock() - basla < 60 do
+		task.wait(0.2)
+	end
+	local kur = UI.sagMenuButonu
+	return if kur then kur(iconId, isim, renk, onClick) else nil
+end
+
 local function katmanKur(ad: string, sira: number, olcekDisi: boolean?): ScreenGui?
 	local player = Players.LocalPlayer
 	if not player then

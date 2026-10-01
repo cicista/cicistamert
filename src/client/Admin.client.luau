@@ -194,6 +194,10 @@ local function buildPanel(info: any)
 		UI.Colors.warn
 	)
 
+	section("BADGES  --  test the titles")
+	actionButton("Give all badges", "tumRozetler", nil, Color3.fromRGB(255, 200, 40))
+	actionButton("Reset badges", "rozetSifirla", nil, UI.Colors.bad)
+
 	section("WEEKEND  --  2x luck, tower effects, 48h timer")
 	actionButton("Start weekend (48h test)", "haftaSonuBaslat", nil, Color3.fromRGB(80, 160, 255))
 	actionButton("Stop weekend test", "haftaSonuDurdur", nil, UI.Colors.bad)

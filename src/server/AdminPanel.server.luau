@@ -30,6 +30,7 @@ local Tools = require(Modules:WaitForChild("Tools"))
 local Beams = require(Modules:WaitForChild("Beams"))
 local Sand = require(Modules:WaitForChild("Sand"))
 local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
+local Unvan = require(Modules:WaitForChild("Unvan"))
 
 local baseYenile = script.Parent:WaitForChild("BaseSistemi"):WaitForChild("BaseYenile") :: BindableEvent
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
@@ -854,6 +855,16 @@ function commands.setSpeed(player, data, arg)
 	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
 	hiziYenile(player)
 	return `Speed set: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
+end
+
+function commands.tumRozetler(player)
+	local sayi = Unvan.hepsiniVer(player)
+	return `{sayi} badges given -- equip titles from the Badges menu`
+end
+
+function commands.rozetSifirla(player)
+	Unvan.sifirla(player)
+	return "Badges and badge progress reset"
 end
 
 function commands.haftaSonuBaslat()

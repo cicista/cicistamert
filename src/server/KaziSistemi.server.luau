@@ -49,6 +49,7 @@ local Seviye = require(Modules:WaitForChild("Seviye"))
 local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
 local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
+local Unvan = require(Modules:WaitForChild("Unvan"))
 
 local Bildirim = Net.event("Bildirim")
 local GPSGuncelle = Net.event("GPSGuncelle")
@@ -275,6 +276,7 @@ local function finishDig(player: Player, won: boolean)
 	end
 
 	GorevTakip.ilerlet(player, "dig", 1)
+	Unvan.ilerlet(player, if session.sea then "balik" else "kazi", 1)
 	GorevTakip.ilerlet(player, "collect", 1, beam.kind)
 	Seviye.xpVer(player, Seviye.rarityXp(beam.kind))
 

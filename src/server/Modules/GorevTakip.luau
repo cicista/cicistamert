@@ -11,6 +11,7 @@ local Net = require(Shared:WaitForChild("Net"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
+local Unvan = require(script.Parent:WaitForChild("Unvan"))
 
 local Bildirim = Net.event("Bildirim")
 local GorevDurum = Net.event("GorevDurum")
@@ -103,6 +104,8 @@ function GorevTakip.odulVer(player: Player, def: Gorevler.QuestDef): { string }
 end
 
 function GorevTakip.ilerlet(player: Player, kind: string, amount: number?, rarity: string?)
+	Unvan.ilerlet(player, kind, amount, rarity)
+
 	local durum = tazele(player)
 	if not durum then
 		return

@@ -15,6 +15,7 @@ local Icons = require(Shared:WaitForChild("Icons"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Net = require(Shared:WaitForChild("Net"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Unvanlar = require(Shared:WaitForChild("Unvanlar"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
@@ -60,7 +61,10 @@ local function odulGoster(veri: any)
 	yuklemeBitsin()
 
 	local tier = if type(veri.luckyBlock) == "string" then LuckyBlock.get(veri.luckyBlock) else nil
-	local renk = if tier then tier.color else Color3.fromRGB(255, 215, 60)
+	local renk = if typeof(veri.renk) == "Color3"
+		then veri.renk
+		elseif tier then tier.color
+		else Color3.fromRGB(255, 215, 60)
 
 	local kap = Instance.new("Frame")
 	kap.Name = "Odul"
@@ -155,6 +159,21 @@ local function odulGoster(veri: any)
 		zIndex = 8,
 	})
 
+	local rozet = Unvanlar.get(veri.unvanId)
+	if rozet then
+		local unvanYazi = UI.text({
+			text = rozet.unvan,
+			size = 30,
+			font = UI.Fonts.bold,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.new(1, 0, 0, 36),
+			position = UDim2.fromOffset(0, 378),
+			parent = kap,
+			zIndex = 8,
+		})
+		Unvanlar.stilUygula(unvanYazi, rozet.id)
+	end
+
 	UI.text({
 		text = tostring(veri.alt or ""),
 		size = UI.Sizes.body,
@@ -162,7 +181,7 @@ local function odulGoster(veri: any)
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
 		frameSize = UDim2.new(1, 0, 0, 24),
-		position = UDim2.fromOffset(0, 380),
+		position = UDim2.fromOffset(0, if rozet then 418 else 380),
 		parent = kap,
 		zIndex = 8,
 	})
@@ -322,6 +341,22 @@ end
 DuyuruOlayi.OnClientEvent:Connect(function(veri)
 	if type(veri) ~= "table" then
 		return
+	end
+
+	if veri.tur == "rozet" then
+		local rozet = Unvanlar.get(veri.rozet)
+		if not rozet then
+			return
+		end
+		veri = {
+			tur = "odul",
+			baslik = "BADGE UNLOCKED!",
+			yazi = rozet.ad,
+			alt = "Equip your new title from the Badges menu",
+			ikon = "trophies",
+			renk = Unvanlar.SeviyeRenkleri[rozet.seviye],
+			unvanId = rozet.id,
+		}
 	end
 
 	if veri.tur == "odul" then

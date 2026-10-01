@@ -88,6 +88,7 @@ export type Data = {
 	gachaIska: number,
 	sonGorulme: number,
 	baslangicAlindi: boolean,
+	unvan: { sayac: { [string]: number }, kademe: number, kazanilan: { [string]: boolean }, kusanilan: string? },
 	kacanYumurta: { rarity: string, island: string? }?,
 	quests: QuestState,
 	discovered: { [string]: boolean },
@@ -175,6 +176,7 @@ local function defaultData(): Data
 		gachaIska = 0,
 		sonGorulme = 0,
 		baslangicAlindi = false,
+		unvan = { sayac = {}, kademe = 0, kazanilan = {}, kusanilan = nil },
 		quests ={ cycle = 0, progress = {}, done = {} },
 		tutorial = { adim = 1, bitti = false },
 		discovered = {},
@@ -319,6 +321,28 @@ local function migrate(raw: any): Data
 	data.gachaIska = math.clamp(math.floor(tonumber(raw.gachaIska) or 0), 0, Gacha.maxIska())
 	data.sonGorulme = math.max(0, math.floor(tonumber(raw.sonGorulme) or 0))
 	data.baslangicAlindi = raw.baslangicAlindi == true
+	data.unvan = { sayac = {}, kademe = 0, kazanilan = {}, kusanilan = nil }
+	if type(raw.unvan) == "table" then
+		if type(raw.unvan.sayac) == "table" then
+			for tur, deger in raw.unvan.sayac do
+				local sayi = tonumber(deger)
+				if type(tur) == "string" and sayi then
+					data.unvan.sayac[tur] = math.max(0, sayi)
+				end
+			end
+		end
+		data.unvan.kademe = math.max(0, math.floor(tonumber(raw.unvan.kademe) or 0))
+		if type(raw.unvan.kazanilan) == "table" then
+			for id, var in raw.unvan.kazanilan do
+				if type(id) == "string" and var == true then
+					data.unvan.kazanilan[id] = true
+				end
+			end
+		end
+		if type(raw.unvan.kusanilan) == "string" then
+			data.unvan.kusanilan = raw.unvan.kusanilan
+		end
+	end
 	if type(raw.kacanYumurta) == "table" and KacanYumurta.uygun(raw.kacanYumurta.rarity) then
 		data.kacanYumurta = {
 			rarity = raw.kacanYumurta.rarity,

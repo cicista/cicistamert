@@ -8,6 +8,7 @@ local Fonts = require(Shared:WaitForChild("Fonts"))
 local Net = require(Shared:WaitForChild("Net"))
 local SeviyeAyar = require(Shared:WaitForChild("Seviye"))
 local Hiz = require(Shared:WaitForChild("Hiz"))
+local Unvanlar = require(Shared:WaitForChild("Unvanlar"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
@@ -24,9 +25,29 @@ local Seviye = {}
 Seviye.XP = SeviyeAyar.XP
 Seviye.rarityXp = SeviyeAyar.rarityXp
 
-local ETIKET_EN = 140
-local LEVEL_BOY = 30
-local HIZ_BOY = 20
+local ETIKET_EN = 240
+local UNVAN_BOY = 26
+local ISIM_BOY = 24
+local LEVEL_BOY = 26
+local HIZ_BOY = 18
+
+local function satirKur(parent: Instance, ad: string, sira: number, boy: number, yaziBoyu: number, kalinlik: number): TextLabel
+	local yazi = Instance.new("TextLabel")
+	yazi.Name = ad
+	yazi.LayoutOrder = sira
+	yazi.Size = UDim2.new(1, 0, 0, boy)
+	yazi.BackgroundTransparency = 1
+	yazi.TextColor3 = Color3.new(1, 1, 1)
+	yazi.TextSize = yaziBoyu
+	Fonts.apply(yazi)
+	yazi.Parent = parent
+
+	local kontur = yazi:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+	kontur.Color = Color3.new(0, 0, 0)
+	kontur.Thickness = kalinlik
+	kontur.Parent = yazi
+	return yazi
+end
 
 local function etiketGuncelle(player: Player)
 	local data = PlayerData.get(player)
@@ -36,45 +57,51 @@ local function etiketGuncelle(player: Player)
 		return
 	end
 
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+
 	local etiket = head:FindFirstChild(ETIKET_ADI) :: BillboardGui?
 	if not etiket then
 		local yeni = Instance.new("BillboardGui")
 		yeni.Name = ETIKET_ADI
-		yeni.Size = UDim2.fromOffset(ETIKET_EN, LEVEL_BOY + HIZ_BOY)
-		yeni.StudsOffset = Vector3.new(0, 2.8, 0)
+		yeni.Size = UDim2.fromOffset(ETIKET_EN, UNVAN_BOY + ISIM_BOY + LEVEL_BOY + HIZ_BOY)
+		yeni.StudsOffset = Vector3.new(0, 3.4, 0)
 		yeni.MaxDistance = 90
 		yeni.LightInfluence = 0
 		yeni.Parent = head
 
-		local yazi = Instance.new("TextLabel")
-		yazi.Name = "Yazi"
-		yazi.Size = UDim2.new(1, 0, 0, LEVEL_BOY)
-		yazi.BackgroundTransparency = 1
-		yazi.TextColor3 = Color3.fromRGB(255, 215, 40)
-		yazi.TextSize = 22
-		Fonts.apply(yazi)
-		yazi.Parent = yeni
+		local dizilim = Instance.new("UIListLayout")
+		dizilim.SortOrder = Enum.SortOrder.LayoutOrder
+		dizilim.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		dizilim.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		dizilim.Padding = UDim.new(0, -3)
+		dizilim.Parent = yeni
 
-		local kontur = Instance.new("UIStroke")
-		kontur.Color = Color3.new(0, 0, 0)
-		kontur.Thickness = 2
-		kontur.Parent = yazi
-
-		local hizYazi = Instance.new("TextLabel")
-		hizYazi.Name = "Hiz"
-		hizYazi.Position = UDim2.fromOffset(0, LEVEL_BOY - 2)
-		hizYazi.Size = UDim2.new(1, 0, 0, HIZ_BOY)
-		hizYazi.BackgroundTransparency = 1
-		hizYazi.TextSize = 15
-		Fonts.apply(hizYazi)
-		hizYazi.Parent = yeni
-
-		local hizKontur = Instance.new("UIStroke")
-		hizKontur.Color = Color3.new(0, 0, 0)
-		hizKontur.Thickness = 1.5
-		hizKontur.Parent = hizYazi
+		satirKur(yeni, "Unvan", 1, UNVAN_BOY, 21, 2)
+		satirKur(yeni, "Isim", 2, ISIM_BOY, 19, 2)
+		satirKur(yeni, "Yazi", 3, LEVEL_BOY, 22, 2).TextColor3 = Color3.fromRGB(255, 215, 40)
+		satirKur(yeni, "Hiz", 4, HIZ_BOY, 15, 1.5)
 
 		etiket = yeni
+	end
+
+	local unvanYazi = (etiket :: BillboardGui):FindFirstChild("Unvan") :: TextLabel?
+	if unvanYazi then
+		local kusanilan = data.unvan.kusanilan
+		local rozet = Unvanlar.get(kusanilan)
+		unvanYazi.Visible = rozet ~= nil
+		if unvanYazi:GetAttribute("UnvanId") ~= kusanilan then
+			unvanYazi:SetAttribute("UnvanId", kusanilan)
+			unvanYazi.Text = if rozet then rozet.unvan else ""
+			Unvanlar.stilUygula(unvanYazi, kusanilan)
+		end
+	end
+
+	local isim = (etiket :: BillboardGui):FindFirstChild("Isim") :: TextLabel?
+	if isim then
+		isim.Text = player.DisplayName
 	end
 
 	local yazi = (etiket :: BillboardGui):FindFirstChild("Yazi") :: TextLabel?

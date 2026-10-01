@@ -117,6 +117,9 @@ Net.Events = {
 	"GachaAc",
 	"KacanYumurtaTeklif",
 	"Duyuru",
+	"UnvanDurum",
+	"UnvanAc",
+	"UnvanKusan",
 	"GachaSonuc",
 	"GachaDene",
 

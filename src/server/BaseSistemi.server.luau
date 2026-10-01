@@ -39,6 +39,7 @@ do
 	end
 end
 local GorevTakip = require(Modules:WaitForChild("GorevTakip"))
+local Unvan = require(Modules:WaitForChild("Unvan"))
 
 local Bildirim = Net.event("Bildirim")
 local ScrollSonuc = Net.event("ScrollSonuc")
@@ -1542,6 +1543,7 @@ function collectRot(player: Player, baseIndex: number)
 
 	pending[baseIndex] = waiting - payout
 	PlayerData.addRot(player, payout)
+	Unvan.ilerlet(player, "rot", payout)
 
 	local cfg = Bases.CollectPad
 	collectUntil[baseIndex] = os.clock() + cfg.collectCooldown
