@@ -253,7 +253,7 @@ local function serit(kart: Frame, yazi: string)
 	kap.Name = "Serit"
 	kap.AnchorPoint = Vector2.new(0, 0)
 	kap.Position = UDim2.fromOffset(6, 4)
-	kap.Size = UDim2.fromOffset(62, 26)
+	kap.Size = UDim2.fromOffset(78, 26)
 	kap.BackgroundTransparency = 1
 	kap.ZIndex = SERIT_ZINDEX
 	kap.Parent = kart
@@ -271,6 +271,7 @@ local function serit(kart: Frame, yazi: string)
 		zIndex = SERIT_ZINDEX,
 	})
 	etiket.Name = "Yazi"
+	etiket.TextTruncate = Enum.TextTruncate.None
 	etiket.Rotation = -14
 	UI.stroke(etiket, Color3.fromRGB(0, 0, 0), 3)
 
