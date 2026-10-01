@@ -17,6 +17,8 @@ Hava.Aralik = 1800
 Hava.Kayma = 900
 Hava.Sure = 240
 Hava.UyariSaniyeleri = { 60 }
+Hava.Model = "Tralalero Tralala"
+Hava.BeklemeRengi = Color3.fromRGB(120, 190, 255)
 
 Hava.Turler = {
 	{

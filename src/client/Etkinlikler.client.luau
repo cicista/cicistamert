@@ -11,10 +11,12 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Assets = require(Shared:WaitForChild("Assets"))
 local GizemAyar = require(Shared:WaitForChild("SunucuIsini"))
 local HavaAyar = require(Shared:WaitForChild("Hava"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
+local SayacKarti = require(script.Parent:WaitForChild("SayacKarti"))
 
 local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
@@ -48,6 +50,7 @@ local duzen = Instance.new("UIListLayout")
 duzen.FillDirection = Enum.FillDirection.Vertical
 duzen.Padding = UDim.new(0, 8)
 duzen.SortOrder = Enum.SortOrder.LayoutOrder
+duzen.HorizontalAlignment = Enum.HorizontalAlignment.Right
 duzen.Parent = kap
 
 type Kart = {
@@ -61,7 +64,7 @@ type Kart = {
 	alt: TextLabel,
 }
 
-local function kartKur(sira: number, renk: Color3, rakam: boolean?): Kart
+local function kartKur(sira: number, renk: Color3): Kart
 	local cerceve = Instance.new("Frame")
 	cerceve.Name = `Kart{sira}`
 	cerceve.Size = UDim2.fromOffset(KART_EN, KART_BOY)
@@ -90,7 +93,7 @@ local function kartKur(sira: number, renk: Color3, rakam: boolean?): Kart
 	ic.Parent = cerceve
 	UI.corner(ic, 14)
 	UI.caprazDesen(ic, BEYAZ, 6)
-	UI.pariltilar(ic, renk:Lerp(BEYAZ, 0.3), 8, 2, rakam)
+	UI.pariltilar(ic, renk:Lerp(BEYAZ, 0.3), 8, 2)
 
 	local rozetZemin = Instance.new("Frame")
 	rozetZemin.Name = "Rozet"
@@ -167,18 +170,13 @@ end
 local gizemKarti = kartKur(1, GizemAyar.Renk)
 gizemKarti.baslik.Text = GizemAyar.Ad
 
-local havaKartlari: { [string]: Kart } = {}
-for sira, tur in HavaAyar.Turler do
-	local kart = kartKur(1 + sira, tur.renk, tur.mutasyon == "Hacker")
-	kart.baslik.Text = string.upper(tur.ad)
-	kart.rozet.Text = `{tur.sans}%`
-	kart.rozet.TextSize = 18
-	havaKartlari[tur.id] = kart
+local havaKarti = SayacKarti.kur(kap, HavaAyar.BeklemeRengi)
+havaKarti.cerceve.LayoutOrder = 0
+local havaSlaytlari: { [string]: number } = {}
+for _, tur in HavaAyar.Turler do
+	havaSlaytlari[tur.id] = SayacKarti.modelSlayti(havaKarti, tur.renk, Assets.brainrotModel(HavaAyar.Model, tur.mutasyon))
 end
-
-local beklemeKarti = kartKur(10, Color3.fromRGB(120, 190, 255))
-beklemeKarti.baslik.Text = "WEATHER EVENT"
-beklemeKarti.rozet.Text = "!"
+SayacKarti.dondur(havaKarti)
 
 local function sure(saniye: number): string
 	local s = math.max(0, math.floor(saniye))
@@ -330,6 +328,9 @@ local function gizemGuncelle(simdi: number, t: number)
 	end
 end
 
+local havaZemini: Color3? = nil
+local havaSaniyesi = -1
+
 local function havaGuncelle(simdi: number, t: number)
 	local turId = Workspace:GetAttribute(HN.tur)
 	local bitis = sayi(HN.bitis)
@@ -338,29 +339,33 @@ local function havaGuncelle(simdi: number, t: number)
 	local tur = if type(turId) == "string" and bitis > simdi then HavaAyar.get(turId) else nil
 	havaGorunumu(tur)
 
-	for id, kart in havaKartlari do
-		local acik = tur ~= nil and tur.id == id
-		kart.cerceve.Visible = acik
-		if acik and tur then
-			kart.buyuk.Text = sure(bitis - simdi)
-			kart.alt.Text = `{tur.sans}% {string.upper(tur.mutasyon)} ON DIGS`
-			kart.kontur.Color = tur.renk:Lerp(BEYAZ, (math.sin(t * 4) + 1) * 0.25)
-			kart.kontur.Thickness = 4
-			kart.rozetZemin.Rotation = math.sin(t * 2.5) * 12
-			nabiz(kart, t, 5, 0.025)
-		end
+	local kart = havaKarti
+	local zeminRengi = if tur then tur.renk else HavaAyar.BeklemeRengi
+	if havaZemini ~= zeminRengi then
+		havaZemini = zeminRengi
+		SayacKarti.zeminRengi(kart, zeminRengi)
 	end
 
-	local bekleme = sonraki - simdi
-	local yakin = tur == nil and sonraki > 0 and bekleme <= YAKIN
-	beklemeKarti.cerceve.Visible = yakin
-	if yakin then
-		local yanip = math.sin(t * 10) > 0
-		beklemeKarti.buyuk.Text = `IN {sure(bekleme)}`
-		beklemeKarti.buyuk.TextColor3 = if yanip then Color3.fromRGB(150, 220, 255) else BEYAZ
-		beklemeKarti.alt.Text = "MUTATIONS FALL FROM THE SKY"
-		beklemeKarti.kontur.Color = if yanip then Color3.fromRGB(150, 220, 255) else SIYAH
-		nabiz(beklemeKarti, t, 8, 0.04)
+	if tur then
+		SayacKarti.sabitle(kart, havaSlaytlari[tur.id])
+		kart.sayac.Text = SayacKarti.sure(bitis - simdi)
+		SayacKarti.boya(kart, "aktif", t, tur.renk, tur.renk:Lerp(BEYAZ, 0.3))
+		return
+	end
+
+	SayacKarti.sabitle(kart, nil)
+	local bekleme = math.max(0, sonraki - simdi)
+	if sonraki > 0 and bekleme <= YAKIN then
+		kart.sayac.Text = SayacKarti.sure(bekleme)
+		SayacKarti.boya(kart, "yakin", t, HavaAyar.BeklemeRengi)
+		local saniye = math.ceil(bekleme)
+		if saniye ~= havaSaniyesi then
+			havaSaniyesi = saniye
+			SayacKarti.vurus(kart, if saniye <= 10 then 1.5 else 1.25)
+		end
+	else
+		kart.sayac.Text = if sonraki > 0 then SayacKarti.sure(bekleme) else "--:--"
+		SayacKarti.boya(kart, "bekle", t, HavaAyar.BeklemeRengi)
 	end
 end
 

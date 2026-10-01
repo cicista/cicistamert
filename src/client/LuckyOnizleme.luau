@@ -81,6 +81,10 @@ function LuckyOnizleme.ekle(kutu: GuiObject, tier: any, zIndex: number?): boolea
 		print(`[LuckyOnizleme] {tur.id} -> {model.Name}`)
 	end
 
+	return LuckyOnizleme.modelEkle(kutu, model, zIndex)
+end
+
+function LuckyOnizleme.modelEkle(kutu: GuiObject, model: Model, zIndex: number?): boolean
 	for _, nesne in model:GetDescendants() do
 		if nesne:IsA("BaseScript") or nesne:IsA("Sound") then
 			nesne:Destroy()
