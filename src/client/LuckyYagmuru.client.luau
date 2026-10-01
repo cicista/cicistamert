@@ -122,22 +122,59 @@ local huzmeler = UI.isikHuzmeleri(blokAlani, ALTIN, {
 	zIndex = 3,
 })
 huzmeler.Position = UDim2.fromScale(0.5, 0.5)
-UI.parlama(blokAlani, ALTIN, 96, 3)
+local hale = UI.parlama(blokAlani, ALTIN, 96, 3)
 
-local model = Instance.new("Frame")
-model.Name = "Model"
-model.AnchorPoint = Vector2.new(0.5, 0.5)
-model.Position = UDim2.fromScale(0.5, 0.5)
-model.Size = UDim2.fromScale(1, 1)
-model.BackgroundTransparency = 1
-model.ZIndex = 5
-model.Parent = blokAlani
-LuckyOnizleme.ekle(model, LuckyBlock.Default, 5)
-TweenService:Create(
-	model,
-	TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-	{ Position = UDim2.new(0.5, 0, 0.5, -5) }
-):Play()
+local kaydirici = Instance.new("Frame")
+kaydirici.Name = "Kaydirici"
+kaydirici.AnchorPoint = Vector2.new(0.5, 0.5)
+kaydirici.Position = UDim2.fromScale(0.5, 0.5)
+kaydirici.Size = UDim2.fromScale(1, 1)
+kaydirici.BackgroundTransparency = 1
+kaydirici.ClipsDescendants = true
+kaydirici.ZIndex = 5
+kaydirici.Parent = blokAlani
+
+local SLAYT_SURESI = 2.4
+local KAYMA_SURESI = 0.45
+
+local slaytlar: { { kutu: Frame, renk: Color3 } } = {}
+for sira, tier in LuckyBlock.Tiers do
+	local kutu = Instance.new("Frame")
+	kutu.Name = tier.id
+	kutu.AnchorPoint = Vector2.new(0.5, 0.5)
+	kutu.Position = UDim2.fromScale(if sira == 1 then 0.5 else 1.5, 0.5)
+	kutu.Size = UDim2.fromScale(1, 1)
+	kutu.BackgroundTransparency = 1
+	kutu.ZIndex = 5
+	kutu.Parent = kaydirici
+	LuckyOnizleme.ekle(kutu, tier, 6)
+	table.insert(slaytlar, { kutu = kutu, renk = tier.color })
+end
+
+local function efektRengi(renk: Color3)
+	for _, kap2 in { huzmeler, hale } do
+		for _, parca in kap2:GetDescendants() do
+			if parca:IsA("Frame") then
+				TweenService:Create(parca, TweenInfo.new(KAYMA_SURESI), { BackgroundColor3 = renk }):Play()
+			end
+		end
+	end
+end
+
+task.spawn(function()
+	local simdiki = 1
+	while #slaytlar > 1 do
+		task.wait(SLAYT_SURESI)
+		local eski = slaytlar[simdiki]
+		simdiki = simdiki % #slaytlar + 1
+		local yeni = slaytlar[simdiki]
+		yeni.kutu.Position = UDim2.fromScale(1.5, 0.5)
+		local bilgi = TweenInfo.new(KAYMA_SURESI, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		TweenService:Create(eski.kutu, bilgi, { Position = UDim2.fromScale(-0.5, 0.5) }):Play()
+		TweenService:Create(yeni.kutu, bilgi, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+		efektRengi(yeni.renk)
+	end
+end)
 
 local baslik = UI.text({
 	text = "LUCKY BLOCK RAIN",
@@ -251,6 +288,7 @@ RunService.Heartbeat:Connect(function()
 		local renk = Color3.fromHSV((t * 0.3) % 1, 0.6, 1)
 		baslik.Text = "RAIN IS ACTIVE!"
 		sayac.Text = `{math.floor(kalan)} LEFT`
+		sayac.Position = UDim2.fromOffset(96, 28)
 		sayac.TextColor3 = renk
 		alt.Text = `GRAB THEM! {sure(bitis - simdi)}`
 		alt.TextColor3 = BEYAZ
@@ -262,6 +300,7 @@ RunService.Heartbeat:Connect(function()
 		local yanip = math.sin(t * 10) > 0
 		baslik.Text = "LUCKY BLOCK RAIN"
 		sayac.Text = sure(bekleme)
+		sayac.Position = UDim2.fromOffset(96, 28)
 		sayac.TextColor3 = if yanip then KIRMIZI else ALTIN
 		sayac.Rotation = math.sin(t * 30) * 3
 		alt.Text = "DROPPING SOON!"
@@ -278,9 +317,10 @@ RunService.Heartbeat:Connect(function()
 	else
 		baslik.Text = "LUCKY BLOCK RAIN"
 		sayac.Text = if sonraki > 0 then sure(bekleme) else "--:--"
+		sayac.Position = UDim2.fromOffset(96, 40)
 		sayac.TextColor3 = BEYAZ
 		sayac.Rotation = 0
-		alt.Text = `{LuckyBlock.toplamBlok()} BLOCKS EVERY HOUR`
+		alt.Text = ""
 		alt.TextColor3 = ALTIN
 		kontur.Color = SIYAH
 		kontur.Thickness = 3
