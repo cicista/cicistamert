@@ -3,6 +3,7 @@
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Gacha = require(script.Parent.Gacha)
 local KacanYumurta = require(script.Parent.KacanYumurta)
+local Format = require(script.Parent.Format)
 
 local RobuxMagaza = {}
 
@@ -20,6 +21,8 @@ export type Urun = {
 	saniye: number?,
 	rotCoin: number?,
 	alan: string?,
+	luckyBlocks: { [string]: number }?,
+	rot: number?,
 }
 
 export type Kart = {
@@ -123,7 +126,20 @@ RobuxMagaza.Kartlar = {
 	},
 } :: { Kart }
 
-RobuxMagaza.Gecisler = { "AutoClicker", "Teleporter", "DetectivePass" }
+RobuxMagaza.Gecisler = { "SansX2", "RotX15", "AutoClicker", "Teleporter", "DetectivePass" }
+
+RobuxMagaza.BaslangicPaketi = {
+	anahtar = "BaslangicPaketi",
+	id = 0,
+	fiyat = 49,
+	etiket = "ONE TIME",
+	ad = "Starter Pack",
+	tur = "baslangic",
+	luckyBlocks = { Normal = 3, Golden = 1 },
+	rot = 1_000_000,
+} :: Urun
+
+RobuxMagaza.BaslangicNiteligi = "BaslangicAlindi"
 
 RobuxMagaza.GizliUrunler = {
 	{
@@ -185,6 +201,22 @@ end
 
 for _, urun in RobuxMagaza.GizliUrunler do
 	kaydet(urun)
+end
+
+kaydet(RobuxMagaza.BaslangicPaketi)
+
+function RobuxMagaza.paketIcerigi(urun: Urun): { { yazi: string, tier: string? } }
+	local satirlar: { { yazi: string, tier: string? } } = {}
+	for _, tier in LuckyBlock.Tiers do
+		local adet = urun.luckyBlocks and urun.luckyBlocks[tier.id]
+		if adet and adet > 0 then
+			table.insert(satirlar, { yazi = `{adet}x {tier.displayName}`, tier = tier.id })
+		end
+	end
+	if urun.rot and urun.rot > 0 then
+		table.insert(satirlar, { yazi = `{Format.short(urun.rot)} Rot`, tier = nil })
+	end
+	return satirlar
 end
 
 function RobuxMagaza.get(anahtar: string): Urun?

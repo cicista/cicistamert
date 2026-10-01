@@ -18,6 +18,7 @@ local Canta = require(Shared:WaitForChild("Canta"))
 
 local Bildirim = Net.event("Bildirim")
 local RobuxUrunAl = Net.event("RobuxUrunAl")
+local Duyuru = Net.event("Duyuru")
 local SansDurum = Net.event("RotCoinMagazaDurum")
 
 local YESIL = Color3.fromRGB(140, 230, 160)
@@ -63,6 +64,14 @@ local function dedektifBekliyor(player: Player): boolean
 	return kapi ~= nil and kapi:Invoke(player) == true
 end
 
+local function paketYazisi(urun: RobuxMagaza.Urun): string
+	local yazilar = {}
+	for _, satir in RobuxMagaza.paketIcerigi(urun) do
+		table.insert(yazilar, satir.yazi)
+	end
+	return table.concat(yazilar, " + ")
+end
+
 local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 	if urun.tur == "luckyblock" and urun.tier then
 		PlayerData.addLuckyBlocks(player, urun.tier, urun.adet or 1)
@@ -84,6 +93,20 @@ local function urunVer(player: Player, data: any, urun: RobuxMagaza.Urun)
 		Gacha.ver(player)
 	elseif urun.tur == "kacanYumurta" then
 		KacanYumurta.ver(player)
+	elseif urun.tur == "baslangic" then
+		for tierId, adet in urun.luckyBlocks or {} do
+			PlayerData.addLuckyBlocks(player, tierId, adet)
+		end
+		PlayerData.addRot(player, urun.rot or 0)
+		data.baslangicAlindi = true
+		player:SetAttribute(RobuxMagaza.BaslangicNiteligi, true)
+		Duyuru:FireClient(player, {
+			tur = "odul",
+			baslik = "STARTER PACK!",
+			yazi = paketYazisi(urun),
+			alt = "Open your Lucky Blocks from the backpack!",
+			luckyBlock = "Golden",
+		})
 	else
 		error(`unknown product type: {urun.tur}`)
 	end
@@ -93,7 +116,7 @@ local function ekraniTazele(player: Player, urun: RobuxMagaza.Urun)
 	if urun.tur == "gacha" or urun.tur == "kacanYumurta" then
 		return
 	end
-	if urun.tur == "luckyblock" then
+	if urun.tur == "luckyblock" or urun.tur == "baslangic" then
 		Envanter.syncLuckyBlocks(player)
 	elseif urun.tur == "luck" then
 		sansDurumuGonder(player)
@@ -199,6 +222,14 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 		return
 	end
 
+	if urun.tur == "baslangic" then
+		local data = PlayerData.get(player)
+		if not data or data.baslangicAlindi then
+			Bildirim:FireClient(player, "You already own the Starter Pack!", SARI)
+			return
+		end
+	end
+
 	local ok, hata = pcall(function()
 		MarketplaceService:PromptProductPurchase(player, urun.id)
 	end)
@@ -210,3 +241,15 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	sonPencere[player] = nil
 end)
+
+local function baslangicDurumu(player: Player)
+	local data = PlayerData.bekle(player)
+	if data and player.Parent then
+		player:SetAttribute(RobuxMagaza.BaslangicNiteligi, data.baslangicAlindi == true)
+	end
+end
+
+Players.PlayerAdded:Connect(baslangicDurumu)
+for _, player in Players:GetPlayers() do
+	task.spawn(baslangicDurumu, player)
+end

@@ -90,6 +90,8 @@ local GECIS_GORUNUM = {
 	AutoClicker = { ikon = "shovel", renkA = Color3.fromRGB(255, 120, 60), renkB = Color3.fromRGB(230, 60, 110) },
 	Teleporter = { ikon = "teleporter", renkA = Color3.fromRGB(150, 120, 255), renkB = Color3.fromRGB(80, 90, 230) },
 	DetectivePass = { ikon = "detective", renkA = Color3.fromRGB(90, 200, 255), renkB = Color3.fromRGB(40, 110, 220) },
+	SansX2 = { ikon = "luck2", renkA = Color3.fromRGB(60, 210, 90), renkB = Color3.fromRGB(150, 235, 40) },
+	RotX15 = { ikon = "rot", renkA = Color3.fromRGB(40, 190, 120), renkB = Color3.fromRGB(20, 120, 90) },
 }
 
 local screen = Instance.new("ScreenGui")
@@ -862,6 +864,150 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 		ArayuzSesi.tikla()
 		PassSatinAl:FireServer(ad)
 	end)
+end
+
+local function baslangicKarti()
+	local urun = RobuxMagaza.BaslangicPaketi
+	local normal = tierBul(LuckyBlock.Default)
+	local altin = tierBul("Golden")
+	local yukseklik = 260
+
+	local cerceve = Instance.new("Frame")
+	cerceve.Name = "BaslangicPaketi"
+	cerceve.Size = UDim2.new(1, 0, 0, yukseklik)
+	cerceve.BorderSizePixel = 0
+	cerceve.LayoutOrder = sonraki()
+	cerceve.Parent = liste
+	UI.corner(cerceve, 12)
+	UI.stroke(cerceve, BEYAZ, 4)
+	renkliZemin(cerceve, Color3.fromRGB(255, 196, 40), Color3.fromRGB(255, 96, 40), 12)
+
+	local pariltiAlani = Instance.new("Frame")
+	pariltiAlani.Name = "PariltiAlani"
+	pariltiAlani.Size = UDim2.fromScale(1, 1)
+	pariltiAlani.BackgroundTransparency = 1
+	pariltiAlani.ClipsDescendants = true
+	pariltiAlani.Parent = cerceve
+	UI.corner(pariltiAlani, 12)
+	UI.pariltilar(pariltiAlani, Color3.fromRGB(255, 245, 200), 22, 1)
+
+	local merkez = UDim2.fromOffset(165, yukseklik / 2)
+	UI.isikHuzmeleri(cerceve, Color3.fromRGB(255, 240, 170), {
+		sayi = 12,
+		uzunluk = 230,
+		kalinlik = 30,
+		tur = 14,
+		parlaklik = 0.2,
+		zIndex = 2,
+	}).Position = merkez
+	UI.parlama(cerceve, Color3.fromRGB(255, 220, 90), 240, 3).Position = merkez
+
+	local function blok(tier: any, x: number, y: number, boyut: number, z: number, gecikme: number): ViewportFrame?
+		local vp = luckyOnizleme(cerceve, tier, x, boyut)
+		if not vp then
+			return nil
+		end
+		vp.Position = UDim2.new(0, x, 0.5, y)
+		vp.ZIndex = z
+		task.delay(gecikme, function()
+			if vp.Parent then
+				TweenService:Create(
+					vp,
+					TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+					{ Position = UDim2.new(0, x, 0.5, y - 8) }
+				):Play()
+			end
+		end)
+		return vp
+	end
+
+	if normal then
+		blok(normal, 18, -50, 110, 5, 0)
+		blok(normal, 112, -66, 110, 5, 0.3)
+		blok(normal, 206, -50, 110, 5, 0.6)
+	end
+	if altin then
+		blok(altin, 92, 34, 150, 7, 0.15)
+	end
+
+	local function rozet(yazi: string, x: number, y: number, renk: Color3)
+		local etiket = UI.text({
+			text = yazi,
+			size = 34,
+			font = UI.Fonts.bold,
+			color = renk,
+			align = Enum.TextXAlignment.Center,
+			frameSize = UDim2.fromOffset(70, 40),
+			position = UDim2.new(0, x, 0.5, y),
+			parent = cerceve,
+			zIndex = 9,
+		})
+		etiket.Rotation = -10
+		UI.stroke(etiket, SIYAH, 3)
+		local olcek = Instance.new("UIScale")
+		olcek.Parent = etiket
+		TweenService:Create(
+			olcek,
+			TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Scale = 1.15 }
+		):Play()
+	end
+
+	rozet(`x{(urun.luckyBlocks or {}).Normal or 0}`, 262, -112, BEYAZ)
+	rozet(`x{(urun.luckyBlocks or {}).Golden or 0}`, 220, 40, Color3.fromRGB(255, 215, 60))
+
+	local yaziX = 340
+	UI.text({
+		text = "STARTER PACK",
+		size = UI.Sizes.title + 4,
+		font = UI.Fonts.bold,
+		glow = ALTIN,
+		frameSize = UDim2.new(1, -(yaziX + 12), 0, 42),
+		position = UDim2.fromOffset(yaziX, 16),
+		parent = cerceve,
+		zIndex = 6,
+	})
+
+	for siraNo, satir in RobuxMagaza.paketIcerigi(urun) do
+		local tier = if satir.tier then tierBul(satir.tier) else nil
+		UI.text({
+			text = `+ {satir.yazi}`,
+			size = UI.Sizes.label,
+			font = UI.Fonts.bold,
+			color = if tier and tier.id ~= LuckyBlock.Default then tier.color else BEYAZ,
+			frameSize = UDim2.new(1, -(yaziX + 12), 0, 26),
+			position = UDim2.fromOffset(yaziX, 62 + (siraNo - 1) * 28),
+			parent = cerceve,
+			zIndex = 6,
+		})
+	end
+
+	serit(cerceve, "WOW!")
+
+	local buton = urunDugmesi(cerceve, urun)
+	buton.AnchorPoint = Vector2.new(1, 1)
+	buton.Position = UDim2.new(1, -16, 1, -16)
+	buton.Size = UDim2.fromOffset(200, 64)
+	local butonOlcek = Instance.new("UIScale")
+	butonOlcek.Parent = buton
+	TweenService:Create(
+		butonOlcek,
+		TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.06 }
+	):Play()
+
+	local function ciz()
+		cerceve.Visible = player:GetAttribute(RobuxMagaza.BaslangicNiteligi) ~= true
+	end
+	ciz()
+	player:GetAttributeChangedSignal(RobuxMagaza.BaslangicNiteligi):Connect(ciz)
+end
+
+do
+	local ok, hata = pcall(baslangicKarti)
+	if not ok then
+		warn(`[RobuxMagaza] starter pack card could not be drawn: {hata}`)
+	end
 end
 
 bolumBasligi("Items")
