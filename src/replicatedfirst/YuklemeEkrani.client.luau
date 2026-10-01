@@ -701,7 +701,10 @@ local logoEni = 700
 
 local function olcekle()
 	local kamera = Workspace.CurrentCamera
-	local v = if kamera then kamera.ViewportSize else TASARIM
+	local v = if ekran.AbsoluteSize.X > 0 and ekran.AbsoluteSize.Y > 0
+		then ekran.AbsoluteSize
+		elseif kamera then kamera.ViewportSize
+		else TASARIM
 	if v.X <= 0 or v.Y <= 0 then
 		v = TASARIM
 	end
@@ -720,10 +723,10 @@ local function olcekle()
 	logoMerkezi = Vector2.new(v.X / 2, ust + boy / 2)
 
 	logo.Size = UDim2.fromOffset(en, boy)
-	logo.Position = UDim2.fromOffset(logoMerkezi.X, logoMerkezi.Y)
+	logo.Position = UDim2.new(0.5, 0, 0, logoMerkezi.Y)
 	efektKabi.Size = UDim2.fromOffset(en * 1.9, en * 1.9)
-	efektKabi.Position = UDim2.fromOffset(logoMerkezi.X, logoMerkezi.Y)
-	icerik.Position = UDim2.fromOffset(v.X / 2, ust + boy + bosluk)
+	efektKabi.Position = UDim2.new(0.5, 0, 0, logoMerkezi.Y)
+	icerik.Position = UDim2.new(0.5, 0, 0, ust + boy + bosluk)
 end
 
 local kameraBagi: RBXScriptConnection? = nil
@@ -741,6 +744,7 @@ local function kameraIzle()
 end
 
 local kameraDegisti = Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(kameraIzle)
+ekran:GetPropertyChangedSignal("AbsoluteSize"):Connect(olcekle)
 kameraIzle()
 
 local rastgele = Random.new()
@@ -995,7 +999,7 @@ local cizimBagi: RBXScriptConnection? = RunService.RenderStepped:Connect(functio
 			paralaks = paralaks:Lerp(hedefKayma, math.min(1, dt * 3))
 		end
 	end
-	logo.Position = UDim2.fromOffset(logoMerkezi.X + paralaks.X + kayma.X, logoMerkezi.Y + paralaks.Y + kayma.Y)
+	logo.Position = UDim2.new(0.5, paralaks.X + kayma.X, 0, logoMerkezi.Y + paralaks.Y + kayma.Y)
 
 	local isikT = math.min((zaman % 2.6) / 0.9, 1)
 	local isikKonumu = UDim2.new(-0.3 + isikT * 1.6, 0, 0.5, 0)
