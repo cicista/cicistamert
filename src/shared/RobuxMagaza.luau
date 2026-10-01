@@ -13,6 +13,7 @@ export type Urun = {
 	fiyat: number,
 	eskiFiyat: number?,
 	etiket: string,
+	rozet: string?,
 	ad: string,
 	tur: string,
 	tier: string?,
@@ -77,7 +78,7 @@ RobuxMagaza.Kartlar = {
 		tier = "Diamond",
 		urunler = {
 			{ anahtar = "Diamond1", id = 0, fiyat = 99, etiket = "x1", ad = "1 Diamond Lucky Block", tur = "luckyblock", tier = "Diamond", adet = 1 },
-			{ anahtar = "Diamond3", id = 0, fiyat = 249, etiket = "x3", ad = "3 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 3 },
+			{ anahtar = "Diamond3", id = 0, fiyat = 249, etiket = "x3", rozet = "POPULAR", ad = "3 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 3 },
 			{ anahtar = "Diamond5", id = 0, fiyat = 369, eskiFiyat = 499, etiket = "x5", ad = "5 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 5 },
 		},
 	},
@@ -120,7 +121,7 @@ RobuxMagaza.Kartlar = {
 		tier = nil,
 		urunler = {
 			{ anahtar = "RotCoin10", id = 0, fiyat = 49, etiket = "+10", ad = "10 Rot Coin", tur = "rotcoin", rotCoin = 10 },
-			{ anahtar = "RotCoin35", id = 0, fiyat = 149, etiket = "+35", ad = "35 Rot Coin", tur = "rotcoin", rotCoin = 35 },
+			{ anahtar = "RotCoin35", id = 0, fiyat = 149, etiket = "+35", rozet = "POPULAR", ad = "35 Rot Coin", tur = "rotcoin", rotCoin = 35 },
 			{ anahtar = "RotCoin120", id = 0, fiyat = 449, eskiFiyat = 589, etiket = "+120", ad = "120 Rot Coin", tur = "rotcoin", rotCoin = 120 },
 		},
 	},

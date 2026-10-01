@@ -685,16 +685,52 @@ local function ogreticiKazisi(): boolean
 end
 
 local tiklaYazilari: { TextLabel } = {}
+local TIKLA_SAYI = 3
+local TIKLA_OMUR = 0.85
+local TIKLA_RENKLERI = {
+	Color3.fromRGB(255, 240, 120),
+	Color3.fromRGB(255, 170, 60),
+	Color3.fromRGB(130, 235, 255),
+	Color3.fromRGB(255, 255, 255),
+}
+local tiklaDurum: { { t: number, x: number, y: number, aci: number } } = {}
 
-for i, x in { 0.5 - 0.26, 0.5 + 0.26 } do
+local function tiklaYeri(haric: number): (number, number)
+	local x, y = 0.35, 0.4
+	for _ = 1, 16 do
+		x, y = rng:NextNumber(0.14, 0.6), rng:NextNumber(0.2, 0.74)
+		local uygun = not (math.abs(x - 0.5) < 0.09 and math.abs(y - 0.5) < 0.15)
+		if uygun then
+			for j, d in tiklaDurum do
+				if j ~= haric and math.abs(d.x - x) < 0.17 and math.abs(d.y - y) < 0.13 then
+					uygun = false
+					break
+				end
+			end
+		end
+		if uygun then
+			break
+		end
+	end
+	return x, y
+end
+
+local function tiklaYenile(i: number)
+	local d = tiklaDurum[i]
+	d.x, d.y = tiklaYeri(i)
+	d.aci = rng:NextNumber(-16, 16)
+	tiklaYazilari[i].TextColor3 = TIKLA_RENKLERI[rng:NextInteger(1, #TIKLA_RENKLERI)]
+end
+
+for i = 1, TIKLA_SAYI do
 	local yazi = UI.text({
 		text = "CLICK!",
 		size = UI.Sizes.huge,
 		font = UI.Fonts.bold,
-		color = Color3.fromRGB(255, 240, 120),
+		color = TIKLA_RENKLERI[1],
 		align = Enum.TextXAlignment.Center,
 		anchor = Vector2.new(0.5, 0.5),
-		position = UDim2.fromScale(x, 0.5),
+		position = UDim2.fromScale(0.35, 0.4),
 		frameSize = UDim2.fromOffset(220, 60),
 		parent = kaziEkran,
 		name = `Tikla{i}`,
@@ -702,6 +738,8 @@ for i, x in { 0.5 - 0.26, 0.5 + 0.26 } do
 	yazi.Visible = false
 	yazi.ZIndex = 20
 	table.insert(tiklaYazilari, yazi)
+	table.insert(tiklaDurum, { t = -(i - 1) / TIKLA_SAYI, x = 0.35, y = 0.4, aci = 0 })
+	tiklaYenile(i)
 end
 
 local tiklaZaman = 0
@@ -726,9 +764,8 @@ local function kaziOlcegiTazele()
 			(olcek :: UIScale).Scale = hedef
 		end
 	end
-	for i, yazi in tiklaYazilari do
+	for _, yazi in tiklaYazilari do
 		yazi.Text = UI.Girdi.sec("CLICK!", "TAP!", "PRESS A!")
-		yazi.Position = UDim2.fromScale(if i == 1 then 0.5 - 0.26 else 0.5 + 0.26, 0.5)
 	end
 end
 
@@ -739,19 +776,52 @@ UI.Girdi.degisince(kaziOlcegiTazele)
 
 local function tiklaYazisiCiz(dt: number, acik: boolean)
 	if not acik then
-		for _, yazi in tiklaYazilari do
-			yazi.Visible = false
+		if tiklaZaman > 0 then
+			tiklaZaman = 0
+			for i, yazi in tiklaYazilari do
+				yazi.Visible = false
+				tiklaDurum[i].t = -(i - 1) / TIKLA_SAYI
+				tiklaYenile(i)
+			end
 		end
 		return
 	end
 
 	tiklaZaman += dt
 	for i, yazi in tiklaYazilari do
+		local d = tiklaDurum[i]
+		d.t += dt / TIKLA_OMUR
+		if d.t >= 1 then
+			d.t -= 1
+			tiklaYenile(i)
+		end
+
+		if d.t < 0 then
+			yazi.Visible = false
+			continue
+		end
+
+		local boy, saydam, kayma = 1, 0, 0
+		if d.t < 0.2 then
+			boy = 0.3 + 0.8 * TweenService:GetValue(d.t / 0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		elseif d.t < 0.65 then
+			boy = 1.1 - 0.1 * (d.t - 0.2) / 0.45
+		else
+			local f = (d.t - 0.65) / 0.35
+			boy = 1 + 0.15 * f
+			saydam = f
+			kayma = 0.03 * f
+		end
+
 		yazi.Visible = true
-		local nabiz = (math.sin(tiklaZaman * 7 + (i - 1) * math.pi) + 1) * 0.5
-		yazi.TextSize = math.floor(UI.Sizes.huge * (0.85 + nabiz * 0.4))
-		yazi.TextTransparency = 0.15 - nabiz * 0.15
-		yazi.Rotation = (if i == 1 then -8 else 8) * (0.5 + nabiz)
+		yazi.Position = UDim2.fromScale(d.x, d.y - kayma)
+		yazi.Rotation = d.aci
+		yazi.TextSize = math.floor(UI.Sizes.huge * 1.15 * boy)
+		yazi.TextTransparency = saydam
+		local kontur = yazi:FindFirstChildOfClass("UIStroke")
+		if kontur then
+			kontur.Transparency = saydam
+		end
 	end
 end
 

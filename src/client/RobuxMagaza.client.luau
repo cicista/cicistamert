@@ -67,6 +67,36 @@ local HUZME_AYARI: { [string]: UI.HuzmeAyari } = {
 	},
 }
 
+local KENAR_RENKLERI: { [string]: { Color3 } } = {
+	Hacker = {
+		Color3.fromRGB(90, 255, 140),
+		Color3.fromRGB(10, 40, 20),
+		Color3.fromRGB(200, 255, 210),
+		Color3.fromRGB(10, 40, 20),
+	},
+	Diamond = {
+		Color3.fromRGB(120, 235, 255),
+		Color3.fromRGB(255, 255, 255),
+		Color3.fromRGB(190, 120, 255),
+		Color3.fromRGB(255, 140, 230),
+	},
+	Golden = {
+		Color3.fromRGB(255, 215, 60),
+		Color3.fromRGB(255, 255, 255),
+		Color3.fromRGB(255, 140, 30),
+		Color3.fromRGB(255, 245, 180),
+	},
+	Baslangic = {
+		Color3.fromRGB(255, 230, 90),
+		Color3.fromRGB(255, 255, 255),
+		Color3.fromRGB(255, 120, 40),
+		Color3.fromRGB(255, 255, 255),
+	},
+}
+
+local EN_IYI_RENK = Color3.fromRGB(255, 165, 20)
+local ROZET_RENK = Color3.fromRGB(255, 70, 160)
+
 local ARKA_PLAN: { [string]: string } = {
 	Diamond = "diamondbackground",
 	Hacker = "hackerbackground",
@@ -101,7 +131,7 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-local function renkliZemin(frame: GuiObject, renkA: Color3, renkB: Color3, yaricap: number)
+local function renkliZemin(frame: GuiObject, renkA: Color3, renkB: Color3, yaricap: number, desensiz: boolean?)
 	frame.BackgroundColor3 = BEYAZ
 
 	local gecis = Instance.new("UIGradient")
@@ -109,7 +139,9 @@ local function renkliZemin(frame: GuiObject, renkA: Color3, renkB: Color3, yaric
 	gecis.Rotation = 0
 	gecis.Parent = frame
 
-	UI.caprazDesen(frame)
+	if not desensiz then
+		UI.caprazDesen(frame)
+	end
 	UI.gloss(frame, 0.8)
 
 	for _, cocuk in frame:GetChildren() do
@@ -117,6 +149,200 @@ local function renkliZemin(frame: GuiObject, renkA: Color3, renkB: Color3, yaric
 			UI.corner(cocuk, yaricap)
 		end
 	end
+end
+
+local function taramaIsigi(hedef: GuiObject, kose: number, zIndex: number, sure: number, bekleme: number, tepe: number): Frame
+	local isik = Instance.new("Frame")
+	isik.Name = "Tarama"
+	isik.Size = UDim2.fromScale(1, 1)
+	isik.BackgroundColor3 = BEYAZ
+	isik.BorderSizePixel = 0
+	isik.ZIndex = zIndex
+	isik.Parent = hedef
+	UI.corner(isik, kose)
+
+	local kenar = tepe + (1 - tepe) * 0.55
+	local bant = Instance.new("UIGradient")
+	bant.Rotation = 24
+	bant.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.4, 1),
+		NumberSequenceKeypoint.new(0.46, kenar),
+		NumberSequenceKeypoint.new(0.5, tepe),
+		NumberSequenceKeypoint.new(0.54, kenar),
+		NumberSequenceKeypoint.new(0.57, 1),
+		NumberSequenceKeypoint.new(0.6, kenar),
+		NumberSequenceKeypoint.new(0.63, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	bant.Offset = Vector2.new(-1.2, 0)
+	bant.Parent = isik
+
+	task.delay(math.random() * bekleme, function()
+		if not isik.Parent then
+			return
+		end
+		TweenService:Create(
+			bant,
+			TweenInfo.new(sure, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, false, bekleme),
+			{ Offset = Vector2.new(1.2, 0) }
+		):Play()
+	end)
+
+	return isik
+end
+
+local function kenarAkisi(kontur: UIStroke, renkler: { Color3 }, sure: number)
+	kontur.Color = BEYAZ
+
+	local noktalar = {}
+	for i, renk in renkler do
+		table.insert(noktalar, ColorSequenceKeypoint.new((i - 1) / #renkler, renk))
+	end
+	table.insert(noktalar, ColorSequenceKeypoint.new(1, renkler[1]))
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Name = "KenarAkisi"
+	gecis.Color = ColorSequence.new(noktalar)
+	gecis.Parent = kontur
+
+	TweenService:Create(
+		gecis,
+		TweenInfo.new(sure, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Rotation = 360 }
+	):Play()
+end
+
+local function varsayilanKenar(renkA: Color3, renkB: Color3): { Color3 }
+	return { BEYAZ, renkA:Lerp(BEYAZ, 0.3), BEYAZ, renkB:Lerp(BEYAZ, 0.3) }
+end
+
+local function dalga(yuz: GuiObject)
+	local halka = Instance.new("Frame")
+	halka.Name = "Dalga"
+	halka.AnchorPoint = Vector2.new(0.5, 0.5)
+	halka.Position = UDim2.fromScale(0.5, 0.5)
+	halka.Size = UDim2.fromScale(0.1, 0.1)
+	halka.SizeConstraint = Enum.SizeConstraint.RelativeXX
+	halka.BackgroundColor3 = BEYAZ
+	halka.BackgroundTransparency = 0.3
+	halka.BorderSizePixel = 0
+	halka.ZIndex = 4
+	halka.Parent = yuz
+	UI.corner(halka, 1000)
+
+	local sonme = TweenService:Create(
+		halka,
+		TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromScale(1.3, 1.3), BackgroundTransparency = 1 }
+	)
+	sonme.Completed:Connect(function()
+		halka:Destroy()
+	end)
+	sonme:Play()
+end
+
+local function yaziIsiltisi(etiket: TextLabel, renk: Color3)
+	etiket.TextColor3 = BEYAZ
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Name = "Isilti"
+	gecis.Rotation = 15
+	gecis.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, renk),
+		ColorSequenceKeypoint.new(0.4, renk),
+		ColorSequenceKeypoint.new(0.5, BEYAZ),
+		ColorSequenceKeypoint.new(0.6, renk),
+		ColorSequenceKeypoint.new(1, renk),
+	})
+	gecis.Offset = Vector2.new(-1, 0)
+	gecis.Parent = etiket
+
+	TweenService:Create(
+		gecis,
+		TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 1.2),
+		{ Offset = Vector2.new(1, 0) }
+	):Play()
+end
+
+local YAGMUR_AYARI: { [string]: UI.YagmurAyari } = {
+	MegaLuck = { renk = Color3.fromRGB(170, 255, 140), sayi = 14, boyut = 10, sure = 5, sekil = "elmas", saydam = 0.35, zIndex = 1 },
+	RotCoins = { renk = Color3.fromRGB(255, 225, 90), sayi = 16, boyut = 13, sure = 4.5, sekil = "daire", saydam = 0.2, zIndex = 1 },
+}
+
+local function dokuKatmani(kart: GuiObject, merkez: UDim2, boyu: number, yagmur: UI.YagmurAyari?)
+	local kap = Instance.new("Frame")
+	kap.Name = "Doku"
+	kap.Size = UDim2.fromScale(1, 1)
+	kap.BackgroundTransparency = 1
+	kap.BorderSizePixel = 0
+	kap.ClipsDescendants = true
+	kap.ZIndex = 1
+	kap.Parent = kart
+
+	UI.isikHuzmeleri(kap, BEYAZ, {
+		sayi = 10,
+		uzunluk = math.floor(boyu * 2.6),
+		kalinlik = math.floor(boyu * 0.32),
+		tur = 22,
+		parlaklik = 0.62,
+		zIndex = 1,
+	}).Position = merkez
+
+	local akis = Instance.new("Frame")
+	akis.Name = "AkanSeritler"
+	akis.Size = UDim2.fromScale(2, 1)
+	akis.BackgroundTransparency = 1
+	akis.ZIndex = 1
+	akis.Parent = kap
+	UI.stripeLayer(akis, BEYAZ, 32, 10, 0.9)
+	TweenService:Create(
+		akis,
+		TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Position = UDim2.fromScale(-1, 0) }
+	):Play()
+
+	if yagmur then
+		UI.corner(UI.parcaYagmuru(kart, yagmur), 12)
+	else
+		UI.pariltilar(kap, BEYAZ, 8, 1)
+	end
+
+	local golge = Instance.new("Frame")
+	golge.Name = "Golge"
+	golge.Size = UDim2.fromScale(1, 1)
+	golge.BackgroundColor3 = SIYAH
+	golge.BorderSizePixel = 0
+	golge.ZIndex = 1
+	golge.Parent = kart
+	UI.corner(golge, 12)
+	local karartma = Instance.new("UIGradient")
+	karartma.Rotation = 90
+	karartma.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.55, 1),
+		NumberSequenceKeypoint.new(1, 0.72),
+	})
+	karartma.Parent = golge
+end
+
+local kartlar: { GuiObject } = {}
+
+local function kartCanlandir(kart: GuiObject)
+	local olcek = Instance.new("UIScale")
+	olcek.Name = "KartOlcek"
+	olcek.Parent = kart
+
+	local bilgi = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	kart.MouseEnter:Connect(function()
+		TweenService:Create(olcek, bilgi, { Scale = 1.02 }):Play()
+	end)
+	kart.MouseLeave:Connect(function()
+		TweenService:Create(olcek, bilgi, { Scale = 1 }):Play()
+	end)
+
+	taramaIsigi(kart, 12, 3, 1.1, 4.5, 0.72)
+	table.insert(kartlar, kart)
 end
 
 local function satinAlmaDugmesi(parent: Instance, renk: Color3, buyusun: boolean?): (TextButton, Frame)
@@ -156,6 +382,11 @@ local function satinAlmaDugmesi(parent: Instance, renk: Color3, buyusun: boolean
 	end)
 
 	UI.hover(buton, yuz, if buyusun then buton else nil)
+
+	taramaIsigi(yuz, 8, 4, 0.75, 2.6, 0.45)
+	buton.Activated:Connect(function()
+		dalga(yuz)
+	end)
 
 	return buton, yuz
 end
@@ -284,6 +515,112 @@ local function serit(kart: Frame, yazi: string)
 	):Play()
 end
 
+local function indirimRozeti(buton: GuiObject, eski: number, yeni: number)
+	local oran = math.floor((1 - yeni / eski) * 100 + 0.5)
+	if oran <= 0 then
+		return
+	end
+
+	local kap = Instance.new("Frame")
+	kap.Name = "Indirim"
+	kap.AnchorPoint = Vector2.new(0.5, 0.5)
+	kap.Position = UDim2.fromOffset(6, 4)
+	kap.Size = UDim2.fromOffset(52, 52)
+	kap.BackgroundTransparency = 1
+	kap.ZIndex = 9
+	kap.Parent = buton
+
+	local yildiz = Instance.new("Frame")
+	yildiz.Name = "Yildiz"
+	yildiz.AnchorPoint = Vector2.new(0.5, 0.5)
+	yildiz.Position = UDim2.fromScale(0.5, 0.5)
+	yildiz.Size = UDim2.fromScale(1, 1)
+	yildiz.BackgroundTransparency = 1
+	yildiz.ZIndex = 9
+	yildiz.Parent = kap
+
+	for _, katman in { { olcu = 0.8, renk = SIYAH }, { olcu = 0.7, renk = SERIT_KIRMIZI } } do
+		for _, aci in { 0, 30, 60 } do
+			local kare = Instance.new("Frame")
+			kare.Name = "Uc"
+			kare.AnchorPoint = Vector2.new(0.5, 0.5)
+			kare.Position = UDim2.fromScale(0.5, 0.5)
+			kare.Size = UDim2.fromScale(katman.olcu, katman.olcu)
+			kare.Rotation = aci
+			kare.BackgroundColor3 = katman.renk
+			kare.BorderSizePixel = 0
+			kare.ZIndex = 9
+			kare.Parent = yildiz
+		end
+	end
+
+	local yazi = UI.text({
+		text = `-{oran}%`,
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 1),
+		parent = kap,
+		zIndex = 10,
+	})
+	yazi.Name = "Oran"
+	yazi.Rotation = -12
+
+	TweenService:Create(
+		yildiz,
+		TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Rotation = 360 }
+	):Play()
+
+	local olcek = Instance.new("UIScale")
+	olcek.Parent = kap
+	TweenService:Create(
+		olcek,
+		TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.12 }
+	):Play()
+end
+
+local function etiketHapi(buton: GuiObject, yazi: string, renk: Color3)
+	local hap = Instance.new("Frame")
+	hap.Name = "EtiketHapi"
+	hap.AnchorPoint = Vector2.new(0.5, 0.5)
+	hap.Position = UDim2.new(0.5, 0, 1, 0)
+	hap.Size = UDim2.fromOffset(0, 20)
+	hap.AutomaticSize = Enum.AutomaticSize.X
+	hap.BackgroundColor3 = BEYAZ
+	hap.BorderSizePixel = 0
+	hap.ZIndex = 9
+	hap.Parent = buton
+	UI.corner(hap, 10)
+	UI.stroke(hap, SIYAH, 2)
+
+	local gecis = Instance.new("UIGradient")
+	gecis.Rotation = 90
+	gecis.Color = ColorSequence.new(UI.shade(renk, 0.25), UI.shade(renk, -0.15))
+	gecis.Parent = hap
+
+	local pay = Instance.new("UIPadding")
+	pay.PaddingLeft = UDim.new(0, 10)
+	pay.PaddingRight = UDim.new(0, 10)
+	pay.Parent = hap
+
+	local etiket = UI.text({
+		text = yazi,
+		size = UI.Sizes.tiny,
+		font = UI.Fonts.bold,
+		color = BEYAZ,
+		frameSize = UDim2.fromOffset(0, 20),
+		parent = hap,
+		zIndex = 11,
+	})
+	etiket.AutomaticSize = Enum.AutomaticSize.X
+	etiket.TextTruncate = Enum.TextTruncate.None
+
+	taramaIsigi(hap, 10, 10, 0.6, 1.8, 0.25)
+end
+
 local function kartIkonu(kart: Frame, ikonAdi: string, boyut: number, renk: Color3?): ImageLabel
 	local ikon = Instance.new("ImageLabel")
 	ikon.Name = "Ikon"
@@ -336,6 +673,8 @@ baslik.Parent = panel
 UI.corner(baslik, 10)
 UI.polish(baslik, ALTIN, 10)
 UI.stroke(baslik, SIYAH, 2)
+taramaIsigi(baslik, 10, 4, 0.9, 3.5, 0.5)
+UI.pariltilar(baslik, BEYAZ, 10, 3)
 
 do
 	local ikon = Instance.new("ImageLabel")
@@ -418,6 +757,7 @@ local function bolumBasligi(yazi: string)
 		parent = liste,
 	})
 	etiket.LayoutOrder = sonraki()
+	yaziIsiltisi(etiket, ALTIN)
 end
 
 local BAKIS_YONU = Vector3.new(0, 0, -1)
@@ -605,8 +945,27 @@ local function oranSatiri(parent: Instance, tierId: string, x: number, y: number
 	end
 end
 
-local function urunDugmesi(parent: Instance, urun: RobuxMagaza.Urun)
+local function urunDugmesi(parent: Instance, urun: RobuxMagaza.Urun, enIyi: boolean?)
 	local buton, yuz = satinAlmaDugmesi(parent, YESIL)
+
+	if urun.eskiFiyat then
+		indirimRozeti(buton, urun.eskiFiyat, urun.fiyat)
+	end
+
+	local rozet = urun.rozet or (if enIyi then "BEST VALUE" else nil)
+	if rozet then
+		etiketHapi(buton, rozet, if enIyi then EN_IYI_RENK else ROZET_RENK)
+	end
+
+	if enIyi then
+		local nabiz = Instance.new("UIScale")
+		nabiz.Parent = buton
+		TweenService:Create(
+			nabiz,
+			TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Scale = 1.04 }
+		):Play()
+	end
 
 	robuxYazisi(yuz, urun.fiyat, UI.Sizes.label, 4, 26)
 	yuzYazisi(yuz, urun.etiket, UI.Sizes.small, 30, 16)
@@ -657,6 +1016,11 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 		elseif coklu then 72 + (if oranli then 32 else 0) + 64
 		else 116
 
+	local arkaPlanAdi = if tier then ARKA_PLAN[tier.id] else nil
+	local arkaPlan = if arkaPlanAdi
+		then Icons.assetKlasorden(Assets.Categories.backgrounds, arkaPlanAdi)
+		else nil
+
 	local cerceve = Instance.new("Frame")
 	cerceve.Name = kart.id
 	cerceve.Size = UDim2.new(1, 0, 0, yukseklik)
@@ -664,23 +1028,27 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 	cerceve.LayoutOrder = sonraki()
 	cerceve.Parent = liste
 	UI.corner(cerceve, 12)
-	UI.stroke(cerceve, BEYAZ, 4)
-	renkliZemin(cerceve, kart.renkA, kart.renkB, 12)
+	kenarAkisi(
+		UI.stroke(cerceve, BEYAZ, 4),
+		(if tier then KENAR_RENKLERI[tier.id] else nil) or varsayilanKenar(kart.renkA, kart.renkB),
+		3.5
+	)
+	renkliZemin(cerceve, kart.renkA, kart.renkB, 12, arkaPlan == nil)
 
-	local arkaPlanAdi = if tier then ARKA_PLAN[tier.id] else nil
-	local arkaPlan = if arkaPlanAdi
-		then Icons.assetKlasorden(Assets.Categories.backgrounds, arkaPlanAdi)
-		else nil
+	local gorselMerkez = UDim2.fromOffset(gorselX + gorselBoyu / 2, yukseklik / 2)
+
 	if arkaPlan then
 		local kap = UI.yumusakResim(cerceve, arkaPlan, ARKA_PLAN_SAYDAM, ARKA_PLAN_YAYILMA, 1)
 		UI.corner(kap, 12)
+	else
+		dokuKatmani(cerceve, gorselMerkez, yukseklik, YAGMUR_AYARI[kart.id])
 	end
 
 	if tier and tier.id == "Hacker" then
 		UI.corner(UI.sayiYagmuru(cerceve, UI.HackerYesil, 18, 1, 1.8, 0.32), 12)
 	end
 
-	local gorselMerkez = UDim2.fromOffset(gorselX + gorselBoyu / 2, yukseklik / 2)
+	kartCanlandir(cerceve)
 	local efektRengi = if tier then (if huzme then huzme.renk else nil) or tier.color else nil
 
 	if huzme and tier and efektRengi then
@@ -748,6 +1116,18 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 		serit(cerceve, kart.serit)
 	end
 
+	local enIyi: RobuxMagaza.Urun? = nil
+	if coklu then
+		local enAz = math.huge
+		for _, urun in kart.urunler do
+			local miktar = urun.adet or urun.rotCoin
+			if miktar and miktar > 0 and urun.fiyat / miktar < enAz then
+				enAz = urun.fiyat / miktar
+				enIyi = urun
+			end
+		end
+	end
+
 	if not coklu then
 		local buton = urunDugmesi(cerceve, kart.urunler[1])
 		buton.AnchorPoint = Vector2.new(1, 0.5)
@@ -776,7 +1156,7 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 
 	local adet = #kart.urunler
 	for siraNo, urun in kart.urunler do
-		local buton = urunDugmesi(dugmeler, urun)
+		local buton = urunDugmesi(dugmeler, urun, urun == enIyi)
 		buton.LayoutOrder = siraNo
 		buton.Size = UDim2.new(1 / adet, -10 * (adet - 1) / adet, 1, 0)
 	end
@@ -797,8 +1177,10 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 	kart.LayoutOrder = siraNo
 	kart.Parent = parent
 	UI.corner(kart, 12)
-	UI.stroke(kart, BEYAZ, 4)
-	renkliZemin(kart, gorunum.renkA, gorunum.renkB, 12)
+	kenarAkisi(UI.stroke(kart, BEYAZ, 4), varsayilanKenar(gorunum.renkA, gorunum.renkB), 3.5)
+	renkliZemin(kart, gorunum.renkA, gorunum.renkB, 12, true)
+	dokuKatmani(kart, UDim2.fromOffset(38, 38), 150)
+	kartCanlandir(kart)
 
 	local ikon = kartIkonu(kart, gorunum.ikon, 56)
 	ikon.AnchorPoint = Vector2.zero
@@ -852,6 +1234,10 @@ local function gecisKarti(parent: Instance, ad: string, siraNo: number)
 		if gecis then
 			gecis.Enabled = not sahip
 		end
+		local tarama = yuz:FindFirstChild("Tarama")
+		if tarama and tarama:IsA("GuiObject") then
+			tarama.Visible = not sahip
+		end
 	end
 	ciz()
 	table.insert(gecisCizimleri, ciz)
@@ -880,13 +1266,16 @@ local function baslangicKarti()
 	cerceve.LayoutOrder = sonraki()
 	cerceve.Parent = liste
 	UI.corner(cerceve, 12)
-	UI.stroke(cerceve, BEYAZ, 4)
+	kenarAkisi(UI.stroke(cerceve, BEYAZ, 4), KENAR_RENKLERI.Baslangic, 3)
 	renkliZemin(cerceve, Color3.fromRGB(255, 196, 40), Color3.fromRGB(255, 96, 40), 12)
+	kartCanlandir(cerceve)
 
 	local arkaPlan = Icons.assetKlasorden(Assets.Categories.backgrounds, "starterbackground")
 	if arkaPlan then
 		local resimKabi = UI.yumusakResim(cerceve, arkaPlan, ARKA_PLAN_SAYDAM, ARKA_PLAN_YAYILMA, 1)
 		UI.corner(resimKabi, 12)
+	else
+		dokuKatmani(cerceve, UDim2.fromOffset(165, yukseklik / 2), yukseklik)
 	end
 
 	local pariltiAlani = Instance.new("Frame")
@@ -1076,6 +1465,24 @@ storeButon.AnchorPoint = Vector2.new(0.5, 0.5)
 storeButon.Position = UDim2.fromScale(0.5, 0.5)
 storeButon.Size = UDim2.fromScale(1, 1)
 
+UI.isikHuzmeleri(tutucu, ALTIN, {
+	sayi = 8,
+	uzunluk = 120,
+	kalinlik = 20,
+	tur = 9,
+	parlaklik = 0.45,
+	zIndex = 0,
+})
+
+do
+	local nokta = UI.bildirimNoktasi(storeButon, 8)
+	local function guncelle()
+		nokta(player:GetAttribute(RobuxMagaza.BaslangicNiteligi) ~= true)
+	end
+	guncelle()
+	player:GetAttributeChangedSignal(RobuxMagaza.BaslangicNiteligi):Connect(guncelle)
+end
+
 local storeIkon = Instance.new("ImageLabel")
 storeIkon.Name = "Ikon"
 storeIkon.BackgroundTransparency = 1
@@ -1155,6 +1562,20 @@ panel:GetPropertyChangedSignal("Visible"):Connect(function()
 	if panel.Visible then
 		for _, ciz in gecisCizimleri do
 			ciz()
+		end
+
+		local adim = 0
+		for _, kart in kartlar do
+			local olcek = kart:FindFirstChild("KartOlcek")
+			if kart.Visible and olcek and olcek:IsA("UIScale") then
+				olcek.Scale = 0.85
+				TweenService:Create(
+					olcek,
+					TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, adim * 0.05),
+					{ Scale = 1 }
+				):Play()
+				adim += 1
+			end
 		end
 	end
 end)
