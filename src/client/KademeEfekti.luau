@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Divine = require(Shared:WaitForChild("Divine"))
+local Config = require(Shared:WaitForChild("OyunConfig")) :: any
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -39,7 +40,36 @@ export type Efekt = {
 	kivilcimlar: { Frame },
 	kilitli: boolean,
 	etkin: (() -> boolean)?,
+	gorunurZaman: number?,
+	gorunurDeger: boolean?,
 }
+
+local GORUNURLUK_ARALIGI = Config.Performans.gorunurlukAraligi
+
+local function ekrandaMi(e: Efekt, simdi: number): boolean
+	local son = e.gorunurZaman
+	if son and simdi - son < GORUNURLUK_ARALIGI then
+		return e.gorunurDeger == true
+	end
+
+	local deger = true
+	local node: Instance? = e.kart
+	while node do
+		if node:IsA("GuiObject") and not node.Visible then
+			deger = false
+			break
+		end
+		if node:IsA("LayerCollector") then
+			deger = node.Enabled
+			break
+		end
+		node = node.Parent
+	end
+
+	e.gorunurZaman = if son then simdi else simdi - math.random() * GORUNURLUK_ARALIGI
+	e.gorunurDeger = deger
+	return deger
+end
 
 local BEYAZ = Color3.new(1, 1, 1)
 
@@ -270,6 +300,9 @@ RunService.RenderStepped:Connect(function(dt)
 
 		local etkin = e.etkin
 		if etkin and not etkin() then
+			continue
+		end
+		if not ekrandaMi(e, t) then
 			continue
 		end
 

@@ -1,5 +1,10 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("OyunConfig")) :: any
+
+local DONME_MESAFESI = Config.Performans.baseDonmeMesafesi
 
 type Entry = {
 	model: Model,
@@ -94,6 +99,9 @@ Workspace.DescendantRemoving:Connect(function(instance)
 end)
 
 RunService.RenderStepped:Connect(function(dt)
+	local kamera = Workspace.CurrentCamera
+	local goz = if kamera then kamera.CFrame.Position else nil
+
 	for model, entry in entries do
 		if not model.Parent then
 			entries[model] = nil
@@ -101,6 +109,10 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 
 		entry.time += dt
+
+		if goz and (entry.pivot.Position - goz).Magnitude > DONME_MESAFESI then
+			continue
+		end
 
 		local lift = if entry.bobHeight > 0
 			then (math.sin(entry.time * entry.bobSpeed) * 0.5 + 0.5) * entry.bobHeight

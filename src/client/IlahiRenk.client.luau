@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Divine = require(Shared:WaitForChild("Divine"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
+local Config = require(Shared:WaitForChild("OyunConfig")) :: any
+
+local GORUNURLUK_ARALIGI = Config.Performans.gorunurlukAraligi
 
 local function bandliGecis(color: Color3, parlak: Color3, yer: number, yari: number): ColorSequence
 	local duraklar = {}
@@ -30,14 +33,13 @@ local function bandliGecis(color: Color3, parlak: Color3, yer: number, yari: num
 	return ColorSequence.new(duraklar)
 end
 
-local function paint(instance: Instance, color: Color3, yer: number?, yari: number?)
+local function paint(instance: Instance, color: Color3, bant: ColorSequence, tek: ColorSequence)
 	if instance:IsA("TextLabel") or instance:IsA("TextButton") then
 		local gradient = instance:FindFirstChild("Parilti")
 
 		if gradient and gradient:IsA("UIGradient") then
-			local parlak = color:Lerp(Color3.new(1, 1, 1), 0.55)
 			gradient.Offset = Vector2.zero
-			gradient.Color = bandliGecis(color, parlak, yer or 0.5, yari or 0.12)
+			gradient.Color = bant
 			instance.TextColor3 = Color3.new(1, 1, 1)
 		else
 			instance.TextColor3 = color
@@ -49,11 +51,11 @@ local function paint(instance: Instance, color: Color3, yer: number?, yari: numb
 	elseif instance:IsA("Light") then
 		instance.Color = color
 	elseif instance:IsA("ParticleEmitter") then
-		instance.Color = ColorSequence.new(color)
+		instance.Color = tek
 	elseif instance:IsA("Highlight") then
 		instance.OutlineColor = color
 	elseif instance:IsA("UIGradient") then
-		instance.Color = ColorSequence.new(color)
+		instance.Color = tek
 	elseif instance:IsA("Frame") then
 		instance.BackgroundColor3 = color
 	elseif instance:IsA("GuiObject") then
@@ -105,6 +107,47 @@ for _, flash in Mutations.Flash do
 	paletEkle(flash.tag, flash.colorA, flash.colorB, flash.interval, flash.sweep, flash.band)
 end
 
+type Gorunurluk = { deger: boolean, zaman: number }
+
+local gorunurlukler: { [Instance]: Gorunurluk } = setmetatable({}, { __mode = "k" }) :: any
+
+local function arayuzMu(instance: Instance): boolean
+	return instance:IsA("GuiObject") or instance:IsA("UIStroke") or instance:IsA("UIGradient")
+end
+
+local function gorunur(instance: Instance, simdi: number): boolean
+	if not arayuzMu(instance) then
+		return true
+	end
+
+	local kayit = gorunurlukler[instance]
+	if kayit and simdi - kayit.zaman < GORUNURLUK_ARALIGI then
+		return kayit.deger
+	end
+
+	local deger = true
+	local node: Instance? = instance
+	while node do
+		if node:IsA("GuiObject") and not node.Visible then
+			deger = false
+			break
+		end
+		if node:IsA("LayerCollector") then
+			deger = node.Enabled
+			break
+		end
+		node = node.Parent
+	end
+
+	if kayit then
+		kayit.deger = deger
+		kayit.zaman = simdi
+	else
+		gorunurlukler[instance] = { deger = deger, zaman = simdi - math.random() * GORUNURLUK_ARALIGI }
+	end
+	return deger
+end
+
 local elapsed = 0
 RunService.RenderStepped:Connect(function(dt)
 	elapsed += dt
@@ -118,13 +161,24 @@ RunService.RenderStepped:Connect(function(dt)
 		local tur = (elapsed / palet.sweep) % 1
 		local yer = -palet.band + tur * (1 + palet.band * 2)
 
+		local bant: ColorSequence? = nil
+		local tek: ColorSequence? = nil
+
 		for instance in palet.tracked do
 			if not instance.Parent then
 				palet.tracked[instance] = nil
 				continue
 			end
 
-			paint(instance, color, yer, palet.band)
+			if not gorunur(instance, elapsed) then
+				continue
+			end
+
+			if not bant or not tek then
+				bant = bandliGecis(color, color:Lerp(Color3.new(1, 1, 1), 0.55), yer, palet.band)
+				tek = ColorSequence.new(color)
+			end
+			paint(instance, color, bant :: ColorSequence, tek :: ColorSequence)
 		end
 	end
 end)

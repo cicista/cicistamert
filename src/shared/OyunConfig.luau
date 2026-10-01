@@ -265,6 +265,20 @@ Config.WhirlVFX = {
 	height = 0,
 }
 
+Config.Performans = {
+	parcacikKokleri = {
+		{ yol = { "CloverAreas" }, mesafe = 200 },
+		{ yol = { "AfkYoncalari" }, mesafe = 130 },
+		{ yol = { "Gacha" }, mesafe = 350 },
+		{ yol = { "MainIsland", "NPC's" }, mesafe = 220 },
+	},
+	parcacikAraligi = 0.5,
+	parcacikYariOran = 0.55,
+	kokAramaAraligi = 3,
+	baseDonmeMesafesi = 260,
+	gorunurlukAraligi = 0.25,
+}
+
 Config.Duyuru = {
 	kademeler = { "Infernal", "Abyssal" },
 	seritSuresi = 6,

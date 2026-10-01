@@ -167,6 +167,9 @@ RunService.RenderStepped:Connect(function()
 		if not character or not animator then
 			continue
 		end
+		if not character:GetAttribute("Kaziyor") then
+			continue
+		end
 
 		for _, track in animator:GetPlayingAnimationTracks() do
 			local animasyon = track.Animation

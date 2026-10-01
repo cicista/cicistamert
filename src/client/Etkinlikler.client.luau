@@ -366,7 +366,7 @@ end
 
 RunService.Heartbeat:Connect(function()
 	local kamera = Workspace.CurrentCamera
-	if kamera then
+	if kamera and gosterilenHava ~= "" then
 		if yagisParcasi.Parent ~= kamera then
 			yagisParcasi.Parent = kamera
 		end
