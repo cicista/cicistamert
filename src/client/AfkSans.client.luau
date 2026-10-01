@@ -1,3 +1,4 @@
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -842,10 +843,13 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
+local HUD_ALT_PAY = 140
+local HUD_ARA = 8
+
 local hud = Instance.new("Frame")
 hud.Name = "SansHUD"
 hud.AnchorPoint = Vector2.new(0.5, 1)
-hud.Position = UDim2.new(0.5, 0, 1, -140)
+hud.Position = UDim2.new(0.5, 0, 1, -HUD_ALT_PAY)
 hud.Size = UDim2.fromOffset(480, 84)
 hud.BackgroundColor3 = UI.Colors.panel
 hud.BackgroundTransparency = 0.1
@@ -1309,6 +1313,37 @@ YoncaListesi.OnClientEvent:Connect(function(alanId, liste)
 	end
 end)
 
+local function hudYerlestir()
+	if not UI.Girdi.dokunmatik() then
+		hud.Position = UDim2.new(0.5, 0, 1, -HUD_ALT_PAY)
+		return
+	end
+
+	local alt = HUD_ARA
+	local hotbar = playerGui:FindFirstChild("Hotbar")
+	local kok = hotbar and hotbar:FindFirstChild("HotbarKok")
+	if hotbar and hotbar:IsA("ScreenGui") and hotbar.Enabled and kok and kok:IsA("GuiObject") and kok.Visible then
+		local ust = kok.AbsolutePosition.Y
+		if ust > 0 and screen.AbsoluteSize.Y > 0 then
+			alt = screen.AbsoluteSize.Y + GuiService:GetGuiInset().Y - ust + HUD_ARA
+		end
+	end
+	hud.Position = UDim2.new(0.5, 0, 1, -alt)
+end
+
+UI.Girdi.degisince(hudYerlestir)
+UI.onScaleChanged(hudYerlestir)
+screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(hudYerlestir)
+task.spawn(function()
+	local hotbar = playerGui:WaitForChild("Hotbar", 30)
+	local kok = hotbar and hotbar:WaitForChild("HotbarKok", 10)
+	if kok and kok:IsA("GuiObject") then
+		kok:GetPropertyChangedSignal("AbsolutePosition"):Connect(hudYerlestir)
+		kok:GetPropertyChangedSignal("AbsoluteSize"):Connect(hudYerlestir)
+	end
+	hudYerlestir()
+end)
+
 Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	otoAyarla(false)
 	elleKapatildi = false
@@ -1324,6 +1359,7 @@ Net.event("AfkAlan").OnClientEvent:Connect(function(alanId)
 	hudXpBaslik.TextColor3 = hudBaslik.TextColor3
 	hudGuncelle()
 	otoCiz()
+	hudYerlestir()
 	hud.Visible = true
 end)
 
