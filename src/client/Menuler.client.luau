@@ -3703,7 +3703,7 @@ do
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 62),
 		parent = ayarPanel,
 	})
@@ -3712,7 +3712,7 @@ do
 		text = "Resizes every menu and HUD element.",
 		size = UI.Sizes.small,
 		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 84),
 		parent = ayarPanel,
 	})
@@ -3746,7 +3746,7 @@ do
 	isaretiBuyut(kucultButon)
 	isaretiBuyut(buyutButon)
 
-	local sifirlaButon = UI.button(ayarPanel, "Reset to 100%", UDim2.new(1, -36, 0, 44), UI.Colors.panelLight)
+	local sifirlaButon = UI.button(ayarPanel, "Reset to 100%", UDim2.fromOffset(394, 44), UI.Colors.panelLight)
 	sifirlaButon.Name = "Sifirla"
 	sifirlaButon.Position = UDim2.fromOffset(18, 182)
 
@@ -3755,7 +3755,7 @@ do
 		size = UI.Sizes.small,
 		color = UI.Colors.textDim,
 		align = Enum.TextXAlignment.Center,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 240),
 		parent = ayarPanel,
 	})
@@ -3765,7 +3765,7 @@ do
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 276),
 		parent = ayarPanel,
 	})
@@ -3826,7 +3826,7 @@ do
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 370),
 		parent = ayarPanel,
 	})
@@ -3838,7 +3838,7 @@ do
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 464),
 		parent = ayarPanel,
 	})
@@ -3848,7 +3848,7 @@ do
 		size = UI.Sizes.small,
 		font = UI.Fonts.bold,
 		color = UI.Colors.textDim,
-		frameSize = UDim2.new(1, -36, 0, 20),
+		frameSize = UDim2.fromOffset(394, 20),
 		position = UDim2.fromOffset(18, 552),
 		parent = ayarPanel,
 	})
