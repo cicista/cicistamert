@@ -14,8 +14,8 @@ local BEYAZ = Color3.new(1, 1, 1)
 local SIYAH = Color3.new(0, 0, 0)
 
 local MODEL = 64
-local YAGIS_ARASI = 0.12
-local YAGIS_TAVAN = 16
+local YAGIS_ARASI = 0.4
+local YAGIS_TAVAN = 7
 local SLAYT_SURESI = 2.4
 local KAYMA_SURESI = 0.45
 
@@ -266,35 +266,44 @@ local function yagdir(kart: Kart, yagis: Yagis)
 	end
 
 	local nesne = tane(yagis)
-	local yildiz = yagis.sekil == "yildiz"
-	local x = math.random(6, MODEL - 6)
-	local y = if yildiz then math.random(6, SayacKarti.BOY - 6) else math.random(36, 44)
 	nesne.AnchorPoint = Vector2.new(0.5, 0.5)
-	nesne.Position = UDim2.fromOffset(x, y)
 	nesne.ZIndex = 5
-	nesne.Parent = alan
+	local olcek = Instance.new("UIScale")
+	olcek.Scale = 0
+	olcek.Parent = nesne
 
-	local sure = if yagis.sekil == "kod" then 0.7 else if yildiz then 1.1 else 0.95
-	local hedef: { [string]: any } = {}
-	if yildiz then
-		local olcek = Instance.new("UIScale")
-		olcek.Scale = 0.2
-		olcek.Parent = nesne
-		TweenService:Create(olcek, TweenInfo.new(sure / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0, true), { Scale = 1.3 }):Play()
-		hedef.Position = UDim2.fromOffset(x, y + 6)
-		hedef.Rotation = math.random(-90, 90)
-	else
-		hedef.Position = UDim2.fromOffset(x + math.random(-6, 6), SayacKarti.BOY + 10)
-		if yagis.sekil == "elmas" then
-			hedef.Rotation = 45 + math.random(-120, 120)
-		end
+	local merkez = Vector2.new(MODEL / 2, SayacKarti.BOY / 2)
+	local yaricapX = math.random(22, 28)
+	local yaricapY = math.random(14, 19)
+	local baslangic = math.random() * math.pi * 2
+	local yon = if math.random() < 0.5 then -1 else 1
+	local tur = (math.pi * 0.9 + math.random() * math.pi * 0.5) * yon
+	local donus = math.random(-180, 180)
+	local taban = nesne.Rotation
+
+	local function yerlestir(ilerleme: number)
+		local aci = baslangic + tur * ilerleme
+		local derinlik = 0.7 + 0.3 * math.sin(aci)
+		nesne.Position = UDim2.fromOffset(
+			merkez.X + math.cos(aci) * yaricapX,
+			merkez.Y + math.sin(aci) * yaricapY
+		)
+		olcek.Scale = math.sin(math.pi * ilerleme) * derinlik * 1.15
+		nesne.Rotation = taban + donus * ilerleme
 	end
 
-	local bilgi = TweenInfo.new(sure, if yildiz then Enum.EasingStyle.Sine else Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	TweenService:Create(nesne, bilgi, hedef):Play()
-	task.delay(sure, function()
+	yerlestir(0)
+	nesne.Parent = alan
+
+	local deger = Instance.new("NumberValue")
+	deger.Changed:Connect(yerlestir)
+	local sure = 1.8 + math.random() * 0.8
+	local hareket = TweenService:Create(deger, TweenInfo.new(sure, Enum.EasingStyle.Linear), { Value = 1 })
+	hareket.Completed:Connect(function()
+		deger:Destroy()
 		nesne:Destroy()
 	end)
+	hareket:Play()
 end
 
 local function ekranda(nesne: GuiObject): boolean
