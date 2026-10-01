@@ -66,13 +66,21 @@ local function odulGoster(veri: any)
 		elseif tier then tier.color
 		else Color3.fromRGB(255, 215, 60)
 
+	local dis = Instance.new("Frame")
+	dis.Name = "Odul"
+	dis.AnchorPoint = Vector2.new(0.5, 0.5)
+	dis.Position = UDim2.fromScale(0.5, 0.45)
+	dis.Size = UDim2.fromOffset(560, 430)
+	dis.BackgroundTransparency = 1
+	dis.Parent = screen
+
 	local kap = Instance.new("Frame")
-	kap.Name = "Odul"
+	kap.Name = "Icerik"
 	kap.AnchorPoint = Vector2.new(0.5, 0.5)
-	kap.Position = UDim2.fromScale(0.5, 0.45)
-	kap.Size = UDim2.fromOffset(560, 430)
+	kap.Position = UDim2.fromScale(0.5, 0.5)
+	kap.Size = UDim2.fromScale(1, 1)
 	kap.BackgroundTransparency = 1
-	kap.Parent = screen
+	kap.Parent = dis
 
 	local olcek = Instance.new("UIScale")
 	olcek.Scale = 0.2
@@ -207,7 +215,7 @@ local function odulGoster(veri: any)
 		local t = TweenService:Create(olcek, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 })
 		t:Play()
 		t.Completed:Wait()
-		kap:Destroy()
+		dis:Destroy()
 		odulAcik = false
 		local siradaki = table.remove(odulSirasi, 1)
 		if siradaki then

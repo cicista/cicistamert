@@ -217,6 +217,20 @@ local function buildPanel(info: any)
 	actionButton("Hidden brainrot report (HiddenPart model)", "gizliRaporu", nil, UI.Colors.textDim)
 	actionButton("Foreign script report (scripts in the map, prints to Output)", "scriptRaporu", nil, UI.Colors.warn)
 
+	section("PLAYER LEVEL  --  level up (with rewards) or set directly")
+	local LEVEL_RENGI = Color3.fromRGB(255, 215, 40)
+	chipRow({
+		{ label = "+1 Level", command = "levelAtla", arg = 1, color = LEVEL_RENGI },
+		{ label = "+5 Levels", command = "levelAtla", arg = 5, color = LEVEL_RENGI },
+		{ label = "+10 Levels", command = "levelAtla", arg = 10, color = LEVEL_RENGI },
+	})
+	chipRow({
+		{ label = "Lv 15 (trade)", command = "levelAyarla", arg = 15, color = Color3.fromRGB(40, 200, 220) },
+		{ label = "Lv 30", command = "levelAyarla", arg = 30, color = Color3.fromRGB(190, 110, 255) },
+		{ label = "Max", command = "levelAyarla", arg = 1000, color = Color3.fromRGB(255, 120, 60) },
+		{ label = "Reset (Lv 1)", command = "levelAyarla", arg = 1, color = UI.Colors.bad },
+	})
+
 	section("SHOVEL LEVEL  --  Main / Candy / Snow / Volcano")
 	for _, ada in { "main", "sekerkum", "snowkum", "alevkum" } do
 		local shovelChips = {}

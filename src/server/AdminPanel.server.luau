@@ -31,6 +31,8 @@ local Sand = require(Modules:WaitForChild("Sand"))
 local HaftaSonu = require(Modules:WaitForChild("HaftaSonu"))
 local Unvan = require(Modules:WaitForChild("Unvan"))
 local Yetki = require(Modules:WaitForChild("Yetki"))
+local Seviye = require(Modules:WaitForChild("Seviye"))
+local SeviyeAyar = require(Shared:WaitForChild("Seviye"))
 
 local baseYenile = script.Parent:WaitForChild("BaseSistemi"):WaitForChild("BaseYenile") :: BindableEvent
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
@@ -845,6 +847,29 @@ function commands.setSpeed(player, data, arg)
 	data.speedLevel = math.clamp(math.floor(adet), 0, Hiz.Max)
 	hiziYenile(player)
 	return `Speed set: Speed {data.speedLevel + 1} (x{string.format("%.1f", Hiz.carpan(data.speedLevel))})`
+end
+
+function commands.levelAtla(player, data, arg)
+	local adet = math.clamp(math.floor(tonumber(arg) or 0), 1, SeviyeAyar.Max)
+	if data.level >= SeviyeAyar.Max then
+		return `Already at max level ({SeviyeAyar.Max})`
+	end
+	local hedef = math.min(SeviyeAyar.Max, data.level + adet)
+	local gereken = -data.xp
+	for seviye = data.level, hedef - 1 do
+		gereken += SeviyeAyar.gerekenXp(seviye)
+	end
+	Seviye.xpVer(player, math.max(1, gereken))
+	return `Level {data.level}`
+end
+
+function commands.levelAyarla(player, data, arg)
+	local hedef = math.clamp(math.floor(tonumber(arg) or 1), 1, SeviyeAyar.Max)
+	data.level = hedef
+	data.xp = 0
+	Seviye.etiketGuncelle(player)
+	Seviye.push(player)
+	return `Level set to {hedef}`
 end
 
 function commands.tumRozetler(player)

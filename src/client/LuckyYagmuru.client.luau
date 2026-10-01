@@ -31,19 +31,29 @@ end
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "LuckyYagmuru"
-screen.DisplayOrder = 4
+screen.DisplayOrder = 1
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
+local KENAR = 12
+
+local kap = Instance.new("Frame")
+kap.Name = "Kap"
+kap.AnchorPoint = Vector2.new(1, 0)
+kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
+kap.Size = UDim2.fromOffset(250, 100)
+kap.BackgroundTransparency = 1
+kap.Parent = screen
+
 local kart = Instance.new("Frame")
 kart.Name = "Kart"
-kart.AnchorPoint = Vector2.new(1, 0.5)
-kart.Position = UDim2.new(1, -14, 0.4, 0)
-kart.Size = UDim2.fromOffset(250, 100)
+kart.AnchorPoint = Vector2.new(0.5, 0.5)
+kart.Position = UDim2.fromScale(0.5, 0.5)
+kart.Size = UDim2.fromScale(1, 1)
 kart.BackgroundColor3 = BEYAZ
 kart.BorderSizePixel = 0
-kart.Parent = screen
+kart.Parent = kap
 UI.corner(kart, 16)
 local kontur = UI.stroke(kart, SIYAH, 3)
 kontur.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -183,12 +193,47 @@ end
 
 local sonSaniye = -1
 
+local function ekranAcik(ad: string): boolean
+	local gui = playerGui:FindFirstChild(ad)
+	return gui ~= nil and gui:IsA("ScreenGui") and gui.Enabled
+end
+
+local function yerlestir()
+	if not UI.Girdi.dokunmatik() then
+		kap.AnchorPoint = Vector2.new(1, 0)
+		kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
+		return
+	end
+
+	local menuler = playerGui:FindFirstChild("OyunMenuleri")
+	local sag = menuler and menuler:FindFirstChild("SagMenu")
+	local magaza = playerGui:FindFirstChild("RobuxMagazasi")
+	local store = magaza and magaza:FindFirstChild("StoreButonu")
+	if not (sag and sag:IsA("GuiObject")) then
+		kap.AnchorPoint = Vector2.new(1, 0)
+		kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
+		return
+	end
+
+	local alt = sag.AbsolutePosition.Y + sag.AbsoluteSize.Y
+	if store and store:IsA("GuiObject") and store.Visible then
+		alt = math.max(alt, store.AbsolutePosition.Y + store.AbsoluteSize.Y)
+	end
+	kap.AnchorPoint = Vector2.new(1, 0)
+	kap.Position = UDim2.fromOffset(sag.AbsolutePosition.X + sag.AbsoluteSize.X, alt + 8 * UI.carpan())
+end
+
 local function vurus(guc: number)
 	sayacOlcek.Scale = guc
 	TweenService:Create(sayacOlcek, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 end
 
 RunService.Heartbeat:Connect(function()
+	kap.Visible = not (ekranAcik("KaziBar") or ekranAcik("KaziMinigame"))
+	if not kap.Visible then
+		return
+	end
+
 	local simdi = Workspace:GetServerTimeNow()
 	local t = os.clock()
 
@@ -241,4 +286,21 @@ RunService.Heartbeat:Connect(function()
 		kontur.Thickness = 3
 		olcek.Scale = 1
 	end
+end)
+
+yerlestir()
+UI.Girdi.degisince(yerlestir)
+UI.onScaleChanged(yerlestir)
+task.spawn(function()
+	local menuler = playerGui:WaitForChild("OyunMenuleri", 30)
+	local sag = menuler and menuler:WaitForChild("SagMenu", 10)
+	local magaza = playerGui:WaitForChild("RobuxMagazasi", 30)
+	local store = magaza and magaza:WaitForChild("StoreButonu", 10)
+	for _, nesne in { sag, store } do
+		if nesne and nesne:IsA("GuiObject") then
+			nesne:GetPropertyChangedSignal("AbsolutePosition"):Connect(yerlestir)
+			nesne:GetPropertyChangedSignal("AbsoluteSize"):Connect(yerlestir)
+		end
+	end
+	yerlestir()
 end)

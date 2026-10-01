@@ -795,12 +795,19 @@ end
 
 local function sonucGoster(basarili: boolean, mesaj: string?)
 	local renk = if basarili then Color3.fromRGB(120, 255, 160) else Color3.fromRGB(255, 120, 120)
+	local dis = Instance.new("Frame")
+	dis.Name = "Sonuc"
+	dis.AnchorPoint = Vector2.new(0.5, 0.5)
+	dis.Position = UDim2.fromScale(0.5, 0.4)
+	dis.Size = UDim2.fromOffset(520, 200)
+	dis.BackgroundTransparency = 1
+	dis.Parent = istekKatmani
 	local kap = Instance.new("Frame")
 	kap.AnchorPoint = Vector2.new(0.5, 0.5)
-	kap.Position = UDim2.fromScale(0.5, 0.4)
-	kap.Size = UDim2.fromOffset(520, 200)
+	kap.Position = UDim2.fromScale(0.5, 0.5)
+	kap.Size = UDim2.fromScale(1, 1)
 	kap.BackgroundTransparency = 1
-	kap.Parent = istekKatmani
+	kap.Parent = dis
 	local olcek = Instance.new("UIScale")
 	olcek.Scale = 0.2
 	olcek.Parent = kap
@@ -840,7 +847,7 @@ local function sonucGoster(basarili: boolean, mesaj: string?)
 		local t = TweenService:Create(olcek, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 })
 		t:Play()
 		t.Completed:Wait()
-		kap:Destroy()
+		dis:Destroy()
 	end)
 end
 
