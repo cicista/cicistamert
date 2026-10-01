@@ -201,21 +201,21 @@ local degistirmeRng = Random.new()
 
 local SATIN_ALMA_OMRU = 30 * 24 * 3600
 
-local function gecerliAd(name: any, rarity: any): string?
+local function gecerliAd(name: any, rarity: any, island: any): string?
 	if type(name) ~= "string" then
 		return nil
 	end
 
-	if Brainrots.get(name) then
+	local info = Brainrots.get(name)
+	if info and info.rarity == rarity then
 		return name
 	end
 
-	local pool = Brainrots.pool(rarity)
-	if #pool == 0 then
+	if #Brainrots.pool(rarity) == 0 then
 		return nil
 	end
 
-	return pool[degistirmeRng:NextInteger(1, #pool)].name
+	return Brainrots.rollIsland(rarity, if type(island) == "string" then island else nil, degistirmeRng).name
 end
 
 local function esyaOku(item: any): InventoryItem?
@@ -223,7 +223,7 @@ local function esyaOku(item: any): InventoryItem?
 		return nil
 	end
 
-	local ad = gecerliAd(item.name, item.rarity)
+	local ad = gecerliAd(item.name, item.rarity, item.island)
 
 	return {
 		uid = item.uid,
