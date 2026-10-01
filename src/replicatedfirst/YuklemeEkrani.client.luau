@@ -3,6 +3,7 @@
 local ContentProvider = game:GetService("ContentProvider")
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,11 +23,15 @@ end)
 
 local ARKA_PLAN_KLASORU = { "Assets", "Backgrounds" }
 local ARKA_PLAN_ADI = "LoadingScreen"
+local LOGO_ORANI = 1842 / 1026
 
-local OYUN_ADI = "CICISTAMERT"
+local ADA_ADI = "MainIsland"
+local YORUNGE_SURESI = 80
+local BULANIKLIK = 14
+local KAMERA_EYLEMI = "YuklemeKamerasi"
 
 local EN_COK_BEKLEME = 45
-local ATLA_GECIKMESI = 1.5
+local ATLA_GECIKMESI = 0.6
 local IPUCU_SURESI = 5
 local OBEK = 20
 
@@ -39,52 +44,28 @@ local TASARIM = Vector2.new(1280, 760)
 local EN_KUCUK_OLCEK = 0.5
 local EN_BUYUK_OLCEK = 1
 
-local KART_EN = 600
-local KART_BOY = 216
+local ALT_EN = 460
+local ALT_BOY = 140
 local KENAR = 24
+local PARALAKS = 10
 
-local YAKLASMA = 1.07
-local PARALAKS = 14
-
-local NEON = Color3.fromRGB(70, 190, 255)
-local NEON_ACIK = Color3.fromRGB(150, 225, 255)
-local MOR = Color3.fromRGB(150, 95, 255)
 local ALTIN = Color3.fromRGB(255, 205, 70)
 local BEYAZ = Color3.fromRGB(255, 255, 255)
 local SIYAH = Color3.fromRGB(0, 0, 0)
-local SOLGUN = Color3.fromRGB(176, 190, 210)
-local SONUK = Color3.fromRGB(92, 104, 128)
 local KOYU = Color3.fromRGB(8, 11, 20)
 local LACIVERT = Color3.fromRGB(12, 22, 40)
 
 local AKTIF_RENK = ColorSequence.new(Color3.fromRGB(120, 235, 255), Color3.fromRGB(30, 140, 255))
-local PASIF_RENK = ColorSequence.new(Color3.fromRGB(64, 74, 98), Color3.fromRGB(40, 48, 66))
-
-local ISIN_RENKLERI = {
-	Color3.fromRGB(80, 160, 255),
-	Color3.fromRGB(180, 100, 255),
-	Color3.fromRGB(255, 240, 150),
-	Color3.fromRGB(255, 70, 90),
-	Color3.fromRGB(255, 190, 60),
-	Color3.fromRGB(150, 70, 240),
-}
-
-local KIVILCIM_RENKLERI = { NEON, NEON_ACIK, ALTIN, MOR, BEYAZ }
-
-local ADIMLAR = {
-	{ ad = "CONNECT", esik = 0.12 },
-	{ ad = "ASSETS", esik = 0.8 },
-	{ ad = "WORLD", esik = 0.88 },
-	{ ad = "PROFILE", esik = 0.995 },
-}
+local ATLA_RENK = ColorSequence.new(Color3.fromRGB(70, 80, 110), Color3.fromRGB(36, 42, 62))
 
 local IPUCLARI = {
 	"Upgrade your shovel to dig up rarer pets.",
 	"The Detective reveals the pets you dig up.",
 	"Place pets on your base to earn Rot every second.",
 	"Gold, Diamond, Galaxy and Hacker mutations boost income.",
-	"New islands boost your luck: Candy x2, Snow x4, Volcano x8.",
+	"New islands add luck: Candy +2, Snow +4, Volcano +8, Sea +16.",
 	"A Lucky Block rain starts every hour. Don't miss it!",
+	"When the Lucky Block rain ends, a Mystery Beam drops on a random island!",
 	"Weekends bring 2x luck. Plan your digging!",
 	"Fuse pets in the Fuse Machine to reach a higher rarity.",
 	"Reach level 15 to trade pets with other players.",
@@ -95,11 +76,9 @@ local IPUCLARI = {
 
 local BASLIK_FONTU = Font.fromEnum(Enum.Font.FredokaOne)
 local GOVDE_FONTU = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Medium)
-local KALIN_FONT = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
 
 local kapandi = false
 local hazirlandi = false
-local hazirGorundu = false
 local atlaIstendi = false
 local oynaAktif = false
 
@@ -311,6 +290,51 @@ local function solukluk(kok: Instance, oran: number, sure: number): Tween?
 	return son
 end
 
+local bulaniklik = Instance.new("BlurEffect")
+bulaniklik.Name = "YuklemeBulanikligi"
+bulaniklik.Size = BULANIKLIK
+bulaniklik.Parent = Lighting
+
+local adaMerkezi: Vector3? = nil
+local gorunenMerkez: Vector3? = nil
+local adaYaricapi = 380
+local gorunenYaricap = 380
+
+task.spawn(function()
+	while not kapandi do
+		local ada = Workspace:FindFirstChild(ADA_ADI)
+		if ada and ada:IsA("Model") then
+			local ok, cf, boyut = pcall(function()
+				return ada:GetBoundingBox()
+			end)
+			if ok and cf and boyut and boyut.Magnitude > 1 then
+				adaMerkezi = (cf :: CFrame).Position
+				adaYaricapi = math.clamp(math.max((boyut :: Vector3).X, (boyut :: Vector3).Z) * 0.55, 160, 600)
+			end
+		end
+		task.wait(1.5)
+	end
+end)
+
+RunService:BindToRenderStep(KAMERA_EYLEMI, Enum.RenderPriority.Camera.Value + 1, function(dt: number)
+	local kamera = Workspace.CurrentCamera
+	local merkez = adaMerkezi
+	if not kamera or not merkez then
+		return
+	end
+
+	local onceki = gorunenMerkez
+	gorunenMerkez = if onceki then onceki:Lerp(merkez, math.min(1, dt * 1.5)) else merkez
+	gorunenYaricap += (adaYaricapi - gorunenYaricap) * math.min(1, dt * 1.5)
+
+	local odak = gorunenMerkez :: Vector3
+	local aci = (Workspace:GetServerTimeNow() / YORUNGE_SURESI) % 1 * math.pi * 2
+	local konum = odak + Vector3.new(math.cos(aci) * gorunenYaricap, gorunenYaricap * 0.42, math.sin(aci) * gorunenYaricap)
+
+	kamera.CameraType = Enum.CameraType.Scriptable
+	kamera.CFrame = CFrame.lookAt(konum, odak)
+end)
+
 local ekran = Instance.new("ScreenGui")
 ekran.Name = "YuklemeEkrani"
 ekran.DisplayOrder = 1000
@@ -323,6 +347,33 @@ ekran.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ekran:SetAttribute("OlcekDisi", true)
 ekran.Parent = playerGui
 
+local gizlenenler: { ScreenGui } = {}
+
+local function arayuzGizle(gui: Instance)
+	task.defer(function()
+		if kapandi or gui == ekran or not gui:IsA("ScreenGui") or not gui.Enabled or gui.Parent ~= playerGui then
+			return
+		end
+		gui.Enabled = false
+		table.insert(gizlenenler, gui)
+	end)
+end
+
+for _, gui in playerGui:GetChildren() do
+	arayuzGizle(gui)
+end
+local eklenenBagi = playerGui.ChildAdded:Connect(arayuzGizle)
+
+local function arayuzGeriAc()
+	eklenenBagi:Disconnect()
+	for _, gui in gizlenenler do
+		if gui.Parent then
+			gui.Enabled = true
+		end
+	end
+	table.clear(gizlenenler)
+end
+
 local perde = Instance.new("Frame")
 perde.Name = "Perde"
 perde.ChildAdded:Connect(function(cocuk)
@@ -334,47 +385,91 @@ perde.ChildAdded:Connect(function(cocuk)
 end)
 perde.Size = UDim2.fromScale(1, 1)
 perde.BackgroundColor3 = KOYU
+perde.BackgroundTransparency = 0.72
 perde.BorderSizePixel = 0
 perde.ZIndex = 1
 perde.Parent = ekran
 
-local gokyuzu = cerceve({ ad = "Gokyuzu", ebeveyn = perde, saydamlik = 0, z = 1 })
-gecis(
-	gokyuzu,
-	ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(96, 74, 120)),
-		ColorSequenceKeypoint.new(0.45, Color3.fromRGB(48, 44, 78)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 14, 26)),
-	}),
-	nil,
-	90
-)
+local kenarlar = cerceve({ ad = "Kenarlar", ebeveyn = perde, renk = KOYU, saydamlik = 0, z = 2 })
+gecis(kenarlar, nil, seri({ { 0, 0.35 }, { 0.2, 1 }, { 0.8, 1 }, { 1, 0.35 } }), 0)
+local altKenar = cerceve({ ad = "AltKenar", ebeveyn = perde, renk = KOYU, saydamlik = 0, z = 2 })
+gecis(altKenar, nil, seri({ { 0, 0.5 }, { 0.18, 1 }, { 0.66, 1 }, { 1, 0.3 } }), 90)
 
-local resimKabi = cerceve({
-	ad = "ResimKabi",
+local isinKabi = cerceve({ ad = "Isinlar", ebeveyn = perde, z = 3 })
+local kivilcimKabi = cerceve({ ad = "Kivilcimlar", ebeveyn = perde, z = 4 })
+
+local efektKabi = cerceve({
+	ad = "Efektler",
 	ebeveyn = perde,
-	boyut = UDim2.new(1, PARALAKS * 3, 1, PARALAKS * 3),
-	konum = UDim2.fromScale(0.5, 0.5),
+	konum = UDim2.fromScale(0.5, 0.42),
 	capa = Vector2.new(0.5, 0.5),
-	z = 2,
+	boyut = UDim2.fromOffset(900, 900),
+	z = 5,
 })
 
-local resimYaklasma = cerceve({
-	ad = "Yaklasma",
-	ebeveyn = resimKabi,
-	konum = UDim2.fromScale(0.5, 0.5),
-	capa = Vector2.new(0.5, 0.5),
-	z = 1,
-})
+type Renkli = { nesne: GuiObject, kayma: number }
+local renkliler: { Renkli } = {}
 
-local resim = Instance.new("ImageLabel")
-resim.Name = "Resim"
-resim.Size = UDim2.fromScale(1, 1)
-resim.BackgroundTransparency = 1
-resim.ScaleType = Enum.ScaleType.Crop
-resim.ImageTransparency = 1
-resim.ZIndex = 1
-resim.Parent = resimYaklasma
+local function huzmeSeti(ad: string, sayi: number, kalinlik: number, saydamlik: number, z: number): Frame
+	local kap = cerceve({
+		ad = ad,
+		ebeveyn = efektKabi,
+		konum = UDim2.fromScale(0.5, 0.5),
+		capa = Vector2.new(0.5, 0.5),
+		z = z,
+	})
+	for i = 1, sayi do
+		local en = kalinlik * (if i % 2 == 0 then 1.7 else 1)
+		local huzme = cerceve({
+			ad = "Huzme",
+			ebeveyn = kap,
+			boyut = UDim2.new(0, en, 1, 0),
+			konum = UDim2.fromScale(0.5, 0.5),
+			capa = Vector2.new(0.5, 0.5),
+			saydamlik = saydamlik,
+			z = 1,
+		})
+		huzme.Rotation = (i - 1) * 180 / sayi
+		gecis(huzme, nil, seri({ { 0, 1 }, { 0.28, 0.75 }, { 0.5, 0 }, { 0.72, 0.75 }, { 1, 1 } }), 90)
+		table.insert(renkliler, { nesne = huzme, kayma = (i - 1) / sayi })
+	end
+	return kap
+end
+
+local huzmelerBuyuk = huzmeSeti("HuzmelerBuyuk", 12, 34, 0.45, 1)
+local huzmelerKucuk = huzmeSeti("HuzmelerKucuk", 9, 16, 0.3, 2)
+
+local haleler: { Frame } = {}
+local HALE_ORANLARI = { 0.5, 0.42, 0.34, 0.26 }
+for sira, oran in HALE_ORANLARI do
+	local hale = cerceve({
+		ad = `Hale{sira}`,
+		ebeveyn = efektKabi,
+		boyut = UDim2.fromScale(oran, oran * 0.62),
+		konum = UDim2.fromScale(0.5, 0.5),
+		capa = Vector2.new(0.5, 0.5),
+		saydamlik = 0.9,
+		z = 3,
+	})
+	yuvarlak(hale)
+	table.insert(haleler, hale)
+	table.insert(renkliler, { nesne = hale, kayma = sira * 0.04 })
+end
+
+local halkaKabi = cerceve({ ad = "Halkalar", ebeveyn = efektKabi, z = 4 })
+
+local logo = Instance.new("ImageLabel")
+logo.Name = "Logo"
+logo.AnchorPoint = Vector2.new(0.5, 0.5)
+logo.Position = UDim2.fromScale(0.5, 0.42)
+logo.Size = UDim2.fromOffset(700, 390)
+logo.BackgroundTransparency = 1
+logo.ScaleType = Enum.ScaleType.Fit
+logo.ImageTransparency = 1
+logo.ZIndex = 10
+logo.Parent = perde
+local logoOlcek = Instance.new("UIScale")
+logoOlcek.Parent = logo
 
 task.spawn(function()
 	local node: Instance? = ReplicatedStorage
@@ -400,292 +495,80 @@ task.spawn(function()
 		return
 	end
 
-	resim.Image = kimlik
+	logo.Image = kimlik
 	pcall(function()
-		ContentProvider:PreloadAsync({ resim })
+		ContentProvider:PreloadAsync({ logo })
 	end)
 
 	if kapandi then
 		return
 	end
 
-	TweenService:Create(resim, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = 0 })
+	logoOlcek.Scale = 0.85
+	TweenService:Create(logo, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = 0 })
 		:Play()
-	TweenService
-		:Create(
-			resimYaklasma,
-			TweenInfo.new(20, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-			{ Size = UDim2.fromScale(YAKLASMA, YAKLASMA) }
-		)
-		:Play()
+	TweenService:Create(logoOlcek, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 end)
-
-cerceve({ ad = "Ton", ebeveyn = perde, renk = KOYU, saydamlik = 0.8, z = 3 })
-
-local isinKabi = cerceve({ ad = "Isinlar", ebeveyn = perde, z = 4 })
-
-local altPerde = cerceve({
-	ad = "AltPerde",
-	ebeveyn = perde,
-	boyut = UDim2.fromScale(1, 0.66),
-	konum = UDim2.fromScale(0, 1),
-	capa = Vector2.new(0, 1),
-	renk = KOYU,
-	saydamlik = 0,
-	z = 5,
-})
-gecis(altPerde, nil, seri({ { 0, 1 }, { 0.5, 0.72 }, { 1, 0.3 } }), 90)
-
-local ustPerde = cerceve({
-	ad = "UstPerde",
-	ebeveyn = perde,
-	boyut = UDim2.fromScale(1, 0.22),
-	renk = KOYU,
-	saydamlik = 0,
-	z = 5,
-})
-gecis(ustPerde, nil, seri({ { 0, 0.4 }, { 1, 1 } }), 90)
-
-local solPerde = cerceve({ ad = "SolPerde", ebeveyn = perde, boyut = UDim2.fromScale(0.2, 1), renk = KOYU, saydamlik = 0, z = 5 })
-gecis(solPerde, nil, seri({ { 0, 0.35 }, { 1, 1 } }), 0)
-
-local sagPerde = cerceve({
-	ad = "SagPerde",
-	ebeveyn = perde,
-	boyut = UDim2.fromScale(0.2, 1),
-	konum = UDim2.fromScale(1, 0),
-	capa = Vector2.new(1, 0),
-	renk = KOYU,
-	saydamlik = 0,
-	z = 5,
-})
-gecis(sagPerde, nil, seri({ { 0, 1 }, { 1, 0.35 } }), 0)
-
-local kivilcimKabi = cerceve({ ad = "Kivilcimlar", ebeveyn = perde, z = 6 })
 
 local icerik = cerceve({
 	ad = "Icerik",
 	ebeveyn = perde,
-	boyut = UDim2.fromOffset(KART_EN, KART_BOY),
-	konum = UDim2.new(0.5, 0, 1, -KENAR),
-	capa = Vector2.new(0.5, 1),
-	z = 10,
+	boyut = UDim2.fromOffset(ALT_EN, ALT_BOY),
+	konum = UDim2.fromScale(0.5, 0.8),
+	capa = Vector2.new(0.5, 0),
+	z = 20,
 })
 local icerikOlcek = Instance.new("UIScale")
 icerikOlcek.Parent = icerik
 
 local kayan = cerceve({ ad = "Kayan", ebeveyn = icerik, z = 1 })
 
-local kart = cerceve({ ad = "Kart", ebeveyn = kayan, saydamlik = 0.58, z = 1 })
-kose(kart, 18)
-gecis(kart, ColorSequence.new(Color3.fromRGB(24, 32, 56), Color3.fromRGB(6, 9, 18)), nil, 90)
-
-local kartKontur = kontur(kart, BEYAZ, 1.4, 0.25, true)
-local konturGecis = gecis(
-	kartKontur,
-	ColorSequence.new({
-		ColorSequenceKeypoint.new(0, NEON),
-		ColorSequenceKeypoint.new(0.5, MOR),
-		ColorSequenceKeypoint.new(1, NEON),
-	}),
-	seri({ { 0, 0.05 }, { 0.5, 0.75 }, { 1, 0.05 } }),
-	0
-)
-
-local ustCizgi = cerceve({
-	ad = "UstCizgi",
-	ebeveyn = kart,
-	boyut = UDim2.new(1, -60, 0, 1),
-	konum = UDim2.new(0.5, 0, 0, 1),
-	capa = Vector2.new(0.5, 0),
-	saydamlik = 0.35,
-	z = 2,
-})
-gecis(ustCizgi, nil, seri({ { 0, 1 }, { 0.5, 0.2 }, { 1, 1 } }), 0)
-
-local ic = cerceve({
-	ad = "Ic",
-	ebeveyn = kayan,
-	boyut = UDim2.new(1, -44, 0, KART_BOY - 30),
-	konum = UDim2.fromOffset(22, 16),
-	z = 2,
-})
-
-local baslik = yazi({
-	ad = "Baslik",
-	ebeveyn = ic,
-	metin = "LOADING",
-	font = BASLIK_FONTU,
-	boyut = 26,
-	hiza = Enum.TextXAlignment.Left,
-	cerceve = UDim2.new(0.6, 0, 0, 30),
-	kontur = 2,
-	z = 2,
-})
-
-local yuzdeYazi = yazi({
-	ad = "Yuzde",
-	ebeveyn = ic,
-	metin = "0%",
-	font = BASLIK_FONTU,
-	boyut = 28,
-	renk = NEON_ACIK,
-	hiza = Enum.TextXAlignment.Right,
-	cerceve = UDim2.new(0.4, 0, 0, 30),
-	konum = UDim2.fromScale(1, 0),
-	capa = Vector2.new(1, 0),
-	kontur = 2,
-	z = 2,
-})
-
-local durumYazi = yazi({
-	ad = "Durum",
-	ebeveyn = ic,
-	metin = "Reaching the server",
-	font = GOVDE_FONTU,
-	boyut = 15,
-	renk = SOLGUN,
-	hiza = Enum.TextXAlignment.Left,
-	cerceve = UDim2.new(1, 0, 0, 18),
-	konum = UDim2.fromOffset(0, 32),
-	z = 2,
-})
+local yuzdeSirasi = cerceve({ ad = "Yuzde", ebeveyn = kayan, boyut = UDim2.new(1, 0, 0, 30), z = 2 })
 
 local cubuk = cerceve({
 	ad = "Cubuk",
-	ebeveyn = ic,
-	boyut = UDim2.new(1, 0, 0, 12),
-	konum = UDim2.fromOffset(0, 58),
-	renk = Color3.fromRGB(22, 28, 44),
-	saydamlik = 0.1,
-	z = 2,
+	ebeveyn = yuzdeSirasi,
+	boyut = UDim2.new(1, -78, 0, 14),
+	konum = UDim2.fromScale(0, 0.5),
+	capa = Vector2.new(0, 0.5),
+	renk = Color3.fromRGB(16, 20, 34),
+	saydamlik = 0.25,
+	z = 1,
 })
 yuvarlak(cubuk)
-kontur(cubuk, Color3.fromRGB(70, 88, 120), 1, 0.35, true)
+kontur(cubuk, BEYAZ, 1.5, 0.55, true)
 
 local dolgu = cerceve({ ad = "Dolgu", ebeveyn = cubuk, boyut = UDim2.fromScale(0, 1), saydamlik = 0, z = 1 })
 yuvarlak(dolgu)
-gecis(
-	dolgu,
-	ColorSequence.new({
-		ColorSequenceKeypoint.new(0, NEON),
-		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(110, 140, 255)),
-		ColorSequenceKeypoint.new(1, MOR),
-	}),
-	nil,
-	0
-)
-
-local dolguParlak = cerceve({ ad = "Parlak", ebeveyn = dolgu, boyut = UDim2.fromScale(1, 0.5), saydamlik = 0.72, z = 2 })
-yuvarlak(dolguParlak)
+local dolguGecis = gecis(dolgu, nil, nil, 0)
 
 local parilti = cerceve({ ad = "Parilti", ebeveyn = dolgu, saydamlik = 0, z = 3 })
 yuvarlak(parilti)
-local parlamaGecis = gecis(parilti, nil, seri({ { 0, 1 }, { 0.4, 1 }, { 0.5, 0.5 }, { 0.6, 1 }, { 1, 1 } }), 0)
+local parlamaGecis = gecis(parilti, nil, seri({ { 0, 1 }, { 0.4, 1 }, { 0.5, 0.45 }, { 0.6, 1 }, { 1, 1 } }), 0)
 
-local uc = cerceve({
-	ad = "Uc",
-	ebeveyn = cubuk,
-	boyut = UDim2.fromOffset(24, 24),
-	konum = UDim2.fromScale(0, 0.5),
-	capa = Vector2.new(0.5, 0.5),
-	renk = NEON_ACIK,
-	saydamlik = 0.65,
-	z = 4,
-})
-yuvarlak(uc)
-uc.Visible = false
-local ucOlcek = Instance.new("UIScale")
-ucOlcek.Parent = uc
-
-local ucCekirdek = cerceve({
-	ad = "Cekirdek",
-	ebeveyn = uc,
-	boyut = UDim2.fromOffset(10, 10),
-	konum = UDim2.fromScale(0.5, 0.5),
-	capa = Vector2.new(0.5, 0.5),
-	saydamlik = 0,
+local yuzdeYazi = yazi({
+	ad = "Metin",
+	ebeveyn = yuzdeSirasi,
+	metin = "0%",
+	font = BASLIK_FONTU,
+	boyut = 28,
+	renk = BEYAZ,
+	hiza = Enum.TextXAlignment.Right,
+	cerceve = UDim2.new(0, 70, 1, 0),
+	konum = UDim2.fromScale(1, 0),
+	capa = Vector2.new(1, 0),
+	kontur = 2.5,
 	z = 2,
 })
-yuvarlak(ucCekirdek)
 
-type Adim = {
-	esik: number,
-	daire: Frame,
-	nokta: Frame,
-	cizgi: UIStroke,
-	yazi: TextLabel,
-	durum: string,
-}
-
-local adimlar: { Adim } = {}
-
-local adimSirasi = cerceve({ ad = "Adimlar", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 18), konum = UDim2.fromOffset(0, 78), z = 2 })
-local adimDuzen = Instance.new("UIListLayout")
-adimDuzen.FillDirection = Enum.FillDirection.Horizontal
-adimDuzen.SortOrder = Enum.SortOrder.LayoutOrder
-adimDuzen.Parent = adimSirasi
-
-for sira, tanim in ADIMLAR do
-	local hucre = cerceve({ ad = tanim.ad, ebeveyn = adimSirasi, boyut = UDim2.new(1 / #ADIMLAR, 0, 1, 0), z = 1 })
-	hucre.LayoutOrder = sira
-
-	local hucreDuzen = Instance.new("UIListLayout")
-	hucreDuzen.FillDirection = Enum.FillDirection.Horizontal
-	hucreDuzen.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	hucreDuzen.VerticalAlignment = Enum.VerticalAlignment.Center
-	hucreDuzen.SortOrder = Enum.SortOrder.LayoutOrder
-	hucreDuzen.Padding = UDim.new(0, 6)
-	hucreDuzen.Parent = hucre
-
-	local daire = cerceve({ ad = "Daire", ebeveyn = hucre, boyut = UDim2.fromOffset(12, 12), renk = NEON, z = 1 })
-	daire.LayoutOrder = 1
-	yuvarlak(daire)
-	local cizgi = kontur(daire, SONUK, 2, 0, true)
-
-	local nokta = cerceve({
-		ad = "Nokta",
-		ebeveyn = daire,
-		boyut = UDim2.fromOffset(5, 5),
-		konum = UDim2.fromScale(0.5, 0.5),
-		capa = Vector2.new(0.5, 0.5),
-		saydamlik = 0,
-		z = 2,
-	})
-	yuvarlak(nokta)
-	nokta.Visible = false
-
-	local etiket = yazi({
-		ad = "Yazi",
-		ebeveyn = hucre,
-		metin = tanim.ad,
-		font = KALIN_FONT,
-		boyut = 12,
-		renk = SONUK,
-		cerceve = UDim2.fromOffset(0, 16),
-		z = 1,
-	})
-	etiket.AutomaticSize = Enum.AutomaticSize.X
-	etiket.LayoutOrder = 2
-
-	table.insert(adimlar, {
-		esik = tanim.esik,
-		daire = daire,
-		nokta = nokta,
-		cizgi = cizgi,
-		yazi = etiket,
-		durum = "bekliyor",
-	})
-end
-
-local butonSirasi = cerceve({ ad = "Butonlar", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 50), konum = UDim2.fromOffset(0, 104), z = 3 })
-local butonDuzen = Instance.new("UIListLayout")
-butonDuzen.FillDirection = Enum.FillDirection.Horizontal
-butonDuzen.HorizontalAlignment = Enum.HorizontalAlignment.Center
-butonDuzen.VerticalAlignment = Enum.VerticalAlignment.Center
-butonDuzen.SortOrder = Enum.SortOrder.LayoutOrder
-butonDuzen.Padding = UDim.new(0, 12)
-butonDuzen.Parent = butonSirasi
+local dugmeKap = cerceve({
+	ad = "Dugme",
+	ebeveyn = kayan,
+	boyut = UDim2.fromOffset(240, 54),
+	konum = UDim2.fromOffset(ALT_EN / 2, 46),
+	capa = Vector2.new(0.5, 0),
+	z = 3,
+})
 
 local function tusCipi(ebeveyn: Instance): (Frame, TextLabel)
 	local cip = cerceve({
@@ -705,84 +588,86 @@ local function tusCipi(ebeveyn: Instance): (Frame, TextLabel)
 	return cip, cipYazi
 end
 
-local oynaKap = cerceve({ ad = "BaslaKap", ebeveyn = butonSirasi, boyut = UDim2.fromOffset(230, 50), z = 1 })
-oynaKap.LayoutOrder = 1
-local oynaOlcek = Instance.new("UIScale")
-oynaOlcek.Parent = oynaKap
+type Dugme = {
+	kap: Frame,
+	olcek: UIScale,
+	dugme: TextButton,
+	gecis: UIGradient,
+	isik: Frame,
+	yazi: TextLabel,
+	tus: Frame,
+	tusYazi: TextLabel,
+}
 
-local isilti = cerceve({
-	ad = "Isilti",
-	ebeveyn = oynaKap,
-	boyut = UDim2.new(1, 14, 1, 14),
-	konum = UDim2.fromScale(0.5, 0.5),
-	capa = Vector2.new(0.5, 0.5),
-	renk = NEON,
-	saydamlik = 1,
-	z = 1,
+local function dugmeKur(ad: string, metin: string, renk: ColorSequence): Dugme
+	local kap = cerceve({ ad = ad, ebeveyn = dugmeKap, z = 1 })
+	kap.Visible = false
+	local olcek = Instance.new("UIScale")
+	olcek.Parent = kap
+
+	local dugme = Instance.new("TextButton")
+	dugme.Name = "Dugme"
+	dugme.Size = UDim2.fromScale(1, 1)
+	dugme.BackgroundColor3 = BEYAZ
+	dugme.BorderSizePixel = 0
+	dugme.AutoButtonColor = false
+	dugme.Text = ""
+	dugme.ClipsDescendants = true
+	dugme.Selectable = false
+	dugme.ZIndex = 2
+	dugme.Parent = kap
+	kose(dugme, 16)
+	kontur(dugme, SIYAH, 2.5, 0, true)
+	local dugmeGecis = gecis(dugme, renk, nil, 90)
+
+	local parlak = cerceve({
+		ad = "Parlak",
+		ebeveyn = dugme,
+		boyut = UDim2.new(1, -8, 0.5, -2),
+		konum = UDim2.fromOffset(4, 3),
+		saydamlik = 0.8,
+		z = 2,
+	})
+	kose(parlak, 12)
+	gecis(parlak, nil, seri({ { 0, 0.2 }, { 1, 1 } }), 90)
+
+	local isik = cerceve({
+		ad = "Isik",
+		ebeveyn = dugme,
+		boyut = UDim2.new(0, 38, 1.8, 0),
+		konum = UDim2.new(-0.3, 0, 0.5, 0),
+		capa = Vector2.new(0.5, 0.5),
+		saydamlik = 0,
+		z = 3,
+	})
+	isik.Rotation = 18
+	gecis(isik, nil, seri({ { 0, 1 }, { 0.5, 0.35 }, { 1, 1 } }), 0)
+
+	local etiket = yazi({ ad = "Yazi", ebeveyn = dugme, metin = metin, font = BASLIK_FONTU, boyut = 28, kontur = 2.5, z = 4 })
+	local tus, tusYazi = tusCipi(dugme)
+
+	return {
+		kap = kap,
+		olcek = olcek,
+		dugme = dugme,
+		gecis = dugmeGecis,
+		isik = isik,
+		yazi = etiket,
+		tus = tus,
+		tusYazi = tusYazi,
+	}
+end
+
+local oyna = dugmeKur("Basla", "PLAY", AKTIF_RENK)
+local atlaD = dugmeKur("Atla", "SKIP  \u{BB}", ATLA_RENK)
+
+local ipucuSirasi = cerceve({
+	ad = "Ipucu",
+	ebeveyn = kayan,
+	boyut = UDim2.new(1, 0, 0, 24),
+	konum = UDim2.fromOffset(0, 114),
+	z = 2,
 })
-kose(isilti, 20)
-
-local oyna = Instance.new("TextButton")
-oyna.Name = "Basla"
-oyna.Size = UDim2.fromScale(1, 1)
-oyna.BackgroundColor3 = BEYAZ
-oyna.BorderSizePixel = 0
-oyna.AutoButtonColor = false
-oyna.Text = ""
-oyna.ClipsDescendants = true
-oyna.Selectable = false
-oyna.ZIndex = 2
-oyna.Parent = oynaKap
-kose(oyna, 14)
-kontur(oyna, SIYAH, 2, 0, true)
-local oynaGecis = gecis(oyna, PASIF_RENK, nil, 90)
-
-local oynaParlak = cerceve({ ad = "Parlak", ebeveyn = oyna, boyut = UDim2.new(1, -8, 0.5, -2), konum = UDim2.fromOffset(4, 3), saydamlik = 0.8, z = 2 })
-kose(oynaParlak, 10)
-gecis(oynaParlak, nil, seri({ { 0, 0.2 }, { 1, 1 } }), 90)
-
-local oynaIsik = cerceve({
-	ad = "Isik",
-	ebeveyn = oyna,
-	boyut = UDim2.new(0, 38, 1.8, 0),
-	konum = UDim2.new(-0.3, 0, 0.5, 0),
-	capa = Vector2.new(0.5, 0.5),
-	saydamlik = 1,
-	z = 3,
-})
-oynaIsik.Rotation = 18
-gecis(oynaIsik, nil, seri({ { 0, 1 }, { 0.5, 0.35 }, { 1, 1 } }), 0)
-
-local oynaYazi = yazi({ ad = "Yazi", ebeveyn = oyna, metin = "PLAY", font = BASLIK_FONTU, boyut = 26, renk = SOLGUN, kontur = 2.5, z = 4 })
-local oynaTus, oynaTusYazi = tusCipi(oyna)
-
-local atlaKap = cerceve({ ad = "AtlaKap", ebeveyn = butonSirasi, boyut = UDim2.fromOffset(140, 50), z = 1 })
-atlaKap.LayoutOrder = 2
-atlaKap.ClipsDescendants = true
-atlaKap.Visible = false
-local atlaOlcek = Instance.new("UIScale")
-atlaOlcek.Parent = atlaKap
-
-local atlaDugme = Instance.new("TextButton")
-atlaDugme.Name = "Atla"
-atlaDugme.AnchorPoint = Vector2.new(0.5, 0.5)
-atlaDugme.Position = UDim2.fromScale(0.5, 0.5)
-atlaDugme.Size = UDim2.fromOffset(136, 46)
-atlaDugme.BackgroundColor3 = BEYAZ
-atlaDugme.BackgroundTransparency = 0.88
-atlaDugme.BorderSizePixel = 0
-atlaDugme.AutoButtonColor = false
-atlaDugme.Text = ""
-atlaDugme.Selectable = false
-atlaDugme.ZIndex = 1
-atlaDugme.Parent = atlaKap
-kose(atlaDugme, 14)
-kontur(atlaDugme, BEYAZ, 1.6, 0.4, true)
-
-local atlaYazi = yazi({ ad = "Yazi", ebeveyn = atlaDugme, metin = "SKIP  \u{BB}", font = BASLIK_FONTU, boyut = 21, kontur = 2, z = 2 })
-local atlaTus, atlaTusYazi = tusCipi(atlaDugme)
-
-local ipucuSirasi = cerceve({ ad = "Ipucu", ebeveyn = ic, boyut = UDim2.new(1, 0, 0, 22), konum = UDim2.fromOffset(0, 164), z = 2 })
 local ipucuDuzen = Instance.new("UIListLayout")
 ipucuDuzen.FillDirection = Enum.FillDirection.Horizontal
 ipucuDuzen.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -801,94 +686,43 @@ local ipucuYazi = yazi({
 	ebeveyn = ipucuSirasi,
 	metin = "",
 	font = GOVDE_FONTU,
-	boyut = 15,
-	renk = Color3.fromRGB(222, 230, 242),
+	boyut = 16,
+	renk = Color3.fromRGB(235, 240, 250),
 	cerceve = UDim2.fromOffset(0, 20),
+	kontur = 1.5,
 	z = 1,
 })
 ipucuYazi.AutomaticSize = Enum.AutomaticSize.X
 ipucuYazi.LayoutOrder = 2
 
-local solAlt = cerceve({
-	ad = "SolAlt",
-	ebeveyn = perde,
-	boyut = UDim2.fromOffset(240, 34),
-	konum = UDim2.new(0, KENAR, 1, -KENAR),
-	capa = Vector2.new(0, 1),
-	z = 10,
-})
-local solAltOlcek = Instance.new("UIScale")
-solAltOlcek.Parent = solAlt
-
-local halka = cerceve({
-	ad = "Halka",
-	ebeveyn = solAlt,
-	boyut = UDim2.fromOffset(26, 26),
-	konum = UDim2.fromScale(0, 0.5),
-	capa = Vector2.new(0, 0.5),
-	z = 1,
-})
-yuvarlak(halka)
-kontur(halka, BEYAZ, 3.5, 0.85, true)
-
-local donen = cerceve({ ad = "Donen", ebeveyn = halka, z = 2 })
-yuvarlak(donen)
-local donenKontur = kontur(donen, NEON, 3.5, 0, true)
-local donenGecis = gecis(donenKontur, nil, seri({ { 0, 0 }, { 0.55, 0 }, { 0.75, 1 }, { 1, 1 } }), 0)
-
-local halkaYazi = yazi({
-	ad = "Yazi",
-	ebeveyn = solAlt,
-	metin = "SETTING UP",
-	font = BASLIK_FONTU,
-	boyut = 14,
-	renk = SOLGUN,
-	hiza = Enum.TextXAlignment.Left,
-	cerceve = UDim2.new(1, -36, 1, 0),
-	konum = UDim2.fromOffset(36, 0),
-	kontur = 1.5,
-	z = 1,
-})
-
-local sagAlt = cerceve({
-	ad = "SagAlt",
-	ebeveyn = perde,
-	boyut = UDim2.fromOffset(300, 34),
-	konum = UDim2.new(1, -KENAR, 1, -KENAR),
-	capa = Vector2.new(1, 1),
-	z = 10,
-})
-local sagAltOlcek = Instance.new("UIScale")
-sagAltOlcek.Parent = sagAlt
-
-yazi({
-	ad = "OyunAdi",
-	ebeveyn = sagAlt,
-	metin = OYUN_ADI,
-	font = BASLIK_FONTU,
-	boyut = 15,
-	renk = SOLGUN,
-	hiza = Enum.TextXAlignment.Right,
-	kontur = 1.5,
-	z = 1,
-})
+local logoMerkezi = Vector2.new(640, 320)
+local logoEni = 700
 
 local function olcekle()
 	local kamera = Workspace.CurrentCamera
-	local boyut = if kamera then kamera.ViewportSize else TASARIM
-	if boyut.X <= 0 or boyut.Y <= 0 then
-		boyut = TASARIM
+	local v = if kamera then kamera.ViewportSize else TASARIM
+	if v.X <= 0 or v.Y <= 0 then
+		v = TASARIM
 	end
 
-	local olcek = math.clamp(math.min(boyut.X / TASARIM.X, boyut.Y / TASARIM.Y), EN_KUCUK_OLCEK, EN_BUYUK_OLCEK)
+	local olcek = math.clamp(math.min(v.X / TASARIM.X, v.Y / TASARIM.Y), EN_KUCUK_OLCEK, EN_BUYUK_OLCEK)
 	icerikOlcek.Scale = olcek
-	solAltOlcek.Scale = olcek
-	sagAltOlcek.Scale = olcek
 
-	local kenar = math.floor(KENAR * olcek + 0.5)
-	icerik.Position = UDim2.new(0.5, 0, 1, -kenar)
-	solAlt.Position = UDim2.new(0, kenar, 1, -kenar)
-	sagAlt.Position = UDim2.new(1, -kenar, 1, -kenar)
+	local bosluk = KENAR * olcek
+	local altBoy = ALT_BOY * olcek
+	local enFazlaLogoBoy = v.Y - altBoy - bosluk * 4
+	local en = math.min(v.X * 0.56, enFazlaLogoBoy * LOGO_ORANI, 1050)
+	local boy = en / LOGO_ORANI
+
+	local ust = math.max(bosluk, (v.Y - (boy + bosluk + altBoy)) / 2)
+	logoEni = en
+	logoMerkezi = Vector2.new(v.X / 2, ust + boy / 2)
+
+	logo.Size = UDim2.fromOffset(en, boy)
+	logo.Position = UDim2.fromOffset(logoMerkezi.X, logoMerkezi.Y)
+	efektKabi.Size = UDim2.fromOffset(en * 1.9, en * 1.9)
+	efektKabi.Position = UDim2.fromOffset(logoMerkezi.X, logoMerkezi.Y)
+	icerik.Position = UDim2.fromOffset(v.X / 2, ust + boy + bosluk)
 end
 
 local kameraBagi: RBXScriptConnection? = nil
@@ -910,17 +744,21 @@ kameraIzle()
 
 local rastgele = Random.new()
 
+local function rastgeleRenk(): Color3
+	return Color3.fromHSV(rastgele:NextNumber(), rastgele:NextNumber(0.55, 0.85), 1)
+end
+
 local function isinCikar()
-	local renk = ISIN_RENKLERI[rastgele:NextInteger(1, #ISIN_RENKLERI)]
-	local en = rastgele:NextInteger(3, 6)
-	local boy = rastgele:NextNumber(0.42, 0.8)
-	local sure = rastgele:NextNumber(2.4, 3.6)
+	local renk = rastgeleRenk()
+	local en = rastgele:NextInteger(3, 7)
+	local boy = rastgele:NextNumber(0.45, 0.9)
+	local sure = rastgele:NextNumber(2.2, 3.4)
 
 	local tutucu = cerceve({
 		ad = "Isin",
 		ebeveyn = isinKabi,
 		boyut = UDim2.new(0, en * 9, 0, 0),
-		konum = UDim2.fromScale(rastgele:NextNumber(0.04, 0.96), 1),
+		konum = UDim2.fromScale(rastgele:NextNumber(0.03, 0.97), 1),
 		capa = Vector2.new(0.5, 1),
 		z = 1,
 	})
@@ -935,7 +773,7 @@ local function isinCikar()
 		boyut = UDim2.new(0, en, 1, 0),
 		konum = UDim2.fromScale(0.5, 0),
 		capa = Vector2.new(0.5, 0),
-		renk = renk:Lerp(BEYAZ, 0.6),
+		renk = renk:Lerp(BEYAZ, 0.55),
 		saydamlik = 1,
 		z = 2,
 	})
@@ -944,8 +782,8 @@ local function isinCikar()
 
 	local cikis = TweenInfo.new(sure * 0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	TweenService:Create(tutucu, cikis, { Size = UDim2.new(0, en * 9, boy, 0) }):Play()
-	TweenService:Create(hale, cikis, { BackgroundTransparency = 0.76 }):Play()
-	TweenService:Create(cekirdek, cikis, { BackgroundTransparency = 0.62 }):Play()
+	TweenService:Create(hale, cikis, { BackgroundTransparency = 0.68 }):Play()
+	TweenService:Create(cekirdek, cikis, { BackgroundTransparency = 0.45 }):Play()
 
 	task.delay(sure * 0.35, function()
 		if not tutucu.Parent or kapandi then
@@ -962,38 +800,67 @@ local function isinCikar()
 end
 
 local function kivilcimCikar()
-	local boy = rastgele:NextInteger(3, 6)
 	local x = rastgele:NextNumber(0.02, 0.98)
-	local y = rastgele:NextNumber(0.6, 1.02)
+	local y = rastgele:NextNumber(0.35, 1.02)
 	local sure = rastgele:NextNumber(2.2, 4.2)
+	local renk = rastgeleRenk()
 
-	local tane = cerceve({
-		ad = "Kivilcim",
-		ebeveyn = kivilcimKabi,
-		boyut = UDim2.fromOffset(boy, boy),
-		konum = UDim2.fromScale(x, y),
-		capa = Vector2.new(0.5, 0.5),
-		renk = KIVILCIM_RENKLERI[rastgele:NextInteger(1, #KIVILCIM_RENKLERI)],
-		saydamlik = 1,
-		z = 1,
-	})
-	tane.Rotation = 45
+	local tane: GuiObject
+	local soru = rastgele:NextNumber() < 0.22
+	if soru then
+		local etiket = yazi({
+			ad = "Soru",
+			ebeveyn = kivilcimKabi,
+			metin = "?",
+			font = BASLIK_FONTU,
+			boyut = rastgele:NextInteger(18, 36),
+			renk = renk,
+			cerceve = UDim2.fromOffset(40, 40),
+			konum = UDim2.fromScale(x, y),
+			capa = Vector2.new(0.5, 0.5),
+			kontur = 2,
+			z = 1,
+		})
+		etiket.TextTransparency = 1
+		tane = etiket
+	else
+		local boy = rastgele:NextInteger(3, 8)
+		local kare = cerceve({
+			ad = "Kivilcim",
+			ebeveyn = kivilcimKabi,
+			boyut = UDim2.fromOffset(boy, boy),
+			konum = UDim2.fromScale(x, y),
+			capa = Vector2.new(0.5, 0.5),
+			renk = renk,
+			saydamlik = 1,
+			z = 1,
+		})
+		kare.Rotation = 45
+		tane = kare
+	end
 
 	TweenService:Create(tane, TweenInfo.new(sure, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-		Position = UDim2.fromScale(x + rastgele:NextNumber(-0.03, 0.03), y - rastgele:NextNumber(0.12, 0.3)),
-		Rotation = 45 + rastgele:NextNumber(-180, 180),
+		Position = UDim2.fromScale(x + rastgele:NextNumber(-0.03, 0.03), y - rastgele:NextNumber(0.12, 0.32)),
+		Rotation = (if soru then 0 else 45) + rastgele:NextNumber(-180, 180),
 	}):Play()
 
-	local giris = TweenService:Create(tane, TweenInfo.new(sure * 0.25), { BackgroundTransparency = rastgele:NextNumber(0.05, 0.4) })
+	local ozellik = if soru then "TextTransparency" else "BackgroundTransparency"
+	local konturu = tane:FindFirstChildOfClass("UIStroke")
+	if konturu then
+		konturu.Transparency = 1
+		TweenService:Create(konturu, TweenInfo.new(sure * 0.25), { Transparency = 0.2 }):Play()
+	end
+
+	local giris = TweenService:Create(tane, TweenInfo.new(sure * 0.25), { [ozellik] = rastgele:NextNumber(0, 0.3) })
 	giris.Completed:Connect(function()
 		if not tane.Parent or kapandi then
 			return
 		end
-		local cikis = TweenService:Create(
-			tane,
-			TweenInfo.new(sure * 0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ BackgroundTransparency = 1 }
-		)
+		local bilgi = TweenInfo.new(sure * 0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		if konturu then
+			TweenService:Create(konturu, bilgi, { Transparency = 1 }):Play()
+		end
+		local cikis = TweenService:Create(tane, bilgi, { [ozellik] = 1 })
 		cikis.Completed:Connect(function()
 			tane:Destroy()
 		end)
@@ -1002,21 +869,49 @@ local function kivilcimCikar()
 	giris:Play()
 end
 
+local function halkaCikar()
+	local halka = cerceve({
+		ad = "Halka",
+		ebeveyn = halkaKabi,
+		boyut = UDim2.fromScale(0.28, 0.28 * 0.62),
+		konum = UDim2.fromScale(0.5, 0.5),
+		capa = Vector2.new(0.5, 0.5),
+		z = 1,
+	})
+	yuvarlak(halka)
+	local cizgi = kontur(halka, rastgeleRenk(), 6, 0.1, true)
+
+	local bilgi = TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(halka, bilgi, { Size = UDim2.fromScale(1, 0.62) }):Play()
+	local son = TweenService:Create(cizgi, bilgi, { Transparency = 1, Thickness = 1 })
+	son.Completed:Connect(function()
+		halka:Destroy()
+	end)
+	son:Play()
+end
+
 task.spawn(function()
 	while not kapandi do
-		if #isinKabi:GetChildren() < 6 then
+		if #isinKabi:GetChildren() < 9 then
 			isinCikar()
 		end
-		task.wait(rastgele:NextNumber(0.6, 1.3))
+		task.wait(rastgele:NextNumber(0.35, 0.8))
 	end
 end)
 
 task.spawn(function()
 	while not kapandi do
-		if #kivilcimKabi:GetChildren() < 28 then
+		if #kivilcimKabi:GetChildren() < 45 then
 			kivilcimCikar()
 		end
-		task.wait(0.16)
+		task.wait(0.1)
+	end
+end)
+
+task.spawn(function()
+	while not kapandi do
+		halkaCikar()
+		task.wait(1.1)
 	end
 end)
 
@@ -1042,8 +937,6 @@ end)
 
 local hedefYuzde = 0
 local gorunenYuzde = 0
-local baslikMetni = "LOADING"
-local noktali = true
 local zaman = 0
 local paralaks = Vector2.zero
 
@@ -1053,55 +946,8 @@ local function gecenSure(): number
 	return os.clock() - basladi
 end
 
-local function ilerle(deger: number, metin: string?)
+local function ilerle(deger: number)
 	hedefYuzde = math.clamp(math.max(deger, hedefYuzde), 0, 1)
-	if metin and not hazirGorundu then
-		durumYazi.Text = metin
-	end
-end
-
-local function adimBoya(adim: Adim, durum: string)
-	adim.durum = durum
-	if durum == "bitti" then
-		adim.daire.BackgroundColor3 = NEON
-		adim.daire.BackgroundTransparency = 0
-		adim.cizgi.Color = NEON
-		adim.cizgi.Transparency = 0
-		adim.nokta.BackgroundColor3 = BEYAZ
-		adim.nokta.Visible = true
-		adim.yazi.TextColor3 = NEON_ACIK
-	elseif durum == "aktif" then
-		adim.daire.BackgroundTransparency = 1
-		adim.cizgi.Color = NEON
-		adim.nokta.BackgroundColor3 = NEON
-		adim.nokta.Visible = true
-		adim.yazi.TextColor3 = BEYAZ
-	else
-		adim.daire.BackgroundTransparency = 1
-		adim.cizgi.Color = SONUK
-		adim.cizgi.Transparency = 0
-		adim.nokta.Visible = false
-		adim.yazi.TextColor3 = SONUK
-	end
-end
-
-local function adimlariGuncelle()
-	for sira, adim in adimlar do
-		local durum = "bekliyor"
-		if gorunenYuzde >= adim.esik then
-			durum = "bitti"
-		elseif sira == 1 or gorunenYuzde >= adimlar[sira - 1].esik then
-			durum = "aktif"
-		end
-
-		if durum ~= adim.durum then
-			adimBoya(adim, durum)
-		end
-
-		if durum == "aktif" then
-			adim.cizgi.Transparency = 0.2 + 0.5 * (math.sin(zaman * 5) + 1) / 2
-		end
-	end
 end
 
 local cizimBagi: RBXScriptConnection? = RunService.RenderStepped:Connect(function(dt: number)
@@ -1115,27 +961,29 @@ local cizimBagi: RBXScriptConnection? = RunService.RenderStepped:Connect(functio
 	end
 
 	dolgu.Size = UDim2.fromScale(gorunenYuzde, 1)
-	uc.Position = UDim2.fromScale(gorunenYuzde, 0.5)
-	uc.Visible = gorunenYuzde > 0.01 and gorunenYuzde < 0.999
-	ucOlcek.Scale = 1 + math.sin(zaman * 6) * 0.12
 	yuzdeYazi.Text = `{math.floor(gorunenYuzde * 100)}%`
 	parlamaGecis.Offset = Vector2.new((zaman * 0.7) % 2 - 1, 0)
 
-	baslik.Text = if noktali then baslikMetni .. string.rep(".", math.floor(zaman * 2.5) % 4) else baslikMetni
+	local ton = (zaman * 0.08) % 1
+	dolguGecis.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromHSV(ton, 0.7, 1)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromHSV((ton + 0.15) % 1, 0.7, 1)),
+		ColorSequenceKeypoint.new(1, Color3.fromHSV((ton + 0.3) % 1, 0.7, 1)),
+	})
 
-	konturGecis.Rotation = (zaman * 35) % 360
-	if not hazirGorundu then
-		donenGecis.Rotation = (zaman * 330) % 360
+	for _, r in renkliler do
+		r.nesne.BackgroundColor3 = Color3.fromHSV((ton + r.kayma) % 1, 0.7, 1)
+	end
+	huzmelerBuyuk.Rotation = (zaman * 9) % 360
+	huzmelerKucuk.Rotation = (-zaman * 14) % 360
+	for sira, hale in haleler do
+		local oran = HALE_ORANLARI[sira] * (1 + math.sin(zaman * 2 + sira) * 0.04)
+		hale.Size = UDim2.fromScale(oran, oran * 0.62)
 	end
 
-	if not kapandi then
-		adimlariGuncelle()
-	end
-
-	if oynaAktif then
-		local t = math.min((zaman % 2.6) / 0.9, 1)
-		oynaIsik.Position = UDim2.new(-0.3 + t * 1.6, 0, 0.5, 0)
-	end
+	local salinim = math.sin(zaman * 1.6)
+	logo.Rotation = salinim * 1.2
+	local kayma = Vector2.new(0, math.sin(zaman * 1.3) * 6)
 
 	if UserInputService.MouseEnabled and not UserInputService.TouchEnabled then
 		local kamera = Workspace.CurrentCamera
@@ -1144,9 +992,14 @@ local cizimBagi: RBXScriptConnection? = RunService.RenderStepped:Connect(functio
 			local fare = UserInputService:GetMouseLocation()
 			local hedefKayma = Vector2.new((fare.X / v.X - 0.5) * -2 * PARALAKS, (fare.Y / v.Y - 0.5) * -2 * PARALAKS)
 			paralaks = paralaks:Lerp(hedefKayma, math.min(1, dt * 3))
-			resimKabi.Position = UDim2.new(0.5, paralaks.X, 0.5, paralaks.Y)
 		end
 	end
+	logo.Position = UDim2.fromOffset(logoMerkezi.X + paralaks.X + kayma.X, logoMerkezi.Y + paralaks.Y + kayma.Y)
+
+	local isikT = math.min((zaman % 2.6) / 0.9, 1)
+	local isikKonumu = UDim2.new(-0.3 + isikT * 1.6, 0, 0.5, 0)
+	oyna.isik.Position = isikKonumu
+	atlaD.isik.Position = isikKonumu
 end)
 
 local function girisTuru(): string
@@ -1163,44 +1016,32 @@ end
 local function tusIpuclari()
 	local tur = girisTuru()
 
-	oynaTus.Visible = oynaAktif and tur ~= "dokunmatik"
-	oynaTusYazi.Text = if tur == "gamepad" then "A" else "ENTER"
-	oynaTus.Size = UDim2.fromOffset(if tur == "gamepad" then 24 else 48, 22)
+	oyna.tus.Visible = oynaAktif and tur ~= "dokunmatik"
+	oyna.tusYazi.Text = if tur == "gamepad" then "A" else "ENTER"
+	oyna.tus.Size = UDim2.fromOffset(if tur == "gamepad" then 24 else 48, 22)
 
-	atlaTus.Visible = tur == "gamepad"
-	atlaTusYazi.Text = "X"
-	atlaTus.Size = UDim2.fromOffset(24, 22)
-
-	if hazirGorundu and not kapandi then
-		durumYazi.Text = if tur == "gamepad"
-			then "Press A to start"
-			elseif tur == "dokunmatik" then "Tap PLAY to start"
-			else "Click PLAY or press Enter to start"
-	end
+	atlaD.tus.Visible = tur == "gamepad" and not atlaIstendi
+	atlaD.tusYazi.Text = "X"
+	atlaD.tus.Size = UDim2.fromOffset(24, 22)
 end
 
 local girisBagi = UserInputService.LastInputTypeChanged:Connect(tusIpuclari)
 
-local function odakEfekti()
+local function kamerayiBirak()
 	pcall(function()
-		local kamera = Workspace.CurrentCamera
-		if not kamera then
-			return
-		end
-		local bulanik = Instance.new("BlurEffect")
-		bulanik.Name = "YuklemeOdak"
-		bulanik.Size = 18
-		bulanik.Parent = kamera
-		local netles = TweenService:Create(
-			bulanik,
-			TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Size = 0 }
-		)
-		netles.Completed:Connect(function()
-			bulanik:Destroy()
-		end)
-		netles:Play()
+		RunService:UnbindFromRenderStep(KAMERA_EYLEMI)
 	end)
+
+	local kamera = Workspace.CurrentCamera
+	if not kamera then
+		return
+	end
+	kamera.CameraType = Enum.CameraType.Custom
+	local karakter = player.Character
+	local insan = karakter and karakter:FindFirstChildOfClass("Humanoid")
+	if insan then
+		kamera.CameraSubject = insan
+	end
 end
 
 local function kapat()
@@ -1219,18 +1060,23 @@ local function kapat()
 	end
 
 	coreGuiGeriAc()
-	odakEfekti()
+	arayuzGeriAc()
+	kamerayiBirak()
+
+	local netles = TweenService:Create(
+		bulaniklik,
+		TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = 0 }
+	)
+	netles.Completed:Connect(function()
+		bulaniklik:Destroy()
+	end)
+	netles:Play()
 
 	TweenService
 		:Create(kayan, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Position = UDim2.fromOffset(0, 70) })
 		:Play()
-	TweenService
-		:Create(
-			resimYaklasma,
-			TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Size = UDim2.fromScale(YAKLASMA + 0.1, YAKLASMA + 0.1) }
-		)
-		:Play()
+	TweenService:Create(logoOlcek, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 1.15 }):Play()
 
 	local son = solukluk(perde, 1, 0.65)
 	if son then
@@ -1246,27 +1092,20 @@ local function kapat()
 	ekran:Destroy()
 end
 
+local function dugmeGoster(d: Dugme)
+	d.kap.Visible = true
+	solukluk(d.kap, 1, 0)
+	solukluk(d.kap, 0, 0.3)
+	d.olcek.Scale = 0.85
+	TweenService:Create(d.olcek, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
 local function atlaGizle()
-	if not atlaKap.Visible then
+	if not atlaD.kap.Visible then
 		return
 	end
 	ContextActionService:UnbindAction(ATLA_EYLEMI)
-
-	solukluk(atlaKap, 1, 0.25)
-	TweenService:Create(butonDuzen, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Padding = UDim.new(0, 0) })
-		:Play()
-
-	local daral = TweenService:Create(
-		atlaKap,
-		TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ Size = UDim2.fromOffset(0, 50) }
-	)
-	daral.Completed:Connect(function()
-		if not kapandi then
-			atlaKap.Visible = false
-		end
-	end)
-	daral:Play()
+	atlaD.kap.Visible = false
 end
 
 local function atla()
@@ -1278,12 +1117,9 @@ local function atla()
 
 	ContextActionService:UnbindAction(ATLA_EYLEMI)
 
-	baslikMetni = "JOINING"
-	noktali = true
-	atlaYazi.Text = "SKIPPED"
-	atlaTus.Visible = false
-	solukluk(atlaKap, 0.55, 0.2)
-	durumYazi.Text = "Skipping the rest of the preload"
+	atlaD.yazi.Text = "JOINING..."
+	atlaD.tus.Visible = false
+	solukluk(atlaD.kap, 0.4, 0.2)
 
 	if hazirlandi then
 		task.spawn(kapat)
@@ -1295,13 +1131,7 @@ local function atlaGoster()
 		return
 	end
 
-	atlaKap.Visible = true
-	solukluk(atlaKap, 1, 0)
-	solukluk(atlaKap, 0, 0.35)
-
-	atlaOlcek.Scale = 0.85
-	TweenService:Create(atlaOlcek, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-
+	dugmeGoster(atlaD)
 	tusIpuclari()
 
 	ContextActionService:BindAction(ATLA_EYLEMI, function(_, durum)
@@ -1313,35 +1143,10 @@ local function atlaGoster()
 end
 
 local function hazirGorunumu()
-	hazirGorundu = true
 	oynaAktif = true
 
-	baslikMetni = "READY!"
-	noktali = false
-	baslik.TextColor3 = ALTIN
-
-	halkaYazi.Text = "READY"
-	halkaYazi.TextColor3 = NEON_ACIK
-	donenGecis.Transparency = seri({ { 0, 0 }, { 1, 0 } })
-
 	atlaGizle()
-
-	oynaGecis.Color = AKTIF_RENK
-	oynaYazi.TextColor3 = BEYAZ
-	oynaIsik.BackgroundTransparency = 0
-
-	oynaOlcek.Scale = 0.88
-	TweenService:Create(oynaOlcek, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-
-	isilti.BackgroundTransparency = 0.85
-	TweenService
-		:Create(
-			isilti,
-			TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-			{ BackgroundTransparency = 0.55 }
-		)
-		:Play()
-
+	dugmeGoster(oyna)
 	tusIpuclari()
 
 	ContextActionService:BindAction(BASLA_EYLEMI, function(_, durum)
@@ -1358,7 +1163,7 @@ local function hazirOl()
 	end
 	hazirlandi = true
 
-	ilerle(1, "Everything is ready")
+	ilerle(1)
 
 	while not kapandi and not atlaIstendi and gecenSure() < enAzGorunme do
 		task.wait(0.05)
@@ -1383,42 +1188,42 @@ local function hazirOl()
 	hazirGorunumu()
 end
 
-local function dugmeTepkisi(dugme: TextButton, olcek: UIScale, kosul: () -> boolean)
-	dugme.MouseEnter:Connect(function()
+local function dugmeTepkisi(d: Dugme, kosul: () -> boolean)
+	d.dugme.MouseEnter:Connect(function()
 		if kosul() then
-			TweenService:Create(olcek, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1.05 }):Play()
+			TweenService:Create(d.olcek, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1.06 }):Play()
 		end
 	end)
-	dugme.MouseLeave:Connect(function()
-		TweenService:Create(olcek, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	d.dugme.MouseLeave:Connect(function()
+		TweenService:Create(d.olcek, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end)
-	dugme.MouseButton1Down:Connect(function()
+	d.dugme.MouseButton1Down:Connect(function()
 		if kosul() then
-			TweenService:Create(olcek, TweenInfo.new(0.08), { Scale = 0.96 }):Play()
+			TweenService:Create(d.olcek, TweenInfo.new(0.08), { Scale = 0.96 }):Play()
 		end
 	end)
-	dugme.MouseButton1Up:Connect(function()
+	d.dugme.MouseButton1Up:Connect(function()
 		if kosul() then
-			TweenService:Create(olcek, TweenInfo.new(0.12), { Scale = 1.05 }):Play()
+			TweenService:Create(d.olcek, TweenInfo.new(0.12), { Scale = 1.06 }):Play()
 		end
 	end)
 end
 
-dugmeTepkisi(oyna, oynaOlcek, function()
+dugmeTepkisi(oyna, function()
 	return oynaAktif and not kapandi
 end)
 
-dugmeTepkisi(atlaDugme, atlaOlcek, function()
+dugmeTepkisi(atlaD, function()
 	return not atlaIstendi and not kapandi
 end)
 
-oyna.Activated:Connect(function()
+oyna.dugme.Activated:Connect(function()
 	if oynaAktif then
 		task.spawn(kapat)
 	end
 end)
 
-atlaDugme.Activated:Connect(atla)
+atlaD.dugme.Activated:Connect(atla)
 
 local function oncelik(node: Instance): number?
 	if node:IsA("Decal") or node:IsA("Texture") or node:IsA("ImageLabel") or node:IsA("ImageButton") then
@@ -1434,15 +1239,15 @@ local function oncelik(node: Instance): number?
 end
 
 local function varliklariYukle()
-	ilerle(0.05, "Reaching the server")
+	ilerle(0.05)
 
 	local kok = ReplicatedStorage:WaitForChild("Assets", 15)
 	if not kok then
-		ilerle(0.6, "Loading the world")
+		ilerle(0.6)
 		return
 	end
 
-	ilerle(0.12, "Loading world assets")
+	ilerle(0.12)
 
 	local gruplar: { { Instance } } = { {}, {}, {} }
 	for _, node in kok:GetDescendants() do
@@ -1460,7 +1265,7 @@ local function varliklariYukle()
 	end
 
 	if #liste == 0 then
-		ilerle(0.6, "Loading the world")
+		ilerle(0.6)
 		return
 	end
 
@@ -1482,23 +1287,20 @@ local function varliklariYukle()
 
 		islenen += #obek
 		if not atlaIstendi then
-			ilerle(0.12 + (islenen / #liste) * 0.63, `Loading world assets  {islenen} / {#liste}`)
+			ilerle(0.12 + (islenen / #liste) * 0.63)
 		end
 	end
 end
 
 solukluk(kayan, 1, 0)
-solukluk(solAlt, 1, 0)
-solukluk(sagAlt, 1, 0)
 kayan.Position = UDim2.fromOffset(0, 40)
 
 task.defer(function()
 	TweenService
 		:Create(kayan, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(0, 0) })
 		:Play()
-	solukluk(kayan, 0, 0.5)
-	solukluk(solAlt, 0, 0.5)
-	solukluk(sagAlt, 0, 0.5)
+	solukluk(yuzdeSirasi, 0, 0.5)
+	solukluk(ipucuSirasi, 0, 0.5)
 end)
 
 task.delay(ATLA_GECIKMESI, atlaGoster)
@@ -1510,16 +1312,16 @@ task.spawn(function()
 		warn(`[YuklemeEkrani] Assets failed to preload: {tostring(hata)}`)
 	end
 
-	ilerle(0.8, "Waiting for the world")
+	ilerle(0.8)
 
 	if not game:IsLoaded() then
 		game.Loaded:Wait()
 	end
 
-	ilerle(0.88, "Loading your progress")
+	ilerle(0.88)
 	player:WaitForChild("leaderstats", 15)
 
-	ilerle(0.94, "Spawning your character")
+	ilerle(0.94)
 
 	if not player.Character then
 		player.CharacterAdded:Wait()
