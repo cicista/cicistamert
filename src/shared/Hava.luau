@@ -21,6 +21,7 @@ Hava.Sure = 240
 Hava.UyariSaniyeleri = { 60 }
 Hava.Model = "Cloud"
 Hava.ModelYakinligi = 1.6
+Hava.SlaytSuresi = 6
 Hava.BeklemeRengi = Color3.fromRGB(120, 190, 255)
 
 Hava.Turler = {

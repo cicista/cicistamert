@@ -156,7 +156,7 @@ for _, tur in HavaAyar.Turler do
 		{ sekil = tur.sekil, renk = tur.parcacik }
 	)
 end
-SayacKarti.dondur(havaKarti)
+SayacKarti.dondur(havaKarti, HavaAyar.SlaytSuresi)
 
 local function sure(saniye: number): string
 	local s = math.max(0, math.floor(saniye))

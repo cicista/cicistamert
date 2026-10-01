@@ -205,6 +205,9 @@ local function gec(kart: Kart, hedef: number, animasyon: boolean)
 	local eski = kart.slaytlar[kart.simdiki]
 	local yeni = kart.slaytlar[hedef]
 	kart.simdiki = hedef
+	if eski.yagis ~= yeni.yagis then
+		kart.yagisAlani:ClearAllChildren()
+	end
 
 	if not animasyon then
 		eski.kutu.Position = UDim2.fromScale(1.5, 0.5)
@@ -320,7 +323,7 @@ local function ekranda(nesne: GuiObject): boolean
 	return false
 end
 
-function SayacKarti.dondur(kart: Kart)
+function SayacKarti.dondur(kart: Kart, slaytSuresi: number?)
 	task.spawn(function()
 		while kart.cerceve.Parent do
 			task.wait(YAGIS_ARASI)
@@ -333,7 +336,7 @@ function SayacKarti.dondur(kart: Kart)
 
 	task.spawn(function()
 		while kart.cerceve.Parent do
-			task.wait(SLAYT_SURESI)
+			task.wait(slaytSuresi or SLAYT_SURESI)
 			if not kart.sabit and #kart.slaytlar > 1 then
 				gec(kart, kart.simdiki % #kart.slaytlar + 1, true)
 			end
