@@ -407,6 +407,18 @@ function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 	return golgeyiKapat(model)
 end
 
+function Assets.boyaliModel(name: string, mutationId: string?): Model?
+	local root = ReplicatedStorage:FindFirstChild(Assets.FolderName)
+	local bulunan = root and root:FindFirstChild(name)
+	if not (bulunan and bulunan:IsA("Model")) then
+		return nil
+	end
+
+	local model = bulunan:Clone()
+	Assets.mutasyonBoya(model, mutationId)
+	return golgeyiKapat(model)
+end
+
 Assets.ShovelIslandFolders = {
 	kum = "Main",
 	sekerkum = "Candy",

@@ -174,7 +174,7 @@ local havaKarti = SayacKarti.kur(kap, HavaAyar.BeklemeRengi)
 havaKarti.cerceve.LayoutOrder = 0
 local havaSlaytlari: { [string]: number } = {}
 for _, tur in HavaAyar.Turler do
-	havaSlaytlari[tur.id] = SayacKarti.modelSlayti(havaKarti, tur.renk, Assets.brainrotModel(HavaAyar.Model, tur.mutasyon))
+	havaSlaytlari[tur.id] = SayacKarti.modelSlayti(havaKarti, tur.renk, Assets.boyaliModel(HavaAyar.Model, tur.mutasyon))
 end
 SayacKarti.dondur(havaKarti)
 
