@@ -524,8 +524,8 @@ local function indirimRozeti(buton: GuiObject, eski: number, yeni: number)
 	local kap = Instance.new("Frame")
 	kap.Name = "Indirim"
 	kap.AnchorPoint = Vector2.new(0.5, 0.5)
-	kap.Position = UDim2.fromOffset(6, 4)
-	kap.Size = UDim2.fromOffset(52, 52)
+	kap.Position = UDim2.fromOffset(2, 2)
+	kap.Size = UDim2.fromOffset(46, 46)
 	kap.BackgroundTransparency = 1
 	kap.ZIndex = 9
 	kap.Parent = buton
@@ -585,8 +585,8 @@ end
 local function etiketHapi(buton: GuiObject, yazi: string, renk: Color3)
 	local hap = Instance.new("Frame")
 	hap.Name = "EtiketHapi"
-	hap.AnchorPoint = Vector2.new(0.5, 0.5)
-	hap.Position = UDim2.new(0.5, 0, 1, 0)
+	hap.AnchorPoint = Vector2.new(0.5, 0)
+	hap.Position = UDim2.new(0.5, 0, 1, 3)
 	hap.Size = UDim2.fromOffset(0, 20)
 	hap.AutomaticSize = Enum.AutomaticSize.X
 	hap.BackgroundColor3 = BEYAZ
@@ -1009,11 +1009,11 @@ local function urunKarti(kart: RobuxMagaza.Kart)
 	local baslikY = if huzme then 44 elseif coklu then 8 else 22
 	local altBaslikY = if coklu then 40 else 56
 	local oranY = if huzme then 106 else 72
-	local dugmeAlt = if huzme then 28 else 10
+	local dugmeAlt = if huzme or coklu then 28 else 10
 
 	local yukseklik = if huzme
 		then LUCKY_KART_BOYU
-		elseif coklu then 72 + (if oranli then 32 else 0) + 64
+		elseif coklu then 72 + (if oranli then 32 else 0) + 82
 		else 116
 
 	local arkaPlanAdi = if tier then ARKA_PLAN[tier.id] else nil
