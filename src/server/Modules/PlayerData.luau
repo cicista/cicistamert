@@ -85,6 +85,7 @@ export type Data = {
 	hideName: boolean,
 	hideLevel: boolean,
 	hideSpeed: boolean,
+	hideOthers: boolean,
 	speedLevel: number,
 	speedRebirth: number,
 	hizTercihi: number,
@@ -179,6 +180,7 @@ local function defaultData(): Data
 		hideName = false,
 		hideLevel = false,
 		hideSpeed = false,
+		hideOthers = false,
 		speedLevel = 0,
 		speedRebirth = 0,
 		hizTercihi = -1,
@@ -322,6 +324,7 @@ local function migrate(raw: any): Data
 	data.hideName = raw.hideName == true
 	data.hideLevel = raw.hideLevel == true
 	data.hideSpeed = raw.hideSpeed == true
+	data.hideOthers = raw.hideOthers == true
 	data.speedLevel = math.clamp(math.floor(tonumber(raw.speedLevel) or 0), 0, 100)
 	data.speedRebirth = math.clamp(math.floor(tonumber(raw.speedRebirth) or 0), 0, 6)
 	data.hizTercihi = math.clamp(math.floor(tonumber(raw.hizTercihi) or -1), -1, 100)

@@ -3876,6 +3876,7 @@ do
 				hideName = player:GetAttribute("IsimGizli") == true,
 				hideLevel = player:GetAttribute("LevelGizli") == true,
 				hideSpeed = player:GetAttribute("HizGizli") == true,
+				hideOthers = player:GetAttribute("HerkesEtiketGizli") == true,
 			})
 		end)
 	end
@@ -3933,7 +3934,7 @@ do
 	ayrac.BorderSizePixel = 0
 	ayrac.Parent = ayarPanel
 
-	for _, baslik in { { "BEAM SOUND", 62 }, { "OVERHEAD DISPLAY", 150 } } do
+	for _, baslik in { { "BEAM SOUND", 62 }, { "OVERHEAD DISPLAY", 150 }, { "OTHER PLAYERS", 440 } } do
 		UI.text({
 			text = baslik[1] :: string,
 			size = UI.Sizes.small,
@@ -3964,6 +3965,8 @@ do
 	} do
 		kapatmaDugmesi(satir[1], 200 + (sira - 1) * 58, satir[2], satir[3], SAG_X, true)
 	end
+
+	kapatmaDugmesi("HerkesEtiketGosterim", 466, "HerkesEtiketGizli", "Everyone's Name Tags", SAG_X, true)
 
 	local function olcekYazisiTazele(yuzde: number)
 		olcekYazi.Text = `{yuzde}%`

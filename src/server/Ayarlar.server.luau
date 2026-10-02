@@ -22,6 +22,7 @@ local ACIK_KAPALI = {
 	hideName = "IsimGizli",
 	hideLevel = "LevelGizli",
 	hideSpeed = "HizGizli",
+	hideOthers = "HerkesEtiketGizli",
 }
 
 local function ayarlariYolla(player: Player)
