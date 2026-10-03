@@ -3,7 +3,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -13,7 +12,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
-local UI = require(script.Parent:WaitForChild("UI"))
 local LuckyOnizleme = require(script.Parent:WaitForChild("LuckyOnizleme"))
 local SayacKarti = require(script.Parent:WaitForChild("SayacKarti"))
 local Ipucu = require(script.Parent:WaitForChild("Ipucu"))
@@ -89,50 +87,10 @@ local function ekranAcik(ad: string): boolean
 	return gui ~= nil and gui:IsA("ScreenGui") and gui.Enabled
 end
 
-local LISTE_ALTI_MASA = 280
-local LISTE_ALTI_DOKUNMATIK = 320
-local KART_SAYISI = 3
-local KART_ARA = 8
-
-local function listeAcilabilir(): boolean
-	local ok, acik = pcall(function()
-		return StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
-	end)
-	return ok and acik == true
-end
-
 local function yerlestir()
-	local dokunmatik = UI.Girdi.dokunmatik()
-	local listeAlti = if dokunmatik then LISTE_ALTI_DOKUNMATIK else LISTE_ALTI_MASA
-	local kartlarBoyu = (SayacKarti.BOY * UI.carpan() + KART_ARA) * KART_SAYISI
-	local ust = KENAR
-	local sag = KENAR
-
-	if listeAcilabilir() and screen.AbsoluteSize.Y >= listeAlti + kartlarBoyu + KENAR then
-		ust = listeAlti
-		if not dokunmatik then
-			local menuler = playerGui:FindFirstChild("OyunMenuleri")
-			local sagMenu = menuler and menuler:FindFirstChild("SagMenu")
-			if sagMenu and sagMenu:IsA("GuiObject") and sagMenu.Visible and sagMenu.AbsoluteSize.X > 0 then
-				local menuUst = sagMenu.AbsolutePosition.Y
-				local menuAlt = menuUst + sagMenu.AbsoluteSize.Y
-				if menuUst < ust + kartlarBoyu and menuAlt > ust then
-					sag = math.max(KENAR, screen.AbsoluteSize.X - sagMenu.AbsolutePosition.X + KART_ARA)
-				end
-			end
-		end
-	end
-
 	kap.AnchorPoint = Vector2.new(1, 0)
-	kap.Position = UDim2.new(1, -sag, 0, ust)
+	kap.Position = UDim2.new(1, -KENAR, 0, KENAR)
 end
-
-task.spawn(function()
-	while kap.Parent do
-		yerlestir()
-		task.wait(0.5)
-	end
-end)
 
 RunService.Heartbeat:Connect(function()
 	kap.Visible = not (ekranAcik("KaziBar") or ekranAcik("KaziMinigame"))
