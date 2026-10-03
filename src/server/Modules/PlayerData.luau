@@ -115,7 +115,7 @@ local PlayerData = {}
 PlayerData.VarsayilanMuzik = 10
 PlayerData.VarsayilanSfx = 30
 
-local STORE_NAME = "BrainrotDig_v4"
+local STORE_NAME = "GercekSunucu"
 local ProfileStore = require(script.Parent:WaitForChild("ProfileStore"))
 
 ProfileStore.SetConstant("AUTO_SAVE_PERIOD", 120)
