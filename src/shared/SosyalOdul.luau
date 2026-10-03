@@ -6,8 +6,8 @@ local Passler = require(script.Parent.Passler)
 
 local SosyalOdul = {}
 
-SosyalOdul.GroupId = 0
-SosyalOdul.GroupName = ""
+SosyalOdul.GroupId = 283943894
+SosyalOdul.GroupName = "BEAMFORGE"
 SosyalOdul.GroupReward = 5
 
 SosyalOdul.LikeReward = 3
