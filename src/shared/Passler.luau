@@ -12,35 +12,35 @@ export type PassInfo = {
 
 Passler.Info = {
 	AutoClicker = {
-		id = 0,
+		id = 2005268669,
 		fiyat = 499,
 		ad = "Auto Clicker",
 		aciklama = "Your shovel digs by itself during the dig minigame.",
 		nitelik = "Pass_AutoClicker",
 	},
 	Teleporter = {
-		id = 0,
+		id = 2006276701,
 		fiyat = 249,
 		ad = "Teleporter",
 		aciklama = "Teleport to any island you have unlocked, from anywhere.",
 		nitelik = "Pass_Teleporter",
 	},
 	DetectivePass = {
-		id = 0,
+		id = 2005142677,
 		fiyat = 349,
 		ad = "Detective Pass",
 		aciklama = "Everything you dig or fish comes already identified.",
 		nitelik = "Pass_DetectivePass",
 	},
 	SansX2 = {
-		id = 0,
+		id = 2006174662,
 		fiyat = 399,
 		ad = "2x Luck",
 		aciklama = "Permanently doubles your luck when digging and fishing.",
 		nitelik = "Pass_SansX2",
 	},
 	RotX15 = {
-		id = 0,
+		id = 2006738682,
 		fiyat = 249,
 		ad = "1.5x Rot",
 		aciklama = "Your base earns 50% more Rot, forever.",
