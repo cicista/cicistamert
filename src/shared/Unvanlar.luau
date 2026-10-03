@@ -50,12 +50,12 @@ local function kademeSirasi(id: string): number
 end
 
 Unvanlar.Liste = {
-	{ id = "ilkKazi", ad = "First Dig", unvan = "Rookie Digger", tur = "kazi", hedef = 1, seviye = 1, stil = { tur = "duz", renk = Color3.fromRGB(215, 220, 230) }, robloxId = 0 },
-	{ id = "evSahibi", ad = "Home Sweet Home", unvan = "Base Builder", tur = "place", hedef = 5, seviye = 1, stil = { tur = "duz", renk = Color3.fromRGB(150, 220, 255) }, robloxId = 0 },
-	{ id = "ilkSans", ad = "Feeling Lucky", unvan = "Lucky Charm", tur = "lucky", hedef = 1, seviye = 1, stil = { tur = "duz", renk = Color3.fromRGB(255, 236, 120) }, robloxId = 0 },
+	{ id = "ilkKazi", ad = "First Dig", unvan = "Rookie Digger", tur = "kazi", hedef = 1, seviye = 1, stil = { tur = "duz", renk = Color3.fromRGB(215, 220, 230) }, robloxId = 583380109494572 },
+	{ id = "evSahibi", ad = "Home Sweet Home", unvan = "Base Builder", tur = "place", hedef = 5, seviye = 1, stil = { tur = "duz", renk = Color3.fromRGB(150, 220, 255) }, robloxId = 4284590385141970 },
+	{ id = "ilkSans", ad = "Feeling Lucky", unvan = "Lucky Charm", tur = "lucky", hedef = 1, seviye = 1, stil = { tur = "duz", renk = Color3.fromRGB(255, 236, 120) }, robloxId = 2329542200823661 },
 
-	{ id = "kurekUstasi", ad = "Shovel Master", unvan = "Shovel Master", tur = "kazi", hedef = 100, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(255, 160, 60) }, robloxId = 0 },
-	{ id = "denizci", ad = "Sea Legs", unvan = "Sea Angler", tur = "balik", hedef = 25, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(80, 210, 255) }, robloxId = 0 },
+	{ id = "kurekUstasi", ad = "Shovel Master", unvan = "Shovel Master", tur = "kazi", hedef = 100, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(255, 160, 60) }, robloxId = 3959914139508390 },
+	{ id = "denizci", ad = "Sea Legs", unvan = "Sea Angler", tur = "balik", hedef = 25, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(80, 210, 255) }, robloxId = 3194941449934881 },
 	{ id = "fuzyoncu", ad = "Fusion Apprentice", unvan = "Fusion Apprentice", tur = "fuse", hedef = 10, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(200, 120, 255) }, robloxId = 0 },
 	{ id = "yildiz", ad = "Rising Star", unvan = "Rising Star", tur = "level", hedef = 10, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(255, 215, 60) }, robloxId = 0 },
 	{ id = "tuccar", ad = "Deal Maker", unvan = "Deal Maker", tur = "trade", hedef = 5, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(110, 235, 130) }, robloxId = 0 },
