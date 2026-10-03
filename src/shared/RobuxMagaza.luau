@@ -146,7 +146,7 @@ RobuxMagaza.GizliUrunler = {
 	{
 		anahtar = "DetectiveSkip",
 		id = 0,
-		fiyat = 99,
+		fiyat = 49,
 		etiket = "SKIP",
 		ad = "Instant Identify",
 		tur = "detectiveSkip",
