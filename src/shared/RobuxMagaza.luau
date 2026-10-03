@@ -62,9 +62,9 @@ RobuxMagaza.Kartlar = {
 		renkB = Color3.fromRGB(60, 220, 110),
 		tier = "Hacker",
 		urunler = {
-			{ anahtar = "Hacker1", id = 0, fiyat = 249, etiket = "x1", ad = "1 Hacker Lucky Block", tur = "luckyblock", tier = "Hacker", adet = 1 },
-			{ anahtar = "Hacker3", id = 0, fiyat = 689, eskiFiyat = 749, etiket = "x3", ad = "3 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 3 },
-			{ anahtar = "Hacker5", id = 0, fiyat = 1049, eskiFiyat = 1249, etiket = "x5", ad = "5 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 5 },
+			{ anahtar = "Hacker1", id = 3716150383, fiyat = 249, etiket = "x1", ad = "1 Hacker Lucky Block", tur = "luckyblock", tier = "Hacker", adet = 1 },
+			{ anahtar = "Hacker3", id = 3716150449, fiyat = 689, eskiFiyat = 749, etiket = "x3", ad = "3 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 3 },
+			{ anahtar = "Hacker5", id = 3716150509, fiyat = 1049, eskiFiyat = 1249, etiket = "x5", ad = "5 Hacker Lucky Blocks", tur = "luckyblock", tier = "Hacker", adet = 5 },
 		},
 	},
 	{
@@ -77,9 +77,9 @@ RobuxMagaza.Kartlar = {
 		renkB = Color3.fromRGB(170, 90, 255),
 		tier = "Diamond",
 		urunler = {
-			{ anahtar = "Diamond1", id = 0, fiyat = 99, etiket = "x1", ad = "1 Diamond Lucky Block", tur = "luckyblock", tier = "Diamond", adet = 1 },
-			{ anahtar = "Diamond3", id = 0, fiyat = 249, etiket = "x3", rozet = "POPULAR", ad = "3 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 3 },
-			{ anahtar = "Diamond5", id = 0, fiyat = 369, eskiFiyat = 499, etiket = "x5", ad = "5 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 5 },
+			{ anahtar = "Diamond1", id = 3716150156, fiyat = 99, etiket = "x1", ad = "1 Diamond Lucky Block", tur = "luckyblock", tier = "Diamond", adet = 1 },
+			{ anahtar = "Diamond3", id = 3716150224, fiyat = 249, etiket = "x3", rozet = "POPULAR", ad = "3 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 3 },
+			{ anahtar = "Diamond5", id = 3716150320, fiyat = 369, eskiFiyat = 499, etiket = "x5", ad = "5 Diamond Lucky Blocks", tur = "luckyblock", tier = "Diamond", adet = 5 },
 		},
 	},
 	{
@@ -92,9 +92,9 @@ RobuxMagaza.Kartlar = {
 		renkB = Color3.fromRGB(255, 110, 40),
 		tier = "Golden",
 		urunler = {
-			{ anahtar = "Golden1", id = 0, fiyat = 39, etiket = "x1", ad = "1 Golden Lucky Block", tur = "luckyblock", tier = "Golden", adet = 1 },
-			{ anahtar = "Golden3", id = 0, fiyat = 99, etiket = "x3", ad = "3 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 3 },
-			{ anahtar = "Golden5", id = 0, fiyat = 149, eskiFiyat = 199, etiket = "x5", ad = "5 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 5 },
+			{ anahtar = "Golden1", id = 3716149589, fiyat = 39, etiket = "x1", ad = "1 Golden Lucky Block", tur = "luckyblock", tier = "Golden", adet = 1 },
+			{ anahtar = "Golden3", id = 3716149685, fiyat = 99, etiket = "x3", ad = "3 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 3 },
+			{ anahtar = "Golden5", id = 3716149981, fiyat = 149, eskiFiyat = 199, etiket = "x5", ad = "5 Golden Lucky Blocks", tur = "luckyblock", tier = "Golden", adet = 5 },
 		},
 	},
 	{
@@ -107,7 +107,7 @@ RobuxMagaza.Kartlar = {
 		renkB = Color3.fromRGB(150, 230, 40),
 		tier = nil,
 		urunler = {
-			{ anahtar = "MegaLuck30", id = 0, fiyat = 149, etiket = "30 min", ad = "x3 Mega Luck (30 min)", tur = "luck", carpan = 3, saniye = 1800 },
+			{ anahtar = "MegaLuck30", id = 3716150649, fiyat = 149, etiket = "30 min", ad = "x3 Mega Luck (30 min)", tur = "luck", carpan = 3, saniye = 1800 },
 		},
 	},
 	{
@@ -120,9 +120,9 @@ RobuxMagaza.Kartlar = {
 		renkB = Color3.fromRGB(240, 140, 30),
 		tier = nil,
 		urunler = {
-			{ anahtar = "RotCoin10", id = 0, fiyat = 49, etiket = "+10", ad = "10 Rot Coin", tur = "rotcoin", rotCoin = 10 },
-			{ anahtar = "RotCoin35", id = 0, fiyat = 149, etiket = "+35", rozet = "POPULAR", ad = "35 Rot Coin", tur = "rotcoin", rotCoin = 35 },
-			{ anahtar = "RotCoin120", id = 0, fiyat = 449, eskiFiyat = 589, etiket = "+120", ad = "120 Rot Coin", tur = "rotcoin", rotCoin = 120 },
+			{ anahtar = "RotCoin10", id = 3716150782, fiyat = 49, etiket = "+10", ad = "10 Rot Coin", tur = "rotcoin", rotCoin = 10 },
+			{ anahtar = "RotCoin35", id = 3716150868, fiyat = 149, etiket = "+35", rozet = "POPULAR", ad = "35 Rot Coin", tur = "rotcoin", rotCoin = 35 },
+			{ anahtar = "RotCoin120", id = 3716150930, fiyat = 449, eskiFiyat = 589, etiket = "+120", ad = "120 Rot Coin", tur = "rotcoin", rotCoin = 120 },
 		},
 	},
 } :: { Kart }
@@ -131,7 +131,7 @@ RobuxMagaza.Gecisler = { "SansX2", "RotX15", "AutoClicker", "Teleporter", "Detec
 
 RobuxMagaza.BaslangicPaketi = {
 	anahtar = "BaslangicPaketi",
-	id = 0,
+	id = 3716151096,
 	fiyat = 49,
 	etiket = "ONE TIME",
 	ad = "Starter Pack",
@@ -145,7 +145,7 @@ RobuxMagaza.BaslangicNiteligi = "BaslangicAlindi"
 RobuxMagaza.GizliUrunler = {
 	{
 		anahtar = "DetectiveSkip",
-		id = 0,
+		id = 3716151682,
 		fiyat = 49,
 		etiket = "SKIP",
 		ad = "Instant Identify",
@@ -154,7 +154,7 @@ RobuxMagaza.GizliUrunler = {
 
 	{
 		anahtar = Gacha.UrunAnahtari,
-		id = 0,
+		id = 3716151952,
 		fiyat = Gacha.Fiyat,
 		etiket = "OPEN",
 		ad = "Premium Spin",
@@ -163,7 +163,7 @@ RobuxMagaza.GizliUrunler = {
 
 	{
 		anahtar = "AfkSecretAlan",
-		id = 0,
+		id = 3716152210,
 		fiyat = 299,
 		etiket = "UNLOCK",
 		ad = "Secret Clover Field",
@@ -173,7 +173,7 @@ RobuxMagaza.GizliUrunler = {
 
 	{
 		anahtar = KacanYumurta.UrunAnahtari,
-		id = 0,
+		id = 3716153010,
 		fiyat = KacanYumurta.Fiyat,
 		eskiFiyat = KacanYumurta.EskiFiyat,
 		etiket = "GET IT",
