@@ -2809,7 +2809,7 @@ task.spawn(function()
 	favoriSatir.RichText = true
 
 	local likeSatir = UI.text({
-		text = `<font color="#78FF96">Like</font> the game!  (+{SosyalOdul.LikeReward} Rot Coin)`,
+		text = `<font color="#78FF96">Like</font> the game to support us!`,
 		size = UI.Sizes.label,
 		font = UI.Fonts.bold,
 		color = BEYAZ,
@@ -2824,13 +2824,9 @@ task.spawn(function()
 	likeDugme.AnchorPoint = Vector2.new(0.5, 1)
 	likeDugme.Position = UDim2.new(0.5, 0, 1, -12)
 	likeDugme.MouseButton1Click:Connect(function()
-		if ekDurum and ekDurum.like and ekDurum.like.claimed then
-			return
-		end
 		pcall(function()
 			AvatarEditorService:PromptSetFavorite(game.PlaceId, Enum.AvatarItemType.Asset, true)
 		end)
-		EkOdulAl:FireServer("like")
 	end)
 
 	local KOD_Y = ODUL_UST + KART_BOY + 10
@@ -2935,17 +2931,10 @@ task.spawn(function()
 			grupYazi.Text = "Claim"
 		end
 
-		local like = ekDurum and ekDurum.like
-		if like and like.claimed then
-			likeDugme.BackgroundColor3 = GRI
-			likeYazi.Text = "Claimed"
-		else
-			likeDugme.BackgroundColor3 = UI.Colors.good
-			likeYazi.Text = "Claim"
-		end
+		likeDugme.BackgroundColor3 = UI.Colors.good
+		likeYazi.Text = "Favorite"
 
-		local grupAlinabilir = SosyalOdul.GroupId ~= 0 and not (grup and grup.claimed)
-		Bildirim.odulSekmesi("social", grupAlinabilir or not (like and like.claimed))
+		Bildirim.odulSekmesi("social", SosyalOdul.GroupId ~= 0 and not (grup and grup.claimed))
 	end
 
 	EkOdulDurum.OnClientEvent:Connect(function(data)

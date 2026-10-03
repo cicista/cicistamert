@@ -10,8 +10,6 @@ SosyalOdul.GroupId = 283943894
 SosyalOdul.GroupName = "BEAMFORGE"
 SosyalOdul.GroupReward = 5
 
-SosyalOdul.LikeReward = 3
-
 export type PlaytimeOdul = {
 	minutes: number,
 	kind: string,

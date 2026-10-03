@@ -85,9 +85,6 @@ local function durumGonder(player: Player)
 			id = SosyalOdul.GroupId,
 			claimed = data.socialClaimed.group == true,
 		},
-		like = {
-			claimed = data.socialClaimed.like == true,
-		},
 	})
 end
 
@@ -134,12 +131,6 @@ local function al(player: Player, tur: string, index: any)
 		end
 		data.socialClaimed.group = true
 		ver(player, "rotcoin", SosyalOdul.GroupReward)
-	elseif tur == "like" then
-		if data.socialClaimed.like then
-			return
-		end
-		data.socialClaimed.like = true
-		ver(player, "rotcoin", SosyalOdul.LikeReward)
 	elseif tur == "playtime" then
 		local i = tonumber(index)
 		local odul = if i then SosyalOdul.Playtime[i] else nil
