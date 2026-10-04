@@ -16,11 +16,9 @@ type Grup = {
 
 local Petler = {}
 
-Petler.Paketler = { "BGC Pets Pack" }
+Petler.Paketler = { "Yeni Petler" }
 
-Petler.ModelAdlari = {
-	["Fall Triumph"] = "Fall Triumpth",
-} :: { [string]: string }
+Petler.ModelAdlari = {} :: { [string]: string }
 
 Petler.GelirAraligi = {
 	kum = { 0.1, 0.45 },
@@ -31,119 +29,230 @@ Petler.GelirAraligi = {
 } :: { [string]: { number } }
 
 Petler.Gruplar = {
-	{ island = "kum", rarity = "Common", pets = { "Mouse", "Piggy", "Dino", "Deer", "Fox", "Bruh", "Panda" } },
+	{
+		island = "kum",
+		rarity = "Common",
+		pets = {
+			"Wheat Mouse",
+			"Twig Bug",
+			"Lantern Firefly",
+			"Leaf Squirrel",
+			"Bee Pup",
+			"Acorn Owl",
+			"Lucky Ladybug",
+			"Sprout Turtle",
+			"Orange Capybara",
+			"Log Beaver",
+		},
+	},
 	{
 		island = "kum",
 		rarity = "Rare",
-		pets = { "Wolf", "Leafy Bunny", "Leafy Kitty", "Leafy Bear", "Leafy Deer", "Castle Deer", "Castle Bear" },
+		pets = {
+			"Blossom Bunny",
+			"Clover Calf",
+			"Pebble Golem",
+			"Honey Bear",
+			"Bamboo Panda",
+			"Sleepy Sloth",
+			"Leaf Koala",
+			"Meadow Goat",
+			"Nightcap Badger",
+			"Banana Monkey",
+		},
 	},
 	{
 		island = "kum",
 		rarity = "Epic",
-		pets = { "Dragon", "Leafy Dragon", "Castle Dragon", "Flying Acorn", "Flying Pig", "Bruh Bandit", "Fall Cloud" },
+		pets = {
+			"Miner Mole",
+			"Butterfly Kitty",
+			"Rainbow Chameleon",
+			"Poncho Llama",
+			"Peacock Chick",
+			"Explorer Platypus",
+			"Golden Armadillo",
+			"Lookout Meerkat",
+			"Moss Bear",
+			"Shroom Frog",
+		},
 	},
 	{
 		island = "kum",
 		rarity = "Legendary",
-		pets = { "Castle Orb", "Smiling Orb", "Stuffed Paragon", "Puppet Dragon", "Old Dolly", "Rainbow Shock" },
+		pets = {
+			"Crystal Horn Pup",
+			"Three-Eyed Hamster",
+			"Gem Shell Turtle",
+			"Twin Tail Cat",
+			"Cloud Duckling",
+			"Winged Hippo",
+			"Horned Toucan",
+			"Twin Head Parrot",
+			"Cyber Raccoon",
+		},
 	},
 	{
 		island = "kum",
 		rarity = "Mythic",
 		pets = {
-			"Fall Triumph",
-			"Throne Guard",
-			"Duke",
-			"Giant Fall Turkey",
-			"Goof Bot",
-			"Fall Star",
-			"Dream Clock",
-			"Release Orb",
-			"Fall Queen",
+			"Crystal Fawn",
+			"Shadow Pup",
+			"Bolt Rhino",
+			"Ghost Kitten",
+			"Golden Ram",
+			"Emerald Beetle",
+			"Storm Owl",
+			"Void Raven",
+			"Thunder Kitten",
 		},
 	},
 	{
 		island = "kum",
 		rarity = "Secret",
-		pets = {
-			"King Doggy",
-			"King Kitty",
-			"Unicorn",
-			"Baron Bunny",
-			"Release Robot",
-			"Mythic Baron Bunny",
-			"King Bruh",
-			"Mythic Fall Queen",
-			"Immortality Stone",
-			"Fall Champion",
-			"Mythic Immortality Stone",
-		},
+		pets = { "Star Griffin", "Celestial Owl King", "Spirit Wolf", "Emerald Dragon", "Ancient Forest Stag" },
 	},
 
 	{
 		island = "sekerkum",
 		rarity = "Common",
-		pets = { "Yummy Doggy", "Yummy Bear", "Yummy Bunny", "Yummy Kitty", "Candy Fox", "Lemon Fox" },
+		pets = { "Marshmallow Chick", "Candy Corn Chick", "Jellybean Caterpillar", "Lollipop Snail", "Cake Mouse" },
 	},
 	{
 		island = "sekerkum",
 		rarity = "Rare",
-		pets = { "Candy Deer", "Orange Deer", "Candy Dino", "Cherry Dino", "Candy Golem", "Cherry Golem", "Yummy Crawler" },
+		pets = { "Gummy Cub", "Donut Pup", "Choco Bunny", "Jelly Frog", "Pudding Pup" },
 	},
 	{
 		island = "sekerkum",
 		rarity = "Epic",
-		pets = { "Candy Dragon", "Lime Dragon", "Candy Angel", "Lime Angel", "Bubble Blowing Alien" },
+		pets = { "Cupcake Kitty", "Cotton Candy Lamb", "Waffle Turtle", "Macaron Hamster", "Caramel Otter" },
 	},
-	{ island = "sekerkum", rarity = "Legendary", pets = { "Candy Lord", "Caramel Demise", "Electra" } },
-	{ island = "sekerkum", rarity = "Mythic", pets = { "Candy Paladin", "Inky Guardian" } },
-	{ island = "sekerkum", rarity = "Secret", pets = { "Mythic Candy Paladin", "Unlucky Clover" } },
-	{ island = "sekerkum", rarity = "Cosmic", pets = { "Celestial Wisp" } },
+	{
+		island = "sekerkum",
+		rarity = "Legendary",
+		pets = { "Gingerbread Fox", "Popsicle Penguin", "Pretzel Ferret", "Licorice Snake", "Honeycomb Bee" },
+	},
+	{
+		island = "sekerkum",
+		rarity = "Mythic",
+		pets = { "Sugar Cookie Cat", "Churro Dachshund", "Taffy Giraffe", "Soda Axolotl", "Gumdrop Golem" },
+	},
+	{
+		island = "sekerkum",
+		rarity = "Secret",
+		pets = { "Rock Candy Lizard", "Candy Hedgehog", "Peppermint Dragon", "Sundae Unicorn" },
+	},
+	{
+		island = "sekerkum",
+		rarity = "Cosmic",
+		pets = { "Prism Unicorn", "Royal Cake Golem", "Candy Empress Cat", "Lollipop Phoenix", "Rainbow Sugar Dragon" },
+	},
 
-	{ island = "snowkum", rarity = "Common", pets = { "Ornament Doggy", "Ornament Kitty", "Polar Bear", "Frost Deer" } },
+	{
+		island = "snowkum",
+		rarity = "Common",
+		pets = { "Mitten Mouse", "Ski Lemming", "Igloo Snail", "Frost Slime", "Ice Block Fish" },
+	},
 	{
 		island = "snowkum",
 		rarity = "Rare",
-		pets = { "Ornament Bunny", "Ornament Bear", "Frost Wolf", "Frost Kitty", "Opened Giftbox" },
+		pets = { "Frost Bunny", "Scarf Owl", "Snowball Seal", "Frost Ermine", "Scarf Puffin" },
 	},
-	{ island = "snowkum", rarity = "Epic", pets = { "Ornament Angel", "Frost Dragon", "Ice Dragon", "Flying Giftbag" } },
+	{
+		island = "snowkum",
+		rarity = "Epic",
+		pets = { "Beanie Polar Cub", "Snowman Pup", "Ice Crab", "Musk Ox Calf", "Icicle Bat" },
+	},
 	{
 		island = "snowkum",
 		rarity = "Legendary",
-		pets = { "Flying Peppermint", "Xmas Bronze Trophy", "Starlight Dragon" },
+		pets = { "Arctic Fox", "Goggle Husky", "Lynx Kitten", "Ice Cube Golem", "Snow Globe Frog" },
 	},
-	{ island = "snowkum", rarity = "Mythic", pets = { "Xmas Gold Trophy", "Christmas Robot", "Snowpuff" } },
+	{
+		island = "snowkum",
+		rarity = "Mythic",
+		pets = { "Penguin Knight", "Glacier Tortoise", "Icicle Walrus", "Ice Crystal Hedgehog" },
+	},
 	{
 		island = "snowkum",
 		rarity = "Secret",
-		pets = { "Jolly Star", "Clock Flake", "North Pole Moon", "Mythic Christmas Robot" },
+		pets = { "Frost Moth", "Crystal Reindeer", "Snow Leopard Cub", "Yeti Cub" },
 	},
-	{ island = "snowkum", rarity = "Cosmic", pets = { "Royal Santa", "Christmas Future", "Grinch" } },
-	{ island = "snowkum", rarity = "Gizli", pets = { "Mythic Royal Santa", "Glacier Lord" } },
+	{
+		island = "snowkum",
+		rarity = "Cosmic",
+		pets = { "Crystal Penguin", "Snowflake Dragon", "Galaxy Mammoth", "Nebula Fox" },
+	},
+	{
+		island = "snowkum",
+		rarity = "Gizli",
+		pets = { "Blizzard Yeti King", "Frost Phoenix", "Ice Empress Fox", "Frost Titan Dragon" },
+	},
 
-	{ island = "alevkum", rarity = "Common", pets = { "Pumpkin Mouse", "Pumpkin Doggy", "Void Bear", "Void Kitty" } },
-	{ island = "alevkum", rarity = "Rare", pets = { "Pumpkin Kitty", "Pumpkin Bat", "Void Fox", "Void Deer" } },
+	{
+		island = "alevkum",
+		rarity = "Common",
+		pets = { "Fire Ant", "Lava Duckling", "Ember Bat", "Coal Mole" },
+	},
+	{
+		island = "alevkum",
+		rarity = "Rare",
+		pets = { "Magma Snail", "Ash Crow", "Smoke Skunk", "Ember Squirrel", "Cinder Pup" },
+	},
 	{
 		island = "alevkum",
 		rarity = "Epic",
-		pets = { "Void Bat", "Void Demon", "Void Dragon", "Dark Phoenix", "Inferno Dragon" },
+		pets = { "Fire Kiwi", "Lava Slime", "Flame Salamander", "Brimstone Beetle", "Fire Monkey" },
 	},
-	{ island = "alevkum", rarity = "Legendary", pets = { "Ruby Dragon", "Dark Dragon", "Demonic Furnace" } },
-	{ island = "alevkum", rarity = "Mythic", pets = { "Soulfly", "Redemption", "Overlord" } },
+	{
+		island = "alevkum",
+		rarity = "Legendary",
+		pets = { "Ember Hedgehog", "Ember Fennec", "Volcano Turtle", "Magma Crab" },
+	},
+	{
+		island = "alevkum",
+		rarity = "Mythic",
+		pets = { "Flame Pony", "Lava Lamp Jelly", "Furnace Bot", "Molten Octopus" },
+	},
 	{
 		island = "alevkum",
 		rarity = "Secret",
-		pets = { "Enchanted Pumpkin", "Guardian Knight", "Crimson Knight", "Mythic Soulfly" },
+		pets = { "Fire Sprite", "Obsidian Scorpion", "Magma Golem", "Magma Lizard" },
 	},
-	{ island = "alevkum", rarity = "Cosmic", pets = { "Lavender Dominator", "Mythic Enchanted Pumpkin" } },
+	{ island = "alevkum", rarity = "Cosmic", pets = { "Ember Fox", "Phoenix Chick", "Blaze Lion Cub" } },
+	{ island = "alevkum", rarity = "Gizli", pets = { "Inferno Wyvern", "Thunder Kirin", "Ruby Dragon" } },
+	{
+		island = "alevkum",
+		rarity = "Infernal",
+		pets = { "Ember Cerberus Pup", "Magma Titan", "Inferno Hydra", "Volcano Dragon Lord" },
+	},
 
-	{ island = "deniz", rarity = "Rare", pets = { "Lunar Serpent" } },
-	{ island = "deniz", rarity = "Legendary", pets = { "Koi" } },
-	{ island = "deniz", rarity = "Mythic", pets = { "Admiral" } },
-	{ island = "deniz", rarity = "Secret", pets = { "Immortal Pufferfish" } },
-	{ island = "deniz", rarity = "Cosmic", pets = { "King Koi" } },
-	{ island = "deniz", rarity = "Gizli", pets = { "The Moon" } },
-	{ island = "deniz", rarity = "Abyssal", pets = { "Mythic The Moon" } },
+	{ island = "deniz", rarity = "Common", pets = { "Starfish Buddy", "Sea Urchin", "Pink Squid", "Ocean Sunfish" } },
+	{ island = "deniz", rarity = "Rare", pets = { "Anemone Clownfish", "Sea Bunny", "Blobfish", "Seaweed Turtle" } },
+	{ island = "deniz", rarity = "Epic", pets = { "Chef Shrimp", "Shell House Crab", "Pelican Chick", "Sailor Seagull" } },
+	{
+		island = "deniz",
+		rarity = "Legendary",
+		pets = { "Balloon Puffer", "Spiral Nautilus", "Frilly Lionfish", "Shell Sea Otter" },
+	},
+	{ island = "deniz", rarity = "Mythic", pets = { "Coral Seahorse", "Crowned Jelly", "Pearl Clam", "Knight Lobster" } },
+	{ island = "deniz", rarity = "Secret", pets = { "Hammerhead Pup", "Wave Dolphin", "Orca Calf", "Beluga Calf" } },
+	{ island = "deniz", rarity = "Cosmic", pets = { "Lantern Angler", "Glow Manta", "Winged Goldfish", "Swordfish" } },
+	{ island = "deniz", rarity = "Gizli", pets = { "Horned Octopus", "Tri-Fin Shark", "Glow Eel", "Leafy Sea Dragon" } },
+	{ island = "deniz", rarity = "Infernal", pets = { "Treasure Chest Mimic", "Ice Narwhal" } },
+	{
+		island = "deniz",
+		rarity = "Abyssal",
+		pets = {
+			"Celestial Whale",
+			"Void Kraken",
+			"Coral Titan Turtle",
+			"Tidal Sea Dragon",
+			"Storm Megalodon",
+			"Abyss Leviathan",
+		},
+	},
 } :: { Grup }
 
 local liste: { Pet } = {}

@@ -604,9 +604,7 @@ local RARITY_VFX: { [string]: string } = {
 	Abyssal = "AbyssalVFX",
 }
 
-Assets.RarityVFXScale = {
-	Secret = 0.4,
-} :: { [string]: number }
+Assets.RarityVFXScale = {} :: { [string]: number }
 
 Assets.RarityVFXRate = {
 	Secret = 0.5,
@@ -627,9 +625,16 @@ Assets.RarityVFXAttribute = "KademeEfekti"
 
 Assets.CountAttribute = "Adet"
 
-Assets.RarityVFXMaxScale = 3
+Assets.RarityVFXMinScale = 0.1
 
 function Assets.rarityVFXScale(model: Instance): number
+	if model:IsA("Model") then
+		local olcek = model:GetScale()
+		if olcek > 0 then
+			return math.max(olcek, Assets.RarityVFXMinScale)
+		end
+	end
+
 	local enAz, enCok = Assets.worldBounds(model :: any)
 	if not enAz or not enCok then
 		return 1
@@ -639,7 +644,7 @@ function Assets.rarityVFXScale(model: Instance): number
 	local uzun = math.max(boy.X, boy.Y, boy.Z)
 	local taban = Assets.BrainrotSize.slotSize
 	if taban > 0 and uzun > 0 then
-		return math.clamp(uzun / taban, 0.75, Assets.RarityVFXMaxScale)
+		return math.max(uzun / taban, Assets.RarityVFXMinScale)
 	end
 	return 1
 end
