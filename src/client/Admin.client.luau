@@ -214,6 +214,7 @@ local function buildPanel(info: any)
 		actionButton(`Give {tier.displayName}  (+1)`, "giveLuckyBlock", tier.id, tier.color)
 	end
 	actionButton("Reveal all pets in inventory", "revealAll", nil, UI.Colors.accent)
+	actionButton("Fill index (all pets + mutations)", "indexDoldur", nil, Color3.fromRGB(120, 220, 140))
 	actionButton("Restart tutorial (step 1)", "ogreticiSifirla", nil, Color3.fromRGB(255, 215, 60))
 	actionButton("Tutorial: skip to next step", "ogreticiAtla", nil, Color3.fromRGB(255, 190, 90))
 	actionButton("Finish tutorial", "ogreticiBitir", nil, Color3.fromRGB(200, 170, 110))

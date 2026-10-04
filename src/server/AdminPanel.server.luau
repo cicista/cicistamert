@@ -43,6 +43,7 @@ local LuckyBlockOdul = require(Modules:WaitForChild("LuckyBlockOdul"))
 local Bildirim = Net.event("Bildirim")
 local AdminPanelAc = Net.event("AdminPanelAc")
 local AdminKomut = Net.event("AdminKomut")
+local IndexDurum = Net.event("IndexDurum")
 
 local A = Config.Admin
 local rng = Random.new()
@@ -873,6 +874,26 @@ function commands.levelAyarla(player, data, arg)
 	Seviye.etiketGuncelle(player)
 	Seviye.push(player)
 	return `Level set to {hedef}`
+end
+
+function commands.indexDoldur(player)
+	local yeni = 0
+
+	for _, info in Brainrots.List do
+		if PlayerData.discover(player, info.name) then
+			yeni += 1
+		end
+		for _, mutasyon in Mutations.IndexOrder do
+			if PlayerData.discoverMutation(player, info.name, mutasyon) then
+				yeni += 1
+			end
+		end
+	end
+
+	IndexDurum:FireClient(player, PlayerData.discovered(player), PlayerData.discoveredMutations(player))
+	Unvan.kontrol(player)
+
+	return `Index filled: {#Brainrots.List} pets x {#Mutations.IndexOrder} mutations ({yeni} new entries)`
 end
 
 function commands.tumRozetler(player)
