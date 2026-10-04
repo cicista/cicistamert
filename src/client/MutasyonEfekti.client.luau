@@ -26,6 +26,57 @@ local SIKLIK_EKI: { [string]: number } = {
 	Hacker = 1.7,
 }
 
+local VFX_KLASORU = "LuckyBlocks"
+local VFX_TABAN_BOY = 3
+local VFX_OLCEGI = 0.85
+
+local ALTIN_BLOK = "New Gold Lucky Block"
+local ELMAS_BLOK = "New Diamond Lucky Block"
+local HACKER_BLOK = "Hacker Lucky Block"
+
+local GALAKSI_MOR = ColorSequence.new(Color3.fromRGB(150, 70, 255), Color3.fromRGB(255, 110, 220))
+local GALAKSI_PEMBE = ColorSequence.new(Color3.fromRGB(255, 120, 230), Color3.fromRGB(120, 60, 255))
+local GALAKSI_KOYU = ColorSequence.new(Color3.fromRGB(70, 30, 170), Color3.fromRGB(190, 80, 255))
+local GALAKSI_YILDIZ = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 170, 245))
+
+type VfxGirdisi = { kaynak: string, ad: string, renk: ColorSequence? }
+
+local MUTASYON_VFX: { [string]: { VfxGirdisi } } = {
+	Gold = {
+		{ kaynak = ALTIN_BLOK, ad = "aura1" },
+		{ kaynak = ALTIN_BLOK, ad = "aura2" },
+		{ kaynak = ALTIN_BLOK, ad = "aura3" },
+		{ kaynak = ALTIN_BLOK, ad = "crescents" },
+		{ kaynak = ALTIN_BLOK, ad = "spec1" },
+		{ kaynak = ALTIN_BLOK, ad = "stars" },
+	},
+	Diamond = {
+		{ kaynak = ELMAS_BLOK, ad = "Cos" },
+		{ kaynak = ELMAS_BLOK, ad = "Energy Esque" },
+		{ kaynak = ELMAS_BLOK, ad = "Smoke12" },
+		{ kaynak = ELMAS_BLOK, ad = "Star" },
+		{ kaynak = ELMAS_BLOK, ad = "Spec12" },
+		{ kaynak = ELMAS_BLOK, ad = "Star129" },
+	},
+	Galaxy = {
+		{ kaynak = ALTIN_BLOK, ad = "aura1", renk = GALAKSI_MOR },
+		{ kaynak = ALTIN_BLOK, ad = "aura2", renk = GALAKSI_PEMBE },
+		{ kaynak = ALTIN_BLOK, ad = "aura3", renk = GALAKSI_KOYU },
+		{ kaynak = ALTIN_BLOK, ad = "stars", renk = GALAKSI_YILDIZ },
+		{ kaynak = ELMAS_BLOK, ad = "Energy Esque", renk = GALAKSI_MOR },
+		{ kaynak = ELMAS_BLOK, ad = "Smoke4", renk = GALAKSI_KOYU },
+		{ kaynak = ELMAS_BLOK, ad = "Spec12", renk = GALAKSI_YILDIZ },
+		{ kaynak = ELMAS_BLOK, ad = "Star129", renk = GALAKSI_YILDIZ },
+	},
+	Hacker = {
+		{ kaynak = HACKER_BLOK, ad = "Dust" },
+		{ kaynak = HACKER_BLOK, ad = "Glitch" },
+		{ kaynak = HACKER_BLOK, ad = "Glitch2" },
+		{ kaynak = HACKER_BLOK, ad = "Light" },
+		{ kaynak = HACKER_BLOK, ad = "Numbers" },
+	},
+}
+
 local SIYAH = Color3.new(0, 0, 0)
 local BEYAZ = Color3.new(1, 1, 1)
 
@@ -69,10 +120,13 @@ type Kayit = {
 	siklik: number,
 	hizCarpani: number,
 	birikim: number,
+	vfx: { ParticleEmitter },
+	acik: boolean,
 }
 
 local kayitlar: { [Instance]: Kayit } = {}
 local parcalar: { Parca } = {}
+local sablonlar: { [string]: ParticleEmitter | false } = {}
 
 local tasiyici = Instance.new("Part")
 tasiyici.Name = "MutasyonParcalari"
@@ -208,6 +262,77 @@ local function parcaCikar(kayit: Kayit, renk: Color3)
 	})
 end
 
+local function sablonBul(kaynak: string, ad: string): ParticleEmitter?
+	local anahtar = `{kaynak}/{ad}`
+	local bulunan = sablonlar[anahtar]
+	if bulunan ~= nil then
+		return bulunan or nil
+	end
+
+	local kok = ReplicatedStorage:FindFirstChild(Assets.FolderName)
+	local klasor = kok and kok:FindFirstChild(VFX_KLASORU)
+	local blok = klasor and klasor:FindFirstChild(kaynak)
+	local sonuc: ParticleEmitter? = nil
+	if blok then
+		for _, node in blok:GetDescendants() do
+			if node:IsA("ParticleEmitter") and node.Name == ad then
+				sonuc = node
+				break
+			end
+		end
+	end
+
+	if not sonuc then
+		Assets.warnOnce(`mutation vfx: {anahtar}`, `[MutasyonEfekti] effect "{ad}" not found in Assets > {VFX_KLASORU} > {kaynak}`)
+	end
+	sablonlar[anahtar] = sonuc or false
+	return sonuc
+end
+
+local function vfxEkle(govde: BasePart, mutasyon: string, boy: number): { ParticleEmitter }
+	local liste = {}
+	local girdiler = MUTASYON_VFX[mutasyon]
+	if not girdiler then
+		return liste
+	end
+
+	local carpan = boy / VFX_TABAN_BOY * VFX_OLCEGI
+	for _, girdi in girdiler do
+		local sablon = sablonBul(girdi.kaynak, girdi.ad)
+		if not sablon then
+			continue
+		end
+
+		local klon = sablon:Clone()
+		klon.Name = "MutasyonVFX"
+		klon.Enabled = true
+		if girdi.renk then
+			klon.Color = girdi.renk
+		end
+		klon.Acceleration *= carpan
+
+		local kap = Instance.new("Folder")
+		klon.Parent = kap
+		Assets.scaleEffects(kap, carpan)
+		klon.Parent = govde
+		kap:Destroy()
+
+		table.insert(liste, klon)
+	end
+	return liste
+end
+
+local function birak(kok: Instance)
+	local kayit = kayitlar[kok]
+	if not kayit then
+		return
+	end
+	kayitlar[kok] = nil
+	for _, yayici in kayit.vfx do
+		yayici:Destroy()
+	end
+end
+
 local function kur(kok: Instance)
 	if kayitlar[kok] or kok:FindFirstAncestorWhichIsA("ViewportFrame") then
 		return
@@ -224,16 +349,19 @@ local function kur(kok: Instance)
 	end
 
 	local carpan = 1 + math.max((nadirlikSirasi[mutasyon] or 1) - 1, 0) * NADIRLIK_ARTISI
+	local boy = math.max(govde.Size.X, govde.Size.Y, govde.Size.Z, 0.5)
 
 	kayitlar[kok] = {
 		govde = govde,
 		mutasyon = mutasyon,
 		sekil = sekiller[mutasyon] or "yildiz",
 		renk = Mutations.color(mutasyon),
-		boy = math.max(govde.Size.X, govde.Size.Y, govde.Size.Z, 0.5),
+		boy = boy,
 		siklik = TABAN_SIKLIK * carpan * (SIKLIK_EKI[mutasyon] or 1),
 		hizCarpani = carpan,
 		birikim = math.random(),
+		vfx = vfxEkle(govde, mutasyon, boy),
+		acik = true,
 	}
 end
 
@@ -251,7 +379,15 @@ RunService.RenderStepped:Connect(function(dt)
 			continue
 		end
 
-		if not kayit.govde:IsDescendantOf(Workspace) or (kayit.govde.Position - bakis).Magnitude > GORUS_MESAFESI then
+		local yakin = kayit.govde:IsDescendantOf(Workspace)
+			and (kayit.govde.Position - bakis).Magnitude <= GORUS_MESAFESI
+		if yakin ~= kayit.acik then
+			kayit.acik = yakin
+			for _, yayici in kayit.vfx do
+				yayici.Enabled = yakin
+			end
+		end
+		if not yakin then
 			continue
 		end
 
@@ -292,9 +428,7 @@ CollectionService:GetInstanceAddedSignal(Assets.MutasyonTag):Connect(function(ko
 	task.defer(kur, kok)
 end)
 
-CollectionService:GetInstanceRemovedSignal(Assets.MutasyonTag):Connect(function(kok)
-	kayitlar[kok] = nil
-end)
+CollectionService:GetInstanceRemovedSignal(Assets.MutasyonTag):Connect(birak)
 
 for _, kok in CollectionService:GetTagged(Assets.MutasyonTag) do
 	task.defer(kur, kok)
