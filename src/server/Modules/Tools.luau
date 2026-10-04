@@ -752,7 +752,12 @@ function Tools.buildBrainrot(item: any): Tool
 				tool:SetAttribute("YariYukseklik", (max.Y - min.Y) / 2)
 			end
 
+			local mutasyon = prepared:GetAttribute(Assets.MutasyonAttribute)
 			handle = attachModel(tool, prepared)
+			if handle and type(mutasyon) == "string" then
+				tool:SetAttribute(Assets.MutasyonAttribute, mutasyon)
+				tool:AddTag(Assets.MutasyonTag)
+			end
 		end)
 
 		if not ok then

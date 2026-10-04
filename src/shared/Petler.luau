@@ -20,6 +20,13 @@ Petler.Paketler = { "Yeni Petler" }
 
 Petler.ModelAdlari = {} :: { [string]: string }
 
+Petler.Ters = {
+	["Lava Lamp Jelly"] = true,
+	["Frost Slime"] = true,
+	["Frost Bunny"] = true,
+	["Snow Globe Frog"] = true,
+} :: { [string]: boolean }
+
 Petler.GelirAraligi = {
 	kum = { 0.1, 0.45 },
 	sekerkum = { 0.45, 0.6 },
@@ -198,7 +205,7 @@ Petler.Gruplar = {
 	{
 		island = "alevkum",
 		rarity = "Rare",
-		pets = { "Magma Snail", "Ash Crow", "Smoke Skunk", "Ember Squirrel", "Cinder Pup" },
+		pets = { "Magma Snail", "Ash Crow", "Smoke Skunk", "Ember Squirrel" },
 	},
 	{
 		island = "alevkum",
@@ -287,6 +294,10 @@ end
 
 function Petler.modelAdi(name: string): string
 	return Petler.ModelAdlari[name] or name
+end
+
+function Petler.tersMi(name: string): boolean
+	return Petler.Ters[name] == true
 end
 
 return Petler

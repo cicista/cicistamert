@@ -69,10 +69,22 @@ local function kademeYazisi(label: TextLabel, rarityId: string)
 	end
 end
 
-local ZEMIN_GECIS_HIZ = 0.08
-local ZEMIN_DONUS_HIZ = 25
-local ZEMIN_DOYGUNLUK = 0.6
-local ZEMIN_PARLAKLIK = 0.95
+local ZEMIN_GECIS_HIZ = 0.9
+local ZEMIN_DONUS_HIZ = 18
+local ZEMIN_HIZ_ARTISI = 0.3
+
+local ZEMIN_PALETI: { [string]: { Color3 } } = {
+	Common = { Color3.fromRGB(248, 248, 250), Color3.fromRGB(150, 150, 158) },
+	Rare = { Color3.fromRGB(140, 210, 255), Color3.fromRGB(30, 95, 215) },
+	Epic = { Color3.fromRGB(215, 155, 255), Color3.fromRGB(110, 45, 210) },
+	Legendary = { Color3.fromRGB(255, 240, 150), Color3.fromRGB(255, 165, 35) },
+	Mythic = { Color3.fromRGB(255, 120, 120), Color3.fromRGB(165, 15, 35) },
+	Secret = { Color3.fromRGB(255, 225, 120), Color3.fromRGB(235, 135, 20) },
+	Cosmic = { Color3.fromRGB(145, 65, 240), Color3.fromRGB(255, 115, 215) },
+	Gizli = { Color3.fromRGB(95, 95, 105), Color3.fromRGB(12, 12, 15) },
+	Infernal = { Color3.fromRGB(255, 185, 50), Color3.fromRGB(205, 30, 0) },
+	Abyssal = { Color3.fromRGB(0, 215, 255), Color3.fromRGB(10, 30, 115) },
+}
 
 local ADA_ADI: { [string]: string } = {
 	kum = "Main Island",
@@ -716,11 +728,20 @@ local function kameraCevir(hucre: Hucre, aci: number)
 	end
 end
 
-local function zeminRengi(bas: number): ColorSequence
+local function zeminHizi(rarityId: string): number
+	local info = Rarity.Info[rarityId :: any]
+	local sira = if info then info.order else 1
+	return 1 + (sira - 1) * ZEMIN_HIZ_ARTISI
+end
+
+local function zeminRengi(hucre: Hucre, an: number): ColorSequence
+	local palet = ZEMIN_PALETI[hucre.rarity]
+	local a, b = if palet then palet[1] else hucre.renk, if palet then palet[2] else hucre.renk
+	local t = (math.sin(an) + 1) / 2
 	return ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromHSV(bas % 1, ZEMIN_DOYGUNLUK, ZEMIN_PARLAKLIK)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromHSV((bas + 0.22) % 1, ZEMIN_DOYGUNLUK, ZEMIN_PARLAKLIK)),
-		ColorSequenceKeypoint.new(1, Color3.fromHSV((bas + 0.44) % 1, ZEMIN_DOYGUNLUK, ZEMIN_PARLAKLIK)),
+		ColorSequenceKeypoint.new(0, a:Lerp(b, t)),
+		ColorSequenceKeypoint.new(0.5, b:Lerp(a, t)),
+		ColorSequenceKeypoint.new(1, a:Lerp(b, t)),
 	})
 end
 
@@ -738,9 +759,9 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 
 		if hucre.kesif then
-			local ton = hucre.renk:ToHSV()
-			hucre.zeminGecis.Color = zeminRengi(ton + zaman * ZEMIN_GECIS_HIZ)
-			hucre.zeminGecis.Rotation = (zaman * ZEMIN_DONUS_HIZ + hucre.faz * 40) % 360
+			local hiz = zeminHizi(hucre.rarity)
+			hucre.zeminGecis.Color = zeminRengi(hucre, zaman * ZEMIN_GECIS_HIZ * hiz + hucre.faz)
+			hucre.zeminGecis.Rotation = (zaman * ZEMIN_DONUS_HIZ * hiz + hucre.faz * 40) % 360
 		else
 			kameraCevir(hucre, math.sin(zaman * KILITLI_SALINIM_HIZ + hucre.faz) * KILITLI_SALINIM_ACI)
 		end
