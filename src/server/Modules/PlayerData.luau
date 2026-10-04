@@ -226,6 +226,10 @@ local function esyaOku(item: any): InventoryItem?
 	end
 
 	local ad = gecerliAd(item.name, item.rarity, item.island)
+	local slot = tonumber(item.slot)
+	if slot and (slot ~= slot or slot < 1 or slot % 1 ~= 0 or slot == math.huge) then
+		slot = nil
+	end
 
 	return {
 		uid = item.uid,
@@ -234,9 +238,17 @@ local function esyaOku(item: any): InventoryItem?
 		mutation = if type(item.mutation) == "string" then item.mutation else "Normal",
 		name = ad,
 		revealed = item.revealed == true and ad ~= nil,
-		slot = tonumber(item.slot),
+		slot = slot,
 		island = if type(item.island) == "string" then item.island else nil,
 	} :: any
+end
+
+local function sonluSayi(deger: any): number
+	local sayi = tonumber(deger)
+	if not sayi or sayi ~= sayi or math.abs(sayi) == math.huge then
+		return 0
+	end
+	return math.max(0, sayi)
 end
 
 local function migrate(raw: any): Data
@@ -245,8 +257,8 @@ local function migrate(raw: any): Data
 		return data
 	end
 
-	data.rot = tonumber(raw.rot) or 0
-	data.rotCoins = tonumber(raw.rotCoins) or 0
+	data.rot = sonluSayi(raw.rot)
+	data.rotCoins = sonluSayi(raw.rotCoins)
 
 	local ogretici = if type(raw.tutorial) == "table" then raw.tutorial else nil
 	if ogretici then
@@ -819,7 +831,7 @@ end
 
 function PlayerData.addOre(player: Player, oreId: string, amount: number): number
 	local data = cache[player]
-	if not data or not Ores.get(oreId) then
+	if not data or not Ores.get(oreId) or amount ~= amount or math.abs(amount) == math.huge then
 		return 0
 	end
 	local yeni = math.max(0, (data.ores[oreId] or 0) + amount)
@@ -1003,7 +1015,7 @@ end
 
 function PlayerData.addRotCoins(player: Player, amount: number)
 	local data = cache[player]
-	if not data then
+	if not data or amount ~= amount or math.abs(amount) == math.huge then
 		return
 	end
 	data.rotCoins = math.max(0, data.rotCoins + amount)
@@ -1011,7 +1023,7 @@ end
 
 function PlayerData.addRot(player: Player, amount: number)
 	local data = cache[player]
-	if not data then
+	if not data or amount ~= amount or math.abs(amount) == math.huge then
 		return
 	end
 	data.rot = math.max(0, data.rot + amount)
@@ -1044,7 +1056,7 @@ end
 
 function PlayerData.addLuckyBlocks(player: Player, tierId: string, amount: number)
 	local data = cache[player]
-	if not data then
+	if not data or amount ~= amount or math.abs(amount) == math.huge then
 		return
 	end
 

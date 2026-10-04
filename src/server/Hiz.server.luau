@@ -188,7 +188,7 @@ end
 
 HizAl.OnServerEvent:Connect(function(player, adet)
 	local data = PlayerData.get(player)
-	if not data or type(adet) ~= "number" then
+	if not data or type(adet) ~= "number" or adet ~= adet or math.abs(adet) == math.huge then
 		return
 	end
 

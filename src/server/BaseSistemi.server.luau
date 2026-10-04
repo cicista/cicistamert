@@ -1704,7 +1704,7 @@ local function baseGuvence(player: Player, data: any): number?
 end
 
 function placeInSlot(player: Player, uid: string, slotIndex: number)
-	if slotIndex < 1 or slotIndex > Bases.SlotCount then
+	if slotIndex ~= slotIndex or slotIndex < 1 or slotIndex > Bases.SlotCount or slotIndex % 1 ~= 0 then
 		return
 	end
 
@@ -1841,7 +1841,7 @@ refreshEvent.Parent = script
 refreshEvent.Event:Connect(refreshSlots)
 
 SlotaKoy.OnServerEvent:Connect(function(player, uid, slotIndex)
-	if type(uid) ~= "string" or type(slotIndex) ~= "number" then
+	if type(uid) ~= "string" or type(slotIndex) ~= "number" or slotIndex ~= slotIndex then
 		return
 	end
 	placeInSlot(player, uid, math.floor(slotIndex))

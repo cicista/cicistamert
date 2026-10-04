@@ -622,11 +622,24 @@ local function startDig(player: Player, beamId: string)
 	end)
 end
 
+local baslatiliyor: { [Player]: boolean } = {}
+
 SuzmeKaz.OnServerEvent:Connect(function(player, beamId)
-	if type(beamId) ~= "string" then
+	if type(beamId) ~= "string" or #beamId > 64 or baslatiliyor[player] or digging[player] then
 		return
 	end
-	task.spawn(startDig, player, beamId)
+	baslatiliyor[player] = true
+	task.spawn(function()
+		local ok, hata = pcall(startDig, player, beamId)
+		baslatiliyor[player] = nil
+		if not ok then
+			warn(`[Kazi] dig could not start ({player.Name}): {hata}`)
+		end
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	baslatiliyor[player] = nil
 end)
 
 MinigameSonuc.OnServerEvent:Connect(function(player, won)
