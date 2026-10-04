@@ -197,17 +197,6 @@ local function odulGoster(veri: any)
 	})
 
 	local rozetMi = rozet ~= nil
-	local kapat: TextButton? = nil
-	if not rozetMi then
-		local buton = Instance.new("TextButton")
-		buton.Name = "Kapat"
-		buton.Size = UDim2.fromScale(1, 1)
-		buton.BackgroundTransparency = 1
-		buton.Text = ""
-		buton.ZIndex = 10
-		buton.Parent = kap
-		kapat = buton
-	end
 
 	YerelSes.cal(if veri.unvanId ~= nil then "Catch" else "LuckyBlock")
 
@@ -230,9 +219,6 @@ local function odulGoster(veri: any)
 		end
 	end
 
-	if kapat then
-		kapat.Activated:Connect(kapan)
-	end
 	task.delay(if rozetMi then ROZET_SURESI else (Config.Duyuru.odulSuresi or 4.5), kapan)
 end
 
