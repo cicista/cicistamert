@@ -12,7 +12,7 @@ local Hava = require(Shared:WaitForChild("Hava"))
 
 local GORUS_MESAFESI = 110
 local TABAN_SIKLIK = 5
-local TABAN_HIZ = 0.45
+local TABAN_HIZ = 0.8
 local NADIRLIK_ARTISI = 0.35
 local OMUR_EN_AZ = 0.9
 local OMUR_EN_COK = 1.4
@@ -20,6 +20,11 @@ local SURTUNME = 1.6
 local PARCA_BOYU = 0.13
 local AZAMI_PARCA = 320
 local GOKKUSAGI_HIZI = 0.25
+local YUKARI_EGILIM = 0.7
+
+local SIKLIK_EKI: { [string]: number } = {
+	Hacker = 1.7,
+}
 
 local SIYAH = Color3.new(0, 0, 0)
 local BEYAZ = Color3.new(1, 1, 1)
@@ -174,6 +179,7 @@ local function parcaCikar(kayit: Kayit, renk: Color3)
 		yon = Vector3.yAxis
 	end
 	yon = (yon.Unit + Vector3.new(math.random() - 0.5, math.random() - 0.3, math.random() - 0.5) * 0.8).Unit
+	yon = Vector3.new(yon.X, math.abs(yon.Y) + YUKARI_EGILIM, yon.Z).Unit
 
 	local tutamak = Instance.new("Attachment")
 	tutamak.WorldPosition = konum
@@ -233,7 +239,7 @@ local function kur(kok: Instance)
 		sekil = sekiller[mutasyon] or "yildiz",
 		renk = Mutations.color(mutasyon),
 		boy = math.max(govde.Size.X, govde.Size.Y, govde.Size.Z, 0.5),
-		siklik = TABAN_SIKLIK * carpan,
+		siklik = TABAN_SIKLIK * carpan * (SIKLIK_EKI[mutasyon] or 1),
 		hizCarpani = carpan,
 		birikim = math.random(),
 		meshler = meshler,
