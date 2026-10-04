@@ -16,6 +16,8 @@ local IsinlayiciGit = Net.event("IsinlayiciGit")
 
 local COOLDOWN = 3
 local lastUse = {}
+local MENU_PAYI = 20
+local acilanNpc: { [Player]: BasePart } = {}
 
 local function findNPC()
 	local direct = Workspace:FindFirstChild(Config.NPC.name)
@@ -183,6 +185,7 @@ local function setupNPC(npc: Model)
 	prompt.Parent = root
 
 	prompt.Triggered:Connect(function(player)
+		acilanNpc[player] = root
 		AdaMenusuAc:FireClient(player, buildIslandList(player, homeIndex))
 	end)
 
@@ -243,7 +246,21 @@ AdayaGit.OnServerEvent:Connect(function(player, index)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-	if not root or not humanoid or humanoid.Health <= 0 then return end
+	if not root or not root:IsA("BasePart") or not humanoid or humanoid.Health <= 0 then return end
+
+	local npcParca = acilanNpc[player]
+	if not npcParca or not npcParca.Parent then
+		return
+	end
+	if (npcParca.Position - root.Position).Magnitude > Config.NPC.promptDistance + MENU_PAYI then
+		Bildirim:FireClient(player, "Get closer to the Teleporter.", Color3.fromRGB(255, 200, 90))
+		return
+	end
+
+	if char:GetAttribute("Kaziyor") == true or player:GetAttribute("Flyboarding") == true then
+		Bildirim:FireClient(player, "Finish what you are doing first!", Color3.fromRGB(255, 200, 90))
+		return
+	end
 
 	local data = PlayerData.get(player)
 	if not data then
@@ -331,4 +348,5 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	lastUse[player] = nil
+	acilanNpc[player] = nil
 end)

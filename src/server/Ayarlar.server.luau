@@ -45,6 +45,14 @@ local function ayarlariYolla(player: Player)
 	})
 end
 
+local function sonluSayi(deger: any): number?
+	local sayi = tonumber(deger)
+	if not sayi or sayi ~= sayi or math.abs(sayi) == math.huge then
+		return nil
+	end
+	return sayi
+end
+
 AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 	local data = PlayerData.get(player)
 	if not data then
@@ -52,16 +60,16 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 	end
 
 	if type(payload) == "table" then
-		local yuzde = tonumber(payload.uiScale)
+		local yuzde = sonluSayi(payload.uiScale)
 		if yuzde then
 			data.uiScale = math.clamp(math.round(yuzde), OLCEK_MIN, OLCEK_MAX)
 		end
-		local mobil = tonumber(payload.uiScaleMobile)
+		local mobil = sonluSayi(payload.uiScaleMobile)
 		if mobil then
 			data.uiScaleMobile = math.clamp(math.round(mobil), OLCEK_MIN, OLCEK_MAX)
 		end
 
-		local ses = tonumber(payload.musicVolume)
+		local ses = sonluSayi(payload.musicVolume)
 		if ses then
 			data.musicVolume = math.clamp(math.round(ses), 0, 100)
 		end
@@ -69,7 +77,7 @@ AyarKaydet.OnServerEvent:Connect(function(player: Player, payload: any)
 			data.musicMuted = payload.musicMuted
 		end
 
-		local efekt = tonumber(payload.sfxVolume)
+		local efekt = sonluSayi(payload.sfxVolume)
 		if efekt then
 			data.sfxVolume = math.clamp(math.round(efekt), 0, 100)
 		end

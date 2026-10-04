@@ -720,6 +720,9 @@ local function openBlock(player: Player, tierId: string)
 
 	local item = PlayerData.addBrainrot(player, rarityId, condition, mutation)
 	if not item then
+		PlayerData.addLuckyBlocks(player, tierId, 1)
+		Envanter.syncLuckyBlocks(player)
+		Envanter.push(player)
 		opening[player] = false
 		return
 	end
