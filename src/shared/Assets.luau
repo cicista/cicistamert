@@ -671,7 +671,7 @@ function Assets.rarityVFXScale(model: Instance): number
 	return 1
 end
 
-function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePart?): Instance?
+local function nadirlikVFXEkle(model: Instance, rarityId: string?, kok: BasePart?): Instance?
 	local ad = if type(rarityId) == "string" then RARITY_VFX[rarityId] else nil
 	if not ad then
 		return nil
@@ -820,6 +820,20 @@ function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePar
 	vfxSikligi(sablon, Assets.RarityVFXRate[rarityId :: string] or 1)
 
 	return sablon
+end
+
+function Assets.attachRarityVFX(model: Instance, rarityId: string?, kok: BasePart?, mutationId: string?): Instance?
+	for _, node in model:GetDescendants() do
+		if node:GetAttribute(Assets.RarityVFXAttribute) then
+			return node
+		end
+	end
+
+	local vfx = nadirlikVFXEkle(model, rarityId, kok)
+	if vfx and Mutations.isSpecial(mutationId) then
+		Assets.tintEffects(vfx, Mutations.color(mutationId))
+	end
+	return vfx
 end
 
 local function vfxAra(name: string): Instance?

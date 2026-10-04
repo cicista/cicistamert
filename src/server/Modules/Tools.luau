@@ -876,7 +876,7 @@ function Tools.buildBrainrot(item: any): Tool
 	setHoldAnimation(tool, Assets.Animations.brainrotHold)
 
 	if revealed and handle then
-		Assets.attachRarityVFX(tool, item.rarity, handle)
+		Assets.attachRarityVFX(tool, item.rarity, handle, item.mutation)
 	end
 
 	ikonYonuKaydet(tool)

@@ -276,6 +276,37 @@ function commands.setMutation(player, data, arg)
 	return `{item.name} -> {info.displayName} ({info.multiplier}x)`
 end
 
+function commands.setCondition(player, data, arg)
+	if type(arg) ~= "string" or not Condition.Info[arg :: any] then
+		return nil
+	end
+
+	local _, heldUid = Tools.equippedBrainrot(player)
+	if not heldUid then
+		return "Hold a pet first"
+	end
+
+	local item = PlayerData.findItem(player, heldUid)
+	if not item then
+		return nil
+	end
+
+	if not item.revealed or not item.name then
+		return "This pet is not identified"
+	end
+
+	local info = Condition.get(arg :: any)
+	if item.condition == arg then
+		return `Already {info.displayName}`
+	end
+
+	item.condition = arg
+
+	Envanter.syncBrainrots(player)
+
+	return `{item.name} -> {info.displayName} ({info.multiplier}x)`
+end
+
 function commands.testMutation(player, data)
 	local counts: { [string]: number } = {}
 	local rolls = 1000
@@ -974,11 +1005,28 @@ AdminKomut.OnServerEvent:Connect(function(player, command, arg)
 	end
 end)
 
+local function yetkiliBaslangici(player: Player)
+	local data = PlayerData.bekle(player)
+	if not data or not player.Parent then
+		return
+	end
+
+	commands.indexDoldur(player)
+	Unvan.hepsiniVer(player)
+	if not data.tutorial.bitti then
+		commands.ogreticiBitir(player, data)
+	end
+end
+
 local function announce(player: Player)
 	task.wait(1)
 	local yetkili = Yetki.bekle(player)
 	if not player.Parent then
 		return
+	end
+
+	if yetkili then
+		task.spawn(yetkiliBaslangici, player)
 	end
 
 	AdminPanelAc:FireClient(player, {

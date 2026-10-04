@@ -1292,7 +1292,7 @@ local function buildDisplay(item: any): Model
 	Etiket.build(item, labelAnchor)
 
 	if item.revealed then
-		Assets.attachRarityVFX(model, item.rarity, primary)
+		Assets.attachRarityVFX(model, item.rarity, primary, item.mutation)
 	end
 
 	return model

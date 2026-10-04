@@ -13,6 +13,7 @@ local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Rods = require(Shared:WaitForChild("Rods"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
+local Condition = require(Shared:WaitForChild("Condition"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
@@ -415,6 +416,35 @@ local function buildPanel(info: any)
 	end
 
 	mutationChips = chipRow(mutationEntries)
+
+	section("SIZE  --  converts the HELD pet")
+
+	local sizeChips: { TextButton }
+	local sizeEntries: { any } = {}
+
+	for _, id in Condition.Order do
+		local info = Condition.get(id)
+		table.insert(sizeEntries, {
+			label = info.shortName,
+			color = info.color,
+			onClick = function(index: number)
+				AdminKomut:FireServer("setCondition", id)
+
+				local chip = sizeChips[index]
+				local stroke = chip and chip:FindFirstChildOfClass("UIStroke")
+				if stroke then
+					stroke.Thickness = 3
+					task.delay(0.35, function()
+						if stroke.Parent then
+							stroke.Thickness = 1
+						end
+					end)
+				end
+			end,
+		})
+	end
+
+	sizeChips = chipRow(sizeEntries)
 
 	section("SPAWN BEAM  --  test digging and difficulty")
 
