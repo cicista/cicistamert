@@ -322,7 +322,18 @@ local function vfxEkle(govde: BasePart, mutasyon: string, boy: number): { Partic
 	return liste
 end
 
+local bekleyenler: { [Instance]: RBXScriptConnection } = {}
+
+local function beklemeyiBitir(kok: Instance)
+	local baglanti = bekleyenler[kok]
+	if baglanti then
+		baglanti:Disconnect()
+		bekleyenler[kok] = nil
+	end
+end
+
 local function birak(kok: Instance)
+	beklemeyiBitir(kok)
 	local kayit = kayitlar[kok]
 	if not kayit then
 		return
@@ -333,7 +344,21 @@ local function birak(kok: Instance)
 	end
 end
 
-local function kur(kok: Instance)
+local kur: (Instance) -> ()
+
+local function govdeyiBekle(kok: Instance)
+	if bekleyenler[kok] then
+		return
+	end
+	bekleyenler[kok] = kok.DescendantAdded:Connect(function(node)
+		if node:IsA("BasePart") then
+			beklemeyiBitir(kok)
+			task.defer(kur, kok)
+		end
+	end)
+end
+
+function kur(kok: Instance)
 	if kayitlar[kok] or kok:FindFirstAncestorWhichIsA("ViewportFrame") then
 		return
 	end
@@ -345,8 +370,10 @@ local function kur(kok: Instance)
 
 	local govde = govdeBul(kok)
 	if not govde then
+		govdeyiBekle(kok)
 		return
 	end
+	beklemeyiBitir(kok)
 
 	local carpan = 1 + math.max((nadirlikSirasi[mutasyon] or 1) - 1, 0) * NADIRLIK_ARTISI
 	local boy = math.max(govde.Size.X, govde.Size.Y, govde.Size.Z, 0.5)
