@@ -177,10 +177,16 @@ function Flyboard.isSeaInstance(node: Instance?): boolean
 	return false
 end
 
+local denizKelimesi: { [string]: boolean } = {}
+for _, sea in Flyboard.SeaNames do
+	denizKelimesi[sea] = true
+end
+
 function Flyboard.isSeaName(name: string): boolean
-	local lower = string.lower(name)
-	for _, sea in Flyboard.SeaNames do
-		if lower == sea or string.find(lower, sea, 1, true) then
+	local ayrik = string.gsub(name, "(%l)(%u)", "%1 %2")
+	ayrik = string.gsub(ayrik, "(%u)(%u%l)", "%1 %2")
+	for kelime in string.gmatch(string.lower(ayrik), "%a+") do
+		if denizKelimesi[kelime] then
 			return true
 		end
 	end
