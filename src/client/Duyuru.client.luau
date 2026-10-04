@@ -45,6 +45,8 @@ local function parlayanYazi(label: TextLabel, kademe: string?)
 	CollectionService:AddTag(label, parilti.tag)
 end
 
+local ROZET_SURESI = 2.5
+
 local odulSirasi: { any } = {}
 local odulAcik = false
 
@@ -194,13 +196,18 @@ local function odulGoster(veri: any)
 		zIndex = 8,
 	})
 
-	local kapat = Instance.new("TextButton")
-	kapat.Name = "Kapat"
-	kapat.Size = UDim2.fromScale(1, 1)
-	kapat.BackgroundTransparency = 1
-	kapat.Text = ""
-	kapat.ZIndex = 10
-	kapat.Parent = kap
+	local rozetMi = rozet ~= nil
+	local kapat: TextButton? = nil
+	if not rozetMi then
+		local buton = Instance.new("TextButton")
+		buton.Name = "Kapat"
+		buton.Size = UDim2.fromScale(1, 1)
+		buton.BackgroundTransparency = 1
+		buton.Text = ""
+		buton.ZIndex = 10
+		buton.Parent = kap
+		kapat = buton
+	end
 
 	YerelSes.cal(if veri.unvanId ~= nil then "Catch" else "LuckyBlock")
 
@@ -223,8 +230,10 @@ local function odulGoster(veri: any)
 		end
 	end
 
-	kapat.Activated:Connect(kapan)
-	task.delay(Config.Duyuru.odulSuresi or 4.5, kapan)
+	if kapat then
+		kapat.Activated:Connect(kapan)
+	end
+	task.delay(if rozetMi then ROZET_SURESI else (Config.Duyuru.odulSuresi or 4.5), kapan)
 end
 
 local seritSirasi: { any } = {}

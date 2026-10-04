@@ -907,7 +907,7 @@ function commands.levelAyarla(player, data, arg)
 	return `Level set to {hedef}`
 end
 
-function commands.indexDoldur(player)
+local function indexiDoldur(player: Player): number
 	local yeni = 0
 
 	for _, info in Brainrots.List do
@@ -922,6 +922,11 @@ function commands.indexDoldur(player)
 	end
 
 	IndexDurum:FireClient(player, PlayerData.discovered(player), PlayerData.discoveredMutations(player))
+	return yeni
+end
+
+function commands.indexDoldur(player)
+	local yeni = indexiDoldur(player)
 	Unvan.kontrol(player)
 
 	return `Index filled: {#Brainrots.List} pets x {#Mutations.IndexOrder} mutations ({yeni} new entries)`
@@ -1011,7 +1016,7 @@ local function yetkiliBaslangici(player: Player)
 		return
 	end
 
-	commands.indexDoldur(player)
+	indexiDoldur(player)
 	Unvan.hepsiniVer(player)
 	if not data.tutorial.bitti then
 		commands.ogreticiBitir(player, data)
