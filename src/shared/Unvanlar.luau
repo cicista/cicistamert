@@ -56,12 +56,12 @@ Unvanlar.Liste = {
 
 	{ id = "kurekUstasi", ad = "Shovel Master", unvan = "Shovel Master", tur = "kazi", hedef = 100, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(255, 160, 60) }, robloxId = 3959914139508390 },
 	{ id = "denizci", ad = "Sea Legs", unvan = "Sea Angler", tur = "balik", hedef = 25, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(80, 210, 255) }, robloxId = 3194941449934881 },
-	{ id = "fuzyoncu", ad = "Fusion Apprentice", unvan = "Fusion Apprentice", tur = "fuse", hedef = 10, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(200, 120, 255) }, robloxId = 0 },
-	{ id = "yildiz", ad = "Rising Star", unvan = "Rising Star", tur = "level", hedef = 10, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(255, 215, 60) }, robloxId = 0 },
-	{ id = "tuccar", ad = "Deal Maker", unvan = "Deal Maker", tur = "trade", hedef = 5, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(110, 235, 130) }, robloxId = 0 },
+	{ id = "fuzyoncu", ad = "Fusion Apprentice", unvan = "Fusion Apprentice", tur = "fuse", hedef = 10, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(200, 120, 255) }, robloxId = 814585550309545 },
+	{ id = "yildiz", ad = "Rising Star", unvan = "Rising Star", tur = "level", hedef = 10, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(255, 215, 60) }, robloxId = 4019541214069236 },
+	{ id = "tuccar", ad = "Deal Maker", unvan = "Deal Maker", tur = "trade", hedef = 5, seviye = 2, stil = { tur = "parlak", renk = Color3.fromRGB(110, 235, 130) }, robloxId = 3385749699296839 },
 
-	{ id = "yerYaran", ad = "Ground Breaker", unvan = "Ground Breaker", tur = "kazi", hedef = 1000, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 200, 60), renkB = Color3.fromRGB(255, 70, 40) }, robloxId = 0 },
-	{ id = "servetAvcisi", ad = "Fortune Hunter", unvan = "Fortune Hunter", tur = "lucky", hedef = 50, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 240, 90), renkB = Color3.fromRGB(80, 230, 110) }, robloxId = 0 },
+	{ id = "yerYaran", ad = "Ground Breaker", unvan = "Ground Breaker", tur = "kazi", hedef = 1000, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 200, 60), renkB = Color3.fromRGB(255, 70, 40) }, robloxId = 3408693571661145 },
+	{ id = "servetAvcisi", ad = "Fortune Hunter", unvan = "Fortune Hunter", tur = "lucky", hedef = 50, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 240, 90), renkB = Color3.fromRGB(80, 230, 110) }, robloxId = 1092148184467403 },
 	{ id = "mitik", ad = "Mythic Seeker", unvan = "Mythic Seeker", tur = "kademe", hedef = kademeSirasi("Mythic"), seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(255, 80, 120), renkB = Color3.fromRGB(255, 160, 220) }, robloxId = 0 },
 	{ id = "alim", ad = "Pet Scholar", unvan = "Pet Scholar", tur = "index", hedef = 50, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(90, 160, 255), renkB = Color3.fromRGB(190, 110, 255) }, robloxId = 0 },
 	{ id = "denizKurdu", ad = "Old Sea Dog", unvan = "Captain of the Sea", tur = "balik", hedef = 500, seviye = 3, stil = { tur = "gecis", renkA = Color3.fromRGB(40, 220, 255), renkB = Color3.fromRGB(30, 90, 255) }, robloxId = 0 },
