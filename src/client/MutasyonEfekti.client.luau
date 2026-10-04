@@ -9,28 +9,16 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
 local Mutations = require(Shared:WaitForChild("Mutations"))
 
-local YORUNGE_SAYISI = 3
 local GORUS_MESAFESI = 160
-local YORUNGE_HIZI = 1.6
 local GOKKUSAGI_HIZI = 0.25
-local YARICAP_ORANI = 0.55
-local YUKSEKLIK_ORANI = 0.1
 
 local BEYAZ = Color3.new(1, 1, 1)
 local PARILTI_DOKUSU = "rbxasset://textures/particles/sparkles_main.dds"
 
-type Yorunge = {
-	tutamak: Attachment,
-	parilti: ParticleEmitter,
-	faz: number,
-}
-
 type Kayit = {
 	govde: BasePart,
 	mutasyon: string,
-	yorungeler: { Yorunge },
-	yaricap: number,
-	merkezKonum: Vector3,
+	yayicilar: { ParticleEmitter },
 	meshler: { SpecialMesh },
 	acik: boolean,
 }
@@ -38,36 +26,47 @@ type Kayit = {
 local kayitlar: { [Instance]: Kayit } = {}
 
 local function govdeBul(kok: Instance): BasePart?
-	if kok:IsA("Tool") then
-		local handle = kok:FindFirstChild("Handle")
-		if handle and handle:IsA("BasePart") then
-			return handle
+	local enBuyuk: BasePart? = nil
+	local enHacim = 0
+	for _, node in kok:GetDescendants() do
+		if node:IsA("BasePart") and not node:GetAttribute(Assets.MeasureSkipAttribute) and node.Transparency < 1 then
+			local hacim = node.Size.X * node.Size.Y * node.Size.Z
+			if hacim > enHacim then
+				enBuyuk, enHacim = node, hacim
+			end
 		end
-	elseif kok:IsA("Model") and kok.PrimaryPart then
-		return kok.PrimaryPart
 	end
-	return kok:FindFirstChildWhichIsA("BasePart", true)
+	return enBuyuk
 end
 
-local function parilti(boy: number, renk: Color3): ParticleEmitter
+local function yayiciYap(boy: number, renk: Color3, govde: BasePart): ParticleEmitter
 	local yayici = Instance.new("ParticleEmitter")
 	yayici.Name = "MutasyonParilti"
 	yayici.Texture = PARILTI_DOKUSU
 	yayici.Color = ColorSequence.new(renk, renk:Lerp(BEYAZ, 0.5))
 	yayici.LightEmission = 1
+	yayici.Shape = Enum.ParticleEmitterShape.Box
+	yayici.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	yayici.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+	yayici.EmissionDirection = Enum.NormalId.Top
+	yayici.SpreadAngle = Vector2.new(180, 180)
 	yayici.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, boy * 0.1),
+		NumberSequenceKeypoint.new(0, boy * 0.07),
+		NumberSequenceKeypoint.new(0.4, boy * 0.09),
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	yayici.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(1, 0.6),
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.6, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
 	})
-	yayici.Lifetime = NumberRange.new(0.5, 0.8)
-	yayici.Rate = 22
-	yayici.Speed = NumberRange.new(0)
+	yayici.Lifetime = NumberRange.new(0.8, 1.4)
+	yayici.Rate = 14
+	yayici.Speed = NumberRange.new(boy * 0.25, boy * 0.55)
+	yayici.Drag = 2
 	yayici.RotSpeed = NumberRange.new(-120, 120)
 	yayici.Rotation = NumberRange.new(0, 360)
+	yayici.Parent = govde
 	return yayici
 end
 
@@ -78,8 +77,8 @@ local function temizle(kok: Instance)
 	end
 	kayitlar[kok] = nil
 
-	for _, yorunge in kayit.yorungeler do
-		yorunge.tutamak:Destroy()
+	for _, yayici in kayit.yayicilar do
+		yayici:Destroy()
 	end
 end
 
@@ -98,33 +97,7 @@ local function kur(kok: Instance)
 		return
 	end
 
-	local enAz, enCok = Assets.worldBounds(kok :: any)
-	if not enAz or not enCok then
-		return
-	end
-
-	local boyut = enCok - enAz
-	local boy = math.max(boyut.X, boyut.Y, boyut.Z, 0.5)
-	local merkezKonum = govde.CFrame:PointToObjectSpace((enAz + enCok) / 2)
-		+ Vector3.new(0, boyut.Y * YUKSEKLIK_ORANI, 0)
-	local renk = Mutations.color(mutasyon)
-
-	local yorungeler = {}
-	for i = 1, YORUNGE_SAYISI do
-		local tutamak = Instance.new("Attachment")
-		tutamak.Name = "MutasyonYorunge"
-		tutamak.Position = merkezKonum
-		tutamak.Parent = govde
-
-		local yayici = parilti(boy, renk)
-		yayici.Parent = tutamak
-
-		table.insert(yorungeler, {
-			tutamak = tutamak,
-			parilti = yayici,
-			faz = (i - 1) * (math.pi * 2 / YORUNGE_SAYISI),
-		})
-	end
+	local boy = math.max(govde.Size.X, govde.Size.Y, govde.Size.Z, 0.5)
 
 	local meshler = {}
 	for _, node in kok:GetDescendants() do
@@ -136,9 +109,7 @@ local function kur(kok: Instance)
 	kayitlar[kok] = {
 		govde = govde,
 		mutasyon = mutasyon,
-		yorungeler = yorungeler,
-		yaricap = math.max(boyut.X, boyut.Z) * YARICAP_ORANI,
-		merkezKonum = merkezKonum,
+		yayicilar = { yayiciYap(boy, Mutations.color(mutasyon), govde) },
 		meshler = meshler,
 		acik = true,
 	}
@@ -152,40 +123,29 @@ RunService.RenderStepped:Connect(function(dt)
 	local bakis = if kamera then kamera.CFrame.Position else Vector3.zero
 
 	for kok, kayit in kayitlar do
-		local ilk = kayit.yorungeler[1]
-		if not kayit.govde.Parent or not ilk or not ilk.tutamak.Parent then
+		if not kayit.govde.Parent then
 			temizle(kok)
 			continue
 		end
 
 		local yakin = kayit.govde:IsDescendantOf(Workspace)
-			and (ilk.tutamak.WorldPosition - bakis).Magnitude <= GORUS_MESAFESI
+			and (kayit.govde.Position - bakis).Magnitude <= GORUS_MESAFESI
 		if yakin ~= kayit.acik then
 			kayit.acik = yakin
-			for _, yorunge in kayit.yorungeler do
-				yorunge.parilti.Enabled = yakin
+			for _, yayici in kayit.yayicilar do
+				yayici.Enabled = yakin
 			end
 		end
-		if not yakin then
-			continue
-		end
 
-		local gokkusagi: Color3? = nil
-		if kayit.mutasyon == "Rainbow" then
+		if yakin and kayit.mutasyon == "Rainbow" then
 			local ton = (zaman * GOKKUSAGI_HIZI) % 1
-			gokkusagi = Color3.fromHSV(ton, 0.75, 1)
+			local renk = Color3.fromHSV(ton, 0.75, 1)
+			for _, yayici in kayit.yayicilar do
+				yayici.Color = ColorSequence.new(renk, renk:Lerp(BEYAZ, 0.5))
+			end
 			local mesh = Color3.fromHSV(ton, 0.45, 1)
 			for _, m in kayit.meshler do
 				m.VertexColor = Vector3.new(mesh.R, mesh.G, mesh.B) * 1.3
-			end
-		end
-
-		for _, yorunge in kayit.yorungeler do
-			local aci = zaman * YORUNGE_HIZI + yorunge.faz
-			yorunge.tutamak.Position = kayit.merkezKonum
-				+ Vector3.new(math.cos(aci) * kayit.yaricap, 0, math.sin(aci) * kayit.yaricap)
-			if gokkusagi then
-				yorunge.parilti.Color = ColorSequence.new(gokkusagi, gokkusagi:Lerp(BEYAZ, 0.5))
 			end
 		end
 	end
