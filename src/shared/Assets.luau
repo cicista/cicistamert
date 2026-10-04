@@ -418,10 +418,11 @@ function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 
 	local model = if pet then petModeli(name) else findModel(Assets.Categories.brainrots, name)
 	if model and Mutations.isSpecial(mutationId) then
-		Assets.mutasyonBoya(model, mutationId)
 		if pet then
 			model:SetAttribute(Assets.MutasyonAttribute, Mutations.get(mutationId).id)
 			CollectionService:AddTag(model, Assets.MutasyonTag)
+		else
+			Assets.mutasyonBoya(model, mutationId)
 		end
 	end
 
@@ -1439,7 +1440,6 @@ export type MutasyonBoyasi = {
 	canlilik: number,
 	koyu: number?,
 	gokkusagi: boolean?,
-	ton: Vector3,
 }
 
 Assets.MutasyonBoyasi = {
@@ -1448,21 +1448,18 @@ Assets.MutasyonBoyasi = {
 		ust = Color3.fromRGB(255, 226, 110),
 		yansima = 0.3,
 		canlilik = 0.95,
-		ton = Vector3.new(1.4, 1.08, 0.35),
 	},
 	Diamond = {
 		alt = Color3.fromRGB(70, 175, 255),
 		ust = Color3.fromRGB(205, 250, 255),
 		yansima = 0.4,
 		canlilik = 0.85,
-		ton = Vector3.new(0.62, 1.08, 1.5),
 	},
 	Galaxy = {
 		alt = Color3.fromRGB(95, 45, 210),
 		ust = Color3.fromRGB(255, 90, 215),
 		yansima = 0.15,
 		canlilik = 0.95,
-		ton = Vector3.new(0.95, 0.45, 1.4),
 	},
 	Lava = {
 		alt = Color3.fromRGB(255, 70, 15),
@@ -1470,7 +1467,6 @@ Assets.MutasyonBoyasi = {
 		yansima = 0,
 		canlilik = 1,
 		koyu = 0.6,
-		ton = Vector3.new(1.5, 0.55, 0.22),
 	},
 	Rainbow = {
 		alt = Color3.fromRGB(255, 80, 80),
@@ -1478,7 +1474,6 @@ Assets.MutasyonBoyasi = {
 		yansima = 0.1,
 		canlilik = 0.9,
 		gokkusagi = true,
-		ton = Vector3.new(1.25, 1.25, 1.25),
 	},
 	Hacker = {
 		alt = Color3.fromRGB(40, 255, 100),
@@ -1486,85 +1481,21 @@ Assets.MutasyonBoyasi = {
 		yansima = 0,
 		canlilik = 1,
 		koyu = 0.45,
-		ton = Vector3.new(0.35, 1.45, 0.5),
 	},
 } :: { [string]: MutasyonBoyasi }
 
 Assets.MutasyonTag = "MutasyonPet"
 Assets.MutasyonAttribute = "Mutasyon"
-Assets.MutasyonMeshAdi = "MutasyonMesh"
-
-local function dokuluMeshTonla(root: Instance, parca: MeshPart, ton: Vector3): BasePart
-	local olcu = parca.Size
-	local ok, ham = pcall(function()
-		return parca.MeshSize
-	end)
-	if ok and ham.X > 0 and ham.Y > 0 and ham.Z > 0 then
-		olcu = parca.Size / ham
-	else
-		olcu = Vector3.one
-	end
-
-	local yeni = Instance.new("Part")
-	yeni.Name = parca.Name
-	yeni.Size = parca.Size
-	yeni.CFrame = parca.CFrame
-	yeni.Anchored = parca.Anchored
-	yeni.CanCollide = parca.CanCollide
-	yeni.CanQuery = parca.CanQuery
-	yeni.CanTouch = parca.CanTouch
-	yeni.Massless = parca.Massless
-	yeni.CastShadow = parca.CastShadow
-	yeni.Color = Color3.new(1, 1, 1)
-	yeni.Material = Enum.Material.SmoothPlastic
-
-	local mesh = Instance.new("SpecialMesh")
-	mesh.Name = Assets.MutasyonMeshAdi
-	mesh.MeshType = Enum.MeshType.FileMesh
-	mesh.MeshId = parca.MeshId
-	mesh.TextureId = parca.TextureID
-	mesh.Scale = olcu
-	mesh.VertexColor = ton
-	mesh.Parent = yeni
-
-	for _, cocuk in parca:GetChildren() do
-		cocuk.Parent = yeni
-	end
-	for ad, deger in parca:GetAttributes() do
-		yeni:SetAttribute(ad, deger)
-	end
-	yeni.Parent = parca.Parent
-
-	local modeller: { Instance } = { root }
-	for _, node in root:GetDescendants() do
-		table.insert(modeller, node)
-	end
-	for _, node in modeller do
-		if node:IsA("Model") and node.PrimaryPart == parca then
-			node.PrimaryPart = yeni
-		end
-	end
-
-	parca:Destroy()
-	return yeni
-end
-
 function Assets.mutasyonBoya(root: Instance, mutationId: string?)
 	local boya = Assets.MutasyonBoyasi[Mutations.get(mutationId).id]
 	if not boya then
 		return
 	end
 
-	for _, node in root:GetDescendants() do
-		if node:IsA("MeshPart") and node.TextureID ~= "" and node.Transparency < 1 then
-			dokuluMeshTonla(root, node, boya.ton)
-		end
-	end
-
 	local parcalar: { BasePart } = {}
 	local enAlt, enUst = math.huge, -math.huge
 	for _, node in root:GetDescendants() do
-		if node:IsA("BasePart") and node.Transparency < 1 and not node:FindFirstChild(Assets.MutasyonMeshAdi) then
+		if node:IsA("BasePart") and node.Transparency < 1 then
 			table.insert(parcalar, node)
 			enAlt = math.min(enAlt, node.Position.Y)
 			enUst = math.max(enUst, node.Position.Y)

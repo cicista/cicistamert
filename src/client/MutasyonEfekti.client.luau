@@ -69,7 +69,6 @@ type Kayit = {
 	siklik: number,
 	hizCarpani: number,
 	birikim: number,
-	meshler: { SpecialMesh },
 }
 
 local kayitlar: { [Instance]: Kayit } = {}
@@ -224,13 +223,6 @@ local function kur(kok: Instance)
 		return
 	end
 
-	local meshler = {}
-	for _, node in kok:GetDescendants() do
-		if node:IsA("SpecialMesh") and node.Name == Assets.MutasyonMeshAdi then
-			table.insert(meshler, node)
-		end
-	end
-
 	local carpan = 1 + math.max((nadirlikSirasi[mutasyon] or 1) - 1, 0) * NADIRLIK_ARTISI
 
 	kayitlar[kok] = {
@@ -242,7 +234,6 @@ local function kur(kok: Instance)
 		siklik = TABAN_SIKLIK * carpan * (SIKLIK_EKI[mutasyon] or 1),
 		hizCarpani = carpan,
 		birikim = math.random(),
-		meshler = meshler,
 	}
 end
 
@@ -267,10 +258,6 @@ RunService.RenderStepped:Connect(function(dt)
 		local renk = kayit.renk
 		if kayit.mutasyon == "Rainbow" then
 			renk = gokkusagi
-			local mesh = Color3.fromHSV((zaman * GOKKUSAGI_HIZI) % 1, 0.45, 1)
-			for _, m in kayit.meshler do
-				m.VertexColor = Vector3.new(mesh.R, mesh.G, mesh.B) * 1.3
-			end
 		end
 
 		kayit.birikim += dt * kayit.siklik
