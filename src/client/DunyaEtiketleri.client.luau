@@ -54,6 +54,16 @@ local function kur(tanim: any, hedef: Instance)
 		end
 	end
 
+	if not adornee and tanim.parca then
+		local parca = hedef:FindFirstChild(tanim.parca, true)
+		if parca and parca:IsA("BasePart") then
+			adornee = parca
+			local yuzey = parca:FindFirstChildOfClass("SurfaceGui")
+			local on = parca.CFrame:VectorToWorldSpace(Vector3.FromNormalId(if yuzey then yuzey.Face else Enum.NormalId.Front))
+			ofset = Vector3.new(0, parca.Size.Y / 2 + tanim.yukseklik, 0) + on * (tanim.ileri or 0)
+		end
+	end
+
 	if not adornee and hedef:IsA("Model") then
 		local cf, boy = hedef:GetBoundingBox()
 		local parca = hedef.PrimaryPart or hedef:FindFirstChildWhichIsA("BasePart", true)

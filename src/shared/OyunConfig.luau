@@ -283,7 +283,9 @@ Config.DunyaEtiketleri = {
 		metin = "LEADERBOARDS",
 		renk = Color3.fromRGB(255, 200, 40),
 		boyut = Vector2.new(24, 4.5),
-		yukseklik = 3,
+		parca = "ScoreBlock",
+		yukseklik = 9,
+		ileri = 6,
 		mesafe = 150,
 	},
 	{
