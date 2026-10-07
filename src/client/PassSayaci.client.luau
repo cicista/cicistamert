@@ -15,7 +15,7 @@ local UI = require(script.Parent:WaitForChild("UI"))
 local SURE_ONADI = "PassSure_"
 
 local IKONLAR: { [string]: string } = {
-	AutoClicker = "shovel",
+	AutoClicker = "autoClicker",
 	Teleporter = "teleporter",
 }
 

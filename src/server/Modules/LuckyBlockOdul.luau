@@ -91,9 +91,15 @@ local sesSablonu: Sound? = nil
 local sesUyarildi = false
 local sonSes = 0
 
-local function luckySesAdi(ad: string): boolean
+local function luckySesPuani(ad: string): number
 	local sade = string.lower((string.gsub(ad, "[%s_%-]", "")))
-	return string.find(sade, "luckyblock", 1, true) ~= nil
+	if sade == "luckyblock" then
+		return 2
+	end
+	if string.find(sade, "luckyblock", 1, true) and not string.find(sade, "opening", 1, true) then
+		return 1
+	end
+	return 0
 end
 
 local function luckySesi(): Sound?
@@ -101,16 +107,25 @@ local function luckySesi(): Sound?
 		return sesSablonu
 	end
 
+	local secilen: Sound? = nil
+	local enIyi = 0
 	for _, kok in { Workspace :: Instance, SoundService, ReplicatedStorage } do
 		for _, d in kok:GetDescendants() do
-			if d:IsA("Sound") and luckySesAdi(d.Name) and not d:GetAttribute(SES_KOPYA_NITELIGI) then
-				local sablon = d:Clone()
-				sablon.Looped = false
-				sablon:SetAttribute(SES_KOPYA_NITELIGI, true)
-				sesSablonu = sablon
-				return sablon
+			if d:IsA("Sound") and not d:GetAttribute(SES_KOPYA_NITELIGI) then
+				local puan = luckySesPuani(d.Name)
+				if puan > enIyi then
+					secilen, enIyi = d, puan
+				end
 			end
 		end
+	end
+
+	if secilen then
+		local sablon = secilen:Clone()
+		sablon.Looped = false
+		sablon:SetAttribute(SES_KOPYA_NITELIGI, true)
+		sesSablonu = sablon
+		return sablon
 	end
 
 	if not sesUyarildi then

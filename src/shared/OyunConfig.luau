@@ -277,6 +277,37 @@ Config.Performans = {
 	gorunurlukAraligi = 0.25,
 }
 
+Config.DunyaEtiketleri = {
+	{
+		yol = { "MainIsland", "TimePlayedLeaderboard" },
+		metin = "LEADERBOARDS",
+		renk = Color3.fromRGB(255, 200, 40),
+		boyut = Vector2.new(24, 4.5),
+		yukseklik = 3,
+		mesafe = 150,
+	},
+	{
+		yol = { "MainIsland", "NPC's", "Shop" },
+		metin = "BUY",
+		alt = "Shovels & Gear",
+		renk = Color3.fromRGB(90, 230, 110),
+		boyut = Vector2.new(8, 3.2),
+		yukseklik = 2.6,
+		mesafe = 45,
+		kafa = true,
+	},
+	{
+		yol = { "MainIsland", "NPC's", "BrainrotSaticisi" },
+		metin = "SELL",
+		alt = "Sell your pets",
+		renk = Color3.fromRGB(255, 170, 50),
+		boyut = Vector2.new(8, 3.2),
+		yukseklik = 2.6,
+		mesafe = 45,
+		kafa = true,
+	},
+}
+
 Config.Duyuru = {
 	kademeler = { "Infernal", "Abyssal" },
 	seritSuresi = 6,
