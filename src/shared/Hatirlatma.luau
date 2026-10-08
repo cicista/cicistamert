@@ -2,7 +2,7 @@
 
 local Hatirlatma = {}
 
-Hatirlatma.MesajId = ""
+Hatirlatma.MesajId = "d5d77d53-3377-ec48-b830-6cdce7600c8b"
 
 Hatirlatma.SirAdi = "BildirimAnahtari"
 Hatirlatma.HaritaAdi = "GunlukOdulHatirlatma"
