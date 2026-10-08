@@ -151,6 +151,7 @@ local function yuvaKur(sira: number): Yuva
 	kap.Text = ""
 	kap.Parent = cubuk
 	UI.corner(kap, 10)
+	UI.slotGorseli(kap)
 
 	local kenar = UI.stroke(kap, Color3.fromRGB(0, 0, 0), 2)
 
@@ -326,7 +327,13 @@ local function yuvayiCiz(sira: number)
 	yuva.adet.Text = if adet > 1 then `x{adet}` else ""
 
 	local acik = kusanilmisMi(tool)
-	yuva.kap.BackgroundTransparency = if acik then 0.05 else 0.25
+	local slotResmi = yuva.kap:FindFirstChild("Gorsel")
+	if slotResmi and slotResmi:IsA("ImageLabel") then
+		slotResmi.ImageTransparency = if acik then 0 else 0.12
+		slotResmi.ImageColor3 = if acik then UI.Gorseller.Slot.seciliRenk else Color3.new(1, 1, 1)
+	else
+		yuva.kap.BackgroundTransparency = if acik then 0.05 else 0.25
+	end
 	yuva.kenar.Color = if acik then Color3.fromRGB(255, 214, 60) else Color3.fromRGB(0, 0, 0)
 	yuva.kenar.Thickness = if acik then 3 else 2
 	yuva.numara.TextTransparency = 0

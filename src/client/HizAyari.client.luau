@@ -79,6 +79,7 @@ oluk.BackgroundColor3 = Color3.fromRGB(12, 13, 20)
 oluk.BorderSizePixel = 0
 oluk.Parent = bolum
 UI.corner(oluk, 8)
+UI.olukGorseli(oluk)
 
 local dolgu = Instance.new("Frame")
 dolgu.Name = "Dolgu"

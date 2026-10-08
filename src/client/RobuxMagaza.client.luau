@@ -382,6 +382,7 @@ local function satinAlmaDugmesi(parent: Instance, renk: Color3, buyusun: boolean
 	end)
 
 	UI.hover(buton, yuz, if buyusun then buton else nil)
+	UI.gorselKapla(buton, yuz)
 
 	taramaIsigi(yuz, 8, 4, 0.75, 2.6, 0.45)
 	buton.Activated:Connect(function()
@@ -663,20 +664,27 @@ do
 	end
 end
 
-local baslik = Instance.new("Frame")
-baslik.Name = "Baslik"
-baslik.Position = UDim2.fromOffset(8, 8)
-baslik.Size = UDim2.new(1, -16, 0, 54)
-baslik.BorderSizePixel = 0
-baslik.ClipsDescendants = true
-baslik.Parent = panel
-UI.corner(baslik, 10)
-UI.polish(baslik, ALTIN, 10)
-UI.stroke(baslik, SIYAH, 2)
-taramaIsigi(baslik, 10, 4, 0.9, 3.5, 0.5)
-UI.pariltilar(baslik, BEYAZ, 10, 3)
+local kapat = UI.closeButton(panel)
 
-do
+local baslik: Frame
+if UI.Gorseller.Kurdele.id ~= "" then
+	baslik = UI.baslikCubugu(panel, "Store", ALTIN, Color3.fromRGB(255, 140, 40), "shop")
+	taramaIsigi(baslik, 10, 4, 0.9, 3.5, 0.5)
+	UI.pariltilar(baslik, BEYAZ, 10, 3)
+else
+	baslik = Instance.new("Frame")
+	baslik.Name = "Baslik"
+	baslik.Position = UDim2.fromOffset(8, 8)
+	baslik.Size = UDim2.new(1, -16, 0, 54)
+	baslik.BorderSizePixel = 0
+	baslik.ClipsDescendants = true
+	baslik.Parent = panel
+	UI.corner(baslik, 10)
+	UI.polish(baslik, ALTIN, 10)
+	UI.stroke(baslik, SIYAH, 2)
+	taramaIsigi(baslik, 10, 4, 0.9, 3.5, 0.5)
+	UI.pariltilar(baslik, BEYAZ, 10, 3)
+
 	local ikon = Instance.new("ImageLabel")
 	ikon.Name = "Ikon"
 	ikon.BackgroundTransparency = 1
@@ -696,12 +704,12 @@ do
 		parent = baslik,
 		zIndex = 5,
 	})
+
+	kapat.Position = UDim2.new(1, -18, 0, 18)
+	kapat.ZIndex = 6
+	UI.stroke(kapat, SIYAH, 2)
 end
 
-local kapat = UI.closeButton(panel)
-kapat.Position = UDim2.new(1, -18, 0, 18)
-kapat.ZIndex = 6
-UI.stroke(kapat, SIYAH, 2)
 kapat.MouseButton1Click:Connect(function()
 	panel.Visible = false
 end)

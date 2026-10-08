@@ -525,6 +525,7 @@ local function refreshEnvanter()
 		satir.Parent = envanterListe
 		UI.corner(satir, 10)
 		UI.stroke(satir, Color3.fromRGB(0, 0, 0), 2)
+		UI.gorselKapla(satir)
 
 		UI.text({
 			text = if fiyat
@@ -916,6 +917,7 @@ detektifDugme.Text = ""
 detektifDugme.Parent = detektifAlt
 UI.corner(detektifDugme, 12)
 UI.stroke(detektifDugme, Color3.fromRGB(0, 0, 0), 3)
+UI.gorselKapla(detektifDugme)
 
 local detektifDugmeYazi = UI.text({
 	text = "",
@@ -1367,15 +1369,24 @@ local function shopRow(parent: ScrollingFrame, entry: any, detail: string, order
 		statusColor = UI.Colors.textDim
 	end
 
+	local durumKutu = Instance.new("Frame")
+	durumKutu.Name = "Durum"
+	durumKutu.BackgroundTransparency = 1
+	durumKutu.AnchorPoint = Vector2.new(1, 0.5)
+	durumKutu.Position = UDim2.new(1, -12, 0.5, 0)
+	durumKutu.Size = UDim2.fromOffset(140, 46)
+	durumKutu.Parent = row
+	local durumGorseli = UI.dugmeGorseli(durumKutu, statusColor)
+
 	UI.text({
 		text = statusText,
 		size = UI.Sizes.body,
 		font = UI.Fonts.bold,
-		color = statusColor,
-		align = Enum.TextXAlignment.Right,
-		frameSize = UDim2.fromOffset(140, 24),
-		position = UDim2.new(1, -154, 0.5, -12),
-		parent = row,
+		color = if durumGorseli then Color3.new(1, 1, 1) else statusColor,
+		align = if durumGorseli then Enum.TextXAlignment.Center else Enum.TextXAlignment.Right,
+		frameSize = if durumGorseli then UDim2.fromScale(1, 0.86) else UDim2.fromOffset(140, 24),
+		position = if durumGorseli then UDim2.new() else UDim2.new(1, -154, 0.5, -12),
+		parent = if durumGorseli then durumKutu else row,
 	})
 
 	if entry.buyable or (entry.owned and not entry.equipped) then
@@ -1905,6 +1916,7 @@ local function menuButonu(
 	yuz.ClipsDescendants = true
 	yuz.Parent = buton
 	UI.corner(yuz, 10)
+	local menuGorseli = UI.gorselKapla(buton, yuz, true)
 
 	local parilti = pariltiKatmani(yuz, menuSirasi)
 
@@ -1966,7 +1978,10 @@ local function menuButonu(
 
 		UI.hover(buton, yuz, yuz)
 	else
-		yuz.BackgroundTransparency = 0.35
+		yuz.BackgroundTransparency = if menuGorseli then 1 else 0.35
+		if menuGorseli and menuGorseli:IsA("ImageLabel") then
+			menuGorseli.ImageTransparency = 0.35
+		end
 		parilti.Visible = false
 		ikon.ImageTransparency = 0.5
 		yedek.TextTransparency = 0.5
@@ -2134,7 +2149,10 @@ local function odulSekmeSec(id: string)
 	end
 	for sekme, dugme in odulSekmeDugmeleri do
 		local secili = sekme == id
-		dugme.BackgroundTransparency = if secili then 0 else 0.5
+		local sekmeRengi = dugme:GetAttribute("SekmeRenk")
+		if not (typeof(sekmeRengi) == "Color3" and UI.sekmeGorseli(dugme, sekmeRengi, secili)) then
+			dugme.BackgroundTransparency = if secili then 0 else 0.5
+		end
 		local cizgi = dugme:FindFirstChild("SekmeKontur")
 		if cizgi and cizgi:IsA("UIStroke") then
 			cizgi.Color = if secili then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(0, 0, 0)
@@ -2157,6 +2175,7 @@ do
 		dugme.Size = UDim2.fromOffset(sekmeEn, 40)
 		dugme.Position = UDim2.fromOffset(10 + (i - 1) * (sekmeEn + 10), 58)
 		dugme.BackgroundColor3 = sekme.renk
+		dugme:SetAttribute("SekmeRenk", sekme.renk)
 		dugme.AutoButtonColor = false
 		dugme.BorderSizePixel = 0
 		dugme.Text = ""
@@ -2366,6 +2385,7 @@ local function odulKartiKur(gun: number, x: number, y: number, en: number, boy: 
 	tikla.AutoButtonColor = false
 	tikla.Text = ""
 	tikla.Parent = cubuk
+	UI.gorselKapla(tikla, nil, false, cubuk)
 	tikla.MouseButton1Click:Connect(function()
 		if gun == odulGun and odulHazir then
 			OdulAl:FireServer()
@@ -2567,6 +2587,7 @@ task.spawn(function()
 			parent = dugme,
 			name = "Label",
 		})
+		UI.gorselKapla(dugme)
 		return dugme, yazi
 	end
 
@@ -3813,6 +3834,7 @@ do
 			frameSize = UDim2.fromScale(1, 1),
 			parent = dugme,
 		})
+		UI.gorselKapla(dugme)
 
 		return kis, yazi, ac, dugme, dugmeYazi
 	end
@@ -3900,6 +3922,7 @@ do
 			frameSize = UDim2.fromScale(1, 1),
 			parent = dugme,
 		})
+		UI.gorselKapla(dugme)
 
 		local function ciz()
 			local kapali = player:GetAttribute(nitelik) == true
@@ -4173,6 +4196,7 @@ do
 		oluk.Parent = row
 		UI.corner(oluk, 6)
 		UI.stroke(oluk, Color3.fromRGB(0, 0, 0), 2)
+		UI.olukGorseli(oluk)
 
 		local oran = if quest.target > 0 then math.clamp(quest.progress / quest.target, 0, 1) else 0
 		if oran > 0 then
@@ -4533,6 +4557,7 @@ do
 	hzOluk.Parent = hzPanel
 	UI.corner(hzOluk, 8)
 	UI.stroke(hzOluk, Color3.fromRGB(0, 0, 0), 2)
+	UI.olukGorseli(hzOluk)
 
 	local hzDolgu = Instance.new("Frame")
 	hzDolgu.Name = "Dolgu"
@@ -4746,6 +4771,7 @@ do
 	takipOluk.Parent = takipPanel
 	UI.corner(takipOluk, 13)
 	UI.stroke(takipOluk, Color3.fromRGB(0, 0, 0), 2)
+	UI.olukGorseli(takipOluk)
 
 	local takipDolgu = Instance.new("Frame")
 	takipDolgu.Size = UDim2.fromScale(0, 1)

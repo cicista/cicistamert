@@ -302,6 +302,7 @@ do
 		dugme.Parent = sekmeler
 		UI.corner(dugme, 8)
 		UI.stroke(dugme, SIYAH, 2).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		UI.gorselKapla(dugme)
 		UI.text({
 			text = yazi,
 			size = UI.Sizes.tiny,

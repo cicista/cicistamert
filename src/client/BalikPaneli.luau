@@ -432,7 +432,7 @@ progressFill.Size = UDim2.fromScale(1, 0.35)
 progressFill.BackgroundColor3 = UI.Colors.good
 progressFill.ClipsDescendants = true
 UI.corner(progressFill, 8)
-UI.cubukCilasi(progressFill)
+UI.cubukCilasi(progressFill, true)
 
 local parilti = kutu("Parilti", progressFill, 3)
 parilti.AnchorPoint = Vector2.new(0.5, 0.5)

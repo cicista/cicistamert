@@ -237,16 +237,27 @@ function UI.ucParca(parent: Instance, id: string, en: number, boy: number, sol: 
 	return kap
 end
 
-function UI.gorselTonu(kap: Instance, renk: Color3, sure: number?)
+local function gorselParcalari(kap: Instance): { ImageLabel }
+	if kap:IsA("ImageLabel") then
+		return { kap }
+	end
+	local liste: { ImageLabel } = {}
 	for _, parca in kap:GetChildren() do
 		if parca:IsA("ImageLabel") then
-			if sure and sure > 0 then
-				TweenService:Create(parca, TweenInfo.new(sure, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					ImageColor3 = renk,
-				}):Play()
-			else
-				parca.ImageColor3 = renk
-			end
+			table.insert(liste, parca)
+		end
+	end
+	return liste
+end
+
+function UI.gorselTonu(kap: Instance, renk: Color3, sure: number?)
+	for _, parca in gorselParcalari(kap) do
+		if sure and sure > 0 then
+			TweenService:Create(parca, TweenInfo.new(sure, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				ImageColor3 = renk,
+			}):Play()
+		else
+			parca.ImageColor3 = renk
 		end
 	end
 end
@@ -277,12 +288,157 @@ local function dugmeGorseliUygula(dugme: GuiObject, renk: Color3, aydinlik: numb
 		local D = Gorseller.Dugme
 		kap = UI.ucParca(dugme, id, D.en, D.boy, D.kapak, D.kapak, 0)
 	end
-	for _, parca in (kap :: Instance):GetChildren() do
-		if parca:IsA("ImageLabel") and parca.Image ~= id then
+	for _, parca in gorselParcalari(kap :: Instance) do
+		if parca.Image ~= id then
 			parca.Image = id
 		end
 	end
 	UI.gorselTonu(kap :: Instance, ton:Lerp(Color3.new(0, 0, 0), 1 - aydinlik), sure)
+end
+
+local function susturKatmanlar(nesne: Instance)
+	for _, cocuk in nesne:GetChildren() do
+		if cocuk:IsA("UIStroke") or cocuk:IsA("UIGradient") then
+			cocuk.Enabled = false
+		elseif cocuk:IsA("GuiObject") and (cocuk.Name == "Desen" or cocuk.Name == "Parlaklik") then
+			cocuk.Visible = false
+		end
+	end
+end
+
+function UI.slotGorseli(hedef: GuiObject, olcek: number?): ImageLabel?
+	local S = Gorseller.Slot
+	if S.id == "" then
+		return nil
+	end
+	hedef.BackgroundTransparency = 1
+	local resim = Instance.new("ImageLabel")
+	resim.Name = "Gorsel"
+	resim.BackgroundTransparency = 1
+	resim.Size = UDim2.fromScale(1, 1)
+	resim.Image = S.id
+	resim.ScaleType = Enum.ScaleType.Slice
+	resim.SliceCenter = S.kesit
+	resim.SliceScale = olcek or S.olcek
+	resim.ZIndex = 0
+	resim.Active = false
+	resim.Parent = hedef
+	return resim
+end
+
+function UI.dugmeGorseli(hedef: GuiObject, renk: Color3): GuiObject?
+	if not dugmeGorselli() then
+		return nil
+	end
+	dugmeGorseliUygula(hedef, renk, 1)
+	local gorsel = hedef:FindFirstChild("Gorsel")
+	return if gorsel and gorsel:IsA("GuiObject") then gorsel else nil
+end
+
+function UI.sekmeGorseli(dugme: GuiObject, renk: Color3, secili: boolean): boolean
+	local S = Gorseller.Sekme
+	if S.gri == "" then
+		return false
+	end
+	dugme.BackgroundTransparency = 1
+	susturKatmanlar(dugme)
+	local id = if secili then S.gri else S.kapali
+	local kap = dugme:FindFirstChild("Gorsel")
+	if not kap then
+		kap = UI.ucParca(dugme, id, S.en, S.boy, S.kapak, S.kapak, 0)
+	end
+	for _, parca in gorselParcalari(kap :: Instance) do
+		parca.Image = id
+	end
+	UI.gorselTonu(kap :: Instance, if secili then renk else Color3.new(1, 1, 1))
+	return true
+end
+
+function UI.gorselKapla(dugme: GuiButton, yuz: GuiObject?, kare: boolean?, zemin: GuiObject?): GuiObject?
+	local tasiyici: GuiObject = zemin or dugme
+	local mevcut = tasiyici:FindFirstChild("Gorsel")
+	if not dugmeGorselli() or mevcut then
+		return if mevcut and mevcut:IsA("GuiObject") then mevcut else nil
+	end
+
+	local D = Gorseller.Dugme
+	local kaynak: GuiObject = yuz or zemin or dugme
+
+	dugme.BackgroundTransparency = 1
+	susturKatmanlar(dugme)
+	if zemin then
+		zemin.BackgroundTransparency = 1
+		susturKatmanlar(zemin)
+	end
+	if yuz then
+		yuz.BackgroundTransparency = 1
+		susturKatmanlar(yuz)
+	end
+
+	if kare then
+		local resim = Instance.new("ImageLabel")
+		resim.Name = "Gorsel"
+		resim.BackgroundTransparency = 1
+		resim.Size = UDim2.fromScale(1, 1)
+		resim.ScaleType = Enum.ScaleType.Slice
+		resim.SliceCenter = D.kareKesit
+		resim.SliceScale = D.kareOlcek
+		resim.ZIndex = 0
+		resim.Active = false
+		resim.Parent = tasiyici
+	end
+
+	local ustunde, basili = false, false
+	local function ciz(sure: number?)
+		local ozel = dugme:GetAttribute("GorselRenk")
+		local renk = if typeof(ozel) == "Color3" then ozel else kaynak.BackgroundColor3
+		local aydinlik = if basili then D.basiliTon elseif ustunde then 1 else D.normalTon
+		dugmeGorseliUygula(tasiyici, renk, aydinlik, sure)
+	end
+	ciz()
+
+	kaynak:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+		ciz()
+	end)
+	dugme:GetAttributeChangedSignal("GorselRenk"):Connect(function()
+		ciz()
+	end)
+	dugme.MouseEnter:Connect(function()
+		ustunde = true
+		ciz(UI.HoverTime)
+	end)
+	dugme.MouseLeave:Connect(function()
+		ustunde, basili = false, false
+		ciz(UI.HoverTime)
+	end)
+	dugme.SelectionGained:Connect(function()
+		ustunde = true
+		ciz(UI.HoverTime)
+	end)
+	dugme.SelectionLost:Connect(function()
+		ustunde, basili = false, false
+		ciz(UI.HoverTime)
+	end)
+	dugme.MouseButton1Down:Connect(function()
+		basili = true
+		ciz()
+	end)
+	dugme.MouseButton1Up:Connect(function()
+		basili = false
+		ciz(UI.HoverTime)
+	end)
+
+	local gorsel = tasiyici:FindFirstChild("Gorsel") :: GuiObject
+
+	if not yuz and not kare and not zemin and not dugme:FindFirstChildOfClass("UIPadding") then
+		local pay = Instance.new("UIPadding")
+		pay.Name = "GorselPayi"
+		pay.PaddingBottom = UDim.new(D.dudakOrani, 0)
+		pay.Parent = dugme
+		gorsel.Size = UDim2.fromScale(1, 1 / (1 - D.dudakOrani))
+	end
+
+	return gorsel
 end
 
 local function dilimliCerceve(hedef: GuiObject, veri: any): Frame
@@ -758,6 +914,15 @@ function UI.panel(parent: Instance, size: UDim2, name: string?): Frame
 			doku.Parent = ic
 			UI.corner(doku, Gorseller.Panel.kose)
 		end
+		frame.ChildAdded:Connect(function(cocuk)
+			if
+				cocuk:IsA("TextLabel")
+				and cocuk.TextSize == UI.Sizes.title
+				and cocuk.Position == UI.BaslikKonumu
+			then
+				UI.kurdeleArkasi(cocuk)
+			end
+		end)
 	else
 		UI.dokuZemini(frame, 14)
 	end
@@ -1489,6 +1654,66 @@ function UI.baslikCubugu(
 	return cubuk, baslik
 end
 
+UI.BaslikKonumu = UDim2.fromOffset(18, 14)
+UI.KurdeleRengi = Color3.fromRGB(255, 190, 60)
+
+function UI.kurdeleArkasi(etiket: TextLabel): Frame?
+	local K = Gorseller.Kurdele
+	local parent = etiket.Parent
+	if K.id == "" or not parent then
+		return nil
+	end
+
+	local DIKEY_PAY, SOL_PAY, SAG_PAY = 4, 12, 18
+	local govdeBoy = etiket.Size.Y.Offset + DIKEY_PAY * 2
+	local k = govdeBoy / K.govdeBoy
+	local x0 = etiket.Position.X.Offset - SOL_PAY
+	local y0 = etiket.Position.Y.Offset - DIKEY_PAY
+
+	etiket.ZIndex = math.max(etiket.ZIndex, 2)
+
+	local kurdele = UI.ucParca(parent, K.id, K.en, K.boy, K.sol, K.sag, etiket.ZIndex - 1)
+	kurdele.Name = "BaslikKurdelesi"
+	kurdele.Position = UDim2.fromOffset(x0 - K.govdeSol * k, y0 - K.govdeUst * k)
+
+	local function renk(): Color3
+		local yazi = etiket.TextColor3
+		local _, doygunluk, parlaklik = yazi:ToHSV()
+		if doygunluk < 0.15 and parlaklik > 0.85 then
+			return etiket:GetAttribute("KurdeleRengi") or UI.KurdeleRengi
+		end
+		return yazi
+	end
+
+	local function boyutla()
+		local yukseklik = etiket.AbsoluteSize.Y
+		local oran = if yukseklik > 0 then etiket.Size.Y.Offset / yukseklik else 1
+		local en = etiket.TextBounds.X * oran
+		kurdele.Visible = etiket.Text ~= "" and etiket.Visible
+		kurdele.Size = UDim2.fromOffset(en + SOL_PAY + SAG_PAY + K.govdeSol * k * 2, K.boy * k)
+	end
+
+	local function renklendir()
+		local r = renk()
+		if r ~= etiket.TextColor3 or etiket:GetAttribute("KurdeleRengi") == nil then
+			etiket:SetAttribute("KurdeleRengi", r)
+		end
+		UI.gorselTonu(kurdele, r)
+		if etiket.TextColor3 ~= BEYAZ then
+			etiket.TextColor3 = BEYAZ
+		end
+	end
+
+	renklendir()
+	boyutla()
+	etiket:GetPropertyChangedSignal("TextColor3"):Connect(renklendir)
+	etiket:GetPropertyChangedSignal("TextBounds"):Connect(boyutla)
+	etiket:GetPropertyChangedSignal("AbsoluteSize"):Connect(boyutla)
+	etiket:GetPropertyChangedSignal("Visible"):Connect(boyutla)
+
+	return kurdele
+end
+
 function UI.renkliKart(kart: GuiObject, renk: Color3): UIStroke
 	kart.BackgroundColor3 = BEYAZ
 	local gecis = Instance.new("UIGradient")
@@ -1509,7 +1734,37 @@ function UI.renkliKart(kart: GuiObject, renk: Color3): UIStroke
 	return UI.stroke(kart, SIYAH, 2)
 end
 
-function UI.cubukCilasi(dolgu: GuiObject)
+function UI.olukGorseli(oluk: GuiObject): Frame?
+	local C = Gorseller.Cubuk
+	local boy = oluk.Size.Y.Offset
+	if C.cerceve == "" or boy <= 0 or oluk.ClipsDescendants then
+		return nil
+	end
+	oluk.BackgroundTransparency = 1
+	susturKatmanlar(oluk)
+	local k = boy / C.cerceveIcBoy
+	local tasma = C.cerceveIcSol * k
+	local kap = UI.ucParca(oluk, C.cerceve, C.cerceveEn, C.cerceveBoy, C.cerceveKapak, C.cerceveKapak, 0)
+	kap.Name = "OlukGorseli"
+	kap.Position = UDim2.fromOffset(-tasma, -C.cerceveIcUst * k)
+	kap.Size = UDim2.new(1, tasma * 2, 0, C.cerceveBoy * k)
+	return kap
+end
+
+function UI.cubukCilasi(dolgu: GuiObject, gorselsiz: boolean?)
+	local C = Gorseller.Cubuk
+	if C.dolgu ~= "" and not gorselsiz then
+		dolgu.BackgroundTransparency = 1
+		local kap = UI.ucParca(dolgu, C.dolgu, C.dolguEn, C.dolguBoy, C.dolguKapak, C.dolguKapak, 0)
+		kap.ClipsDescendants = true
+		local function renklendir()
+			UI.gorselTonu(kap, dolgu.BackgroundColor3)
+		end
+		renklendir()
+		dolgu:GetPropertyChangedSignal("BackgroundColor3"):Connect(renklendir)
+		return
+	end
+
 	local gecis = Instance.new("UIGradient")
 	gecis.Rotation = 90
 	gecis.Color = ColorSequence.new({

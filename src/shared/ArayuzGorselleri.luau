@@ -55,6 +55,9 @@ ArayuzGorselleri.Dugme = {
 	normalTon = 0.92,
 	basiliTon = 0.78,
 	griEnAz = 0.55,
+	dudakOrani = 0.14,
+	kareKesit = Rect.new(215, 190, 717, 205),
+	kareOlcek = 0.13,
 	renkler = {
 		yesil = "rbxassetid://138355576465455",
 		mavi = "rbxassetid://139511945270106",
@@ -85,11 +88,32 @@ ArayuzGorselleri.ParaKutusu = {
 	yuvaMerkezX = 128,
 }
 
-ArayuzGorselleri.Slot = { id = "rbxassetid://126565713725039", kesit = Rect.new(180, 180, 692, 692) }
-ArayuzGorselleri.Sekme = { id = "rbxassetid://89614504346486", gri = "rbxassetid://70437239003906", kapali = "rbxassetid://84080255824088" }
+ArayuzGorselleri.Slot = {
+	id = "rbxassetid://126565713725039",
+	kesit = Rect.new(180, 180, 692, 692),
+	olcek = 0.06,
+	seciliRenk = Color3.fromRGB(255, 225, 120),
+}
+ArayuzGorselleri.Sekme = {
+	id = "rbxassetid://89614504346486",
+	gri = "rbxassetid://70437239003906",
+	kapali = "rbxassetid://84080255824088",
+	en = 932,
+	boy = 413,
+	kapak = 160,
+}
 ArayuzGorselleri.Cubuk = {
 	cerceve = "rbxassetid://120047387291829",
+	cerceveEn = 1008,
+	cerceveBoy = 102,
+	cerceveKapak = 55,
+	cerceveIcSol = 43,
+	cerceveIcUst = 27,
+	cerceveIcBoy = 59,
 	dolgu = "rbxassetid://75259884600656",
+	dolguEn = 1010,
+	dolguBoy = 117,
+	dolguKapak = 60,
 	serit = "rbxassetid://104680980931491",
 }
 

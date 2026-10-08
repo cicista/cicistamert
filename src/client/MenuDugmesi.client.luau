@@ -79,6 +79,7 @@ yuz.ClipsDescendants = true
 yuz.Parent = govde
 UI.corner(yuz, 9)
 UI.corner(UI.gloss(yuz, 0.7), 9)
+UI.gorselKapla(dugme, yuz, false, govde)
 
 local ikonKap = Instance.new("Frame")
 ikonKap.Name = "Ikon"

@@ -309,6 +309,7 @@ otoDugme.ZIndex = 8
 otoDugme.Parent = otoKutu
 UI.corner(otoDugme, 10)
 UI.stroke(otoDugme, Color3.fromRGB(0, 0, 0), 3)
+UI.gorselKapla(otoDugme)
 
 local otoYazi = UI.text({
 	text = "",
