@@ -14,6 +14,26 @@ Rewards.streakReset = 172800
 
 Rewards.YarinBildirimGecikmesi = 3
 
+Rewards.SeriNiteligi = "GunlukSeri"
+Rewards.SeriSansi = 0.05
+Rewards.SeriEnCok = 10
+
+function Rewards.seriGecerli(seri: number, lastReward: number, now: number): number
+	if lastReward <= 0 or now - lastReward >= Rewards.streakReset then
+		return 0
+	end
+	return math.max(0, math.floor(seri))
+end
+
+function Rewards.seriCarpani(seri: number): number
+	return 1 + math.clamp(math.floor(seri), 0, Rewards.SeriEnCok) * Rewards.SeriSansi
+end
+
+function Rewards.seriYazisi(seri: number): string
+	local carpan = Rewards.seriCarpani(seri)
+	return `x{string.format("%.2f", carpan)} Luck`
+end
+
 local function uctakiTur(enPahali: boolean): string
 	local secilen = LuckyBlock.Tiers[1]
 	for _, tur in LuckyBlock.Tiers do

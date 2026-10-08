@@ -59,6 +59,7 @@ export type Data = {
 	inventoryMax: number,
 	lastReward: number,
 	rewardDay: number,
+	streak: number,
 	luckUntil: number,
 	luckBonus: number,
 	level: number,
@@ -158,6 +159,7 @@ local function defaultData(): Data
 		inventoryMax = Canta.Baslangic,
 		lastReward = 0,
 		rewardDay = 1,
+		streak = 0,
 		luckUntil = 0,
 		luckBonus = 1,
 		level = 1,
@@ -412,6 +414,7 @@ local function migrate(raw: any): Data
 
 	data.lastReward = math.max(0, tonumber(raw.lastReward) or 0)
 	data.rewardDay = math.clamp(math.floor(tonumber(raw.rewardDay) or 1), 1, #Rewards.Days)
+	data.streak = math.max(0, math.floor(tonumber(raw.streak) or 0))
 	data.luckUntil = math.max(0, tonumber(raw.luckUntil) or 0)
 	data.luckBonus = math.max(1, tonumber(raw.luckBonus) or 1)
 	data.level = math.clamp(math.floor(tonumber(raw.level) or 1), 1, 100)

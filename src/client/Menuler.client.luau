@@ -2147,6 +2147,58 @@ UI.text({
 	parent = odulPanel,
 })
 
+do
+	local seriRengi = Color3.fromRGB(255, 140, 40)
+	local seriKutu = Instance.new("Frame")
+	seriKutu.Name = "Seri"
+	seriKutu.AnchorPoint = Vector2.new(1, 0)
+	seriKutu.Position = UDim2.new(1, -62, 0, 12)
+	seriKutu.Size = UDim2.fromOffset(300, 40)
+	seriKutu.BackgroundColor3 = seriRengi
+	seriKutu.BorderSizePixel = 0
+	seriKutu.Parent = odulPanel
+	if UI.dugmeGorseli(seriKutu, seriRengi) then
+		seriKutu.BackgroundTransparency = 1
+	else
+		UI.corner(seriKutu, 12)
+		UI.stroke(seriKutu, Color3.fromRGB(0, 0, 0), 2)
+	end
+
+	local seriYazi = UI.text({
+		text = "",
+		size = UI.Sizes.small,
+		font = UI.Fonts.bold,
+		align = Enum.TextXAlignment.Center,
+		frameSize = UDim2.fromScale(1, 0.86),
+		parent = seriKutu,
+		zIndex = 2,
+	})
+
+	local function seriCiz()
+		local seri = tonumber(player:GetAttribute(Rewards.SeriNiteligi)) or 0
+		seriYazi.Text = if seri > 0
+			then `{seri}-DAY STREAK: {string.upper(Rewards.seriYazisi(seri))}`
+			else `DAILY STREAK: +{math.floor(Rewards.SeriSansi * 100 + 0.5)}% LUCK PER DAY`
+	end
+	seriCiz()
+	player:GetAttributeChangedSignal(Rewards.SeriNiteligi):Connect(seriCiz)
+
+	local Ipucu = require(script.Parent:WaitForChild("Ipucu"))
+	Ipucu.bagla(seriKutu, function()
+		local seri = tonumber(player:GetAttribute(Rewards.SeriNiteligi)) or 0
+		return {
+			baslik = "Daily Streak",
+			renk = seriRengi,
+			satirlar = {
+				"Claim your daily reward every day to grow your streak.",
+				`Each day adds +{math.floor(Rewards.SeriSansi * 100 + 0.5)}% Luck, up to {Rewards.seriYazisi(Rewards.SeriEnCok)} at {Rewards.SeriEnCok} days.`,
+				`Your bonus now: {Rewards.seriYazisi(seri)}.`,
+				"Miss a day (48 hours without claiming) and the streak resets.",
+			},
+		}
+	end)
+end
+
 UI.closeButton(odulPanel).MouseButton1Click:Connect(function()
 	odulPanel.Visible = false
 end)

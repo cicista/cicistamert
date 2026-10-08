@@ -16,6 +16,7 @@ local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
 local SureliGecis = require(script.Parent:WaitForChild("SureliGecis"))
+local HatirlatmaServisi = require(script.Parent:WaitForChild("HatirlatmaServisi"))
 
 local Bildirim = Net.event("Bildirim")
 local OdulAc = Net.event("OdulAc")
@@ -46,10 +47,18 @@ local function durum(player: Player): Rewards.State?
 	return d
 end
 
+local SERI_RENGI = Color3.fromRGB(255, 150, 60)
+
 function Odul.push(player: Player)
 	local d = durum(player)
-	if not d then
+	local data = PlayerData.get(player)
+	if not d or not data then
 		return
+	end
+
+	local seri = Rewards.seriGecerli(data.streak, data.lastReward, os.time())
+	if player:GetAttribute(Rewards.SeriNiteligi) ~= seri then
+		player:SetAttribute(Rewards.SeriNiteligi, seri)
 	end
 
 	OdulDurum:FireClient(player, {
@@ -79,9 +88,12 @@ local function hatirlatmaKur(player: Player)
 			hatirlatmaKur(player)
 			return
 		end
+		local data = PlayerData.get(player)
+		local seri = if data then Rewards.seriGecerli(data.streak, data.lastReward, os.time()) else 0
+		local seriEki = if seri > 0 then ` Claim it to keep your {seri}-day streak!` else ""
 		Bildirim:FireClient(
 			player,
-			`Your daily reward is ready! Open Rewards to claim Day {simdi.day}: {Rewards.label(simdi.day)}`,
+			`Your daily reward is ready! Open Rewards to claim Day {simdi.day}: {Rewards.label(simdi.day)}.{seriEki}`,
 			Rewards.color(simdi.day)
 		)
 		Odul.push(player)
@@ -152,6 +164,7 @@ local function al(player: Player)
 
 	aliyor[player] = true
 
+	data.streak = Rewards.seriGecerli(data.streak, data.lastReward, os.time()) + 1
 	data.lastReward = os.time()
 	data.rewardDay = Rewards.nextDay(d.day)
 
@@ -164,15 +177,22 @@ local function al(player: Player)
 	Odul.push(player)
 
 	local yarin = data.rewardDay
+	local seri = data.streak
 	task.delay(Rewards.YarinBildirimGecikmesi, function()
+		if not player.Parent then
+			return
+		end
+		local seriMesaji = if seri >= Rewards.SeriEnCok
+			then `{seri}-day streak! You have the max streak bonus: {Rewards.seriYazisi(seri)}.`
+			else `{seri}-day streak! Your luck is now {Rewards.seriYazisi(seri)}. Come back tomorrow to make it {Rewards.seriYazisi(seri + 1)}!`
+		Bildirim:FireClient(player, seriMesaji, SERI_RENGI)
+		task.wait(Rewards.YarinBildirimGecikmesi)
 		if player.Parent then
-			Bildirim:FireClient(
-				player,
-				`Come back tomorrow for Day {yarin}: {Rewards.label(yarin)}!`,
-				Rewards.color(yarin)
-			)
+			local ek = if HatirlatmaServisi.aktifMi() then " Turn on notifications to get a reminder!" else ""
+			Bildirim:FireClient(player, `Tomorrow's reward (Day {yarin}): {Rewards.label(yarin)}!{ek}`, Rewards.color(yarin))
 		end
 	end)
+	HatirlatmaServisi.planla(player, data.lastReward + Rewards.cooldown, yarin, seri)
 	hatirlatmaKur(player)
 
 	aliyor[player] = nil
@@ -185,6 +205,8 @@ end)
 OdulAl.OnServerEvent:Connect(function(player)
 	al(player)
 end)
+
+HatirlatmaServisi.baslat()
 
 Players.PlayerRemoving:Connect(function(player)
 	aliyor[player] = nil

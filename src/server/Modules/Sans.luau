@@ -9,6 +9,7 @@ local Detectors = require(Shared:WaitForChild("Detectors"))
 local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local OyunConfig = require(Shared:WaitForChild("OyunConfig"))
 local Passler = require(Shared:WaitForChild("Passler"))
+local Rewards = require(Shared:WaitForChild("Rewards"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Sand = require(script.Parent:WaitForChild("Sand"))
@@ -68,8 +69,10 @@ end
 local function kisiselParcalar(player: Player): { Parca }
 	local data = PlayerData.get(player)
 	local dedektor = Detectors.get((if data then data.detector else Detectors.Default) :: any)
+	local seri = if data then Rewards.seriGecerli(data.streak, data.lastReward, os.time()) else 0
 
 	return {
+		{ ad = "Daily Streak", carpan = Rewards.seriCarpani(seri) },
 		{ ad = "Detector", carpan = dedektor.luck },
 		{ ad = "Clovers", carpan = AfkSans.carpan(player), gizli = true },
 		{ ad = "Level", carpan = Seviye.carpan(player) },
