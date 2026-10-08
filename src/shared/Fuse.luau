@@ -23,17 +23,25 @@ Fuse.Merge = {
 	flashTime = 0.35,
 	burstTime = 1.1,
 	holdTime = 1.1,
+	failTime = 0.8,
+	quickTime = 0.3,
 
 	shakeTime = 0.65,
 	shakeStrength = 2.6,
 }
 
-function Fuse.mergeTime(): number
+function Fuse.mergeTime(basari: boolean?, hizli: boolean?): number
 	local M = Fuse.Merge
-	return M.gatherTime + M.flashTime + M.burstTime + M.holdTime
+	if hizli then
+		return M.quickTime
+	end
+	return M.gatherTime + M.flashTime + (if basari == false then M.failTime else M.burstTime + M.holdTime)
 end
 
-function Fuse.burstDelay(): number
+function Fuse.burstDelay(hizli: boolean?): number
+	if hizli then
+		return 0
+	end
 	return Fuse.Merge.gatherTime + Fuse.Merge.flashTime
 end
 

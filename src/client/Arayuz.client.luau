@@ -153,7 +153,14 @@ toastHolder.Name = "Bildirimler"
 toastHolder.AnchorPoint = Vector2.new(0.5, 0)
 toastHolder.Size = UDim2.fromOffset(520, 240)
 toastHolder.BackgroundTransparency = 1
-toastHolder.Parent = screen
+
+local toastEkrani = Instance.new("ScreenGui")
+toastEkrani.Name = "BildirimKatmani"
+toastEkrani.DisplayOrder = UI.PanelKatmani + 3
+toastEkrani.ResetOnSpawn = false
+toastEkrani.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+toastEkrani.Parent = playerGui
+toastHolder.Parent = toastEkrani
 
 local toastLayout = Instance.new("UIListLayout")
 toastLayout.Padding = UDim.new(0, 6)

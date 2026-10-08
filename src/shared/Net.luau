@@ -85,6 +85,7 @@ Net.Events = {
 	"KazmaAc",
 	"KazmaAl",
 	"MadenTakas",
+	"MadenSans",
 
 	"GorevDurum",
 	"GorevAc",

@@ -37,6 +37,7 @@ local FuseSecim = Net.event("FuseSecim")
 local FuseEkle = Net.event("FuseEkle")
 local FuseCikar = Net.event("FuseCikar")
 local FuseBaslat = Net.event("FuseBaslat")
+local AyarKaydet = Net.event("AyarKaydet")
 
 local TAKE_BACK = "FuseGeriAlEylemi"
 
@@ -432,6 +433,64 @@ fuseDugme.MouseButton1Click:Connect(function()
 	if makineDolu then
 		FuseBaslat:FireServer()
 	end
+end)
+
+local ANIM_NITELIK = "FuseAnimasyonKapali"
+
+local animTik = Instance.new("TextButton")
+animTik.Name = "AnimasyonuKapat"
+animTik.AnchorPoint = Vector2.new(0, 1)
+animTik.Position = UDim2.new(0, 14, 1, -28)
+animTik.Size = UDim2.fromOffset(150, 34)
+animTik.BackgroundTransparency = 1
+animTik.Text = ""
+animTik.Parent = pencere
+
+local tikKutu = Instance.new("Frame")
+tikKutu.Name = "Kutu"
+tikKutu.AnchorPoint = Vector2.new(0, 0.5)
+tikKutu.Position = UDim2.fromScale(0, 0.5)
+tikKutu.Size = UDim2.fromOffset(28, 28)
+tikKutu.BackgroundColor3 = KART
+tikKutu.BorderSizePixel = 0
+tikKutu.Parent = animTik
+UI.corner(tikKutu, 6)
+UI.stroke(tikKutu, SIYAH, 2)
+
+local tikIsaret = Instance.new("Frame")
+tikIsaret.Name = "Isaret"
+tikIsaret.AnchorPoint = Vector2.new(0.5, 0.5)
+tikIsaret.Position = UDim2.fromScale(0.5, 0.5)
+tikIsaret.Size = UDim2.fromScale(0.5, 0.5)
+tikIsaret.BackgroundColor3 = Color3.new(1, 1, 1)
+tikIsaret.BorderSizePixel = 0
+tikIsaret.Parent = tikKutu
+UI.corner(tikIsaret, 3)
+
+UI.text({
+	text = "Skip animation",
+	size = UI.Sizes.small,
+	font = UI.Fonts.bold,
+	color = Color3.new(1, 1, 1),
+	frameSize = UDim2.new(1, -36, 1, 0),
+	position = UDim2.fromOffset(36, 0),
+	parent = animTik,
+	name = "Yazi",
+})
+
+local function animTikCiz()
+	local kapali = player:GetAttribute(ANIM_NITELIK) == true
+	tikIsaret.Visible = kapali
+	tikKutu.BackgroundColor3 = if kapali then YESIL else KART
+end
+player:GetAttributeChangedSignal(ANIM_NITELIK):Connect(animTikCiz)
+animTikCiz()
+
+animTik.MouseButton1Click:Connect(function()
+	local yeni = player:GetAttribute(ANIM_NITELIK) ~= true
+	player:SetAttribute(ANIM_NITELIK, yeni)
+	animTikCiz()
+	AyarKaydet:FireServer({ fuseAnimOff = yeni })
 end)
 
 local secim = Instance.new("Frame")
@@ -1094,7 +1153,7 @@ local function resimliRuh(renk: Color3, boy: number, kaynak: any?): Frame
 end
 
 local function playMerge(data: any)
-	if merging then
+	if merging or data.hizli == true then
 		return
 	end
 	merging = true
@@ -1236,7 +1295,7 @@ local function playMerge(data: any)
 		end
 	else
 		shakeCamera(0.3, 0.8)
-		TweenService:Create(core, TweenInfo.new(M.burstTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		TweenService:Create(core, TweenInfo.new(M.failTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Size = UDim2.fromOffset(0, 0),
 			BackgroundColor3 = Color3.fromRGB(40, 40, 45),
 			BackgroundTransparency = 0.6,
@@ -1250,9 +1309,9 @@ local function playMerge(data: any)
 		mergeSub.TextColor3 = Color3.fromRGB(255, 120, 120)
 	end
 
-	task.wait(M.burstTime + M.holdTime)
+	task.wait(if basari then M.burstTime + M.holdTime else M.failTime)
 
-	local fade = TweenService:Create(mergeRoot, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+	local fade = TweenService:Create(mergeRoot, TweenInfo.new(0.2), { BackgroundTransparency = 1 })
 	fade:Play()
 	fade.Completed:Wait()
 
@@ -1261,7 +1320,7 @@ local function playMerge(data: any)
 	mergeRoot.Visible = false
 	merging = false
 
-	if nearMachine and basari then
+	if nearMachine then
 		pencere.Visible = true
 		sonImza = ""
 		pencereCiz()

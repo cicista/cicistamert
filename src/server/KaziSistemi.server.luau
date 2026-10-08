@@ -289,6 +289,21 @@ local function finishDig(player: Player, won: boolean)
 	Ogretici.ucKontrol(player)
 end
 
+local function cantaDolu(player: Player, beam: any): boolean
+	if beam.herkes or beam.kind == "LuckyBlock" or Ores.get(beam.kind) then
+		return false
+	end
+	if PlayerData.cantaSayisi(player) < PlayerData.cantaKapasitesi(player) then
+		return false
+	end
+	Bildirim:FireClient(
+		player,
+		"Your backpack is full! Sell some pets or place them on your base before digging.",
+		Color3.fromRGB(255, 160, 90)
+	)
+	return true
+end
+
 local function kapisabilir(player: Player, beam: any): Player?
 	if beam.sea or beam.kapisma or not beam.claimed then
 		return nil
@@ -493,6 +508,9 @@ local function startDig(player: Player, beamId: string)
 				Bildirim:FireClient(player, "Get closer to challenge them!", KapismaAyar.Renk)
 				return
 			end
+			if cantaDolu(player, beam) then
+				return
+			end
 			kapismaBaslat(player, rakip, beam)
 			return
 		end
@@ -528,7 +546,7 @@ local function startDig(player: Player, beamId: string)
 	end
 
 	local data = PlayerData.get(player)
-	if not data then
+	if not data or cantaDolu(player, beam) then
 		return
 	end
 

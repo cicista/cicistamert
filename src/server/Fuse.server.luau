@@ -436,6 +436,9 @@ local function completeFuse(player: Player)
 
 	local sans = Fuse.chanceFor(slot.entries)
 	local basari = Fuse.rollSuccess(rng, sans)
+	local veri = PlayerData.get(player)
+	local hizli = veri ~= nil and veri.fuseAnimOff == true
+	local toplamSure = Fuse.mergeTime(basari, hizli)
 
 	local kazanilan: any = nil
 	local condition = Fuse.rollSize(slot.entries, rng)
@@ -457,7 +460,7 @@ local function completeFuse(player: Player)
 		if DUYURU_KADEMELERI[nextRarity] then
 			local ad = info.name
 			local kademe = nextRarity
-			task.delay(Fuse.mergeTime(), function()
+			task.delay(toplamSure, function()
 				Bildirim:FireAllClients(
 					`{player.DisplayName} fused a {Rarity.displayName(kademe)} {ad}!`,
 					Rarity.color(kademe)
@@ -500,23 +503,26 @@ local function completeFuse(player: Player)
 		souls = souls,
 		sources = kaynaklar,
 		chance = sans,
+		hizli = hizli,
 	})
 
-	local charge = playFuseSound(player, Fuse.VFX.charge)
+	local charge = if hizli then nil else playFuseSound(player, Fuse.VFX.charge)
 
-	task.delay(Fuse.burstDelay(), function()
+	task.delay(Fuse.burstDelay(hizli), function()
 		if charge and charge.Parent then
 			charge:Stop()
 			charge:Destroy()
 		end
-		if basari and player.Parent then
+		if basari and hizli and player.Parent then
+			playFuseSound(player, Fuse.VFX.explosion)
+		elseif basari and player.Parent then
 			Patlama.oynat(player, nextRarity :: string)
 		elseif not basari and player.Parent then
 			playFuseSound(player, Fuse.VFX.fail)
 		end
 	end)
 
-	task.delay(Fuse.mergeTime(), function()
+	task.delay(toplamSure, function()
 		fusing[player] = nil
 		if not player.Parent then
 			return

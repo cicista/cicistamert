@@ -81,6 +81,7 @@ export type Data = {
 	shakeOff: boolean,
 	hintsOff: boolean,
 	beamSoundOff: boolean,
+	fuseAnimOff: boolean,
 	hideTitle: boolean,
 	hideName: boolean,
 	hideLevel: boolean,
@@ -176,6 +177,7 @@ local function defaultData(): Data
 		shakeOff = false,
 		hintsOff = false,
 		beamSoundOff = false,
+		fuseAnimOff = false,
 		hideTitle = false,
 		hideName = false,
 		hideLevel = false,
@@ -332,6 +334,7 @@ local function migrate(raw: any): Data
 	data.shakeOff = raw.shakeOff == true
 	data.hintsOff = raw.hintsOff == true
 	data.beamSoundOff = raw.beamSoundOff == true
+	data.fuseAnimOff = raw.fuseAnimOff == true
 	data.hideTitle = raw.hideTitle == true
 	data.hideName = raw.hideName == true
 	data.hideLevel = raw.hideLevel == true

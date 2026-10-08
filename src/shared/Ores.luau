@@ -40,6 +40,11 @@ Ores.MineAmount = 1
 
 Ores.TradeCost = 1
 
+Ores.LuckTrade = {
+	cost = 10,
+	potion = "LuckPotion5",
+}
+
 Ores.IslandOrder = { "sekerkum", "snowkum", "alevkum" }
 
 Ores.Islands = {

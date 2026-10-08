@@ -8,10 +8,12 @@ local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Ores = require(Shared:WaitForChild("Ores"))
 local Shovels = require(Shared:WaitForChild("Shovels"))
+local RotCoinMagaza = require(Shared:WaitForChild("RotCoinMagaza"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
 local Envanter = require(Modules:WaitForChild("Envanter"))
+local Iksir = require(Modules:WaitForChild("Iksir"))
 
 local function kurekYenile(player: Player)
 	local kazi = script.Parent:FindFirstChild("KaziSistemi")
@@ -27,6 +29,7 @@ local AdaKurekAl = Net.event("AdaKurekAl")
 local KazmaAc = Net.event("KazmaAc")
 local KazmaAl = Net.event("KazmaAl")
 local MadenTakas = Net.event("MadenTakas")
+local MadenSans = Net.event("MadenSans")
 
 local PROMPT_MESAFE = 12
 local ISTEK_MESAFE = 24
@@ -196,6 +199,7 @@ local function kazmaPayload(player: Player, ada: string)
 	end
 
 	local kazma = Ores.Pickaxes[cfg.pickaxe]
+	local iksir = RotCoinMagaza.get(Ores.LuckTrade.potion)
 
 	return {
 		island = ada,
@@ -203,6 +207,16 @@ local function kazmaPayload(player: Player, ada: string)
 		color = cfg.color,
 		rot = data.rot,
 		tradeCost = Ores.TradeCost,
+		luck = if iksir
+			then {
+				cost = Ores.LuckTrade.cost,
+				name = iksir.name,
+				multiplier = iksir.multiplier or 1,
+				minutes = (iksir.seconds or 0) // 60,
+				icon = iksir.icon,
+				color = iksir.color,
+			}
+			else nil,
 		pickaxe = {
 			id = kazma.id,
 			displayName = kazma.displayName,
@@ -375,6 +389,50 @@ MadenTakas.OnServerEvent:Connect(function(player, oreId)
 	Envanter.push(player)
 	KazmaAc:FireClient(player, kazmaPayload(player, maden.island))
 	Bildirim:FireClient(player, `Traded for 1 {maden.displayName} (x{adet})`, maden.color)
+end)
+
+MadenSans.OnServerEvent:Connect(function(player, ada)
+	if type(ada) ~= "string" then
+		return
+	end
+
+	local cfg = Ores.island(ada)
+	local iksir = RotCoinMagaza.get(Ores.LuckTrade.potion)
+	if not cfg or not iksir or not yakinda(player, `{ada}|kazma`) then
+		return
+	end
+
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+
+	local bedel = Ores.LuckTrade.cost
+	local eksikler: { string } = {}
+	for _, id in cfg.ores do
+		local var = data.ores[id] or 0
+		if var < bedel then
+			table.insert(eksikler, `{bedel - var} {Ores.Info[id].displayName}`)
+		end
+	end
+	if #eksikler > 0 then
+		Bildirim:FireClient(player, `Missing for {iksir.name}: {table.concat(eksikler, ", ")}`, UYARI)
+		return
+	end
+
+	local ok, sebep = Iksir.ver(player, iksir.multiplier or 1, iksir.seconds or 0)
+	if ok then
+		for _, id in cfg.ores do
+			PlayerData.addOre(player, id, -bedel)
+		end
+		Bildirim:FireClient(player, `{iksir.name} activated! {iksir.desc}`, iksir.color)
+	else
+		Bildirim:FireClient(player, sebep or "Purchase failed.", HATA)
+	end
+
+	Envanter.push(player)
+	Iksir.durumGonder(player)
+	KazmaAc:FireClient(player, kazmaPayload(player, ada))
 end)
 
 local function promptTak(anchor: BasePart, ad: string, nesne: string, tetik: (Player) -> ())

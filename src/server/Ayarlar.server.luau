@@ -18,6 +18,7 @@ local ACIK_KAPALI = {
 	shakeOff = "SarsintiKapali",
 	hintsOff = "RehberKapali",
 	beamSoundOff = "SuzmeSesiKapali",
+	fuseAnimOff = "FuseAnimasyonKapali",
 	hideTitle = "UnvanGizli",
 	hideName = "IsimGizli",
 	hideLevel = "LevelGizli",

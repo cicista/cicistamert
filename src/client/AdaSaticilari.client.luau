@@ -18,6 +18,7 @@ local AdaKurekAl = Net.event("AdaKurekAl")
 local KazmaAc = Net.event("KazmaAc")
 local KazmaAl = Net.event("KazmaAl")
 local MadenTakas = Net.event("MadenTakas")
+local MadenSans = Net.event("MadenSans")
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "AdaSaticilari"
@@ -435,6 +436,63 @@ KazmaAc.OnClientEvent:Connect(function(payload)
 		dugme.Position = UDim2.new(1, -124, 0.5, -21)
 		dugme.MouseButton1Click:Connect(function()
 			MadenTakas:FireServer(ore.id)
+		end)
+	end
+
+	local sans = payload.luck
+	if type(sans) == "table" then
+		order += 1
+		bolumBasligi(kazmaListe, `LUCK  --  give {sans.cost} of each ore`, order)
+
+		order += 1
+		local row = satir(kazmaListe, order, sans.color, false)
+
+		local ikon = Instance.new("ImageLabel")
+		ikon.Name = "SansIkonu"
+		ikon.BackgroundTransparency = 1
+		ikon.Size = UDim2.fromOffset(44, 44)
+		ikon.Position = UDim2.fromOffset(12, 15)
+		ikon.ScaleType = Enum.ScaleType.Fit
+		ikon.Visible = false
+		ikon.Parent = row
+		Icons.bind(ikon, sans.icon, function(ok)
+			if ok then
+				ikon.Visible = true
+			end
+		end)
+
+		UI.text({
+			text = `x{string.format("%g", sans.multiplier)} {sans.name}  -  {sans.minutes} min`,
+			size = UI.Sizes.body,
+			font = UI.Fonts.bold,
+			color = sans.color,
+			frameSize = UDim2.new(1, -200, 0, 22),
+			position = UDim2.fromOffset(64, 9),
+			parent = row,
+		})
+
+		local bedel: { Parca } = { { yazi = "Costs" } }
+		local yeterli = true
+		for _, ore in payload.ores do
+			table.insert(bedel, { ore = ore.id, yazi = tostring(sans.cost) })
+			if ore.count < sans.cost then
+				yeterli = false
+			end
+		end
+
+		serit(
+			row,
+			UDim2.fromOffset(64, 34),
+			UDim2.new(1, -200, 0, 20),
+			bedel,
+			if yeterli then UI.Colors.textDim else UI.Colors.warn,
+			16
+		)
+
+		local dugme = UI.button(row, "BUY", UDim2.fromOffset(110, 42), if yeterli then UI.Colors.good else UI.Colors.panel)
+		dugme.Position = UDim2.new(1, -124, 0.5, -21)
+		dugme.MouseButton1Click:Connect(function()
+			MadenSans:FireServer(payload.island)
 		end)
 	end
 
