@@ -1664,7 +1664,7 @@ function UI.kurdeleArkasi(etiket: TextLabel): Frame?
 		return nil
 	end
 
-	local DIKEY_PAY, SOL_PAY, SAG_PAY = 4, 12, 18
+	local DIKEY_PAY, SOL_PAY, SAG_PAY = 0, 12, 18
 	local govdeBoy = etiket.Size.Y.Offset + DIKEY_PAY * 2
 	local k = govdeBoy / K.govdeBoy
 	local x0 = etiket.Position.X.Offset - SOL_PAY

@@ -666,12 +666,14 @@ function rotAnim.satir(
 	local paraGorselli = para.id ~= ""
 	local ikonBoyu = if paraGorselli then yukseklik - 18 else yukseklik - 8
 
+	local paraKutusu: Frame? = nil
+	local paraOlcek = (yukseklik + 4) / para.boy
 	if paraGorselli then
-		local k = (yukseklik + 4) / para.boy
 		local kutu = UI.ucParca(rotKutu, para.id, para.en, para.boy, para.sol, para.sag, 0)
 		kutu.Name = `{ad}Kutusu`
-		kutu.Position = UDim2.fromOffset(34 - para.yuvaMerkezX * k, y - 2)
-		kutu.Size = UDim2.fromOffset(310, para.boy * k)
+		kutu.Position = UDim2.fromOffset(34 - para.yuvaMerkezX * paraOlcek, y - 2)
+		kutu.Size = UDim2.fromOffset(200, para.boy * paraOlcek)
+		paraKutusu = kutu
 	end
 
 	local ikon = Instance.new("ImageLabel")
@@ -722,6 +724,21 @@ function rotAnim.satir(
 
 	local kontur = UI.stroke(yazi, konturRengi, konturKalinligi)
 	kontur.LineJoinMode = Enum.LineJoinMode.Round
+
+	local kutu = paraKutusu
+	if kutu then
+		local function boyutla()
+			local boy = yazi.AbsoluteSize.Y
+			local oran = if boy > 0 then yukseklik / boy else 1
+			local yaziEn = yazi.TextBounds.X * oran
+			local enAz = (para.sol + para.sag) * paraOlcek + 80
+			local sag = 76 + math.max(yaziEn, 24) + 22
+			kutu.Size = UDim2.fromOffset(math.max(enAz, sag - kutu.Position.X.Offset), para.boy * paraOlcek)
+		end
+		boyutla()
+		yazi:GetPropertyChangedSignal("TextBounds"):Connect(boyutla)
+		yazi:GetPropertyChangedSignal("AbsoluteSize"):Connect(boyutla)
+	end
 
 	local olcek = Instance.new("UIScale")
 	olcek.Name = "Zipla"

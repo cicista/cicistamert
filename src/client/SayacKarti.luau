@@ -38,6 +38,7 @@ export type Kart = {
 	slaytlar: { Slayt },
 	simdiki: number,
 	sabit: boolean,
+	gorsel: Frame?,
 }
 
 function SayacKarti.sure(saniye: number): string
@@ -158,8 +159,27 @@ function SayacKarti.kur(parent: GuiObject, renk: Color3, rakam: boolean?): Kart
 		slaytlar = {},
 		simdiki = 1,
 		sabit = false,
+		gorsel = nil,
 	}
 	SayacKarti.zeminRengi(kart, renk)
+
+	local para = UI.Gorseller.ParaKutusu
+	if para.id ~= "" then
+		cerceve.BackgroundTransparency = 1
+		kontur.Enabled = false
+		local desen = ic:FindFirstChild("Desen")
+		if desen and desen:IsA("GuiObject") then
+			desen.Visible = false
+		end
+		local k = (SayacKarti.BOY + 4) / para.boy
+		local x = modelAlani.Position.X.Offset - para.yuvaMerkezX * k
+		local gorsel = UI.ucParca(cerceve, para.id, para.en, para.boy, para.sol, para.sag, 0)
+		gorsel.Name = "KartGorseli"
+		gorsel.Position = UDim2.fromOffset(x, (SayacKarti.BOY - para.boy * k) / 2)
+		gorsel.Size = UDim2.fromOffset(SayacKarti.EN - x + 2, para.boy * k)
+		kart.gorsel = gorsel
+	end
+
 	return kart
 end
 
@@ -378,6 +398,11 @@ function SayacKarti.boya(kart: Kart, durum: Durum, t: number, renk: Color3, akti
 		kart.kontur.Color = SIYAH
 		kart.kontur.Thickness = 3
 		kart.olcek.Scale = 1
+	end
+
+	local gorsel = kart.gorsel
+	if gorsel then
+		UI.gorselTonu(gorsel, if durum == "bekle" then BEYAZ else kart.kontur.Color:Lerp(BEYAZ, 0.45))
 	end
 end
 

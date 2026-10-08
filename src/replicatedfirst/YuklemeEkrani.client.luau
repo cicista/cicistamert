@@ -1377,6 +1377,92 @@ local function varliklariYukle()
 	end
 end
 
+local function tabanAyarla(nesne: Instance, ozellik: string, deger: number)
+	local kayit = tabanlar[nesne]
+	if kayit then
+		kayit[ozellik] = deger
+	end
+	(nesne :: any)[ozellik] = deger
+end
+
+local function dilimResim(ad: string, ebeveyn: Instance, kimlik: string, kesit: Rect, olcek: number, z: number): ImageLabel
+	local resim = Instance.new("ImageLabel")
+	resim.Name = ad
+	resim.BackgroundTransparency = 1
+	resim.Size = UDim2.fromScale(1, 1)
+	resim.Image = kimlik
+	resim.ScaleType = Enum.ScaleType.Slice
+	resim.SliceCenter = kesit
+	resim.SliceScale = olcek
+	resim.ZIndex = z
+	resim.Parent = ebeveyn
+	return resim
+end
+
+local function gorselleriUygula(G: any)
+	local D = G.Dugme
+	local C = G.Cubuk
+
+	local function dugmeGorseli(d: Dugme, kimlik: string, ton: Color3)
+		if kimlik == "" then
+			return
+		end
+		tabanAyarla(d.dugme, "BackgroundTransparency", 1)
+		d.gecis.Enabled = false
+		local cizgi = d.dugme:FindFirstChildOfClass("UIStroke")
+		if cizgi then
+			cizgi.Enabled = false
+		end
+		local parlak = d.dugme:FindFirstChild("Parlak")
+		if parlak and parlak:IsA("GuiObject") then
+			parlak.Visible = false
+		end
+		local resim = dilimResim("Gorsel", d.dugme, kimlik, D.kareKesit, dugmeKap.Size.Y.Offset / D.boy, 1)
+		resim.ImageColor3 = ton
+		d.yazi.Size = UDim2.fromScale(1, 1 - D.dudakOrani)
+	end
+
+	dugmeGorseli(oyna, D.renkler.mavi, BEYAZ)
+	dugmeGorseli(atlaD, D.renkler.gri, Color3.fromRGB(150, 160, 190))
+
+	if C.cerceve ~= "" then
+		tabanAyarla(cubuk, "BackgroundTransparency", 1)
+		local cizgi = cubuk:FindFirstChildOfClass("UIStroke")
+		if cizgi then
+			cizgi.Enabled = false
+		end
+		local k = cubuk.Size.Y.Offset / C.cerceveIcBoy
+		local kesit = Rect.new(C.cerceveKapak, C.cerceveIcUst, C.cerceveEn - C.cerceveKapak, C.cerceveIcUst + C.cerceveIcBoy)
+		local resim = dilimResim("Cerceve", cubuk, C.cerceve, kesit, k, 0)
+		resim.Position = UDim2.fromOffset(-C.cerceveIcSol * k, -C.cerceveIcUst * k)
+		resim.Size = UDim2.new(1, C.cerceveIcSol * k * 2, 0, C.cerceveBoy * k)
+	end
+
+	if C.dolgu ~= "" then
+		tabanAyarla(dolgu, "BackgroundTransparency", 1)
+		local kesit = Rect.new(C.dolguKapak, 40, C.dolguEn - C.dolguKapak, 77)
+		local resim = dilimResim("Gorsel", dolgu, C.dolgu, kesit, cubuk.Size.Y.Offset / C.dolguBoy, 1)
+		dolguGecis.Parent = resim
+	end
+
+	if D.renkler.altin ~= "" then
+		tabanAyarla(ipucuEtiket, "BackgroundTransparency", 1)
+		dilimResim("Gorsel", ipucuEtiket, D.renkler.altin, D.kareKesit, ipucuEtiket.Size.Y.Offset / D.boy, 1)
+	end
+end
+
+task.spawn(function()
+	local paylasilan = ReplicatedStorage:WaitForChild("Shared", 30)
+	local modul = paylasilan and paylasilan:WaitForChild("ArayuzGorselleri", 30)
+	if not modul or not modul:IsA("ModuleScript") or kapandi then
+		return
+	end
+	local ok, G = pcall(require, modul)
+	if ok and type(G) == "table" then
+		gorselleriUygula(G)
+	end
+end)
+
 solukluk(kayan, 1, 0)
 kayan.Position = UDim2.fromOffset(0, 40)
 

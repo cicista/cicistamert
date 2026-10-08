@@ -114,6 +114,7 @@ bar.ZIndex = 3
 bar.Parent = panel
 UI.corner(bar, 8)
 UI.stroke(bar, SIYAH, 2)
+UI.olukGorseli(bar)
 
 local dolgu = Instance.new("Frame")
 dolgu.Name = "Dolgu"
@@ -134,6 +135,11 @@ do
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 140, 235)),
 	})
 	renk.Parent = dolgu
+	if UI.Gorseller.Cubuk.dolgu ~= "" then
+		renk.Enabled = false
+		dolgu.BackgroundColor3 = Color3.fromRGB(80, 215, 255)
+		UI.cubukCilasi(dolgu)
+	end
 
 	local isik = Instance.new("Frame")
 	isik.Name = "Isik"
@@ -230,6 +236,27 @@ for i, yer in { Vector2.new(0.08, 0), Vector2.new(0.55, 0), Vector2.new(0.35, 1)
 	y.Parent = panel
 	UI.corner(y, 2)
 	table.insert(yildizlar, y)
+end
+
+do
+	local para = UI.Gorseller.ParaKutusu
+	if para.id ~= "" then
+		panel.BackgroundTransparency = 1
+		panelKontur.Enabled = false
+		isiltiKontur.Enabled = false
+		for _, cocuk in panel:GetChildren() do
+			if cocuk:IsA("UIGradient") then
+				cocuk.Enabled = false
+			elseif cocuk:IsA("GuiObject") and cocuk.Name == "Desen" then
+				cocuk.Visible = false
+			end
+		end
+		local k = (YUKSEKLIK + 6) / para.boy
+		local gorsel = UI.ucParca(kutu, para.id, para.en, para.boy, para.sol, para.sag, 1)
+		gorsel.Name = "BarGorseli"
+		gorsel.Position = UDim2.fromOffset(ROZET / 2 - para.yuvaMerkezX * k, (YUKSEKLIK - para.boy * k) / 2)
+		gorsel.Size = UDim2.new(1, -gorsel.Position.X.Offset + 4, 0, para.boy * k)
+	end
 end
 
 local zaman = 0
