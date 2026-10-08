@@ -15,6 +15,7 @@ local SosyalOdul = require(Shared:WaitForChild("SosyalOdul"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
+local SureliGecis = require(script.Parent:WaitForChild("SureliGecis"))
 
 local Bildirim = Net.event("Bildirim")
 local OdulAc = Net.event("OdulAc")
@@ -27,6 +28,8 @@ local Odul = {}
 local aliyor: { [Player]: boolean } = {}
 
 local girisZamani: { [Player]: number } = {}
+
+local hatirlatmaSirasi: { [Player]: number } = {}
 
 local function durum(player: Player): Rewards.State?
 	local data = PlayerData.get(player)
@@ -55,6 +58,34 @@ function Odul.push(player: Player)
 		remaining = d.remaining,
 		cooldown = Rewards.cooldown,
 	})
+end
+
+local function hatirlatmaKur(player: Player)
+	local d = durum(player)
+	if not d or d.ready then
+		return
+	end
+	local sira = (hatirlatmaSirasi[player] or 0) + 1
+	hatirlatmaSirasi[player] = sira
+	task.delay(d.remaining + 1, function()
+		if hatirlatmaSirasi[player] ~= sira or not player.Parent then
+			return
+		end
+		local simdi = durum(player)
+		if not simdi then
+			return
+		end
+		if not simdi.ready then
+			hatirlatmaKur(player)
+			return
+		end
+		Bildirim:FireClient(
+			player,
+			`Your daily reward is ready! Open Rewards to claim Day {simdi.day}: {Rewards.label(simdi.day)}`,
+			Rewards.color(simdi.day)
+		)
+		Odul.push(player)
+	end)
 end
 
 local function ver(player: Player, day: number)
@@ -132,6 +163,18 @@ local function al(player: Player)
 	OdulSonuc:FireClient(player, { day = d.day })
 	Odul.push(player)
 
+	local yarin = data.rewardDay
+	task.delay(Rewards.YarinBildirimGecikmesi, function()
+		if player.Parent then
+			Bildirim:FireClient(
+				player,
+				`Come back tomorrow for Day {yarin}: {Rewards.label(yarin)}!`,
+				Rewards.color(yarin)
+			)
+		end
+	end)
+	hatirlatmaKur(player)
+
 	aliyor[player] = nil
 end
 
@@ -146,6 +189,7 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	aliyor[player] = nil
 	girisZamani[player] = nil
+	hatirlatmaSirasi[player] = nil
 end)
 
 for _, player in Players:GetPlayers() do
@@ -158,6 +202,7 @@ Players.PlayerAdded:Connect(function(player)
 		task.wait(3)
 		if PlayerData.bekle(player) then
 			Odul.push(player)
+			hatirlatmaKur(player)
 		end
 	end)
 end)

@@ -12,6 +12,8 @@ Rewards.MinSessionSeconds = 15 * 60
 
 Rewards.streakReset = 172800
 
+Rewards.YarinBildirimGecikmesi = 3
+
 local function uctakiTur(enPahali: boolean): string
 	local secilen = LuckyBlock.Tiers[1]
 	for _, tur in LuckyBlock.Tiers do
@@ -37,7 +39,7 @@ export type Day = {
 
 Rewards.Days = {
 	{ day = 1, kind = "rot", amount = 150000, rotCoins = 1 },
-	{ day = 2, kind = "rot", amount = 3000000, rotCoins = 1 },
+	{ day = 2, kind = "luckyblock", amount = 1, tier = "Diamond", rotCoins = 1 },
 	{ day = 3, kind = "pass", amount = 0, pass = "DetectivePass", passSeconds = 86400, rotCoins = 1 },
 	{ day = 4, kind = "luckyblock", amount = 1, tier = EN_UCUZ, rotCoins = 1 },
 	{ day = 5, kind = "luckyblock", amount = 2, tier = EN_UCUZ, rotCoins = 2, pass = "Teleporter", passSeconds = 43200 },
