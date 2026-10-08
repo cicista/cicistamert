@@ -661,7 +661,17 @@ function rotAnim.satir(
 	konturRengi: Color3,
 	konturKalinligi: number
 ): TextLabel
-	local ikonBoyu = yukseklik - 8
+	local para = UI.Gorseller.ParaKutusu
+	local paraGorselli = para.id ~= ""
+	local ikonBoyu = if paraGorselli then yukseklik - 18 else yukseklik - 8
+
+	if paraGorselli then
+		local k = (yukseklik + 4) / para.boy
+		local kutu = UI.ucParca(rotKutu, para.id, para.en, para.boy, para.sol, para.sag, 0)
+		kutu.Name = `{ad}Kutusu`
+		kutu.Position = UDim2.fromOffset(34 - para.yuvaMerkezX * k, y - 2)
+		kutu.Size = UDim2.fromOffset(310, para.boy * k)
+	end
 
 	local ikon = Instance.new("ImageLabel")
 	ikon.Name = `{ad}Ikon`

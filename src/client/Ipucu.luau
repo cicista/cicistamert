@@ -22,7 +22,9 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-local balon = Instance.new("Frame")
+local gorsel = UI.Gorseller.Ipucu
+
+local balon = Instance.new("ImageLabel")
 balon.Name = "Balon"
 balon.AnchorPoint = Vector2.new(1, 0)
 balon.Size = UDim2.fromOffset(EN, 0)
@@ -35,11 +37,22 @@ balon.Parent = screen
 UI.corner(balon, 12)
 local kontur = UI.stroke(balon, Color3.new(1, 1, 1), 2)
 
+local kenar = 0
+if gorsel.id ~= "" then
+	balon.BackgroundTransparency = 1
+	balon.Image = gorsel.id
+	balon.ScaleType = Enum.ScaleType.Slice
+	balon.SliceCenter = gorsel.kesit
+	balon.SliceScale = gorsel.olcek
+	kontur.Enabled = false
+	kenar = math.ceil(gorsel.tasma * gorsel.olcek)
+end
+
 local pay = Instance.new("UIPadding")
-pay.PaddingTop = UDim.new(0, 8)
-pay.PaddingBottom = UDim.new(0, 10)
-pay.PaddingLeft = UDim.new(0, 12)
-pay.PaddingRight = UDim.new(0, 12)
+pay.PaddingTop = UDim.new(0, 8 + kenar)
+pay.PaddingBottom = UDim.new(0, 10 + kenar)
+pay.PaddingLeft = UDim.new(0, 12 + kenar)
+pay.PaddingRight = UDim.new(0, 12 + kenar)
 pay.Parent = balon
 
 local duzen = Instance.new("UIListLayout")

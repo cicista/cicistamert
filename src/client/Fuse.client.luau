@@ -71,7 +71,7 @@ local KUTU_X = (ANA_W - KUTU_EN) / 2
 local KUTU_Y = 330
 
 local pencere = UI.panel(screen, UDim2.fromOffset(W, H), "FuseMakinesi")
-pencere.ClipsDescendants = true
+pencere.ClipsDescendants = UI.Gorseller.Panel.id == ""
 
 UI.closeButton(pencere).MouseButton1Click:Connect(function()
 	pencere.Visible = false
