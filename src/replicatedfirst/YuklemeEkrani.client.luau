@@ -24,6 +24,7 @@ end)
 local ARKA_PLAN_KLASORU = { "Assets", "Backgrounds" }
 local ARKA_PLAN_ADI = "LoadingScreen"
 local LOGO_ORANI = 1842 / 1026
+local LOGO_ODAK_KAYMASI = -0.028
 
 local ADA_ADI = "MainIsland"
 local YORUNGE_SURESI = 70
@@ -725,7 +726,7 @@ local function olcekle()
 	logo.Size = UDim2.fromOffset(en, boy)
 	logo.Position = UDim2.new(0.5, 0, 0, logoMerkezi.Y)
 	efektKabi.Size = UDim2.fromOffset(en * 1.9, en * 1.9)
-	efektKabi.Position = UDim2.new(0.5, 0, 0, logoMerkezi.Y)
+	efektKabi.Position = UDim2.new(0.5, en * LOGO_ODAK_KAYMASI, 0, logoMerkezi.Y)
 	icerik.Position = UDim2.new(0.5, 0, 0, ust + boy + bosluk)
 end
 
@@ -1079,7 +1080,7 @@ local cizimBagi: RBXScriptConnection? = RunService.RenderStepped:Connect(functio
 			paralaks = paralaks:Lerp(hedefKayma, math.min(1, dt * 3))
 		end
 	end
-	logo.Position = UDim2.new(0.5, paralaks.X + kayma.X, 0, logoMerkezi.Y + paralaks.Y + kayma.Y)
+	logo.Position = UDim2.new(0.5, logoEni * LOGO_ODAK_KAYMASI + paralaks.X + kayma.X, 0, logoMerkezi.Y + paralaks.Y + kayma.Y)
 
 	local isikT = math.min((zaman % 2.6) / 0.9, 1)
 	local isikKonumu = UDim2.new(-0.3 + isikT * 1.6, 0, 0.5, 0)
