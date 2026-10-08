@@ -261,6 +261,7 @@ local function tamamla(oturum: Oturum)
 			Envanter.syncBrainrots(oyuncu)
 			Envanter.syncLuckyBlocks(oyuncu)
 			Envanter.push(oyuncu)
+			Envanter.indexGonder(oyuncu)
 			Unvan.ilerlet(oyuncu, "trade", 1)
 		end)
 	end

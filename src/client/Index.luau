@@ -821,6 +821,57 @@ local adaYazilari: { [string]: TextLabel } = {}
 
 local SEKME_KAPALI = Color3.fromRGB(78, 84, 100)
 
+local adaNoktalari: { [string]: (boolean) -> () } = {}
+local mutasyonNoktalari: { [string]: (boolean) -> () } = {}
+local menuNoktasi: ((boolean) -> ())? = nil
+
+local adaKademeleri: { [string]: { string } } = {}
+for _, ada in Brainrots.IslandOrder do
+	adaKademeleri[ada] = siraliKademeler(ada)
+end
+
+local function bekleyenVar(mutasyon: string, ada: string): boolean
+	local kesif = if mutasyon == "Normal" then sonKesif else sonMutasyonKesif[mutasyon]
+	if not kesif then
+		return false
+	end
+	for _, rarityId in adaKademeleri[ada] or {} do
+		if sonOdul[IndexOdul.anahtar(mutasyon, ada, rarityId)] ~= true and IndexOdul.tamam(kesif, ada, rarityId) then
+			return true
+		end
+	end
+	return false
+end
+
+local function noktalariCiz()
+	local herhangi = false
+	for _, mutasyon in IndexOdul.Mutasyonlar do
+		local mutasyonda = false
+		for _, ada in Brainrots.IslandOrder do
+			local var = bekleyenVar(mutasyon, ada)
+			if var then
+				mutasyonda = true
+			end
+			if mutasyon == seciliMutasyon then
+				local nokta = adaNoktalari[ada]
+				if nokta then
+					nokta(var)
+				end
+			end
+		end
+		local nokta = mutasyonNoktalari[mutasyon]
+		if nokta then
+			nokta(mutasyonda)
+		end
+		herhangi = herhangi or mutasyonda
+	end
+
+	local menu = menuNoktasi
+	if menu then
+		menu(herhangi)
+	end
+end
+
 local function durumuCiz()
 	local bulunan, toplam = 0, 0
 	local kademe: { [string]: { number } } = {}
@@ -892,6 +943,8 @@ local function durumuCiz()
 	for id, dugme in mutasyonDugmeleri do
 		UI.dugme3BRenk(dugme, if id == seciliMutasyon then mutasyonRengi(id) else SEKME_KAPALI)
 	end
+
+	noktalariCiz()
 end
 
 local function sekmeSec(ada: string?, mutasyon: string?)
@@ -940,6 +993,7 @@ for sira, ada in Brainrots.IslandOrder do
 		zIndex = 5,
 	})
 	adaDugmeleri[ada] = dugme
+	adaNoktalari[ada] = UI.bildirimNoktasi(dugme)
 	dugme.MouseButton1Click:Connect(function()
 		sekmeSec(ada, nil)
 	end)
@@ -955,6 +1009,7 @@ for sira, id in MUTASYON_SEKMELERI do
 	dugme.Name = `Mutasyon_{id}`
 	dugme.LayoutOrder = sira
 	mutasyonDugmeleri[id] = dugme
+	mutasyonNoktalari[id] = UI.bildirimNoktasi(dugme)
 	dugme.MouseButton1Click:Connect(function()
 		sekmeSec(nil, id)
 	end)
@@ -996,5 +1051,14 @@ end
 function Index.acikMi(): boolean
 	return panel.Visible
 end
+
+function Index.bildirimBagla(nokta: (boolean) -> ())
+	menuNoktasi = nokta
+	noktalariCiz()
+end
+
+task.delay(5, function()
+	IndexAc:FireServer()
+end)
 
 return Index

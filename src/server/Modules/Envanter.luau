@@ -17,8 +17,18 @@ local Format = require(Shared:WaitForChild("Format"))
 local Olta = require(script.Parent:WaitForChild("Olta"))
 
 local EnvanterGuncelle = Net.event("EnvanterGuncelle")
+local IndexDurum = Net.event("IndexDurum")
 
 local Envanter = {}
+
+function Envanter.indexGonder(player: Player)
+	IndexDurum:FireClient(
+		player,
+		PlayerData.discovered(player),
+		PlayerData.discoveredMutations(player),
+		PlayerData.indexOdulleri(player)
+	)
+end
 
 function Envanter.push(player: Player)
 	local data = PlayerData.get(player)
@@ -26,13 +36,20 @@ function Envanter.push(player: Player)
 		return
 	end
 
+	local yeniKesif = false
 	for _, item in data.inventory do
 		if item.revealed and item.name then
-			PlayerData.discover(player, item.name)
-			if item.mutation then
-				PlayerData.discoverMutation(player, item.name, item.mutation)
+			if PlayerData.discover(player, item.name) then
+				yeniKesif = true
+			end
+			if item.mutation and PlayerData.discoverMutation(player, item.name, item.mutation) then
+				yeniKesif = true
 			end
 		end
+	end
+
+	if yeniKesif then
+		Envanter.indexGonder(player)
 	end
 
 	EnvanterGuncelle:FireClient(player, {

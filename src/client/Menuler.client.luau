@@ -2035,13 +2035,13 @@ Bildirim.noktalar.rewards = UI.bildirimNoktasi(
 		odulPaneliniAc()
 	end)
 )
-menuButonu(solSutun, "index", "Index", MenuRenk.index, function()
+Index.bildirimBagla(UI.bildirimNoktasi(menuButonu(solSutun, "index", "Index", MenuRenk.index, function()
 	if Index.acikMi() then
 		Index.kapat()
 	else
 		Index.ac()
 	end
-end)
+end)))
 menuButonu(solSutun, "friends", "Friends", MenuRenk.friends, function()
 	arkadasPaneliniAc()
 end)
