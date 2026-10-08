@@ -8,10 +8,12 @@ local Ayar = require(Shared:WaitForChild("Takas"))
 local Canta = require(Shared:WaitForChild("Canta"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Net = require(Shared:WaitForChild("Net"))
+local Politika = require(Shared:WaitForChild("Politika"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
 local Unvan = require(script.Parent:WaitForChild("Unvan"))
+local PolitikaKontrol = require(script.Parent:WaitForChild("PolitikaKontrol"))
 
 local Bildirim = Net.event("Bildirim")
 local TakasIslem = Net.event("TakasIslem")
@@ -426,13 +428,24 @@ TakasIslem.OnServerEvent:Connect(function(player: Player, veri: any)
 	if tur == "gonder" then
 		local hedef = if type(veri.hedef) == "number" then Players:GetPlayerByUserId(veri.hedef) else nil
 		if hedef then
-			istekGonder(player, hedef)
+			if PolitikaKontrol.takasYasak(player) then
+				Bildirim:FireClient(player, Politika.TakasMesaji, SARI)
+			elseif PolitikaKontrol.takasYasak(hedef) then
+				Bildirim:FireClient(player, Politika.KarsiTakasMesaji, SARI)
+			else
+				istekGonder(player, hedef)
+			end
 		end
 		return
 	elseif tur == "yanit" then
 		local gonderen = if type(veri.gonderen) == "number" then Players:GetPlayerByUserId(veri.gonderen) else nil
 		if gonderen then
-			istegeYanit(player, gonderen, veri.kabul == true)
+			local kabul = veri.kabul == true
+			if kabul and (PolitikaKontrol.takasYasak(player) or PolitikaKontrol.takasYasak(gonderen)) then
+				Bildirim:FireClient(player, Politika.TakasMesaji, SARI)
+				kabul = false
+			end
+			istegeYanit(player, gonderen, kabul)
 		end
 		return
 	end

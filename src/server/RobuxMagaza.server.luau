@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
+local Politika = require(Shared:WaitForChild("Politika"))
 
 local Modules = script.Parent:WaitForChild("Modules")
 local PlayerData = require(Modules:WaitForChild("PlayerData"))
@@ -14,6 +15,7 @@ local Envanter = require(Modules:WaitForChild("Envanter"))
 local Gacha = require(Modules:WaitForChild("Gacha"))
 local AfkSans = require(Modules:WaitForChild("AfkSans"))
 local KacanYumurta = require(Modules:WaitForChild("KacanYumurta"))
+local PolitikaKontrol = require(Modules:WaitForChild("PolitikaKontrol"))
 local Canta = require(Shared:WaitForChild("Canta"))
 
 local Bildirim = Net.event("Bildirim")
@@ -194,6 +196,11 @@ RobuxUrunAl.OnServerEvent:Connect(function(player, anahtar)
 		return
 	end
 	sonPencere[player] = simdi
+
+	if Politika.rastgeleMi(urun.tur) and PolitikaKontrol.rastgeleYasak(player) then
+		Bildirim:FireClient(player, Politika.RastgeleMesaji, SARI)
+		return
+	end
 
 	if urun.tur == "detectiveSkip" and not dedektifBekliyor(player) then
 		Bildirim:FireClient(player, "The Detective is not working on anything.", SARI)

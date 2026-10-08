@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Ayar = require(Shared:WaitForChild("Gacha"))
 local Assets = require(Shared:WaitForChild("Assets"))
 local Net = require(Shared:WaitForChild("Net"))
+local Politika = require(Shared:WaitForChild("Politika"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
@@ -1014,11 +1015,13 @@ end)
 GachaAc.OnClientEvent:Connect(function(veri)
 	adminDugme.Visible = type(veri) == "table" and veri.admin == true
 	yumurtalariKur()
+	local rastgeleYasak = player:GetAttribute(Politika.RastgeleNiteligi) == true
+	dugmeKap.Visible = not rastgeleYasak
 	if not donuyor then
 		bekleSeridi()
 		sanslariCiz(if type(veri) == "table" then tonumber(veri.iska) or 0 else 0, false)
 		sonucYazi.Text = ""
-		detayYazi.Text = "Every egg hatches into a top-tier Pet!"
+		detayYazi.Text = if rastgeleYasak then Politika.RastgeleMesaji else "Every egg hatches into a top-tier Pet!"
 		detayYazi.TextColor3 = UI.Colors.textDim
 	end
 	panel.Visible = true

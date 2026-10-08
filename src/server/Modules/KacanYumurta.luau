@@ -15,6 +15,7 @@ local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
 local Canta = require(Shared:WaitForChild("Canta"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local PolitikaKontrol = require(script.Parent:WaitForChild("PolitikaKontrol"))
 local Envanter = require(script.Parent:WaitForChild("Envanter"))
 
 local Bildirim = Net.event("Bildirim")
@@ -31,7 +32,7 @@ local teklifler: { [Player]: Kayit } = {}
 local rng = Random.new()
 
 function KacanYumurta.teklifEt(player: Player, rarityId: string, island: string?)
-	if not Ayar.uygun(rarityId) then
+	if not Ayar.uygun(rarityId) or PolitikaKontrol.rastgeleYasak(player) then
 		return
 	end
 

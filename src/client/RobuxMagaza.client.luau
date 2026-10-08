@@ -14,6 +14,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local LuckyBlock = require(Shared:WaitForChild("LuckyBlock"))
 local Passler = require(Shared:WaitForChild("Passler"))
 local RobuxMagaza = require(Shared:WaitForChild("RobuxMagaza"))
+local Politika = require(Shared:WaitForChild("Politika"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 
@@ -1406,9 +1407,11 @@ local function baslangicKarti()
 
 	local function ciz()
 		cerceve.Visible = player:GetAttribute(RobuxMagaza.BaslangicNiteligi) ~= true
+			and player:GetAttribute(Politika.RastgeleNiteligi) ~= true
 	end
 	ciz()
 	player:GetAttributeChangedSignal(RobuxMagaza.BaslangicNiteligi):Connect(ciz)
+	player:GetAttributeChangedSignal(Politika.RastgeleNiteligi):Connect(ciz)
 end
 
 do
@@ -1424,6 +1427,31 @@ for _, kart in RobuxMagaza.Kartlar do
 	if not ok then
 		warn(`[RobuxMagaza] card "{kart.id}" could not be drawn: {hata}`)
 	end
+end
+
+do
+	local rastgeleKartlar: { GuiObject } = {}
+	for _, kart in RobuxMagaza.Kartlar do
+		local hepsiRastgele = #kart.urunler > 0
+		for _, urun in kart.urunler do
+			if not Politika.rastgeleMi(urun.tur) then
+				hepsiRastgele = false
+			end
+		end
+		local cerceve = liste:FindFirstChild(kart.id, true)
+		if hepsiRastgele and cerceve and cerceve:IsA("GuiObject") then
+			table.insert(rastgeleKartlar, cerceve)
+		end
+	end
+
+	local function rastgeleKartlariCiz()
+		local yasak = player:GetAttribute(Politika.RastgeleNiteligi) == true
+		for _, cerceve in rastgeleKartlar do
+			cerceve.Visible = not yasak
+		end
+	end
+	rastgeleKartlariCiz()
+	player:GetAttributeChangedSignal(Politika.RastgeleNiteligi):Connect(rastgeleKartlariCiz)
 end
 
 bolumBasligi("Game Passes")
@@ -1489,10 +1517,14 @@ UI.isikHuzmeleri(tutucu, ALTIN, {
 do
 	local nokta = UI.bildirimNoktasi(storeButon, 8)
 	local function guncelle()
-		nokta(player:GetAttribute(RobuxMagaza.BaslangicNiteligi) ~= true)
+		nokta(
+			player:GetAttribute(RobuxMagaza.BaslangicNiteligi) ~= true
+				and player:GetAttribute(Politika.RastgeleNiteligi) ~= true
+		)
 	end
 	guncelle()
 	player:GetAttributeChangedSignal(RobuxMagaza.BaslangicNiteligi):Connect(guncelle)
+	player:GetAttributeChangedSignal(Politika.RastgeleNiteligi):Connect(guncelle)
 end
 
 local storeIkon = Instance.new("ImageLabel")
