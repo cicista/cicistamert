@@ -717,8 +717,10 @@ function Tools.buildBrainrot(item: any): Tool
 	tool.RequiresHandle = true
 	tool:SetAttribute("BrainrotUid", item.uid)
 	tool:SetAttribute("Rarity", item.rarity)
-	tool:SetAttribute("Condition", item.condition)
-	tool:SetAttribute("Mutation", item.mutation)
+	if revealed then
+		tool:SetAttribute("Condition", item.condition)
+		tool:SetAttribute("Mutation", item.mutation)
+	end
 	tool:SetAttribute("Revealed", revealed ~= nil and revealed ~= false)
 
 	if not revealed then
@@ -847,7 +849,7 @@ function Tools.buildBrainrot(item: any): Tool
 
 	tool.ToolTip = if revealed
 		then `{rarityInfo.displayName}  |  {conditionInfo.shortName} ({conditionInfo.multiplier}x){mutationTip}`
-		else `Unidentified  |  {rarityInfo.displayName}  |  {conditionInfo.shortName}`
+		else `Unidentified  |  {rarityInfo.displayName}`
 
 	if Assets.BrainrotHold.mode == "head" then
 		tool.Equipped:Connect(function()

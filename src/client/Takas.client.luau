@@ -431,15 +431,19 @@ local function kartKur(parent: Instance, sira: number, onizleme: any, bilgi: any
 			Color3.fromRGB(110, 255, 140)
 		)
 
-		local kosul = Condition.get(bilgi.condition)
-		local parcalar = { `<font color="#{kosul.color:ToHex()}">{kosul.shortName}</font>` }
-		if Mutations.isSpecial(bilgi.mutation) then
-			table.insert(
-				parcalar,
-				`<font color="#{Mutations.color(bilgi.mutation):ToHex()}">{Mutations.get(bilgi.mutation).displayName}</font>`
-			)
+		if acik then
+			local kosul = Condition.get(bilgi.condition)
+			local parcalar = { `<font color="#{kosul.color:ToHex()}">{kosul.shortName}</font>` }
+			if Mutations.isSpecial(bilgi.mutation) then
+				table.insert(
+					parcalar,
+					`<font color="#{Mutations.color(bilgi.mutation):ToHex()}">{Mutations.get(bilgi.mutation).displayName}</font>`
+				)
+			end
+			satir(table.concat(parcalar, " "), 96, 10, BEYAZ, true)
+		else
+			satir("Unidentified", 96, 10, UI.Colors.textDim)
 		end
-		satir(table.concat(parcalar, " "), 96, 10, BEYAZ, true)
 	end
 
 	if tikla then

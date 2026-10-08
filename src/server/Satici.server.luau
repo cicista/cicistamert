@@ -30,7 +30,7 @@ local function valueOf(item: any): number
 		return math.floor(Brainrots.income(item.name, item.condition, item.mutation) * S.valueMultiplier)
 	end
 
-	return math.floor(Brainrots.minIncome(item.rarity, item.condition) * S.unknownMultiplier)
+	return math.floor(Brainrots.minIncome(item.rarity, "Normal") * S.unknownMultiplier)
 end
 
 local function sellableItems(player: Player): ({ any }, number)
@@ -232,8 +232,8 @@ local function liste(player: Player): { any }
 			uid = item.uid,
 			rarity = item.rarity,
 			name = if item.revealed and item.name then item.name else nil,
-			condition = item.condition,
-			mutation = item.mutation,
+			condition = if item.revealed and item.name then item.condition else nil,
+			mutation = if item.revealed and item.name then item.mutation else nil,
 			value = valueOf(item),
 		})
 	end

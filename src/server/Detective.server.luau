@@ -150,8 +150,6 @@ local function bekleyenler(data: any): { any }
 			table.insert(out, {
 				uid = item.uid,
 				rarity = item.rarity,
-				condition = item.condition,
-				mutation = item.mutation,
 				sure = Rarity.get(item.rarity :: any).revealTime,
 			})
 		end

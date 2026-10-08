@@ -21,6 +21,14 @@ local IndexDurum = Net.event("IndexDurum")
 
 local Envanter = {}
 
+local function istemciEnvanteri(envanter: { any }): { any }
+	local liste = table.create(#envanter)
+	for i, item in envanter do
+		liste[i] = Brainrots.istemciKopyasi(item)
+	end
+	return liste
+end
+
 function Envanter.indexGonder(player: Player)
 	IndexDurum:FireClient(
 		player,
@@ -59,7 +67,7 @@ function Envanter.push(player: Player)
 		scrolls = data.scrolls,
 		shovel = data.shovel,
 		detector = data.detector,
-		inventory = data.inventory,
+		inventory = istemciEnvanteri(data.inventory),
 		ores = data.ores,
 		pickaxes = data.pickaxes,
 		baseSlots = data.baseSlots,

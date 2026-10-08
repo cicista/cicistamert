@@ -53,8 +53,8 @@ local function esyaBilgisi(item: any): { [string]: any }
 		uid = item.uid,
 		name = if item.revealed then item.name else nil,
 		rarity = item.rarity,
-		condition = item.condition,
-		mutation = item.mutation,
+		condition = if item.revealed then item.condition else nil,
+		mutation = if item.revealed then item.mutation else nil,
 		revealed = item.revealed == true,
 	}
 end

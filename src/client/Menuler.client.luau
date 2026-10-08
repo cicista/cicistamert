@@ -220,7 +220,7 @@ local function brainrotRow(
 	local mutationTag = if special then `  {mutationInfo.displayName} ({mutationInfo.multiplier}x)` else ""
 	local detail = if revealed
 		then `{conditionInfo.shortName} ({conditionInfo.multiplier}x){mutationTag}  -  {Format.perSecond(Brainrots.income(item.name, item.condition, item.mutation))}`
-		else `{conditionInfo.displayName}  -  take it to the Detective`
+		else "Unidentified  -  take it to the Detective"
 
 	UI.text({
 		text = detail,
@@ -985,7 +985,6 @@ local detektifDurumCiz: () -> ()
 
 local function detektifKarti(item: any, sira: number)
 	local rarityInfo = Rarity.get(item.rarity)
-	local conditionInfo = Condition.get(item.condition)
 
 	local kart = Instance.new("TextButton")
 	kart.Name = item.uid
@@ -1069,7 +1068,7 @@ local function detektifKarti(item: any, sira: number)
 		frameSize = UDim2.fromScale(1, 1),
 		parent = resim,
 	})
-	detectivePencere.ekle(resim, { mutation = item.mutation, revealed = false, rarity = item.rarity }, soru)
+	detectivePencere.ekle(resim, { revealed = false, rarity = item.rarity }, soru)
 
 	local ad = UI.text({
 		text = rarityInfo.displayName,
@@ -1084,7 +1083,7 @@ local function detektifKarti(item: any, sira: number)
 	UI.rarityStyle(ad, item.rarity)
 
 	UI.text({
-		text = `{conditionInfo.shortName}  -  {detektifSure(tonumber(item.sure) or 0)}`,
+		text = detektifSure(tonumber(item.sure) or 0),
 		size = UI.Sizes.tiny,
 		font = UI.Fonts.bold,
 		color = Color3.fromRGB(230, 230, 240),

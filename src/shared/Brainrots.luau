@@ -227,4 +227,14 @@ function Brainrots.minIncome(rarityId: Rarity.RarityId, conditionId: Condition.C
 	return if lowest < math.huge then lowest else 0
 end
 
+function Brainrots.istemciKopyasi(item: any): any
+	if item.revealed and item.name then
+		return item
+	end
+	local kopya = table.clone(item)
+	kopya.condition = nil
+	kopya.mutation = nil
+	return kopya
+end
+
 return Brainrots
