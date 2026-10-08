@@ -96,6 +96,7 @@ Net.Events = {
 
 	"IndexAc",
 	"IndexDurum",
+	"IndexOdulAl",
 
 	"PassSatinAl",
 	"RobuxUrunAl",

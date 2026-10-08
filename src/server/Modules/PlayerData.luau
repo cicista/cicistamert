@@ -102,6 +102,7 @@ export type Data = {
 	quests: QuestState,
 	discovered: { [string]: boolean },
 	discoveredMut: { [string]: { [string]: boolean } },
+	indexOdul: { [string]: boolean },
 	purchases: { [string]: number },
 	tutorial: {
 		adim: number,
@@ -199,6 +200,7 @@ local function defaultData(): Data
 		tutorial = { adim = 1, bitti = false },
 		discovered = {},
 		discoveredMut = {},
+		indexOdul = {},
 		purchases = {},
 	}
 end
@@ -578,6 +580,15 @@ local function migrate(raw: any): Data
 					end
 				end
 				data.discoveredMut[mutasyon] = hedef
+			end
+		end
+	end
+
+	data.indexOdul = {}
+	if type(raw.indexOdul) == "table" then
+		for anahtar, alindi in raw.indexOdul do
+			if type(anahtar) == "string" and alindi == true then
+				data.indexOdul[anahtar] = true
 			end
 		end
 	end
@@ -983,6 +994,11 @@ end
 function PlayerData.discoveredMutations(player: Player): { [string]: { [string]: boolean } }
 	local data = cache[player]
 	return if data then data.discoveredMut else {}
+end
+
+function PlayerData.indexOdulleri(player: Player): { [string]: boolean }
+	local data = cache[player]
+	return if data then data.indexOdul else {}
 end
 
 function PlayerData.findItem(player: Player, uid: string): InventoryItem?

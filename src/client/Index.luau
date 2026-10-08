@@ -23,6 +23,8 @@ local KademeEfekti = require(script.Parent:WaitForChild("KademeEfekti"))
 
 local IndexAc = Net.event("IndexAc")
 local IndexDurum = Net.event("IndexDurum")
+local IndexOdulAl = Net.event("IndexOdulAl")
+local IndexOdul = require(Shared:WaitForChild("IndexOdul"))
 
 local Index = {}
 
@@ -566,6 +568,7 @@ local function hucreKur(parent: Instance, info: Brainrots.BrainrotInfo, sira: nu
 end
 
 local adaKutulari: { [string]: Frame } = {}
+local toplaSatirlari: { [string]: Frame } = {}
 
 for adaSira, ada in Brainrots.IslandOrder do
 	local kutu = Instance.new("Frame")
@@ -673,6 +676,30 @@ for adaSira, ada in Brainrots.IslandOrder do
 				table.insert(hucreler, hucre)
 			end
 		end
+
+		local toplaSatiri = Instance.new("Frame")
+		toplaSatiri.Name = `Topla_{rarityId}`
+		toplaSatiri.Size = UDim2.new(1, -10, 0, 46)
+		toplaSatiri.BackgroundTransparency = 1
+		toplaSatiri.LayoutOrder = kademeSirasi * 10 + 2
+		toplaSatiri.Visible = false
+		toplaSatiri.Parent = kutu
+
+		local topla = UI.button(
+			toplaSatiri,
+			`COLLECT  +{IndexOdul.miktar(ada)} Rot Coin`,
+			UDim2.fromOffset(260, 42),
+			UI.Colors.good
+		)
+		topla.Name = "Collect"
+		topla.AnchorPoint = Vector2.new(0.5, 0)
+		topla.Position = UDim2.fromScale(0.5, 0)
+		UI.stroke(topla, Color3.fromRGB(0, 0, 0), 2)
+		topla.MouseButton1Click:Connect(function()
+			IndexOdulAl:FireServer(seciliMutasyon, ada, rarityId)
+		end)
+
+		toplaSatirlari[`{ada}/{rarityId}`] = toplaSatiri
 	end
 end
 
@@ -778,6 +805,7 @@ end)
 
 local sonKesif: { [string]: boolean } = {}
 local sonMutasyonKesif: { [string]: { [string]: boolean } } = {}
+local sonOdul: { [string]: boolean } = {}
 
 local function kesifMi(hucre: Hucre): boolean
 	if seciliMutasyon == "Normal" then
@@ -843,6 +871,12 @@ local function durumuCiz()
 	for anahtar, etiket in kademeSayaclari do
 		local sayi = kademe[anahtar]
 		etiket.Text = if sayi then `{sayi[1]} / {sayi[2]}` else ""
+
+		local satir = toplaSatirlari[anahtar]
+		if satir then
+			local tamam = sayi ~= nil and sayi[2] > 0 and sayi[1] >= sayi[2]
+			satir.Visible = tamam and sonOdul[`{seciliMutasyon}/{anahtar}`] ~= true
+		end
 	end
 
 	for ada, yazi in adaYazilari do
@@ -928,13 +962,16 @@ end
 
 durumuCiz()
 
-IndexDurum.OnClientEvent:Connect(function(kesfedilen, mutasyonlar)
+IndexDurum.OnClientEvent:Connect(function(kesfedilen, mutasyonlar, oduller)
 	if type(kesfedilen) ~= "table" then
 		return
 	end
 
 	sonKesif = kesfedilen
 	sonMutasyonKesif = if type(mutasyonlar) == "table" then mutasyonlar else {}
+	if type(oduller) == "table" then
+		sonOdul = oduller
+	end
 
 	durumuCiz()
 	pencereyiTazele()

@@ -975,7 +975,7 @@ local function indexiDoldur(player: Player): number
 		end
 	end
 
-	IndexDurum:FireClient(player, PlayerData.discovered(player), PlayerData.discoveredMutations(player))
+	IndexDurum:FireClient(player, PlayerData.discovered(player), PlayerData.discoveredMutations(player), PlayerData.indexOdulleri(player))
 	return yeni
 end
 
