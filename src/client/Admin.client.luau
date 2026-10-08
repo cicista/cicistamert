@@ -293,6 +293,40 @@ local function buildPanel(info: any)
 	end
 	chipRow(passChips)
 
+	section("GIFT PASS  --  type a name, + gives, - takes (saved)")
+	order += 1
+	local isimKutusu = Instance.new("TextBox")
+	isimKutusu.Name = "OyuncuAdi"
+	isimKutusu.Size = UDim2.new(1, -6, 0, 36)
+	isimKutusu.BackgroundColor3 = UI.Colors.panelLight
+	isimKutusu.BorderSizePixel = 0
+	isimKutusu.ClearTextOnFocus = false
+	isimKutusu.PlaceholderText = "Player username or display name"
+	isimKutusu.PlaceholderColor3 = UI.Colors.textDim
+	isimKutusu.Text = ""
+	isimKutusu.TextColor3 = UI.Colors.text
+	isimKutusu.FontFace = UI.Fonts.bold
+	isimKutusu.TextSize = UI.Sizes.small
+	isimKutusu.LayoutOrder = order
+	isimKutusu.Parent = list
+	UI.corner(isimKutusu, 8)
+	UI.stroke(isimKutusu, UI.Colors.accent, 1)
+
+	for _, ver in { true, false } do
+		local hediyeChips = {}
+		for ad, pass in Passler.Info do
+			table.insert(hediyeChips, {
+				label = `{if ver then "+" else "-"} {pass.ad}`,
+				command = "giftPass",
+				getArg = function()
+					return { oyuncu = isimKutusu.Text, pass = ad, ver = ver }
+				end,
+				color = if ver then UI.Colors.good else UI.Colors.bad,
+			})
+		end
+		chipRow(hediyeChips)
+	end
+
 	section("DETECTOR LEVEL")
 	local detectorChips = {}
 	for _, id in Detectors.Order do

@@ -9,8 +9,15 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared:WaitForChild("Net"))
 local Passler = require(Shared:WaitForChild("Passler"))
 
+local Modules = script.Parent:WaitForChild("Modules")
+local PlayerData = require(Modules:WaitForChild("PlayerData"))
+
 local Bildirim = Net.event("Bildirim")
 local PassSatinAl = Net.event("PassSatinAl")
+
+local PassYenile = Instance.new("BindableEvent")
+PassYenile.Name = "PassYenile"
+PassYenile.Parent = script
 
 local TEKRAR_BEKLEME = 10
 local DENEME_SAYISI = 3
@@ -37,6 +44,12 @@ local function kontrol(player: Player, ad: string)
 	end
 
 	if Passler.TEST_STUDIO and RunService:IsStudio() then
+		sahiplikYaz(player, ad, true)
+		return
+	end
+
+	local data = PlayerData.bekle(player)
+	if data and data.giftedPasses[ad] == true then
 		sahiplikYaz(player, ad, true)
 		return
 	end
@@ -71,6 +84,19 @@ local function oyuncuGeldi(player: Player)
 		task.spawn(kontrol, player, ad)
 	end
 end
+
+PassYenile.Event:Connect(function(player: Player, ad: string)
+	local info = Passler.get(ad)
+	if not info or not player.Parent then
+		return
+	end
+
+	player:SetAttribute("PassKalici_" .. ad, false)
+	if player:GetAttribute("PassSure_" .. ad) == nil then
+		player:SetAttribute(info.nitelik, false)
+	end
+	task.spawn(kontrol, player, ad)
+end)
 
 Players.PlayerAdded:Connect(oyuncuGeldi)
 for _, player in Players:GetPlayers() do

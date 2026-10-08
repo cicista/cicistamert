@@ -844,6 +844,60 @@ function commands.togglePass(player, data, arg)
 	return `{info.ad}: {if yeni then "GIVEN" else "REMOVED"} (this session)`
 end
 
+local function oyuncuBul(ad: string): Player?
+	local aranan = string.lower((string.gsub(ad, "^%s*@?(.-)%s*$", "%1")))
+	if aranan == "" then
+		return nil
+	end
+
+	local gorunen: Player? = nil
+	for _, p in Players:GetPlayers() do
+		if string.lower(p.Name) == aranan then
+			return p
+		end
+		if string.lower(p.DisplayName) == aranan then
+			gorunen = p
+		end
+	end
+	return gorunen
+end
+
+function commands.giftPass(player, data, arg)
+	if type(arg) ~= "table" or type(arg.oyuncu) ~= "string" or type(arg.pass) ~= "string" or #arg.oyuncu > 40 then
+		return nil
+	end
+
+	local info = Passler.get(arg.pass)
+	if not info then
+		return nil
+	end
+
+	local hedef = oyuncuBul(arg.oyuncu)
+	if not hedef then
+		return `No player named "{arg.oyuncu}" in this server`
+	end
+
+	local hedefData = PlayerData.get(hedef)
+	if not hedefData then
+		return `{hedef.Name}'s data is not loaded yet`
+	end
+
+	local ver = arg.ver == true
+	hedefData.giftedPasses[arg.pass] = if ver then true else nil
+
+	local passBetik = script.Parent:FindFirstChild("Passler")
+	local yenile = passBetik and passBetik:FindFirstChild("PassYenile")
+	if yenile and yenile:IsA("BindableEvent") then
+		yenile:Fire(hedef, arg.pass)
+	end
+
+	if ver and hedef ~= player then
+		Bildirim:FireClient(hedef, `You received the {info.ad} pass!`, Color3.fromRGB(140, 230, 160))
+	end
+
+	return `{info.ad}: {if ver then "GIVEN to" else "REMOVED from"} {hedef.Name} (saved)`
+end
+
 local function hiziYenile(player: Player)
 	local data = PlayerData.get(player)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")

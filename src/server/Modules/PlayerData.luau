@@ -42,6 +42,7 @@ export type Data = {
 	rotCoins: number,
 	luckyBlocks: { [string]: number },
 	tempPasses: { [string]: number },
+	giftedPasses: { [string]: boolean },
 	scrolls: { [string]: number },
 	shovel: string,
 	shovelMax: string,
@@ -140,6 +141,7 @@ local function defaultData(): Data
 		luckyBlocks = {},
 		scrolls = {},
 		tempPasses = {},
+		giftedPasses = {},
 		shovel = Shovels.Default,
 		shovelMax = Shovels.Default,
 		detector = Detectors.Default,
@@ -281,6 +283,15 @@ local function migrate(raw: any): Data
 			local an = tonumber(bitis)
 			if type(ad) == "string" and an and an > simdi then
 				data.tempPasses[ad] = math.floor(an)
+			end
+		end
+	end
+
+	data.giftedPasses = {}
+	if type(raw.giftedPasses) == "table" then
+		for ad, var in raw.giftedPasses do
+			if type(ad) == "string" and var == true then
+				data.giftedPasses[ad] = true
 			end
 		end
 	end
