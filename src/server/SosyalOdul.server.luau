@@ -1,3 +1,4 @@
+local GroupService = game:GetService("GroupService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -59,7 +60,21 @@ local function grupta(player: Player): boolean
 			return player:IsInGroup(SosyalOdul.GroupId)
 		end)
 	end
-	return ok and sonuc == true
+	if ok and sonuc == true then
+		return true
+	end
+
+	local gruplarOk, gruplar = pcall(function()
+		return GroupService:GetGroupsAsync(player.UserId)
+	end)
+	if gruplarOk and type(gruplar) == "table" then
+		for _, grup in gruplar do
+			if type(grup) == "table" and grup.Id == SosyalOdul.GroupId then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 local function durumGonder(player: Player)
@@ -126,7 +141,11 @@ local function al(player: Player, tur: string, index: any)
 			return
 		end
 		if not grupta(player) then
-			Bildirim:FireClient(player, "Join the group first, then claim!", KIRMIZI)
+			local mesaj = if index == "bekliyor"
+				then "Your join request was sent! Claim again once you're accepted."
+				elseif index == "vazgecti" then "Join the group to get your free Rot Coin!"
+				else "Join the group first, then claim!"
+			Bildirim:FireClient(player, mesaj, KIRMIZI)
 			return
 		end
 		data.socialClaimed.group = true

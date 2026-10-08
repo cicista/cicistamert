@@ -2873,8 +2873,26 @@ task.spawn(function()
 	local grupDugme, grupYazi = durumDugmesi(grupKart, UDim2.fromOffset(170, 40), UI.Colors.good)
 	grupDugme.AnchorPoint = Vector2.new(0.5, 1)
 	grupDugme.Position = UDim2.new(0.5, 0, 1, -12)
+	local grupIstegi = false
 	grupDugme.MouseButton1Click:Connect(function()
-		EkOdulAl:FireServer("group")
+		local grup = ekDurum and ekDurum.group
+		if grupIstegi or (grup and grup.claimed) or SosyalOdul.GroupId == 0 then
+			return
+		end
+		grupIstegi = true
+		task.spawn(function()
+			local ok, sonuc = pcall(function()
+				return game:GetService("GroupService"):PromptJoinAsync(SosyalOdul.GroupId)
+			end)
+			local durum = if not ok
+				then nil
+				elseif sonuc == Enum.GroupMembershipStatus.Joined or sonuc == Enum.GroupMembershipStatus.AlreadyMember
+					then "uye"
+				elseif sonuc == Enum.GroupMembershipStatus.JoinRequestPending then "bekliyor"
+				else "vazgecti"
+			EkOdulAl:FireServer("group", durum)
+			grupIstegi = false
+		end)
 	end)
 
 	local likeKart = kutu(
@@ -3027,7 +3045,7 @@ task.spawn(function()
 			grupYazi.Text = "Coming Soon"
 		else
 			grupDugme.BackgroundColor3 = UI.Colors.good
-			grupYazi.Text = "Claim"
+			grupYazi.Text = "Join & Claim"
 		end
 
 		likeDugme.BackgroundColor3 = UI.Colors.good
