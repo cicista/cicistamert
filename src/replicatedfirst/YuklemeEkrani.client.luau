@@ -1101,7 +1101,7 @@ end
 local function tusIpuclari()
 	local tur = girisTuru()
 
-	oyna.tus.Visible = oynaAktif and tur ~= "dokunmatik"
+	oyna.tus.Visible = oynaAktif and tur == "gamepad"
 	oyna.tusYazi.Text = if tur == "gamepad" then "A" else "ENTER"
 	oyna.tus.Size = UDim2.fromOffset(if tur == "gamepad" then 24 else 48, 22)
 
@@ -1420,6 +1420,19 @@ local function gorselleriUygula(G: any)
 		local resim = dilimResim("Gorsel", d.dugme, kimlik, D.kareKesit, dugmeKap.Size.Y.Offset / D.boy, 1)
 		resim.ImageColor3 = ton
 		d.yazi.Size = UDim2.fromScale(1, 1 - D.dudakOrani)
+
+		local maske = Instance.new("CanvasGroup")
+		maske.Name = "IsikMaskesi"
+		maske.BackgroundTransparency = 1
+		maske.BorderSizePixel = 0
+		maske.Position = UDim2.new(0, 4, D.yuzUst, 0)
+		maske.Size = UDim2.new(1, -8, D.yuzBoy, 0)
+		maske.ZIndex = d.isik.ZIndex
+		maske.Parent = d.dugme
+		local maskeKosesi = Instance.new("UICorner")
+		maskeKosesi.CornerRadius = UDim.new(0.5, 0)
+		maskeKosesi.Parent = maske
+		d.isik.Parent = maske
 	end
 
 	dugmeGorseli(oyna, D.renkler.mavi, BEYAZ)

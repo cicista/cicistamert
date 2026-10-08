@@ -384,7 +384,11 @@ local function satinAlmaDugmesi(parent: Instance, renk: Color3, buyusun: boolean
 	UI.hover(buton, yuz, if buyusun then buton else nil)
 	UI.gorselKapla(buton, yuz)
 
-	taramaIsigi(yuz, 8, 4, 0.75, 2.6, 0.45)
+	local tarama = taramaIsigi(yuz, 8, 4, 0.75, 2.6, 0.45)
+	local taramaKosesi = tarama:FindFirstChildOfClass("UICorner")
+	if taramaKosesi and buton:FindFirstChild("Gorsel") then
+		taramaKosesi.CornerRadius = UDim.new(0.5, 0)
+	end
 	buton.Activated:Connect(function()
 		dalga(yuz)
 	end)

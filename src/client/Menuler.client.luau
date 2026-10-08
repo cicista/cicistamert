@@ -1866,7 +1866,7 @@ local function pariltiKatmani(yuz: Frame, sira: number): Frame
 	isik.Size = UDim2.fromScale(1, 1)
 	isik.ZIndex = 3
 	isik.Parent = yuz
-	UI.corner(isik, 10)
+	UI.corner(isik, if UI.Gorseller.Dugme.renkler.gri ~= "" then 20 else 10)
 
 	local isikGecis = Instance.new("UIGradient")
 	isikGecis.Rotation = 20
