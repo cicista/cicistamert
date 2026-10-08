@@ -816,7 +816,7 @@ local function sonucGoster(basarili: boolean, mesaj: string?)
 		UI.isikHuzmeleri(kap, renk, { sayi = 12, uzunluk = 240, kalinlik = 30, tur = 14, parlaklik = 0.2, zIndex = 1 }).Position =
 			UDim2.fromScale(0.5, 0.5)
 		UI.pariltilar(kap, renk, 16, 2)
-		YerelSes.cal("LuckyBlock")
+		YerelSes.cal("Catch")
 	end
 
 	UI.text({
