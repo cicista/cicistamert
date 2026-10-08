@@ -529,9 +529,9 @@ local yuzdeSirasi = cerceve({ ad = "Yuzde", ebeveyn = kayan, boyut = UDim2.new(1
 local cubuk = cerceve({
 	ad = "Cubuk",
 	ebeveyn = yuzdeSirasi,
-	boyut = UDim2.new(1, -78, 0, 14),
-	konum = UDim2.fromScale(0, 0.5),
-	capa = Vector2.new(0, 0.5),
+	boyut = UDim2.new(1, -156, 0, 14),
+	konum = UDim2.fromScale(0.5, 0.5),
+	capa = Vector2.new(0.5, 0.5),
 	renk = Color3.fromRGB(16, 20, 34),
 	saydamlik = 0.25,
 	z = 1,
