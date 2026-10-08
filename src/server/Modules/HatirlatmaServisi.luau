@@ -34,7 +34,6 @@ end
 
 local function gonder(userId: number, kayit: any)
 	local gun = if type(kayit) == "table" then tonumber(kayit.gun) or 1 else 1
-	local seri = if type(kayit) == "table" then tonumber(kayit.seri) or 0 else 0
 
 	local govde = {
 		source = { universe = `universes/{game.GameId}` },
@@ -44,7 +43,6 @@ local function gonder(userId: number, kayit: any)
 			parameters = {
 				day = { string_value = tostring(gun) },
 				reward = { string_value = Rewards.label(gun) },
-				streak = { string_value = tostring(seri) },
 			},
 		},
 		join_experience = { launch_data = Ayar.GirisVerisi },
