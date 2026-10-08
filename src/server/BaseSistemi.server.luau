@@ -12,6 +12,7 @@ local Mutations = require(Shared:WaitForChild("Mutations"))
 local Format = require(Shared:WaitForChild("Format"))
 local Net = require(Shared:WaitForChild("Net"))
 local Assets = require(Shared:WaitForChild("Assets"))
+local Flyboard = require(Shared:WaitForChild("Flyboard"))
 local Scrolls = require(Shared:WaitForChild("Scrolls"))
 local Fonts = require(Shared:WaitForChild("Fonts"))
 local Divine = require(Shared:WaitForChild("Divine"))
@@ -1249,6 +1250,7 @@ local function buildDisplay(item: any): Model
 	end
 
 	model.Name = item.name
+	model:SetAttribute(Flyboard.KaraNiteligi, true)
 
 	local boyutOlcegi = Condition.scaleFor(item.condition, rarityInfo.order)
 		* Rarity.modelScale(item.rarity)

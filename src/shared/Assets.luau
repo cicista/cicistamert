@@ -10,6 +10,7 @@ local Rarity = require(script.Parent.Rarity)
 local LuckyBlock = require(script.Parent.LuckyBlock)
 local Divine = require(script.Parent.Divine)
 local Petler = require(script.Parent.Petler)
+local Flyboard = require(script.Parent.Flyboard)
 
 local Assets = {}
 
@@ -397,6 +398,13 @@ local function petModeli(name: string, sessiz: boolean?): Model?
 	return nil
 end
 
+local function karaIsaretle(model: Model?): Model?
+	if model then
+		model:SetAttribute(Flyboard.KaraNiteligi, true)
+	end
+	return golgeyiKapat(model)
+end
+
 function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 	if not name or name == "" then
 		return nil
@@ -411,7 +419,7 @@ function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 				then petModeli(prefix .. Petler.modelAdi(name), true)
 				else findModel(Assets.Categories.brainrots, prefix .. name)
 			if mutated then
-				return golgeyiKapat(mutated)
+				return karaIsaretle(mutated)
 			end
 		end
 	end
@@ -426,7 +434,7 @@ function Assets.brainrotModel(name: string?, mutationId: string?): Model?
 		end
 	end
 
-	return golgeyiKapat(model)
+	return karaIsaretle(model)
 end
 
 function Assets.boyaliModel(name: string, mutationId: string?): Model?

@@ -92,6 +92,8 @@ Flyboard.ModelName = "Flyboard"
 
 Flyboard.SeaNames = { "deniz", "sea", "ocean", "water", "su" }
 
+Flyboard.KaraNiteligi = "DenizDegil"
+
 Flyboard.VFX = {
 	lightEmission = 0.15,
 	extraTransparency = 0.08,
@@ -162,7 +164,11 @@ function Flyboard.isSeaInstance(node: Instance?): boolean
 	local derinlik = 0
 
 	while cursor and derinlik < 6 do
-		if cursor == workspace then
+		if cursor == workspace or cursor:IsA("Tool") or cursor:GetAttribute(Flyboard.KaraNiteligi) == true then
+			return false
+		end
+
+		if cursor:IsA("Model") and cursor:FindFirstChildWhichIsA("Humanoid") then
 			return false
 		end
 
